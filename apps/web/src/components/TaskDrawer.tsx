@@ -78,11 +78,10 @@ export function TaskDrawer({
    * 沒有「我是什麼角色」這個欄位（回那個欄位的是專案清單 GET /projects）。
    */
   const role = project?.members.find(m => m.id === user?.id)?.role
-  // 專案建立者在建立專案時就拿到 MANAGER，所以判斷一律看角色，不另外看是不是建立者
   const isManager = role === 'MANAGER'
-  const canEditLinks = isManager || role === 'EDITOR'
-  const canEdit = isManager
-    || (canEditLinks && !!user && !!data && (data.createdById === user.id || data.assigneeId === user.id))
+  // Ref: CR-086 — 開放 EDITOR 與 MANAGER 皆可編輯與保存任務/問題事件
+  const canEdit = isManager || role === 'EDITOR'
+  const canEditLinks = canEdit
 
   // Esc 關閉抽屜。在輸入框裡按 Esc 不關，免得打到一半誤觸把內容弄丟。
   useEffect(() => {

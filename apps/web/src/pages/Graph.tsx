@@ -1569,7 +1569,8 @@ function GraphCanvas({
         id: n.id,
         type: (isBox ? 'box' : 'task') as 'box' | 'task',
         position: L.rel.get(n.id) ?? { x: 0, y: 0 },
-        // 有父框就交給 React Flow 處理座標原點與整包拖曳
+        // Ref: CR-086 — 有父框時解鎖 extent 限制，允許自由穿透框線拖移離框
+        extent: [[-100000, -100000], [100000, 100000]],
         ...(parent ? { parentId: parent } : {}),
         // 框的大小是算出來的，直接告訴 React Flow，不要等它量
         ...(isBox && size
@@ -2585,6 +2586,7 @@ function GraphCanvas({
           nodes={allNodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          nodeExtent={[[-100000, -100000], [100000, 100000]]}
           onNodesChange={onNodesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}

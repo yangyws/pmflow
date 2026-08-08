@@ -178,11 +178,11 @@ export function EpicSidebar({
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
 
-  const typeList = useMemo(() => types.length ? types : [
-    { key: 'EPIC', name: '大項目', color: '#d97706' },
-    { key: 'TASK', name: '任務', color: '#3178c6' },
-    { key: 'BUG', name: '問題', color: '#dc2626' },
-    { key: 'MILESTONE', name: '里程碑', color: '#8b5cf6' }
+  const typeList = useMemo<ProjectParam[]>(() => types.length ? types : [
+    { id: 'def-epic', key: 'EPIC', name: '大項目', color: '#d97706', kind: 'type', rank: 1, inUse: 0 },
+    { id: 'def-task', key: 'TASK', name: '任務', color: '#3178c6', kind: 'type', rank: 2, inUse: 0 },
+    { id: 'def-bug', key: 'BUG', name: '問題', color: '#dc2626', kind: 'type', rank: 3, inUse: 0 },
+    { id: 'def-ms', key: 'MILESTONE', name: '里程碑', color: '#8b5cf6', kind: 'type', rank: 4, inUse: 0 }
   ], [types])
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -539,7 +539,7 @@ export function EpicSidebar({
               bugsUnder={bugsUnder}
               overdueIn={overdueIn}
               inquiriesIn={inquiriesIn}
-              types={types}
+              types={typeList}
               expanded={expanded}
               autoOpen={autoOpen}
               toggle={toggle}
@@ -668,9 +668,16 @@ function TreeNode({
     }
     return false
   }, [dividerAfterTaskIdSet, task.id, open, kids, childrenOf])
+  // Ref: CR-086 — 設定預設種類顏色對映，修改種類時側欄即時切換顏色
+  const DEFAULT_TYPE_COLORS: Record<string, string> = {
+    EPIC: '#d97706',
+    TASK: '#3178c6',
+    BUG: '#dc2626',
+    MILESTONE: '#8b5cf6',
+  }
   const kind = types.find(t => t.key === task.type)
   const kindName = kind?.name ?? task.type
-  const kindColor = kind?.color ?? '#94a3b8'
+  const kindColor = kind?.color ?? DEFAULT_TYPE_COLORS[task.type] ?? '#94a3b8'
   const isRoot = depth === 0
   const active = isRoot
     ? selectedEpicId === task.id && !selectedTaskId
