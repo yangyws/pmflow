@@ -379,14 +379,14 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
         />
       )}
       <div
-        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-between')}
+        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-start')}
         style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
       >
         {/* 大項目框左右接點 100% 垂直置中於框體邊線中心 */}
         <NodeHandles />
         <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
         
-        <div className="p-2.5 flex-1 flex flex-col justify-between">
+        <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
           <div className="shrink-0">
             {/* 第一列：[收納按鈕] ＋ 編號 (MRG) ＋ 大項目徽章 ｜ 右側 [縮放按鈕 (僅收納開啟時才顯示)] */}
             <div className="flex items-center justify-between gap-1">
@@ -473,13 +473,13 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
         />
       )}
       <div
-        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-between')}
+        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-start')}
         style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
       >
         <NodeHandles />
-        <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
+        <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
 
-        <div className="px-2.5 py-2">
+        <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
           {/* 第一列：[收納按鈕] ＋ 編號 (MRG) ＋ 類型徽章 ｜ 右側 [縮放按鈕 (僅收納開啟時才顯示)] */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex min-w-0 items-center gap-1 overflow-hidden">
