@@ -272,10 +272,9 @@ function frameClass(data: TaskNodeData): string {
     data.selected || data.focused ? 'border-blue-500 ring-2 ring-blue-500/40 font-semibold'
       // 卡住＝現在動不了，是圖上最該被看到的狀態，給整圈紅框加紅暈
       : data.blockedBy.length ? 'border-red-500 ring-2 ring-red-500/25'
-      // 紫框＝只是階層上的鄰居（上層或下層），不是依賴。
-      // 原本用灰虛線，使用者看不出那是什麼意思，改成跟「大項目」徽章同色系
+      // Ref: CR-088 — 未設定特殊狀態時移除預設灰框，讓事件種類 color 精確套用至外框邊線
       : data.kin ? 'border-violet-400 ring-2 ring-violet-200 dark:ring-violet-500/30'
-      : 'border-slate-300 dark:border-slate-600',
+      : '',
     data.dimmed && 'opacity-20'
   )
 }
@@ -398,9 +397,6 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                 <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   {data.ref}
                 </span>
-                <span className={cx(BADGE, BADGE_VIOLET_SOFT)}>
-                  {G.badge.epic}
-                </span>
               </div>
               
               {data.isContainerMode && (
@@ -492,11 +488,6 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               {data.showBadges && data.isEntry && (
                 <span className={cx(BADGE, BADGE_EMERALD)} title={G.badge.entryTaskTip}>
                   {G.badge.entry}
-                </span>
-              )}
-              {data.showBadges && data.isEpic && (
-                <span className={cx(BADGE, BADGE_VIOLET_SOFT)} title={G.badge.epicTip}>
-                  {G.badge.epic}
                 </span>
               )}
               {data.showBadges && data.isBug && (
