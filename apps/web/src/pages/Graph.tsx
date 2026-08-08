@@ -2406,6 +2406,7 @@ function GraphCanvas({
     let newParentId: string | null = null
 
     for (const bNode of boxes) {
+      const isCurrent = bNode.id === currentParentId
       const bAbs = getAbs(bNode.id)
       const bStyle = styledNodes.find(s => s.id === bNode.id)
       const bW = bStyle?.style?.width
@@ -2417,16 +2418,31 @@ function GraphCanvas({
           : (resized[bNode.id]?.height ?? measured[bNode.id]?.height ?? layoutSize.get(bNode.id)?.h ?? 288)
       )
 
-      const MARGIN = bNode.id === currentParentId ? 0 : 96
-
-      if (
-        nCenterX >= bAbs.x - MARGIN &&
-        nCenterX <= bAbs.x + bW + MARGIN &&
-        nCenterY >= bAbs.y - MARGIN &&
-        nCenterY <= bAbs.y + bH + MARGIN
-      ) {
-        newParentId = bNode.id
-        break
+      if (isCurrent) {
+        // Ref: CR-084 — 當前所隸屬之收納框：只要卡片拖移超越上、下、左、右任一實體邊界 (24px 容錯)，即判定脫離
+        const relX = nAbs.x - bAbs.x
+        const relY = nAbs.y - bAbs.y
+        if (
+          relX >= -24 &&
+          relX + nodeW <= bW + 24 &&
+          relY >= -24 &&
+          relY + nodeH <= bH + 24
+        ) {
+          newParentId = bNode.id
+          break
+        }
+      } else {
+        // 其它收納框：當卡片中心落入該框範圍 (48px 吸附區域) 時判定移入
+        const MARGIN = 48
+        if (
+          nCenterX >= bAbs.x - MARGIN &&
+          nCenterX <= bAbs.x + bW + MARGIN &&
+          nCenterY >= bAbs.y - MARGIN &&
+          nCenterY <= bAbs.y + bH + MARGIN
+        ) {
+          newParentId = bNode.id
+          break
+        }
       }
     }
 
