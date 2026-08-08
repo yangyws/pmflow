@@ -762,16 +762,16 @@ function layout(
       const occupiedSlots = new Set<number>()
       const assigned = new Map<string, { x: number; y: number }>()
 
-      // 1. Ref: CR-085 — 手動拖曳卡片保持其手動座標 (吸附 24px/48px 網點)，不再限制於預設 Slot 網格
+      // 1. Ref: CR-085/CR-093 — 手動拖曳卡片保持其手動座標 (吸附 24px/48px 網點)，且約束於標頭下方 (y >= 60, x >= 24)
       for (const id of members) {
         if (draggedOffsets?.[id]) {
-          const posX = Math.max(0, Math.round(draggedOffsets[id].x / 24) * 24)
-          const posY = Math.max(0, even(Math.round(draggedOffsets[id].y / 48) * 48))
+          const posX = Math.max(24, Math.round(draggedOffsets[id].x / 24) * 24)
+          const posY = Math.max(60, even(Math.round(draggedOffsets[id].y / 48) * 48))
           assigned.set(id, { x: posX, y: posY })
         }
       }
 
-      // 2. 針對其餘卡片（包含剛移入的新卡片），自動依序填補最低的空位 (Vacant Slot)
+      // 2. 針對其餘卡片（包含剛移入的新卡片），自動依序填補最低的空位 (Vacant Slot，起點 x=24, y=60)
       let maxBottom = 0
       let maxRight = 0
 
@@ -784,7 +784,7 @@ function layout(
           occupiedSlots.add(k)
           const cIdx = Math.floor(k / 5)
           const rIdx = k % 5
-          assigned.set(id, { x: cIdx * 312, y: rIdx * 120 })
+          assigned.set(id, { x: 24 + cIdx * 312, y: 60 + rIdx * 120 })
         }
 
         const pos = assigned.get(id)!
