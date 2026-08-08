@@ -259,6 +259,16 @@ function getTypeColor(taskType: string, defaultColor?: string): string {
   return DEFAULT_MAP[taskType] ?? defaultColor ?? '#64748b'
 }
 
+function getTypeName(taskType: string): string {
+  const DEFAULT_NAMES: Record<string, string> = {
+    EPIC: '大項目',
+    TASK: '任務',
+    BUG: '問題',
+    MILESTONE: '里程碑',
+  }
+  return DEFAULT_NAMES[taskType] ?? taskType
+}
+
 // ── 節點 ────────────────────────────────────────────────
 
 /**
@@ -397,6 +407,16 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                 <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   {data.ref}
                 </span>
+                <span
+                  className={cx(BADGE, 'shrink-0 border')}
+                  style={{
+                    backgroundColor: `${accentColor}18`,
+                    color: accentColor,
+                    borderColor: `${accentColor}40`,
+                  }}
+                >
+                  {getTypeName(data.taskType)}
+                </span>
               </div>
               
               {data.isContainerMode && (
@@ -479,6 +499,16 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {data.ref}
               </span>
+              <span
+                className={cx(BADGE, 'shrink-0 border')}
+                style={{
+                  backgroundColor: `${accentColor}18`,
+                  color: accentColor,
+                  borderColor: `${accentColor}40`,
+                }}
+              >
+                {getTypeName(data.taskType)}
+              </span>
               {data.showBadges && data.kin && (
                 <span className={cx(BADGE, BADGE_VIOLET)}
                       title={data.kin === 'parent' ? G.badge.kinParentTaskTip : G.badge.kinChildTip}>
@@ -488,19 +518,6 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               {data.showBadges && data.isEntry && (
                 <span className={cx(BADGE, BADGE_EMERALD)} title={G.badge.entryTaskTip}>
                   {G.badge.entry}
-                </span>
-              )}
-              {data.showBadges && data.taskType === 'BUG' && (
-                <span className={cx(BADGE, BADGE_ROSE_SOFT)} title="問題與缺陷">
-                  問題
-                </span>
-              )}
-              {data.showBadges && data.taskType === 'MILESTONE' && (
-                <span className={cx(BADGE, BADGE_AMBER_SOFT)}>{G.badge.milestone}</span>
-              )}
-              {data.showBadges && data.taskType !== 'EPIC' && data.taskType !== 'BUG' && data.taskType !== 'MILESTONE' && (
-                <span className={cx(BADGE, BADGE_SKY_SOFT)}>
-                  {data.taskType === 'TASK' ? '任務' : data.taskType}
                 </span>
               )}
               {data.showBadges && data.blockedBy.length > 0 && (
@@ -1353,6 +1370,9 @@ function GraphCanvas({
     }
   })
 
+  /** 樂觀 UI 覆蓋 parentId，解鎖 API 非同步傳輸期間的座標與圖像卡片彈射消失 Bug */
+  const [parentOverrides, setParentOverrides] = useState<Record<string, string | null>>({})
+
   // 切換專案時自動載入該專案的持久化位置
   useEffect(() => {
     try {
@@ -1910,8 +1930,11 @@ function GraphCanvas({
       // 建立父子關係與子節點動態邊界界限
       const kidsMap = new Map<string, typeof baseNodes>()
       for (const node of baseNodes) {
-        if (node.parentId) {
-          kidsMap.set(node.parentId, [...(kidsMap.get(node.parentId) ?? []), node])
+        const effectiveP = parentOverrides[node.id] !== undefined
+          ? (parentOverrides[node.id] ?? undefined)
+          : node.parentId
+        if (effectiveP) {
+          kidsMap.set(effectiveP, [...(kidsMap.get(effectiveP) ?? []), node])
         }
       }
 
@@ -1942,8 +1965,13 @@ function GraphCanvas({
 
         const sizeStyle = isBox && width && height ? { width, height } : {}
 
+        const effectiveP = parentOverrides[n.id] !== undefined
+          ? (parentOverrides[n.id] ?? undefined)
+          : n.parentId
+
         return {
           ...n,
+          parentId: effectiveP,
           zIndex: isBox ? -1 : 10,
           position: dragged[n.id] ?? n.position,
           selected: !!selectedIds[n.id],
@@ -2214,15 +2242,36 @@ function GraphCanvas({
     }
   }, [delLink])
 
-  const parentOfMap = useMemo(() => new Map(shownNodes.map(n => [n.id, n.parentId ?? null])), [shownNodes])
+  const parentOfMap = useMemo(() => {
+    const map = new Map(shownNodes.map(n => [n.id, n.parentId ?? null]))
+    for (const [id, pId] of Object.entries(parentOverrides)) {
+      map.set(id, pId)
+    }
+    return map
+  }, [shownNodes, parentOverrides])
 
   const updateTaskParent = useMutation({
     mutationFn: (v: { id: string; parentId: string | null }) =>
       Api.patchTask(v.id, { parentId: v.parentId }),
-    onSuccess: () => { setError(null); invalidate() },
-    onError: (e: unknown) => setError(
-      e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed
-    ),
+    onSuccess: (_data, variables) => {
+      setError(null)
+      invalidate()
+      setParentOverrides(prev => {
+        const next = { ...prev }
+        delete next[variables.id]
+        return next
+      })
+    },
+    onError: (e: unknown, variables) => {
+      setParentOverrides(prev => {
+        const next = { ...prev }
+        delete next[variables.id]
+        return next
+      })
+      setError(
+        e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed
+      )
+    },
   })
 
   /**
@@ -2504,14 +2553,27 @@ function GraphCanvas({
           ...prev,
           [nId]: { x: targetX, y: targetY }
         }))
+        setParentOverrides(prev => ({ ...prev, [nId]: null }))
       } else {
-        setDragged(prev => {
-          const next = { ...prev }
-          delete next[nId]
-          return next
-        })
+        const bAbs = getAbs(newParentId)
+        let relX = Math.max(BOX_PAD, Math.round((nAbs.x - bAbs.x) / 24) * 24)
+        let relY = Math.max(BOX_HEADER, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
+        setDragged(prev => ({
+          ...prev,
+          [nId]: { x: relX, y: relY }
+        }))
+        setParentOverrides(prev => ({ ...prev, [nId]: newParentId }))
       }
       updateTaskParent.mutate({ id: nId, parentId: newParentId })
+    } else if (currentParentId !== null) {
+      // 在同一收納框內拖移：保留相對座標並限制邊界界限 (不移出邊界、不小於原點)
+      const bAbs = getAbs(currentParentId)
+      let relX = Math.max(BOX_PAD, Math.round((nAbs.x - bAbs.x) / 24) * 24)
+      let relY = Math.max(BOX_HEADER, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
+      setDragged(prev => ({
+        ...prev,
+        [nId]: { x: relX, y: relY }
+      }))
     }
   }, [allNodes, containerBoxIds, dragged, layoutAbs, layoutSize, measured, parentOfMap, resized, updateTaskParent])
 
