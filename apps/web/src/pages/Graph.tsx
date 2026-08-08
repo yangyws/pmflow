@@ -490,15 +490,15 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                   {G.badge.entry}
                 </span>
               )}
-              {data.showBadges && data.isBug && (
+              {data.showBadges && data.taskType === 'BUG' && (
                 <span className={cx(BADGE, BADGE_ROSE_SOFT)} title="問題與缺陷">
                   問題
                 </span>
               )}
-              {data.showBadges && data.isMilestone && (
+              {data.showBadges && data.taskType === 'MILESTONE' && (
                 <span className={cx(BADGE, BADGE_AMBER_SOFT)}>{G.badge.milestone}</span>
               )}
-              {data.showBadges && !data.isEpic && !data.isBug && !data.isMilestone && (
+              {data.showBadges && data.taskType !== 'EPIC' && data.taskType !== 'BUG' && data.taskType !== 'MILESTONE' && (
                 <span className={cx(BADGE, BADGE_SKY_SOFT)}>
                   {data.taskType === 'TASK' ? '任務' : data.taskType}
                 </span>
