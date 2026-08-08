@@ -131,6 +131,11 @@ const JUNCTION_GAP = 48
 /** 從任務的外緣算起，一個匯合點總共要吃掉多寬 (72 = 3 * 24px 網點) */
 const JUNCTION_SPAN = JUNCTION_GAP + JUNCTION_SIZE
 
+/** 強制將像素高度/尺寸轉換為 48px 網格倍數，確保 Handle 垂直中點 (height / 2) 精確落於 24px 背景網點點陣上 */
+const even = (v: number): number => {
+  return Math.ceil(Math.max(v, LEAF_H) / 48) * 48
+}
+
 type TaskNodeData = {
   ref: string
   title: string
@@ -156,6 +161,7 @@ type TaskNodeData = {
   isEntry: boolean
   dimmed: boolean
   focused: boolean
+  selected?: boolean
   hasUnread?: boolean
   /**
    * 只因為「階層」而被留亮的鄰居 —— 選中任務的上層或下層，兩者之間**沒有依賴**。
@@ -257,9 +263,9 @@ function getTypeColor(taskType: string, defaultColor?: string): string {
  */
 function frameClass(data: TaskNodeData): string {
   return cx(
-    'rounded-lg border shadow-sm transition-opacity',
+    'rounded-lg border shadow-sm transition-all',
     data.hasUnread && 'pmflow-flash',
-    data.focused ? 'border-blue-500 ring-2 ring-blue-500/30'
+    data.selected || data.focused ? 'border-blue-500 ring-2 ring-blue-500/40 font-semibold'
       // 卡住＝現在動不了，是圖上最該被看到的狀態，給整圈紅框加紅暈
       : data.blockedBy.length ? 'border-red-500 ring-2 ring-red-500/25'
       // 紫框＝只是階層上的鄰居（上層或下層），不是依賴。
@@ -304,8 +310,47 @@ const RESIZE_COLOR = '#8b5cf6'
  * 把手只在框被選起來時出現 —— 常駐的話每個框的四角都多四顆點，圖會很吵。
  * 下限是自動佈局算出來的尺寸：再小就會把裡面的任務蓋掉。
  */
+function NodeProgressBar({ progress, accentColor }: { progress: number; accentColor: string }) {
+  const barColor = progress === 100 ? '#10b981' : progress === 0 ? '#cbd5e1' : accentColor
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 w-full">
+      <div className="h-1 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+        <div
+          className={cx("h-1 rounded transition-all duration-300", progress === 0 && "opacity-40")}
+          style={{
+            width: `${Math.max(progress, progress === 0 ? 100 : progress)}%`,
+            backgroundColor: barColor
+          }}
+        />
+      </div>
+      {progress === 100 ? (
+        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title="已完成">
+          ✓
+        </span>
+      ) : progress === 0 ? (
+        <span className="text-[10px] tabular-nums font-normal text-slate-400 dark:text-slate-500" title="未開始/無進度事件">
+          未開始 (0%)
+        </span>
+      ) : (
+        <span className="text-[10px] tabular-nums font-medium text-slate-600 dark:text-slate-300">
+          {progress}%
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 框裡面刻意留空、只有很淡的底色：真正的內容是那些子節點，框只負責圈範圍。
+ * 標題列做成一整條可以點的區域，點它就是點這張任務（聚焦、雙擊開啟都照舊）。
+ *
+ * 框的大小預設是佈局算出來的，但使用者可以自己拉（NodeResizer，React Flow 內建）。
+ * 把手只在框被選起來時出現 —— 常駐的話每個框的四角都多四顆點，圖會很吵。
+ * 下限是自動佈局算出來的尺寸：再小就會把裡面的任務蓋掉。
+ */
 function BoxNodeView({ data }: NodeProps<TaskNode>) {
   const meta = INQUIRY_META[data.inquiryState]
+  const accentColor = getTypeColor(data.taskType, data.color)
   const [resizable, setResizable] = useState(false)
   return (
     <>
@@ -313,16 +358,19 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
         <NodeResizer
           isVisible
           color={RESIZE_COLOR}
-          minWidth={data.minSize?.w ?? NODE_W}
-          minHeight={data.minSize?.h ?? NODE_H_FALLBACK}
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : NODE_W}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : NODE_H_FALLBACK}
         />
       )}
-      <div className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between')}>
+      <div
+        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-between')}
+        style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
+      >
         {/* 大項目框左右接點 100% 垂直置中於框體邊線中心 */}
         <NodeHandles />
-        <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: data.color }} />
+        <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
         
-        <div className="p-3 flex-1 flex flex-col justify-between">
+        <div className="p-2.5 flex-1 flex flex-col justify-between">
           <div className="shrink-0">
             {/* 第一列：[收納按鈕] ＋ 編號 (MRG) ＋ 大項目徽章 ｜ 右側 [縮放按鈕 (僅收納開啟時才顯示)] */}
             <div className="flex items-center justify-between gap-1">
@@ -379,15 +427,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
             </div>
 
             {/* 第三列：進度條 (滿寬適配，框變大時自動伸縮填滿) */}
-            <div className="mt-2 flex items-center gap-2 w-full">
-              <div className="h-1 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
-                <div className="h-1 rounded transition-all duration-300"
-                     style={{ width: `${data.progress}%`, backgroundColor: data.color }} />
-              </div>
-              <span className="text-[10px] tabular-nums font-medium text-slate-500 dark:text-slate-400">
-                {data.progress}%
-              </span>
-            </div>
+            <NodeProgressBar progress={data.progress} accentColor={accentColor} />
           </div>
         </div>
       </div>
@@ -405,11 +445,14 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
         <NodeResizer
           isVisible
           color={RESIZE_COLOR}
-          minWidth={data.minSize?.w ?? NODE_W}
-          minHeight={data.minSize?.h ?? NODE_H_FALLBACK}
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : NODE_W}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : NODE_H_FALLBACK}
         />
       )}
-      <div className={cx(frameClass(data), 'w-[288px] bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800')}>
+      <div
+        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-between')}
+        style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
+      >
         <NodeHandles />
         <div className="h-1 rounded-t-lg" style={{ backgroundColor: accentColor }} />
 
@@ -502,29 +545,8 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
             {data.title}
           </div>
 
-          {/* 第三列：進度條 (滿寬適配，框變大時自動伸縮填滿) */}
-          <div className="mt-1.5 flex items-center gap-1.5 w-full">
-            <div className="h-1 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
-              <div className={cx("h-1 rounded transition-all duration-300", data.progress === 0 && "opacity-40")}
-                   style={{
-                     width: `${Math.max(data.progress, data.progress === 0 ? 100 : data.progress)}%`,
-                     backgroundColor: data.progress === 0 ? '#cbd5e1' : accentColor
-                   }} />
-            </div>
-            {data.progress === 100 ? (
-              <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title="已完成">
-                ✓
-              </span>
-            ) : data.progress === 0 ? (
-              <span className="text-[10px] tabular-nums font-normal text-slate-400 dark:text-slate-500" title="未開始/無進度事件">
-                未開始 (0%)
-              </span>
-            ) : (
-              <span className="text-[10px] tabular-nums font-medium text-slate-600 dark:text-slate-300">
-                {data.progress}%
-              </span>
-            )}
-          </div>
+          {/* 第三列：進度條 */}
+          <NodeProgressBar progress={data.progress} accentColor={accentColor} />
         </div>
       </div>
     </>
@@ -613,9 +635,9 @@ function pad(ref: string): string {
 /** 一般任務的尺寸 (288x96px，四個接點 100% 精確壓在 24px 背景網點陣列上) */
 const LEAF_W = NODE_W
 const LEAF_H = 96
-/** 框的內距 (24px) 與標題列高度 (48px) */
+/** 框的內距 (24px) 與標題列高度 (72px) */
 const BOX_PAD = 24
-const BOX_HEADER = 48
+const BOX_HEADER = 96
 
 type Box = { w: number; h: number }
 
@@ -648,7 +670,8 @@ function layout(
   hubs: Hub[],
   measuredRects?: Record<string, { width: number; height: number }>,
   allEdges?: Array<{ sourceId: string; targetId: string; linkType: LinkType }>,
-  customBoxIds?: Set<string>
+  customBoxIds?: Set<string>,
+  draggedOffsets?: Record<string, { x: number; y: number }>
 ): LayoutResult {
   const present = new Set(ids)
   const usable = schedEdges.filter(e => present.has(e.sourceId) && present.has(e.targetId))
@@ -667,22 +690,16 @@ function layout(
     ...Array.from(customBoxIds ?? []).filter(id => present.has(id))
   ])
 
-  /** 任務編號補零之後的完整路徑，同一個框底下的排在一起 */
-  const sortKey = new Map<string, string>()
-  for (const id of ids) {
-    const chain: string[] = []
-    let cur: string | null | undefined = id
-    for (let depth = 0; cur && depth < 10; depth++) {
-      chain.unshift(pad(refOf.get(cur) ?? ''))
-      cur = parentOf.get(cur) ?? null
-    }
-    sortKey.set(id, chain.join('/'))
+  /** 任務在 ids 陣列中的原始順序索引，確保加入卡片時不會跳動重排 */
+  const sortKey = new Map<string, number>()
+  for (let i = 0; i < ids.length; i++) {
+    sortKey.set(ids[i], i)
   }
 
   const rel = new Map<string, { x: number; y: number }>()
   const size = new Map<string, Box>()
 
-  const getNodeH = (id: string) => Math.max(measuredRects?.[id]?.height ?? 0, measure(id).h)
+  const getNodeH = (id: string) => even(Math.max(measuredRects?.[id]?.height ?? 0, measure(id).h))
   const getNodeW = (id: string) => Math.max(measuredRects?.[id]?.width ?? 0, measure(id).w)
   /** 實體 Handle 接點相對於節點左上角的垂直偏移量 (100% 垂直置中於節點邊線中心，且貼合 24px 網點) */
   const getHandleOffsetY = (id: string): number => getNodeH(id) / 2
@@ -727,6 +744,52 @@ function layout(
   function place(members: string[]): Box {
     for (const id of members) measure(id)
     const inLevel = new Set(members)
+    const isInsideBox = members.length > 0 && !!parentOf.get(members[0])
+
+    if (isInsideBox) {
+      const occupiedSlots = new Set<number>()
+      const assigned = new Map<string, { x: number; y: number }>()
+
+      // 1. 先為在框內有手動拖曳指定位置的卡片分配對應 Slot
+      for (const id of members) {
+        if (draggedOffsets?.[id]) {
+          const cIdx = Math.max(0, Math.round(draggedOffsets[id].x / 312))
+          const rIdx = Math.max(0, Math.min(4, Math.round(draggedOffsets[id].y / 120)))
+          const k = cIdx * 5 + rIdx
+          occupiedSlots.add(k)
+          assigned.set(id, { x: cIdx * 312, y: rIdx * 120 })
+        }
+      }
+
+      // 2. 針對其餘卡片（包含剛移入的新卡片），自動依序填補最低的空位 (Vacant Slot)
+      let maxBottom = 0
+      let maxRight = 0
+
+      for (const id of members) {
+        if (!assigned.has(id)) {
+          let k = 0
+          while (occupiedSlots.has(k)) {
+            k++
+          }
+          occupiedSlots.add(k)
+          const cIdx = Math.floor(k / 5)
+          const rIdx = k % 5
+          assigned.set(id, { x: cIdx * 312, y: rIdx * 120 })
+        }
+
+        const pos = assigned.get(id)!
+        rel.set(id, pos)
+
+        const h = getNodeH(id)
+        const w = getNodeW(id)
+        maxBottom = Math.max(maxBottom, pos.y + h)
+        maxRight = Math.max(maxRight, pos.x + w)
+      }
+
+      return { w: Math.max(maxRight, LEAF_W), h: maxBottom }
+    }
+
+    const colGap = isInsideBox ? 24 : COL_GAP - LEAF_W
 
     // ── 併欄（union-find）：同時開始／同時完成的併成一欄 ──
     const uf = new Map(members.map(id => [id, id]))
@@ -781,10 +844,10 @@ function layout(
     for (const c of cols) if (!layerOf.has(c)) layerOf.set(c, 0)
 
     // 同一欄的要上下相鄰，不然「同時開始」的兩張會被別人插在中間
-    const colKey = new Map<string, string>()
+    const colKey = new Map<string, number>()
     for (const id of members) {
       const c = find(id)
-      const k = sortKey.get(id) ?? ''
+      const k = sortKey.get(id) ?? 0
       if (!colKey.has(c) || k < colKey.get(c)!) colKey.set(c, k)
     }
 
@@ -887,11 +950,11 @@ function layout(
         if (minYA !== null) return -1
         if (minYB !== null) return 1
 
-        const ca = colKey.get(find(grpA[0])) ?? ''
-        const cb = colKey.get(find(grpB[0])) ?? ''
+        const ca = colKey.get(find(grpA[0])) ?? 0
+        const cb = colKey.get(find(grpB[0])) ?? 0
         return ca !== cb
-          ? ca.localeCompare(cb)
-          : (sortKey.get(grpA[0]) ?? '').localeCompare(sortKey.get(grpB[0]) ?? '')
+          ? ca - cb
+          : (sortKey.get(grpA[0]) ?? 0) - (sortKey.get(grpB[0]) ?? 0)
       })
 
       // 這一層折成幾個子欄。按 idealY 點對點對齊，任何在當前欄位會與現有節點重疊的 group，自動向右開啟新子欄
@@ -935,12 +998,15 @@ function layout(
         if (assignedColIndex >= 0) {
           columns[assignedColIndex].push(grp)
         } else {
-          if (columns[columns.length - 1].length === 0) {
-            columns[columns.length - 1].push(grp)
-          } else if (idealY !== null) {
+          // 預設一欄最多放置 5 張事件卡片；滿 5 張即自動向右開啟第二欄 (排) 繼續向下延伸
+          let targetCol = 0
+          while (targetCol < columns.length && columns[targetCol].length >= 5) {
+            targetCol++
+          }
+          if (targetCol >= columns.length) {
             columns.push([grp])
           } else {
-            columns[columns.length - 1].push(grp)
+            columns[targetCol].push(grp)
           }
         }
       }
@@ -992,10 +1058,10 @@ function layout(
 
         const w = colWidth(col.flat())
         widest = Math.max(widest, colX - x + w)
-        colX += w + (COL_GAP - LEAF_W)
+        colX += w + colGap
       }
 
-      x += Math.max(widest, LEAF_W) + (COL_GAP - LEAF_W)
+      x += Math.max(widest, LEAF_W) + colGap
     }
 
     // ── 水平 Y 軸對齊校正 (在 100% 絕不重疊前提下對齊中心 Y 軸) ──
@@ -1069,7 +1135,7 @@ function layout(
       tail += leadSnap
     }
 
-    return { w: Math.max(x - (COL_GAP - LEAF_W) + lead, tail, 0), h: maxBottom }
+    return { w: Math.max(x - colGap + lead, tail, 0), h: maxBottom }
   }
 
   place(kidsOf.get(null) ?? [])
@@ -1495,7 +1561,7 @@ function GraphCanvas({
     const present = new Set(shownNodes.map(n => n.id))
     const parentOf = new Map(shownNodes.map(n => [n.id, n.parentId]))
     const refOf = new Map(shownNodes.map(n => [n.id, n.ref]))
-    const L = layout(shownNodes.map(n => n.id), parentOf, refOf, schedEdges, simul.hubs, measured, graph?.edges, containerBoxIds)
+    const L = layout(shownNodes.map(n => n.id), parentOf, refOf, schedEdges, simul.hubs, measured, graph?.edges, containerBoxIds, dragged)
 
     const nodes: TaskNode[] = shownNodes.map(n => {
       const isBox = L.boxes.has(n.id)
@@ -1553,7 +1619,7 @@ function GraphCanvas({
     nodes.sort((a, b) => depth(a.id) - depth(b.id))
 
     return { baseNodes: nodes, layoutAbs: L.abs, layoutSize: L.size }
-  }, [shownNodes, schedEdges, simul, measured, graph, containerBoxIds])
+  }, [shownNodes, schedEdges, simul, measured, graph, containerBoxIds, dragged])
 
   const nodeKey = useMemo(() => baseNodes.map(n => n.id).join(','), [baseNodes])
 
@@ -1561,7 +1627,6 @@ function GraphCanvas({
     const moves: Record<string, { x: number; y: number }> = {}
     const dims: Record<string, { width: number; height: number }> = {}
     const sizes: Record<string, { width: number; height: number }> = {}
-    const picks: Record<string, boolean> = {}
     for (const c of changes) {
       if (c.type === 'position' && c.position) {
         moves[c.id] = {
@@ -1569,10 +1634,12 @@ function GraphCanvas({
           y: Math.round(c.position.y / 24) * 24,
         }
       }
-      else if (c.type === 'select') picks[c.id] = c.selected
       else if (c.type === 'dimensions' && c.dimensions) {
         if (c.resizing === undefined) dims[c.id] = c.dimensions
-        else sizes[c.id] = c.dimensions
+        else sizes[c.id] = {
+          width: Math.round(c.dimensions.width / 24) * 24,
+          height: Math.round(c.dimensions.height / 24) * 24,
+        }
       }
     }
     if (Object.keys(moves).length) {
@@ -1583,7 +1650,6 @@ function GraphCanvas({
       userAdjusted.current = true
       setResized(r => ({ ...r, ...sizes }))
     }
-    if (Object.keys(picks).length) setSelectedIds(s => ({ ...s, ...picks }))
     if (Object.keys(dims).length) {
       setMeasured(m => {
         const changed = Object.entries(dims).some(
@@ -1840,38 +1906,43 @@ function GraphCanvas({
       }
 
       return baseNodes.map(n => {
-        const isBox = n.type === 'box'
+        const isBox = n.type === 'box' || containerBoxIds.has(n.id)
         const userSize = resized[n.id]
         let width = userSize?.width ?? layoutSize.get(n.id)?.w
-        let height = userSize?.height ?? layoutSize.get(n.id)?.h
+        let height = userSize?.height ? even(userSize.height) : layoutSize.get(n.id)?.h
 
-        // 若為大項目框：當事件被拖拽至框邊緣或超出框時，自動擴大框的寬與高以容納內部事件
+        // 若為大項目/收納框：當內部事件卡片放進框內且尺寸不夠時，自動擴大框體以完美容納
         if (isBox) {
           const kids = kidsMap.get(n.id) ?? []
           let maxRight = 0
           let maxBottom = 0
           for (const k of kids) {
-            const kPos = dragged[k.id] ?? k.position
+            if (dragged[k.id]) continue
+            const kPos = k.position
             const kW = measured[k.id]?.width ?? layoutSize.get(k.id)?.w ?? NODE_W
-            const kH = measured[k.id]?.height ?? layoutSize.get(k.id)?.h ?? NODE_H_FALLBACK
-            maxRight = Math.max(maxRight, kPos.x + kW + 32)
-            maxBottom = Math.max(maxBottom, kPos.y + kH + 32)
+            const kH = even(measured[k.id]?.height ?? layoutSize.get(k.id)?.h ?? NODE_H_FALLBACK)
+            maxRight = Math.max(maxRight, kPos.x + kW + BOX_PAD)
+            maxBottom = Math.max(maxBottom, kPos.y + kH + BOX_PAD)
           }
-          if (maxRight > 0) width = Math.max(width ?? 384, maxRight)
-          if (maxBottom > 0) height = Math.max(height ?? 288, maxBottom)
+          if (maxRight > 0) width = Math.max(width ?? 384, Math.ceil(maxRight / 24) * 24)
+          if (maxBottom > 0) height = even(Math.max(height ?? 288, maxBottom))
         }
+
+        if (width) width = Math.ceil(width / 24) * 24
+        if (height) height = even(height)
 
         const sizeStyle = isBox && width && height ? { width, height } : {}
 
         return {
           ...n,
           zIndex: isBox ? -1 : 10,
-          position: dragged[n.id] ?? n.position,
+          position: n.parentId ? n.position : (dragged[n.id] ?? n.position),
           selected: !!selectedIds[n.id],
           style: { ...n.style, ...sizeStyle },
           measured: (isBox && width && height ? { width, height } : undefined) ?? n.measured ?? measured[n.id],
           data: {
             ...n.data,
+            selected: !!selectedIds[n.id],
             color: statusColor(n.data.statusKey),
             dimmed: !!neighbours && !neighbours.has(n.id),
             focused: n.id === focusId,
@@ -1900,7 +1971,7 @@ function GraphCanvas({
         : base]
     }))
     const heightOf = (id: string) =>
-      measured[id]?.height ?? layoutSize.get(id)?.h ?? NODE_H_FALLBACK
+      even(measured[id]?.height ?? layoutSize.get(id)?.h ?? NODE_H_FALLBACK)
     const widthOf = (id: string) => layoutSize.get(id)?.w ?? NODE_W
     const parentOf = new Map(shownNodes.map(n => [n.id, n.parentId]))
     const present = new Set(shownNodes.map(n => n.id))
@@ -2166,6 +2237,116 @@ function GraphCanvas({
     })
   }, [shownNodes, invalidate])
 
+  const dragStartPos = useRef<Record<string, { x: number; y: number }>>({})
+
+  /**
+   * 碰撞自動動態擠開 (Dynamic Collision Displacement Engine)：
+   * 框與框無法重疊。當拖曳事件框移入另一個事件框所在的位置時，
+   * 系統會根據拖曳移動的方向向量（從左、右、上、下何處移來），
+   * 自動將目標位置的事件框往反方向擠開推移（並對齊 24px 網格）。
+   */
+  const resolveCollisionPush = useCallback((node: Node, _dx: number, _dy: number) => {
+    const nId = node.id
+    const parentId = parentOfMap.get(nId) ?? null
+    const nPos = node.position
+    const nW = measured[nId]?.width ?? layoutSize.get(nId)?.w ?? LEAF_W
+    const nH = even(measured[nId]?.height ?? layoutSize.get(nId)?.h ?? LEAF_H)
+
+    const nCenterX = nPos.x + nW / 2
+    const nCenterY = nPos.y + nH / 2
+
+    const siblings = allNodes.filter(
+      other => other.id !== nId &&
+               (parentOfMap.get(other.id) ?? null) === parentId &&
+               !containerBoxIds.has(other.id) &&
+               other.type !== 'box'
+    )
+
+    const updates: Record<string, { x: number; y: number }> = {}
+
+    for (const other of siblings) {
+      const oId = other.id
+      const oPos = updates[oId] ?? dragged[oId] ?? other.position
+      const oW = measured[oId]?.width ?? layoutSize.get(oId)?.w ?? LEAF_W
+      const oH = even(measured[oId]?.height ?? layoutSize.get(oId)?.h ?? LEAF_H)
+
+      const xOverlap = nPos.x < oPos.x + oW && nPos.x + nW > oPos.x
+      const yOverlap = nPos.y < oPos.y + oH && nPos.y + nH > oPos.y
+
+      if (xOverlap && yOverlap) {
+        const oCenterX = oPos.x + oW / 2
+        const oCenterY = oPos.y + oH / 2
+
+        const diffX = oCenterX - nCenterX
+        const diffY = oCenterY - nCenterY
+
+        let newX = oPos.x
+        let newY = oPos.y
+
+        if (Math.abs(diffX) >= Math.abs(diffY)) {
+          if (diffX >= 0) {
+            newX = Math.ceil((nPos.x + nW + 24) / 24) * 24
+          } else {
+            newX = Math.floor((nPos.x - oW - 24) / 24) * 24
+          }
+        } else {
+          if (diffY >= 0) {
+            newY = even(Math.ceil((nPos.y + nH + 24) / 48) * 48)
+          } else {
+            newY = even(Math.floor((nPos.y - oH - 24) / 48) * 48)
+          }
+        }
+
+        updates[oId] = { x: newX, y: newY }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setDragged(prev => ({ ...prev, ...updates }))
+    }
+  }, [allNodes, containerBoxIds, dragged, layoutSize, measured, parentOfMap])
+
+  const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    if (node.type !== 'task' && node.type !== 'box') return
+    const selectedList = Object.keys(selectedIds).filter(id => selectedIds[id])
+    const activeGroup = selectedList.includes(node.id) && selectedList.length > 1
+      ? selectedList
+      : [node.id]
+
+    const startMap: Record<string, { x: number; y: number }> = {}
+    for (const id of activeGroup) {
+      const nObj = allNodes.find(n => n.id === id)
+      if (nObj) {
+        startMap[id] = { ...nObj.position }
+      }
+    }
+    dragStartPos.current = startMap
+  }, [allNodes, selectedIds])
+
+  const onNodeDrag = useCallback((_: unknown, node: Node) => {
+    if (node.type !== 'task' && node.type !== 'box') return
+    const startPos = dragStartPos.current[node.id] ?? node.position
+    const dx = node.position.x - startPos.x
+    const dy = node.position.y - startPos.y
+
+    const activeGroup = Object.keys(dragStartPos.current)
+    if (activeGroup.length > 1) {
+      const groupUpdates: Record<string, { x: number; y: number }> = {}
+      for (const id of activeGroup) {
+        const sPos = dragStartPos.current[id]
+        if (sPos) {
+          groupUpdates[id] = {
+            x: Math.round((sPos.x + dx) / 24) * 24,
+            y: even(Math.round((sPos.y + dy) / 48) * 48),
+          }
+        }
+      }
+      setDragged(prev => ({ ...prev, ...groupUpdates }))
+    } else if (Math.abs(dx) >= 8 || Math.abs(dy) >= 8) {
+      resolveCollisionPush(node, dx, dy)
+    }
+  }, [resolveCollisionPush])
+
   /**
    * 空間拖曳動態階層管理 (Spatial Drag-and-Drop Hierarchy Engine)：
    * 1. 當任務拖移出大項目框外 -> 自動解除隸屬關係 (parentId = null)，同步左側 Menu！
@@ -2176,41 +2357,73 @@ function GraphCanvas({
     const nId = node.id
     const currentParentId = parentOfMap.get(nId) ?? null
 
-    // 換算正確的即時全畫布絕對座標（含拖曳位移 dragged）
-    const getAbs = (id: string, nObj?: Node) => {
-      const baseAbs = layoutAbs.get(id) ?? { x: 0, y: 0 }
+    const startPos = dragStartPos.current[nId] ?? node.position
+    const dx = node.position.x - startPos.x
+    const dy = node.position.y - startPos.y
+
+    const activeGroup = Object.keys(dragStartPos.current)
+    if (activeGroup.length > 1) {
+      const groupUpdates: Record<string, { x: number; y: number }> = {}
+      for (const id of activeGroup) {
+        const sPos = dragStartPos.current[id]
+        if (sPos) {
+          groupUpdates[id] = {
+            x: Math.round((sPos.x + dx) / 24) * 24,
+            y: even(Math.round((sPos.y + dy) / 48) * 48),
+          }
+        }
+      }
+      setDragged(prev => ({ ...prev, ...groupUpdates }))
+    } else if (Math.abs(dx) >= 8 || Math.abs(dy) >= 8) {
+      resolveCollisionPush(node, dx, dy)
+    }
+    dragStartPos.current = {}
+
+    // 換算正確的即時全畫布絕對座標 (遞迴向上累加所有父層座標與拖曳位移)
+    const getAbs = (id: string, nObj?: Node): { x: number; y: number } => {
       const pId = parentOfMap.get(id)
       const d = (nObj && id === nObj.id ? nObj.position : undefined) ?? dragged[id]
-      if (!d) return baseAbs
       if (pId && parentOfMap.has(pId)) {
-        const pAbs = layoutAbs.get(pId) ?? { x: 0, y: 0 }
-        return { x: pAbs.x + d.x, y: pAbs.y + d.y }
+        const pAbs = getAbs(pId)
+        const rel = d ?? layoutAbs.get(id) ?? { x: 0, y: 0 }
+        return { x: pAbs.x + rel.x, y: pAbs.y + rel.y }
       }
-      return d
+      return d ?? layoutAbs.get(id) ?? { x: 0, y: 0 }
     }
 
     const nAbs = getAbs(nId, node)
     const nodeW = measured[nId]?.width ?? layoutSize.get(nId)?.w ?? LEAF_W
-    const nodeH = measured[nId]?.height ?? layoutSize.get(nId)?.h ?? LEAF_H
+    const nodeH = even(measured[nId]?.height ?? layoutSize.get(nId)?.h ?? LEAF_H)
 
     const nCenterX = nAbs.x + nodeW / 2
     const nCenterY = nAbs.y + nodeH / 2
 
-    // 找出全圖所有可作為容器的框體 (包含大項目框與放大的任務框)
-    const boxes = allNodes.filter(n => n.id !== nId && (n.type === 'box' || (layoutSize.get(n.id)?.w ?? 0) > LEAF_W))
+    // 找出全圖所有開啟收納模式的可作為容器之框體 (包含大項目框與收納模式卡片)
+    const boxes = allNodes.filter(
+      n => n.id !== nId && (containerBoxIds.has(n.id) || n.type === 'box')
+    )
 
     let newParentId: string | null = null
 
     for (const bNode of boxes) {
       const bAbs = getAbs(bNode.id)
-      const bW = layoutSize.get(bNode.id)?.w ?? 240
-      const bH = layoutSize.get(bNode.id)?.h ?? 160
+      const bStyle = styledNodes.find(s => s.id === bNode.id)
+      const bW = bStyle?.style?.width
+        ? Number(bStyle.style.width)
+        : (resized[bNode.id]?.width ?? measured[bNode.id]?.width ?? layoutSize.get(bNode.id)?.w ?? 384)
+      const bH = even(
+        bStyle?.style?.height
+          ? Number(bStyle.style.height)
+          : (resized[bNode.id]?.height ?? measured[bNode.id]?.height ?? layoutSize.get(bNode.id)?.h ?? 288)
+      )
+
+      const MARGIN = bNode.id === currentParentId ? 0 : 96
 
       if (
-        nCenterX >= bAbs.x &&
-        nCenterX <= bAbs.x + bW &&
-        nCenterY >= bAbs.y &&
-        nCenterY <= bAbs.y + bH
+        nCenterX >= bAbs.x - MARGIN &&
+        nCenterX <= bAbs.x + bW + MARGIN &&
+        nCenterY >= bAbs.y - MARGIN &&
+        nCenterY <= bAbs.y + bH + MARGIN
       ) {
         newParentId = bNode.id
         break
@@ -2218,15 +2431,44 @@ function GraphCanvas({
     }
 
     if (newParentId !== currentParentId) {
-      // 換層級時清掉該節點的手動拖曳 offset，交給系統自動重新佈局
-      setDragged(prev => {
-        const next = { ...prev }
-        delete next[nId]
-        return next
-      })
+      if (newParentId === null) {
+        // 移出收納框：優先放在游標放掉的絕對座標；若該位置已有其它框，則放在該框旁邊
+        let targetX = Math.round(nAbs.x / 24) * 24
+        let targetY = even(Math.round(nAbs.y / 48) * 48)
+
+        const rootNodes = allNodes.filter(
+          o => o.id !== nId &&
+               !parentOfMap.get(o.id) &&
+               (o.type === 'task' || o.type === 'box')
+        )
+
+        for (const other of rootNodes) {
+          const oPos = dragged[other.id] ?? other.position
+          const oW = measured[other.id]?.width ?? layoutSize.get(other.id)?.w ?? LEAF_W
+          const oH = even(measured[other.id]?.height ?? layoutSize.get(other.id)?.h ?? LEAF_H)
+
+          const xOverlap = targetX < oPos.x + oW && targetX + nodeW > oPos.x
+          const yOverlap = targetY < oPos.y + oH && targetY + nodeH > oPos.y
+
+          if (xOverlap && yOverlap) {
+            targetX = Math.ceil((oPos.x + oW + 24) / 24) * 24
+          }
+        }
+
+        setDragged(prev => ({
+          ...prev,
+          [nId]: { x: targetX, y: targetY }
+        }))
+      } else {
+        setDragged(prev => {
+          const next = { ...prev }
+          delete next[nId]
+          return next
+        })
+      }
       updateTaskParent.mutate({ id: nId, parentId: newParentId })
     }
-  }, [allNodes, dragged, layoutAbs, layoutSize, measured, parentOfMap, updateTaskParent])
+  }, [allNodes, containerBoxIds, dragged, layoutAbs, layoutSize, measured, parentOfMap, resized, updateTaskParent])
 
   const [deleteTargetEdge, setDeleteTargetEdge] = useState<{ id: string; label: string } | null>(null)
 
@@ -2334,12 +2576,18 @@ function GraphCanvas({
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onEdgeClick={onEdgeClick}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
-          // 匯合點不是任務，點它不該聚焦、雙擊也開不出東西
+          // 點一下：切換多選 (Multi-select) / 雙擊：開啟事件頁面
           onNodeClick={(_, n) => {
             if (n.type !== 'task' && n.type !== 'box') return
             if (unreadTaskIds.has(n.id)) markTaskRead(n.id)
-            setFocusId(id => (id === n.id ? null : n.id))
+            setSelectedIds(prev => ({
+              ...prev,
+              [n.id]: !prev[n.id],
+            }))
+            setFocusId(n.id)
           }}
           onNodeDoubleClick={(_, n) => {
             if (n.type === 'task' || n.type === 'box') {
@@ -2347,7 +2595,10 @@ function GraphCanvas({
               onOpen(n.id)
             }
           }}
-          onPaneClick={() => setFocusId(null)}
+          onPaneClick={() => {
+            setSelectedIds({})
+            setFocusId(null)
+          }}
           // event 為 null 代表是程式呼叫的（fitView 自己），只有真人拖曳縮放才算
           onMoveStart={(e) => { if (e) userAdjusted.current = true }}
           onMoveEnd={(_, vp) => {
@@ -2377,7 +2628,7 @@ function GraphCanvas({
           selectionOnDrag={boxSelect}
           panOnDrag={boxSelect ? [1, 2] : true}
           selectionKeyCode="Shift"
-          multiSelectionKeyCode={['Control', 'Meta']}
+          multiSelectionKeyCode={null}
           minZoom={0.15}
           maxZoom={2}
           fitView
@@ -2387,79 +2638,6 @@ function GraphCanvas({
           {/* 網點背景與網格點陣對齊 (24px 網點對齊) */}
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.5}
                       color={dark ? '#475569' : '#94a3b8'} />
-
-
-          {/* ── 聚焦面板 ── */}
-          {focused && (
-            <Panel position="top-right">
-              <div className="w-72 rounded-lg border border-slate-200 bg-white p-3 shadow-lg
-                              dark:border-slate-700 dark:bg-slate-800">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                      {focused.ref}
-                    </div>
-                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                      {focused.title}
-                    </div>
-                  </div>
-                  <button onClick={() => setFocusId(null)} aria-label={G.focus.close}
-                          className="text-slate-400 hover:text-slate-600
-                                     dark:text-slate-400 dark:hover:text-slate-300">✕</button>
-                </div>
-
-                {(blockedBy.get(focused.id)?.length ?? 0) > 0 && (
-                  <FocusNote className="bg-red-50 text-red-700
-                                        dark:bg-red-500/15 dark:text-red-300">
-                    {G.focus.blocked(blockedBy.get(focused.id)!.join('、'))}
-                  </FocusNote>
-                )}
-                {/* 面板寬得下，這裡就把問題整句寫出來，不像節點上只放三個字 */}
-                {focused.problem && (
-                  <FocusNote className="whitespace-pre-wrap bg-fuchsia-50 text-fuchsia-700
-                                        dark:bg-fuchsia-500/15 dark:text-fuchsia-300">
-                    {G.focus.problem(focused.problem)}
-                  </FocusNote>
-                )}
-                {(parallelWith.get(focused.id)?.sameStart.length ?? 0) > 0 && (
-                  <FocusNote className="bg-amber-50 text-amber-700
-                                        dark:bg-amber-500/15 dark:text-amber-300">
-                    {G.focus.sameStart(parallelWith.get(focused.id)!.sameStart.join('、'))}
-                  </FocusNote>
-                )}
-                {(parallelWith.get(focused.id)?.sameFinish.length ?? 0) > 0 && (
-                  <FocusNote className="bg-purple-50 text-purple-700
-                                        dark:bg-purple-500/15 dark:text-purple-300">
-                    {G.focus.sameFinish(parallelWith.get(focused.id)!.sameFinish.join('、'))}
-                  </FocusNote>
-                )}
-                {(parallelWith.get(focused.id)?.overlap.length ?? 0) > 0 && (
-                  <FocusNote className="bg-teal-50 text-teal-700
-                                        dark:bg-teal-500/15 dark:text-teal-300">
-                    {G.focus.overlap(parallelWith.get(focused.id)!.overlap.join('、'))}
-                  </FocusNote>
-                )}
-
-                <div className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-                  {focusedLinks.length === 0 && (
-                    <p className="text-xs text-slate-400 dark:text-slate-400">{G.focus.noLinks}</p>
-                  )}
-                  {focusedLinks.map(l => (
-                    <div key={l.id + String(l.outgoing)}
-                         className="text-xs text-slate-600 dark:text-slate-300">
-                      {sentence(l.linkType, l.outgoing, l.other?.ref ?? G.focus.otherProject)}
-                      {l.other && (
-                        <span className="ml-1 text-slate-400 dark:text-slate-400">{l.other.title}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <Button variant="primary" className="mt-3 w-full justify-center"
-                        onClick={() => onOpen(focused.id)}>{G.focus.open}</Button>
-              </div>
-            </Panel>
-          )}
         </ReactFlow>
       </div>
 

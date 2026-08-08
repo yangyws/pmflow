@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, type Project, type ProjectParam, type Task } from '../lib/api'
 import { canBeUnder, typesAllowedUnder } from '../lib/hierarchy'
@@ -194,19 +194,34 @@ export function EpicSidebar({
     enabled: !!project?.id,
   })
 
-  const { epics, stat, looseCount, childrenOf, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet } = useMemo(() => {
+  const { epics, lastContainerBoxId, stat, looseCount, childrenOf, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet } = useMemo(() => {
     const edges = graphData?.edges ?? []
     const ids = new Set(tasks.map(t => t.id))
-    const rawEpics = tasks.filter(t => !t.parentId)
-    const epics = sortTasksTopologically(rawEpics, edges, tasks)
-    const rolled = rollup(tasks)
+    const containerBoxSet = (() => {
+      try {
+        const saved = localStorage.getItem('pmflow_graph_container_boxes')
+        if (saved) return new Set<string>(JSON.parse(saved))
+      } catch {}
+      return new Set<string>()
+    })()
 
-    // 子樹裡有沒有「單位逾期未回」——要走完整棵子樹，不能只看直屬子任務
     const rawKids = new Map<string, Task[]>()
     for (const t of tasks) {
       if (!t.parentId || !ids.has(t.parentId)) continue
       const a = rawKids.get(t.parentId) ?? []; a.push(t); rawKids.set(t.parentId, a)
     }
+
+    const rawEpics = tasks.filter(t => !t.parentId)
+    const sortedRaw = sortTasksTopologically(rawEpics, edges, tasks)
+
+    // 收納開的事件框 (大項目 / 收納框) 於 Menu 排序統一最高
+    const containerBoxes = sortedRaw.filter(t => t.type === 'EPIC' || containerBoxSet.has(t.id) || (rawKids.get(t.id)?.length ?? 0) > 0)
+    const regularTasks = sortedRaw.filter(t => !(t.type === 'EPIC' || containerBoxSet.has(t.id) || (rawKids.get(t.id)?.length ?? 0) > 0))
+
+    const epics = [...containerBoxes, ...regularTasks]
+    const lastContainerBoxId = containerBoxes.length > 0 && regularTasks.length > 0 ? containerBoxes[containerBoxes.length - 1].id : null
+
+    const rolled = rollup(tasks)
 
     const kids = new Map<string, Task[]>()
     for (const [pId, list] of rawKids.entries()) {
@@ -360,7 +375,7 @@ export function EpicSidebar({
       }
     }
 
-    return { epics, stat, looseCount, childrenOf: kids, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet }
+    return { epics, lastContainerBoxId, stat, looseCount, childrenOf: kids, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet }
   }, [tasks])
 
   /** 一列任務的問題數：底下的，加上自己（如果它本身就是一張問題） */
@@ -514,27 +529,31 @@ export function EpicSidebar({
         )}
 
         {epics.map(epic => (
-          <TreeNode
-            key={epic.id}
-            task={epic}
-            depth={0}
-            projectId={project?.id}
-            childrenOf={childrenOf}
-            stat={stat.get(epic.id)}
-            bugsUnder={bugsUnder}
-            overdueIn={overdueIn}
-            inquiriesIn={inquiriesIn}
-            types={types}
-            expanded={expanded}
-            autoOpen={autoOpen}
-            toggle={toggle}
-            expand={expand}
-            selectedEpicId={selectedEpicId}
-            selectedTaskId={selectedTaskId}
-            dividerAfterTaskIdSet={dividerAfterTaskIdSet}
-            onSelectEpic={onSelectEpic}
-            onOpenTask={onOpenTask}
-          />
+          <Fragment key={epic.id}>
+            <TreeNode
+              task={epic}
+              depth={0}
+              projectId={project?.id}
+              childrenOf={childrenOf}
+              stat={stat.get(epic.id)}
+              bugsUnder={bugsUnder}
+              overdueIn={overdueIn}
+              inquiriesIn={inquiriesIn}
+              types={types}
+              expanded={expanded}
+              autoOpen={autoOpen}
+              toggle={toggle}
+              expand={expand}
+              selectedEpicId={selectedEpicId}
+              selectedTaskId={selectedTaskId}
+              dividerAfterTaskIdSet={dividerAfterTaskIdSet}
+              onSelectEpic={onSelectEpic}
+              onOpenTask={onOpenTask}
+            />
+            {lastContainerBoxId === epic.id && (
+              <div className="my-2 border-b border-slate-200 dark:border-slate-700/60" />
+            )}
+          </Fragment>
         ))}
 
         {looseCount > 0 && (

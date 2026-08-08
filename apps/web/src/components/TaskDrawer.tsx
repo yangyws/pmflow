@@ -218,21 +218,9 @@ export function TaskDrawer({
   const [lag, setLag] = useState(0)
 
   /*
-   * 大項目與任務之間沒有先後（規矩見 AGENTS.md）：一邊是大項目、另一邊不是的時候，
-   * 排程那四種整組不給選。兩邊都是大項目、或兩邊都不是，都照舊。
-   * 還沒選對象時先當作可以 —— 一進來就少半組選項，看起來像壞掉。
+   * 大項目（EPIC）與一般任務統一為事件層級，皆可建立排程與語意關聯。
    */
-  const targetType = allTasks.find(t => t.id === targetId)?.type
-  const schedulingAllowed = !targetType
-    || (data?.type === 'EPIC') === (targetType === 'EPIC')
-
-  /*
-   * 選了大項目之後，原本停在「完成後開始」的話會變成一個已經不在清單裡的值 ——
-   * 畫面顯示第一個語意類，送出去的卻還是排程類。把它拉回合法的第一個。
-   */
-  useEffect(() => {
-    if (!schedulingAllowed && SCHEDULING.includes(linkType)) setLinkType(SEMANTIC[0])
-  }, [schedulingAllowed, linkType])
+  const schedulingAllowed = true
 
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(taskId)
