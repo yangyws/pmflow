@@ -1598,7 +1598,7 @@ function GraphCanvas({
           color: '#94a3b8',        // 佔位，實際顏色在 styledNodes 補
           progress: n.progress ?? 0,
           inquiryState: n.inquiryState,
-          isEpic: isBox || n.type === 'EPIC',
+          isEpic: n.type === 'EPIC',
           isContainerMode: isBox || containerBoxIds.has(n.id),
           onToggleContainer: () => toggleContainerMode(n.id),
           childCount: L.childCount.get(n.id) ?? 0,
@@ -2206,6 +2206,14 @@ function GraphCanvas({
     addLink.mutate({ source: c.source, target: c.target, linkType })
   }, [addLink])
 
+  const onEdgesDelete = useCallback((edgesToDelete: Edge[]) => {
+    for (const edge of edgesToDelete) {
+      if (edge.id && !edge.id.includes('~')) {
+        delLink.mutate(edge.id)
+      }
+    }
+  }, [delLink])
+
   const parentOfMap = useMemo(() => new Map(shownNodes.map(n => [n.id, n.parentId ?? null])), [shownNodes])
 
   const updateTaskParent = useMutation({
@@ -2601,6 +2609,7 @@ function GraphCanvas({
           nodeExtent={[[-100000, -100000], [100000, 100000]]}
           onNodesChange={onNodesChange}
           onConnect={onConnect}
+          onEdgesDelete={onEdgesDelete}
           isValidConnection={isValidConnection}
           onEdgeClick={onEdgeClick}
           onNodeDragStart={onNodeDragStart}
