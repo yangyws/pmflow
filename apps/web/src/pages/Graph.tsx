@@ -750,14 +750,12 @@ function layout(
       const occupiedSlots = new Set<number>()
       const assigned = new Map<string, { x: number; y: number }>()
 
-      // 1. 先為在框內有手動拖曳指定位置的卡片分配對應 Slot
+      // 1. Ref: CR-085 — 手動拖曳卡片保持其手動座標 (吸附 24px/48px 網點)，不再限制於預設 Slot 網格
       for (const id of members) {
         if (draggedOffsets?.[id]) {
-          const cIdx = Math.max(0, Math.round(draggedOffsets[id].x / 312))
-          const rIdx = Math.max(0, Math.min(4, Math.round(draggedOffsets[id].y / 120)))
-          const k = cIdx * 5 + rIdx
-          occupiedSlots.add(k)
-          assigned.set(id, { x: cIdx * 312, y: rIdx * 120 })
+          const posX = Math.max(0, Math.round(draggedOffsets[id].x / 24) * 24)
+          const posY = Math.max(0, even(Math.round(draggedOffsets[id].y / 48) * 48))
+          assigned.set(id, { x: posX, y: posY })
         }
       }
 
@@ -1917,8 +1915,7 @@ function GraphCanvas({
           let maxRight = 0
           let maxBottom = 0
           for (const k of kids) {
-            if (dragged[k.id]) continue
-            const kPos = k.position
+            const kPos = dragged[k.id] ?? k.position
             const kW = measured[k.id]?.width ?? layoutSize.get(k.id)?.w ?? NODE_W
             const kH = even(measured[k.id]?.height ?? layoutSize.get(k.id)?.h ?? NODE_H_FALLBACK)
             maxRight = Math.max(maxRight, kPos.x + kW + BOX_PAD)
@@ -1936,7 +1933,7 @@ function GraphCanvas({
         return {
           ...n,
           zIndex: isBox ? -1 : 10,
-          position: n.parentId ? n.position : (dragged[n.id] ?? n.position),
+          position: dragged[n.id] ?? n.position,
           selected: !!selectedIds[n.id],
           style: { ...n.style, ...sizeStyle },
           measured: (isBox && width && height ? { width, height } : undefined) ?? n.measured ?? measured[n.id],
