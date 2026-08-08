@@ -143,6 +143,7 @@ type TaskNodeData = {
   statusKey: string
   taskType: string
   typeColor?: string
+  typeName?: string
   color: string
   progress: number
   inquiryState: InquiryState
@@ -249,17 +250,19 @@ const BADGE_ROSE_SOFT = 'bg-rose-50 font-medium text-rose-700 dark:bg-rose-500/1
 const BADGE_SKY_SOFT = 'bg-sky-50 font-medium text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'
 
 // Ref: CR-087 — 關聯圖事件框頂線與外框配色與系統種類配色對齊
-function getTypeColor(taskType: string, defaultColor?: string): string {
+function getTypeColor(taskType: string, customColor?: string): string {
+  if (customColor) return customColor
   const DEFAULT_MAP: Record<string, string> = {
     EPIC: '#d97706',      // 大項目 (琥珀橘)
     TASK: '#3178c6',      // 任務 (經典藍)
     BUG: '#dc2626',       // 問題 (鮮紅)
     MILESTONE: '#8b5cf6', // 里程碑 (紫羅蘭)
   }
-  return DEFAULT_MAP[taskType] ?? defaultColor ?? '#64748b'
+  return DEFAULT_MAP[taskType] ?? '#64748b'
 }
 
-function getTypeName(taskType: string): string {
+function getTypeName(taskType: string, customName?: string): string {
+  if (customName) return customName
   const DEFAULT_NAMES: Record<string, string> = {
     EPIC: '大項目',
     TASK: '任務',
@@ -415,7 +418,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                     borderColor: `${accentColor}40`,
                   }}
                 >
-                  {getTypeName(data.taskType)}
+                  {getTypeName(data.taskType, data.typeName)}
                 </span>
               </div>
               
@@ -507,7 +510,7 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                   borderColor: `${accentColor}40`,
                 }}
               >
-                {getTypeName(data.taskType)}
+                {getTypeName(data.taskType, data.typeName)}
               </span>
               {data.showBadges && data.kin && (
                 <span className={cx(BADGE, BADGE_VIOLET)}
@@ -1513,6 +1516,20 @@ function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeColorKey])
 
+  const typeNameKey = (types ?? []).map(t => `${t.key}:${t.name}`).join('|')
+  const typeNameMap = useMemo(() => {
+    const m = new Map<string, string>()
+    m.set('EPIC', '大項目')
+    m.set('TASK', '任務')
+    m.set('BUG', '問題')
+    m.set('MILESTONE', '里程碑')
+    for (const t of (types ?? [])) {
+      if (t.name) m.set(t.key, t.name)
+    }
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeNameKey])
+
   // 側欄選了大項目時，主視圖只顯示那棵子樹 —— 關聯圖跟其他視圖看同一份 tasks，
   // 免得「清單看到 5 張、關聯圖卻畫出 40 張」這種對不起來的情況。
   const visibleIds = useMemo(() => new Set(tasks.map(t => t.id)), [tasks])
@@ -1981,6 +1998,7 @@ function GraphCanvas({
             ...n.data,
             selected: !!selectedIds[n.id],
             typeColor: typeColorMap.get(n.data.taskType) ?? getTypeColor(n.data.taskType),
+            typeName: typeNameMap.get(n.data.taskType) ?? getTypeName(n.data.taskType),
             color: statusColor(n.data.statusKey),
             dimmed: !!neighbours && !neighbours.has(n.id),
             focused: n.id === focusId,

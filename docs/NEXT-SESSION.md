@@ -25,6 +25,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.hmr.yml up -d
 
 ## 還沒動工（他交代過、還沒做）
 
+- **修復 getTypeColor 未優先使用自訂種類顏色 Bug (`CR-094`)**：修正 Graph.tsx 優先採用傳入之 customColor，實現關聯圖與全系統種類顏色及名稱 100% 同步。
 - **對齊收納框內部事件相對縱向偏移量 (`CR-093`)**：統一 layout 與 onNodeDragStop 的框內 y 軸起點為 y >= 60（避開標頭），消除佈局重算時內部卡片跳位 Bug。
 - **MRG 後方種類徽章渲染與修復框內拖移彈射 Bug (`CR-092`)**：編號後方渲染種類徽章且顏色與文字對齊種類，並引進 parentOverrides 解決框內拖移彈射消失問題。
 - **關閉收納模式二次確認與內部事件移出 (`CR-091`)**：關閉收納時檢查框內子事件，彈出對話框提示「收納框內尚有 X 個事件框，關閉收納模式將會把內部事件框移出至外部畫布，確定要關閉嗎？」，確認後平滑移出。
