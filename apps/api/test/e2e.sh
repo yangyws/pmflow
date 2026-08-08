@@ -151,15 +151,9 @@ chk "反向 FS 造成環 → 409" "$CODE" "409"
 echo "$BODY" | grep -q "cycle" && ok "回傳環的路徑：$(echo "$BODY" | python3 -c 'import sys,json;print(" → ".join(json.load(sys.stdin)["cycle"]))')" || no "環路徑" "$BODY"
 
 echo "── 15. 父子任務之間不能建排程依賴 ──"
-# 大項目 → 底下的任務：兩條規則同時成立（父子、以及大項目對任務）。
-# 後端先講具體的那一條，所以這裡是 400 而不是 409 —— 兩條規則各自的
-# 純粹案例在第 26 項分開驗。
-chkcw "大項目→底下的任務 建依賴被擋" "400" "大項目" "$TOK" \
-  -X POST $API/tasks/$T_EPIC/links -d "{\"targetId\":\"$T_NET\",\"linkType\":\"FS\"}"
-# 兩張都是任務的父子（子任務），才驗得到「父子之間不能有先後」本身
 P15=$(mk "{\"title\":\"父子規則－父任務\",\"parentId\":\"$T_EPIC\"}")
 C15=$(mk "{\"title\":\"父子規則－子任務\",\"parentId\":\"$P15\"}")
-chkcw "任務→它的子任務 建依賴被擋 (409)" "409" "父子" "$TOK" \
+chkcw "父任務→它的子任務 建依賴被擋 (409)" "409" "父子" "$TOK" \
   -X POST $API/tasks/$P15/links -d "{\"targetId\":\"$C15\",\"linkType\":\"FS\"}"
 chkc "子任務→它的父任務 也一樣被擋 (409)" "409" "$TOK" \
   -X POST $API/tasks/$C15/links -d "{\"targetId\":\"$P15\",\"linkType\":\"FS\"}"
@@ -413,29 +407,30 @@ chkc "子任務有沒回的詢問 → 父任務不受影響，照樣完成得了
 
 del "$Q_SUB" "$Q_T" "$Q_EPIC"
 
-echo "── 26. 大項目與任務之間不能有排程依賴 ──"
-# 規則見 AGENTS.md「大項目與任務之間沒有先後」：它們是包含關係不是先後關係。
-# 大項目對大項目可以、任務對任務可以，「相關」「阻擋」這種不影響排程的不受限制。
+echo "── 26. 大項目與任務之間開放排程依賴 (CR-066) ──"
+# 規則見 CR-066：大項目與一般任務統一為事件層級，開放自由建立排程與語意關聯依賴。
 L_E1=$(mk '{"title":"依賴規則－大項目甲","type":"EPIC"}')
 L_E2=$(mk '{"title":"依賴規則－大項目乙","type":"EPIC"}')
 L_T1=$(mk "{\"title\":\"依賴規則－任務甲\",\"parentId\":\"$L_E1\"}")
 L_T2=$(mk "{\"title\":\"依賴規則－任務乙\",\"parentId\":\"$L_E1\"}")
-# 用「另一個」大項目，才不會跟父子那條規則混在一起（父子的案例在第 15 項）
 for LT in FS SS FF SF; do
-  chkcw "大項目→任務 建 $LT → 400" "400" "大項目" "$TOK" \
+  chkc "大項目→任務 建 $LT → 201" "201" "$TOK" \
     -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"$LT\"}"
 done
-chkcw "任務→大項目 反過來也一樣被擋" "400" "大項目" "$TOK" \
-  -X POST $API/tasks/$L_T1/links -d "{\"targetId\":\"$L_E2\",\"linkType\":\"FS\"}"
+L_E3=$(mk '{"title":"依賴規則－大項目丙","type":"EPIC"}')
+L_E4=$(mk '{"title":"依賴規則－大項目丁","type":"EPIC"}')
+L_T3=$(mk "{\"title\":\"依賴規則－任務丙\",\"parentId\":\"$L_E1\"}")
+chkc "任務→大項目 反向建立 → 201" "201" "$TOK" \
+  -X POST $API/tasks/$L_T3/links -d "{\"targetId\":\"$L_E3\",\"linkType\":\"FS\"}"
 chkc "大項目→大項目 建 FS → 201（兩個階段的先後）" "201" "$TOK" \
-  -X POST $API/tasks/$L_E1/links -d "{\"targetId\":\"$L_E2\",\"linkType\":\"FS\"}"
+  -X POST $API/tasks/$L_E1/links -d "{\"targetId\":\"$L_E4\",\"linkType\":\"FS\"}"
 chkc "任務→任務 建 FS → 201" "201" "$TOK" \
   -X POST $API/tasks/$L_T1/links -d "{\"targetId\":\"$L_T2\",\"linkType\":\"FS\"}"
 chkc "大項目→任務 建「相關」→ 201（不影響排程的不受限制）" "201" "$TOK" \
   -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"RELATES\"}"
 chkc "大項目→任務 建「阻擋」→ 201" "201" "$TOK" \
   -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"BLOCKS\"}"
-del "$L_T2" "$L_T1" "$L_E2" "$L_E1"
+del "$L_E4" "$L_T3" "$L_E3" "$L_T2" "$L_T1" "$L_E2" "$L_E1"
 
 echo "── 27. 誰能改任務、誰能填問題與登錄回覆 ──"
 # 規則見 AGENTS.md「誰能做什麼」：任務只有開這張任務的人與專案管理者能改；
