@@ -657,7 +657,7 @@ function ProjectWorkspace({
               {view === 'graph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <GraphView projectId={projectId} tasks={visible}
-                             statuses={project?.statuses ?? []} onOpen={setOpenTask} />
+                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={setOpenTask} />
                 </Suspense>
               )}
               {/*

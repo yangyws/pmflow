@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
-  Api, ApiError, type InquiryState, type LinkType, type Task, type TaskStatus,
+  Api, ApiError, type InquiryState, type LinkType, type ProjectParam, type Task, type TaskStatus,
 } from '../lib/api'
 import { Button, Empty, INQUIRY_META, Select, Spinner, cx } from '../components/ui'
 import { LINK_CHIP, LINK_LABEL } from '../lib/linkText'
@@ -142,6 +142,7 @@ type TaskNodeData = {
   /** 顏色不存在節點裡，每次算 —— 見下面建立節點那段的說明 */
   statusKey: string
   taskType: string
+  typeColor?: string
   color: string
   progress: number
   inquiryState: InquiryState
@@ -247,12 +248,15 @@ const BADGE_TEAL = 'bg-teal-50 font-medium text-teal-700 dark:bg-teal-500/15 dar
 const BADGE_ROSE_SOFT = 'bg-rose-50 font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
 const BADGE_SKY_SOFT = 'bg-sky-50 font-medium text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'
 
+// Ref: CR-087 — 關聯圖事件框頂線與外框配色與系統種類配色對齊
 function getTypeColor(taskType: string, defaultColor?: string): string {
-  if (taskType === 'EPIC') return '#8b5cf6'
-  if (taskType === 'BUG') return '#f43f5e'
-  if (taskType === 'MILESTONE') return '#f59e0b'
-  if (taskType === 'TASK') return '#0284c7'
-  return defaultColor ?? '#64748b'
+  const DEFAULT_MAP: Record<string, string> = {
+    EPIC: '#d97706',      // 大項目 (琥珀橘)
+    TASK: '#3178c6',      // 任務 (經典藍)
+    BUG: '#dc2626',       // 問題 (鮮紅)
+    MILESTONE: '#8b5cf6', // 里程碑 (紫羅蘭)
+  }
+  return DEFAULT_MAP[taskType] ?? defaultColor ?? '#64748b'
 }
 
 // ── 節點 ────────────────────────────────────────────────
@@ -350,7 +354,7 @@ function NodeProgressBar({ progress, accentColor }: { progress: number; accentCo
  */
 function BoxNodeView({ data }: NodeProps<TaskNode>) {
   const meta = INQUIRY_META[data.inquiryState]
-  const accentColor = getTypeColor(data.taskType, data.color)
+  const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
   const [resizable, setResizable] = useState(false)
   return (
     <>
@@ -437,7 +441,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
 
 function TaskNodeView({ data }: NodeProps<TaskNode>) {
   const meta = INQUIRY_META[data.inquiryState]
-  const accentColor = getTypeColor(data.taskType, data.color)
+  const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
   const [resizable, setResizable] = useState(false)
   return (
     <>
@@ -1312,6 +1316,7 @@ export default function GraphView(props: {
   projectId: string
   tasks: Task[]
   statuses: TaskStatus[]
+  types?: ProjectParam[]
   onOpen: (id: string) => void
 }) {
   // useReactFlow（fitView / zoom）必須在 Provider 底下才拿得到
@@ -1323,11 +1328,12 @@ export default function GraphView(props: {
 }
 
 function GraphCanvas({
-  projectId, tasks, statuses, onOpen,
+  projectId, tasks, statuses, types, onOpen,
 }: {
   projectId: string
   tasks: Task[]
   statuses: TaskStatus[]
+  types?: ProjectParam[]
   onOpen: (id: string) => void
 }) {
   const qc = useQueryClient()
@@ -1481,6 +1487,20 @@ function GraphCanvas({
     return (key: string) => m.get(key) ?? '#94a3b8'
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusColorKey])
+
+  const typeColorKey = (types ?? []).map(t => `${t.key}:${t.color}`).join('|')
+  const typeColorMap = useMemo(() => {
+    const m = new Map<string, string>()
+    m.set('EPIC', '#d97706')      // 大項目 (琥珀橘)
+    m.set('TASK', '#3178c6')      // 任務 (經典藍)
+    m.set('BUG', '#dc2626')       // 問題 (鮮紅)
+    m.set('MILESTONE', '#8b5cf6') // 里程碑 (紫羅蘭)
+    for (const t of (types ?? [])) {
+      if (t.color) m.set(t.key, t.color)
+    }
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeColorKey])
 
   // 側欄選了大項目時，主視圖只顯示那棵子樹 —— 關聯圖跟其他視圖看同一份 tasks，
   // 免得「清單看到 5 張、關聯圖卻畫出 40 張」這種對不起來的情況。
@@ -1941,6 +1961,7 @@ function GraphCanvas({
           data: {
             ...n.data,
             selected: !!selectedIds[n.id],
+            typeColor: typeColorMap.get(n.data.taskType) ?? getTypeColor(n.data.taskType),
             color: statusColor(n.data.statusKey),
             dimmed: !!neighbours && !neighbours.has(n.id),
             focused: n.id === focusId,
