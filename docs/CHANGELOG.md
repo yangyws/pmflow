@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-097` | 2026-08-09 | [全系統：重構所有原生 alert/confirm 為自訂 UI Modal 提示窗，達成設計風格 100% 統一](#cr-097) | `Graph.tsx`, `Gantt.tsx`, `Calendar.tsx`, `ProjectSettings.tsx`, `MembersPanel.tsx`, `AdminPanel.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-096` | 2026-08-09 | [關聯圖：關閉收納框內部事件卡片碰撞互斥避讓機制 (resolveCollisionPush)，實現框內自由擺放](#cr-096) | `Graph.tsx` | 已驗證 |
 | `CR-095` | 2026-08-09 | [關聯圖：重構 BoxNodeView 與 TaskNodeView 為 justify-start，徹底解決切換收納模式時內部資訊上下位移 Bug](#cr-095) | `Graph.tsx` | 已驗證 |
 | `CR-094` | 2026-08-09 | [關聯圖：修復 getTypeColor 未優先使用自訂種類顏色 Bug，達成全系統種類色彩與名稱 100% 同步](#cr-094) | `Graph.tsx` | 已驗證 |
@@ -154,6 +155,13 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-097"></a>CR-097 (2026-08-09) — 全系統：重構所有原生 alert/confirm 為自訂 UI Modal 提示窗，達成設計風格 100% 統一
+
+1. **取代原生瀏覽器彈窗**：移除全系統中殘留之 `window.alert()` 與 `window.confirm()` 瀏覽器原生對話框。
+2. **對齊 UI Modal 規範**：重構為符合 PMFlow 設計規範之高質感 Modal 提示對話框（支援半透明背景模糊 `backdrop-blur`、圓角 `rounded-xl`、主題卡片背景與警告/危險圖示）。
+3. **影響範圍**：涵蓋關聯圖收納關閉、甘特圖連線刪除/錯誤提示、行事曆假單刪除、專案設定項目刪除、成員管理移除、系統管理帳號處置與帳號設定解綁等全系統情境。
+4. **E2E 測試驗證**：端對端 API 測試 `e2e.sh` 達成 107/107 項目 100% PASS。
 
 ### <a id="cr-096"></a>CR-096 (2026-08-09) — 關聯圖：關閉收納框內部事件卡片碰撞互斥避讓機制 (`resolveCollisionPush`)，實現框內自由擺放
 

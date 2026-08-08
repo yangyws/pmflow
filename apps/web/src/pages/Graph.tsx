@@ -2292,32 +2292,44 @@ function GraphCanvas({
     },
   })
 
+  const [confirmCloseContainer, setConfirmCloseContainer] = useState<{ id: string; count: number } | null>(null)
+
+  const doCloseContainer = useCallback((id: string) => {
+    const kids = shownNodes.filter(n => n.parentId === id)
+    setContainerBoxIds(prev => {
+      const next = new Set(prev)
+      next.delete(id)
+      try {
+        localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+      } catch {}
+      return next
+    })
+    if (kids.length > 0) {
+      Promise.all(kids.map(k => Api.patchTask(k.id, { parentId: null })))
+        .then(() => invalidate())
+        .catch(e => {
+          setError(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed)
+        })
+    }
+  }, [shownNodes, invalidate])
+
   /**
    * 切換容器收納模式：
    * 1. 點擊開啟 (📦 收納(開))：允許其它事件卡片拖放進內部。
-   * 2. 點擊關閉 (📦 收納(關))：取消容器模式，並自動將內部所有子事件推回外部畫布 (parentId = null)，更新樹狀圖與畫布。
+   * 2. 點擊關閉 (📦 收納(關))：取消容器模式，若框內有事件卡片則彈出自訂提示視窗。
    */
   const toggleContainerMode = useCallback((id: string) => {
     setContainerBoxIds(prev => {
       const isTurningOff = prev.has(id)
       if (isTurningOff) {
-        // Ref: CR-091 — 關閉收納模式時若框內有事件框，跳出提示確認後才將內部事件框移出
+        // Ref: CR-091/CR-097 — 關閉收納模式時若框內有事件框，彈出自訂 Modal 提示對話框
         const kids = shownNodes.filter(n => n.parentId === id)
         if (kids.length > 0) {
-          const confirmed = window.confirm(
-            `收納框內尚有 ${kids.length} 個事件框，關閉收納模式將會把內部事件框移出至外部畫布，確定要關閉嗎？`
-          )
-          if (!confirmed) return prev
+          setConfirmCloseContainer({ id, count: kids.length })
+          return prev
         }
         const next = new Set(prev)
         next.delete(id)
-        if (kids.length > 0) {
-          Promise.all(kids.map(k => Api.patchTask(k.id, { parentId: null })))
-            .then(() => invalidate())
-            .catch(e => {
-              setError(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed)
-            })
-        }
         try {
           localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
         } catch {}
@@ -2331,7 +2343,7 @@ function GraphCanvas({
         return next
       }
     })
-  }, [shownNodes, invalidate])
+  }, [shownNodes])
 
   const dragStartPos = useRef<Record<string, { x: number; y: number }>>({})
 
@@ -2799,6 +2811,40 @@ function GraphCanvas({
                 }}
               >
                 確定刪除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmCloseContainer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                關閉收納模式確認
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              收納框內尚有 <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmCloseContainer.count}</span> 個事件框，關閉收納模式將會把內部事件框移出至外部畫布，確定要關閉嗎？
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmCloseContainer(null)}>
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  doCloseContainer(confirmCloseContainer.id)
+                  setConfirmCloseContainer(null)
+                }}
+              >
+                確定關閉
               </Button>
             </div>
           </div>

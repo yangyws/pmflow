@@ -29,6 +29,7 @@ export default function MembersPanel({
   projectId: string
   workspaceId: string
 }) {
+  const [confirmRemoveUser, setConfirmRemoveUser] = useState<{ id: string; name: string } | null>(null)
   const qc = useQueryClient()
   const { user: me } = useAuth()
   const [err, setErr] = useState<string | null>(null)
@@ -237,11 +238,7 @@ export default function MembersPanel({
                         {ROLES.map(v => <option key={v} value={v}>{ROLE_LABEL[v]}</option>)}
                       </Select>
                       <button
-                        onClick={() => {
-                          if (window.confirm(M.confirmRemove(m.displayName))) {
-                            remove.mutate(m.id)
-                          }
-                        }}
+                        onClick={() => setConfirmRemoveUser({ id: m.id, name: m.displayName })}
                         className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600
                                    dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
                         {T.common.remove}
@@ -324,6 +321,40 @@ export default function MembersPanel({
         )}
 
       </div>
+
+      {confirmRemoveUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                移除成員確認
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {M.confirmRemove(confirmRemoveUser.name)}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmRemoveUser(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  remove.mutate(confirmRemoveUser.id)
+                  setConfirmRemoveUser(null)
+                }}
+              >
+                確定移除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

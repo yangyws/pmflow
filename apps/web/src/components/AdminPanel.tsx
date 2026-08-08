@@ -212,6 +212,7 @@ function UserRow({
   onDelete: () => void
 }) {
   const suspended = u.status === 'SUSPENDED'
+  const [confirmActionModal, setConfirmActionModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
   return (
     <div className={cx('flex items-center gap-3 px-4 py-3',
                        suspended && 'bg-slate-50 dark:bg-slate-950/60')}>
@@ -275,7 +276,11 @@ function UserRow({
                 const ask = suspended
                   ? A.confirmResume(u.displayName)
                   : A.confirmSuspend(u.displayName)
-                if (window.confirm(ask)) onPatch({ status: next })
+                setConfirmActionModal({
+                  title: suspended ? '帳號復權確認' : '停權帳號確認',
+                  message: ask,
+                  onConfirm: () => onPatch({ status: next }),
+                })
               }}
               className={cx('rounded px-1.5 py-1 text-xs',
                             suspended
@@ -296,7 +301,11 @@ function UserRow({
                     A.confirmDeleteTasks,
                     A.confirmDeleteSuspendInstead,
                   ].filter(Boolean).join('\n')
-                  if (window.confirm(ask)) onDelete()
+                  setConfirmActionModal({
+                    title: '刪除帳號確認',
+                    message: ask,
+                    onConfirm: () => onDelete(),
+                  })
                 }}
                 disabled={busy}
                 className="rounded px-1.5 py-1 text-xs text-slate-400
@@ -308,6 +317,40 @@ function UserRow({
           </>
         )}
       </div>
+
+      {confirmActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {confirmActionModal.title}
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">
+              {confirmActionModal.message}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmActionModal(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  confirmActionModal.onConfirm()
+                  setConfirmActionModal(null)
+                }}
+              >
+                確定
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

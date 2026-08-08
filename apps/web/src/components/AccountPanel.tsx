@@ -295,6 +295,7 @@ function IdentitySection() {
 
   const [err, setErr] = useState<string | null>(null)
   const [pending, setPending] = useState<OauthProviderId | null>(null)
+  const [confirmActionModal, setConfirmActionModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   /**
    * 小視窗回報。**一定要比對 origin** —— 不比的話，任何一個被使用者開著的
@@ -366,9 +367,11 @@ function IdentitySection() {
                            busy={unlink.isPending}
                            onUnlink={() => {
                              const name = T.account.identity.label[item.provider]
-                             if (confirm(T.account.identity.confirmUnbind(name))) {
-                               unlink.mutate(item.id)
-                             }
+                             setConfirmActionModal({
+                               title: '解綁身分確認',
+                               message: T.account.identity.confirmUnbind(name),
+                               onConfirm: () => unlink.mutate(item.id),
+                             })
                            }} />
             ))}
           </div>
@@ -409,6 +412,40 @@ function IdentitySection() {
             </p>
           )}
         </>
+      )}
+
+      {confirmActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {confirmActionModal.title}
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {confirmActionModal.message}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmActionModal(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  confirmActionModal.onConfirm()
+                  setConfirmActionModal(null)
+                }}
+              >
+                確定
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )
@@ -477,6 +514,7 @@ function ApiTokenSection() {
   const [plaintext, setPlaintext] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [confirmActionModal, setConfirmActionModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   const create = useMutation({
     mutationFn: () => Api.createApiToken({
@@ -616,9 +654,11 @@ function ApiTokenSection() {
                   </div>
                   <Button variant="danger" disabled={revoke.isPending}
                           onClick={() => {
-                            if (confirm(T.account.token.confirmRevoke(t.name))) {
-                              revoke.mutate(t.id)
-                            }
+                            setConfirmActionModal({
+                              title: '撤銷 Token 確認',
+                              message: T.account.token.confirmRevoke(t.name),
+                              onConfirm: () => revoke.mutate(t.id),
+                            })
                           }}>{T.account.token.revoke}</Button>
                 </div>
               )
@@ -626,6 +666,40 @@ function ApiTokenSection() {
           </div>
         )}
       </div>
+
+      {confirmActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {confirmActionModal.title}
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {confirmActionModal.message}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmActionModal(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  confirmActionModal.onConfirm()
+                  setConfirmActionModal(null)
+                }}
+              >
+                確定
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

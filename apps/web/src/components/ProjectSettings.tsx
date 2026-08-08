@@ -520,6 +520,8 @@ function Row({
     onPatch({ name: v })
   }
 
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null)
+
   return (
     <div className="flex flex-wrap items-center gap-2 px-3 py-3">
       {handle}
@@ -577,7 +579,7 @@ function Row({
             onClick={() => {
               // 有人在用就先問「改成哪一個」，沒人在用才直接確認
               if (param.inUse > 0) onAskRemove()
-              else if (window.confirm(S.remove.confirm(param.name))) onRemove()
+              else setConfirmDeleteName(param.name)
             }}
             className="rounded px-2 py-1 text-xs text-slate-400 transition-colors
                        hover:bg-red-50 hover:text-red-600 disabled:opacity-40
@@ -585,6 +587,40 @@ function Row({
                        dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
             {S.remove.button}
           </button>
+        </div>
+      )}
+
+      {confirmDeleteName && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                刪除項目確認
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {S.remove.confirm(confirmDeleteName)}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmDeleteName(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setConfirmDeleteName(null)
+                  onRemove()
+                }}
+              >
+                確定刪除
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

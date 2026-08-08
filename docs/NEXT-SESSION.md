@@ -25,6 +25,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.hmr.yml up -d
 
 ## 還沒動工（他交代過、還沒做）
 
+- **重構全系統原生 alert/confirm 為自訂 UI Modal 提示窗 (`CR-097`)**：全系統取代瀏覽器原生對話框，對齊 TaskDrawer 規範之高質感 Modal 提示窗。
 - **關閉收納框內部事件卡片碰撞互斥避讓 (`CR-096`)**：於 resolveCollisionPush 加上 parentId !== null 直接 return 判定，允許框內卡片自由擺放。
 - **重構 BoxNodeView 與 TaskNodeView 為 justify-start (`CR-095`)**：將內部資訊列頂部固定對齊，徹底消除切換收納模式時內部標題與進度條上下伸縮跳位 Bug。
 - **修復 getTypeColor 未優先使用自訂種類顏色 Bug (`CR-094`)**：修正 Graph.tsx 優先採用傳入之 customColor，實現關聯圖與全系統種類顏色及名稱 100% 同步。

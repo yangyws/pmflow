@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Gantt as DhtmlxGantt } from 'dhtmlx-gantt'
 import 'dhtmlx-gantt/codebase/dhtmlxgantt.css'
@@ -6,6 +6,7 @@ import { Api, type Task, type LinkType } from '../lib/api'
 import { rollup } from '../lib/rollup'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { T } from '../strings'
+import { Button } from '../components/ui'
 
 /**
  * 甘特圖：dhtmlx-gantt v10（v10.0.0 起才是 MIT，9.x 以前是 GPL-2.0，務必鎖 ^10）。
@@ -30,6 +31,8 @@ export default function GanttView({
   tasks: Task[]
   onOpen: (id: string) => void
 }) {
+  const [deleteTargetLinkId, setDeleteTargetLinkId] = useState<string | number | null>(null)
+  const [errorMessageModal, setErrorMessageModal] = useState<string | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<ReturnType<typeof DhtmlxGantt.getGanttInstance> | null>(null)
   const qc = useQueryClient()
@@ -134,16 +137,12 @@ export default function GanttView({
     }, {})
 
     g.attachEvent('onLinkDblClick', (id: string | number) => {
-      if (window.confirm('確定要刪除這條依賴關聯連線嗎？')) {
-        g.deleteLink(id)
-      }
+      setDeleteTargetLinkId(id)
       return false
     }, {})
 
     g.attachEvent('onLinkClick', (id: string | number) => {
-      if (window.confirm('確定要刪除這條依賴關聯連線嗎？')) {
-        g.deleteLink(id)
-      }
+      setDeleteTargetLinkId(id)
       return false
     }, {})
 
@@ -156,9 +155,9 @@ export default function GanttView({
         qc.invalidateQueries({ queryKey: ['schedule', projectId] })
         qc.invalidateQueries({ queryKey: ['graph', projectId] })
       }).catch((e: { title?: string; detail?: string }) => {
-        // 後端擋下循環依賴時，把原因原封不動顯示出來，
+        // 後端擋下循環依賴時，顯示自訂 Modal 提示視窗，
         // 並重抓資料把畫面上那條剛畫出來的線收回去
-        alert(`${e.title ?? G.addLinkFailed}${e.detail ? '\n' + e.detail : ''}`)
+        setErrorMessageModal(`${e.title ?? G.addLinkFailed}${e.detail ? '：' + e.detail : ''}`)
         qc.invalidateQueries({ queryKey: ['graph', projectId] })
       })
       return true
@@ -257,6 +256,67 @@ export default function GanttView({
         </div>
       )}
       <div ref={hostRef} className="min-h-0 flex-1" />
+
+      {deleteTargetLinkId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                刪除連線確認
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              確定要刪除這條依賴關聯連線嗎？
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setDeleteTargetLinkId(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (ganttRef.current) {
+                    ganttRef.current.deleteLink(deleteTargetLinkId)
+                  }
+                  setDeleteTargetLinkId(null)
+                }}
+              >
+                確定刪除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errorMessageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                建立連線失敗
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {errorMessageModal}
+            </p>
+            <div className="mt-5 flex items-center justify-end">
+              <Button variant="primary" onClick={() => setErrorMessageModal(null)}>
+                確定
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
