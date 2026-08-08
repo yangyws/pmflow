@@ -25,6 +25,7 @@ docker compose -f docker-compose.dev.yml -f docker-compose.hmr.yml up -d
 
 ## 還沒動工（他交代過、還沒做）
 
+- **關閉收納框內部事件卡片碰撞互斥避讓 (`CR-096`)**：於 resolveCollisionPush 加上 parentId !== null 直接 return 判定，允許框內卡片自由擺放。
 - **重構 BoxNodeView 與 TaskNodeView 為 justify-start (`CR-095`)**：將內部資訊列頂部固定對齊，徹底消除切換收納模式時內部標題與進度條上下伸縮跳位 Bug。
 - **修復 getTypeColor 未優先使用自訂種類顏色 Bug (`CR-094`)**：修正 Graph.tsx 優先採用傳入之 customColor，實現關聯圖與全系統種類顏色及名稱 100% 同步。
 - **對齊收納框內部事件相對縱向偏移量 (`CR-093`)**：統一 layout 與 onNodeDragStop 的框內 y 軸起點為 y >= 60（避開標頭），消除佈局重算時內部卡片跳位 Bug。

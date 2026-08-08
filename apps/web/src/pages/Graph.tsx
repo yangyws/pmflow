@@ -2344,6 +2344,9 @@ function GraphCanvas({
   const resolveCollisionPush = useCallback((node: Node, _dx: number, _dy: number) => {
     const nId = node.id
     const parentId = parentOfMap.get(nId) ?? null
+    // Ref: CR-096 — 收納框內部不觸發框與框之碰撞互斥/自動擠開避讓機制
+    if (parentId !== null) return
+
     const nPos = node.position
     const nW = measured[nId]?.width ?? layoutSize.get(nId)?.w ?? LEAF_W
     const nH = even(measured[nId]?.height ?? layoutSize.get(nId)?.h ?? LEAF_H)
