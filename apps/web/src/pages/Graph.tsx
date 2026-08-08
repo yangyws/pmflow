@@ -2232,12 +2232,18 @@ function GraphCanvas({
    */
   const toggleContainerMode = useCallback((id: string) => {
     setContainerBoxIds(prev => {
-      const next = new Set(prev)
-      const isTurningOff = next.has(id)
+      const isTurningOff = prev.has(id)
       if (isTurningOff) {
-        next.delete(id)
-        // 點擊關閉容器模式：將所有原隸屬於該容器的子事件推出外面 (parentId = null)
+        // Ref: CR-091 — 關閉收納模式時若框內有事件框，跳出提示確認後才將內部事件框移出
         const kids = shownNodes.filter(n => n.parentId === id)
+        if (kids.length > 0) {
+          const confirmed = window.confirm(
+            `收納框內尚有 ${kids.length} 個事件框，關閉收納模式將會把內部事件框移出至外部畫布，確定要關閉嗎？`
+          )
+          if (!confirmed) return prev
+        }
+        const next = new Set(prev)
+        next.delete(id)
         if (kids.length > 0) {
           Promise.all(kids.map(k => Api.patchTask(k.id, { parentId: null })))
             .then(() => invalidate())
@@ -2245,13 +2251,18 @@ function GraphCanvas({
               setError(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed)
             })
         }
+        try {
+          localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+        } catch {}
+        return next
       } else {
+        const next = new Set(prev)
         next.add(id)
+        try {
+          localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+        } catch {}
+        return next
       }
-      try {
-        localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
-      } catch {}
-      return next
     })
   }, [shownNodes, invalidate])
 
