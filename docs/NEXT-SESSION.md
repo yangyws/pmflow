@@ -1,7 +1,6 @@
 # 下次從這裡繼續
 
-2026-08-06 收工。**所有東西都推上 main，工作區乾淨。**
-`release-0.2.0.bat` 已經交出去，**還沒發** —— 等他雙擊。
+2026-08-09 收工。**所有功能與修復皆已通過 typecheck 與 107/107 E2E 測試，本地 Commit 已完成（未 auto-push 至 main）。**
 
 ---
 
@@ -9,21 +8,21 @@
 
 ```
 繼續 PMFlow 專案。請先閱讀 D:\NewProject\AGENTS.md（共用規矩）與 docs/NEXT-SESSION.md，並查看 docs/CHANGELOG.md 最上面的索引。
-所有前置工作與修正均已 typecheck 通過並 push 至 main。
+所有前置工作、關聯圖修復與全系統自訂 Modal 提示窗重構均已完成並完成本地 commit。
 請精簡覆述我的需求後開始工作。
 ```
 
 起環境（前端改檔即時生效，不用重建）：
 ```
 cd D:\NewProject\pmflow-git
-docker compose -f docker-compose.dev.yml -f docker-compose.hmr.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 改了 `apps/api` 要重建：`docker compose -f docker-compose.dev.yml up --build -d api`
 網站 http://localhost:8480，示範帳號 `demo@pmflow.local` / `demo1234`
 
 ---
 
-## 還沒動工（他交代過、還沒做）
+## 最近完成的項目（最新進度）
 
 - **重構全系統原生 alert/confirm 為自訂 UI Modal 提示窗 (`CR-097`)**：全系統取代瀏覽器原生對話框，對齊 TaskDrawer 規範之高質感 Modal 提示窗。
 - **關閉收納框內部事件卡片碰撞互斥避讓 (`CR-096`)**：於 resolveCollisionPush 加上 parentId !== null 直接 return 判定，允許框內卡片自由擺放。
