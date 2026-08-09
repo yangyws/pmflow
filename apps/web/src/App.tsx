@@ -640,7 +640,8 @@ function ProjectWorkspace({
             <>
               {view === 'list' && (
                 <ListView projectId={projectId} tasks={visible} parentForNew={epicId}
-                          statuses={project?.statuses ?? []} onOpen={setOpenTask} />
+                          statuses={project?.statuses ?? []} onOpen={setOpenTask}
+                          focusedTaskId={focusedTaskId} />
               )}
               {view === 'board' && (
                 <Board projectId={projectId} tasks={visible}

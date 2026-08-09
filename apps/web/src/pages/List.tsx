@@ -12,12 +12,13 @@ import { T } from '../strings'
 
 /** 清單／樹狀視圖：依 parentId 展開階層（上下關聯） */
 export default function ListView({
-  projectId, tasks, statuses, onOpen, parentForNew,
+  projectId, tasks, statuses, onOpen, parentForNew, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]; statuses: TaskStatus[]; onOpen: (id: string) => void
   /** 側欄選了大項目時，最下面那一列新增的任務要掛在它底下 */
   parentForNew?: string | null
+  focusedTaskId?: string | null
 }) {
   const qc = useQueryClient()
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
@@ -214,12 +215,20 @@ export default function ListView({
             const hasUnread = unreadTaskIds.has(t.id)
             return (
               <Fragment key={t.id}>
-              <tr onClick={() => {
+              <tr ref={el => {
+                    if (el && t.id === focusedTaskId) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }
+                  }}
+                  onClick={() => {
                     if (hasUnread) markTaskRead(t.id)
                     onOpen(t.id)
                   }}
                   className={cx(
-                    'group cursor-pointer border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800',
+                    'group cursor-pointer border-t border-slate-100 transition-colors dark:border-slate-800',
+                    t.id === focusedTaskId
+                      ? 'bg-blue-50 dark:bg-blue-900/30'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800',
                     hasUnread && 'pmflow-flash'
                   )}>
                 <td className="px-3 py-2">
