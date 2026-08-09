@@ -1967,7 +1967,8 @@ function GraphCanvas({
           let maxRight = 0
           let maxBottom = 0
           for (const k of kids) {
-            const kPos = dragged[k.id] ?? k.position
+            // 使用靜態 k.position 計算容納邊界（不採計 dragged 臨時拖曳位置），避免卡片向右拖曳時推大框體，實現順暢移出框外
+            const kPos = k.position
             const kW = measured[k.id]?.width ?? layoutSize.get(k.id)?.w ?? NODE_W
             const kH = even(measured[k.id]?.height ?? layoutSize.get(k.id)?.h ?? NODE_H_FALLBACK)
             maxRight = Math.max(maxRight, kPos.x + kW + BOX_PAD)
