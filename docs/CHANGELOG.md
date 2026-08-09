@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-099` | 2026-08-09 | [甘特圖：關閉拖曳改期與拉線依賴等編輯互動，設定為純唯讀展示視圖](#cr-099) | `Gantt.tsx` | 已驗證 |
 | `CR-098` | 2026-08-09 | [甘特圖：區分左右區塊滾輪行為（左側清單控制上下捲動，右側時間軸進度條控制左右捲動）](#cr-098) | `Gantt.tsx` | 已驗證 |
 | `CR-097` | 2026-08-09 | [全系統：重構所有原生 alert/confirm 為自訂 UI Modal 提示窗，達成設計風格 100% 統一](#cr-097) | `Graph.tsx`, `Gantt.tsx`, `Calendar.tsx`, `ProjectSettings.tsx`, `MembersPanel.tsx`, `AdminPanel.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-096` | 2026-08-09 | [關聯圖：關閉收納框內部事件卡片碰撞互斥避讓機制 (resolveCollisionPush)，實現框內自由擺放](#cr-096) | `Graph.tsx` | 已驗證 |
@@ -156,6 +157,12 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-099"></a>CR-099 (2026-08-09) — 甘特圖：關閉拖曳改期與拉線依賴等編輯互動，設定為純唯讀展示視圖
+
+1. **關閉拖曳與拉線權限**：將 `Gantt.tsx` 之 dhtmlx 配置設定 `readonly = true`，並將 `drag_progress`, `drag_links`, `drag_move`, `drag_resize` 全數設為 `false`。
+2. **清理編輯與連線事件**：移除 `onAfterTaskDrag`（拖曳改期連動）、`onAfterLinkAdd`（端點拉線建立依賴）、`onAfterLinkDelete` / `onLinkClick` / `onLinkDblClick`（點擊連線刪除依賴），僅保留雙擊任務開啟詳情頁 (`onTaskDblClick`)。
+3. **清理介面與提示**：清理連線刪除確認與失敗提示 Modal、並移除頁面上方之拖曳操作提示文字，使甘特圖專注於純資料展示與關鍵路徑瀏覽。
 
 ### <a id="cr-098"></a>CR-098 (2026-08-09) — 甘特圖：區分左右區塊滾輪行為（左側清單控制上下捲動，右側時間軸進度條控制左右捲動）
 

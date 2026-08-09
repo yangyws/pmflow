@@ -31,8 +31,6 @@ export default function GanttView({
   tasks: Task[]
   onOpen: (id: string) => void
 }) {
-  const [deleteTargetLinkId, setDeleteTargetLinkId] = useState<string | number | null>(null)
-  const [errorMessageModal, setErrorMessageModal] = useState<string | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<ReturnType<typeof DhtmlxGantt.getGanttInstance> | null>(null)
   const qc = useQueryClient()
@@ -54,12 +52,13 @@ export default function GanttView({
     const g = DhtmlxGantt.getGanttInstance()
     ganttRef.current = g
 
+    // Ref: CR-099 - 關閉甘特圖互動式拖拉改期與依賴連線編輯功能，改為純唯讀模式
     g.config.date_format = '%Y-%m-%d'
-    g.config.readonly = false
-    g.config.drag_progress = true
-    g.config.drag_links = true       // 從端點拉線建立依賴
-    g.config.drag_move = true
-    g.config.drag_resize = true
+    g.config.readonly = true
+    g.config.drag_progress = false
+    g.config.drag_links = false
+    g.config.drag_move = false
+    g.config.drag_resize = false
     g.config.row_height = 34
     g.config.scale_height = 54
     g.config.scales = [
@@ -110,59 +109,7 @@ export default function GanttView({
 
     g.init(hostRef.current)
 
-    // ── 拖曳長條 → 呼叫後端 reschedule，讓下游連動 ──
-    g.attachEvent('onAfterTaskDrag', (id: string | number) => {
-      const t = g.getTask(id)
-      Api.rescheduleTask(String(id), {
-        startDate: fmt(t.start_date as Date),
-        dueDate: fmt(new Date((t.end_date as Date).getTime() - 86_400_000)),
-        cascade: true,
-      }).then(() => {
-        qc.invalidateQueries({ queryKey: ['tasks', projectId] })
-        qc.invalidateQueries({ queryKey: ['schedule', projectId] })
-      })
-      return true
-    }, {})
-
-    // ── 從端點拉線 → 建立依賴，點擊／雙擊連線可刪除依賴 ──
-    g.attachEvent('onAfterLinkDelete', (id: string | number) => {
-      Api.deleteLink(String(id))
-        .then(() => {
-          qc.invalidateQueries({ queryKey: ['tasks', projectId] })
-          qc.invalidateQueries({ queryKey: ['schedule', projectId] })
-          qc.invalidateQueries({ queryKey: ['graph', projectId] })
-        })
-        .catch(() => qc.invalidateQueries({ queryKey: ['graph', projectId] }))
-      return true
-    }, {})
-
-    g.attachEvent('onLinkDblClick', (id: string | number) => {
-      setDeleteTargetLinkId(id)
-      return false
-    }, {})
-
-    g.attachEvent('onLinkClick', (id: string | number) => {
-      setDeleteTargetLinkId(id)
-      return false
-    }, {})
-
-    g.attachEvent('onAfterLinkAdd', (_id: string | number, link: { source: string | number; target: string | number; type: string }) => {
-      Api.addLink(String(link.source), {
-        targetId: String(link.target),
-        linkType: FROM_DHX[String(link.type)] ?? 'FS',
-      }).then(() => {
-        qc.invalidateQueries({ queryKey: ['tasks', projectId] })
-        qc.invalidateQueries({ queryKey: ['schedule', projectId] })
-        qc.invalidateQueries({ queryKey: ['graph', projectId] })
-      }).catch((e: { title?: string; detail?: string }) => {
-        // 後端擋下循環依賴時，顯示自訂 Modal 提示視窗，
-        // 並重抓資料把畫面上那條剛畫出來的線收回去
-        setErrorMessageModal(`${e.title ?? G.addLinkFailed}${e.detail ? '：' + e.detail : ''}`)
-        qc.invalidateQueries({ queryKey: ['graph', projectId] })
-      })
-      return true
-    }, {})
-
+    // 雙擊任務開啟詳情頁
     g.attachEvent('onTaskDblClick', (id: string | number) => {
       if (unreadTaskIds.has(String(id))) markTaskRead(String(id))
       onOpen(String(id))
@@ -256,71 +203,9 @@ export default function GanttView({
                         dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
           <span className="mr-1 inline-block h-2 w-4 rounded-sm bg-red-600 align-middle" />
           {G.criticalPath(sched.criticalPath.length)}
-          <span className="ml-4 text-slate-400 dark:text-slate-400">{G.dragHint}</span>
         </div>
       )}
       <div ref={hostRef} className="min-h-0 flex-1" />
-
-      {deleteTargetLinkId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                刪除連線確認
-              </h3>
-            </div>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              確定要刪除這條依賴關聯連線嗎？
-            </p>
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <Button variant="ghost" onClick={() => setDeleteTargetLinkId(null)}>
-                取消
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  if (ganttRef.current) {
-                    ganttRef.current.deleteLink(deleteTargetLinkId)
-                  }
-                  setDeleteTargetLinkId(null)
-                }}
-              >
-                確定刪除
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {errorMessageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                建立連線失敗
-              </h3>
-            </div>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              {errorMessageModal}
-            </p>
-            <div className="mt-5 flex items-center justify-end">
-              <Button variant="primary" onClick={() => setErrorMessageModal(null)}>
-                確定
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

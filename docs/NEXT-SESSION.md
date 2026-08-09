@@ -24,6 +24,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 ## 最近完成的項目（最新進度）
 
+- **甘特圖關閉互動編輯轉純唯讀視圖 (`CR-099`)**：關閉拖曳改期、端點拉線建立與點擊刪除依賴，移除相關提示與 Modal，專注於純資料展示。
 - **甘特圖左右區塊滾輪分流 (`CR-098`)**：游標置於左側任務清單控制上下垂直捲動，置於右側時間軸進度條控制左右水平捲動。
 - **重構全系統原生 alert/confirm 為自訂 UI Modal 提示窗 (`CR-097`)**：全系統取代瀏覽器原生對話框，對齊 TaskDrawer 規範之高質感 Modal 提示窗。
 - **關閉收納框內部事件卡片碰撞互斥避讓 (`CR-096`)**：於 resolveCollisionPush 加上 parentId !== null 直接 return 判定，允許框內卡片自由擺放。
