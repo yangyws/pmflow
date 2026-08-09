@@ -433,6 +433,8 @@ function ProjectWorkspace({
 }) {
   /** 側欄選中的大項目；null＝不篩選 */
   const [epicId, setEpicId] = useState<string | null>(null)
+  /** 側欄點擊選擇的事件，供右側視圖連動與高亮 */
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
 
   /**
    * 藏起來的頁籤。**每個人自己的偏好，存這台瀏覽器**（見 AGENTS.md）——
@@ -516,13 +518,21 @@ function ProjectWorkspace({
         selectedEpicId={epicId}
         onSelectEpic={id => {
           setEpicId(id)
-          setOpenTask(null)                    // 回到總覽
-          if (NOT_FILTERED_BY_EPIC.includes(view)) setView('list')
+          setOpenTask(null)
+          setFocusedTaskId(null)
         }}
-        selectedTaskId={openTask}
+        selectedTaskId={focusedTaskId ?? openTask}
         onOpenTask={id => {
+          setFocusedTaskId(id)
+          if (view === 'graph' || view === 'gantt') {
+            setOpenTask(null)
+          } else {
+            setOpenTask(id)
+          }
+        }}
+        onOpenEditTask={id => {
+          setFocusedTaskId(id)
           setOpenTask(id)
-          if (NOT_FILTERED_BY_EPIC.includes(view)) setView('list')
         }}
         onSwitchProject={onSwitchProject}
       />
@@ -643,13 +653,14 @@ function ProjectWorkspace({
               )}
               {view === 'gantt' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
-                  <GanttView projectId={projectId} tasks={visible} onOpen={setOpenTask} />
+                  <GanttView projectId={projectId} tasks={visible} onOpen={setOpenTask} focusedTaskId={focusedTaskId} />
                 </Suspense>
               )}
               {view === 'graph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <GraphView projectId={projectId} tasks={visible}
-                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={setOpenTask} />
+                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={setOpenTask}
+                             focusedTaskId={focusedTaskId} />
                 </Suspense>
               )}
               {/*

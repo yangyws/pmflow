@@ -1336,6 +1336,7 @@ export default function GraphView(props: {
   statuses: TaskStatus[]
   types?: ProjectParam[]
   onOpen: (id: string) => void
+  focusedTaskId?: string | null
 }) {
   // useReactFlow（fitView / zoom）必須在 Provider 底下才拿得到
   return (
@@ -1346,13 +1347,14 @@ export default function GraphView(props: {
 }
 
 function GraphCanvas({
-  projectId, tasks, statuses, types, onOpen,
+  projectId, tasks, statuses, types, onOpen, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]
   statuses: TaskStatus[]
   types?: ProjectParam[]
   onOpen: (id: string) => void
+  focusedTaskId?: string | null
 }) {
   const qc = useQueryClient()
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
@@ -1435,6 +1437,12 @@ function GraphCanvas({
   const [measured, setMeasured] = useState<Record<string, { width: number; height: number }>>({})
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
   const [focusId, setFocusId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (focusedTaskId !== undefined) {
+      setFocusId(focusedTaskId)
+    }
+  }, [focusedTaskId])
   /** 排程依賴（FS / SS / FF / SF 實線）要不要畫 */
   const [showSchedLines, setShowSchedLines] = useState(true)
   /** 任務相關（相關／阻擋／重複於／需要）那幾條線要不要畫 */

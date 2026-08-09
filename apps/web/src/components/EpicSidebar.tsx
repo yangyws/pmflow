@@ -152,7 +152,7 @@ function rememberCollapsed(v: boolean): void {
 }
 
 export function EpicSidebar({
-  project, tasks, types = [], selectedEpicId, onSelectEpic, selectedTaskId, onOpenTask,
+  project, tasks, types = [], selectedEpicId, onSelectEpic, selectedTaskId, onOpenTask, onOpenEditTask,
   onSwitchProject,
 }: {
   project?: Project
@@ -170,6 +170,8 @@ export function EpicSidebar({
   selectedTaskId: string | null
   /** 點小項目 → 在右邊顯示那張任務 */
   onOpenTask: (id: string) => void
+  /** 點擊 ✏️ 鉛筆按鈕 → 開啟編輯詳細內容抽屜 */
+  onOpenEditTask?: (id: string) => void
   onSwitchProject: () => void
 }) {
   const qc = useQueryClient()
@@ -549,6 +551,7 @@ export function EpicSidebar({
               dividerAfterTaskIdSet={dividerAfterTaskIdSet}
               onSelectEpic={onSelectEpic}
               onOpenTask={onOpenTask}
+              onOpenEditTask={onOpenEditTask}
             />
             {lastContainerBoxId === epic.id && (
               <div className="my-2 border-b border-slate-200 dark:border-slate-700/60" />
@@ -620,7 +623,7 @@ export function EpicSidebar({
  */
 function TreeNode({
   task, depth, projectId, childrenOf, stat, bugsUnder, overdueIn, inquiriesIn, types,
-  expanded, autoOpen, toggle, expand, selectedEpicId, selectedTaskId, dividerAfterTaskIdSet, onSelectEpic, onOpenTask,
+  expanded, autoOpen, toggle, expand, selectedEpicId, selectedTaskId, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
   depth: number
@@ -643,6 +646,7 @@ function TreeNode({
   dividerAfterTaskIdSet?: Set<string>
   onSelectEpic: (id: string) => void
   onOpenTask: (id: string) => void
+  onOpenEditTask?: (id: string) => void
 }) {
   const qc = useQueryClient()
   const [addingChild, setAddingChild] = useState(false)
@@ -858,7 +862,7 @@ function TreeNode({
           * 會停在一顆看不見的按鈕上，永遠不知道它在那裡。
           */}
         <button
-          onClick={e => { e.stopPropagation(); onOpenTask(task.id) }}
+          onClick={e => { e.stopPropagation(); (onOpenEditTask ?? onOpenTask)(task.id) }}
           title="編輯詳細內容"
           aria-label="編輯詳細內容"
           className={cx('w-6 shrink-0 rounded text-xs opacity-0 transition-opacity',
@@ -922,6 +926,7 @@ function TreeNode({
           dividerAfterTaskIdSet={dividerAfterTaskIdSet}
           onSelectEpic={onSelectEpic}
           onOpenTask={onOpenTask}
+          onOpenEditTask={onOpenEditTask}
         />
       ))}
 

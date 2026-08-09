@@ -25,11 +25,12 @@ const FROM_DHX: Record<string, LinkType> = { '0': 'FS', '1': 'SS', '2': 'FF', '3
 const G = T.chart.gantt
 
 export default function GanttView({
-  projectId, tasks, onOpen,
+  projectId, tasks, onOpen, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]
   onOpen: (id: string) => void
+  focusedTaskId?: string | null
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<ReturnType<typeof DhtmlxGantt.getGanttInstance> | null>(null)
@@ -179,10 +180,21 @@ export default function GanttView({
     g.clearAll()
     g.parse({ data, links })
 
-    // 不要在 parse() 之後馬上呼叫 showDate()：那時時間軸的欄位還沒算出來，
-    // columnIndexByDate 會回 -1，畫面右上角就跳 "Invalid day index"。
-    // dhtmlx 本來就會把視窗對到資料的最早日期，這裡什麼都不用做。
+    if (focusedTaskId && g.isTaskExists(focusedTaskId)) {
+      g.selectTask(focusedTaskId)
+      g.showTask(focusedTaskId)
+    }
   }, [tasks, sched, graph])
+
+  // 當外部 focusedTaskId 變更時自動定位與高亮
+  useEffect(() => {
+    const g = ganttRef.current
+    if (!g || !focusedTaskId) return
+    if (g.isTaskExists(focusedTaskId)) {
+      g.selectTask(focusedTaskId)
+      g.showTask(focusedTaskId)
+    }
+  }, [focusedTaskId])
 
   return (
     <div className="flex h-full flex-col">
