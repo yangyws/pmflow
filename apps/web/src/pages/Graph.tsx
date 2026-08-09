@@ -2358,76 +2358,6 @@ function GraphCanvas({
 
   const dragStartPos = useRef<Record<string, { x: number; y: number }>>({})
 
-  /**
-   * 碰撞自動動態擠開 (Dynamic Collision Displacement Engine)：
-   * 框與框無法重疊。當拖曳事件框移入另一個事件框所在的位置時，
-   * 系統會根據拖曳移動的方向向量（從左、右、上、下何處移來），
-   * 自動將目標位置的事件框往反方向擠開推移（並對齊 24px 網格）。
-   */
-  const resolveCollisionPush = useCallback((node: Node, _dx: number, _dy: number) => {
-    const nId = node.id
-    const parentId = parentOfMap.get(nId) ?? null
-    // Ref: CR-096 — 收納框內部不觸發框與框之碰撞互斥/自動擠開避讓機制
-    if (parentId !== null) return
-
-    const nPos = node.position
-    const nW = measured[nId]?.width ?? layoutSize.get(nId)?.w ?? LEAF_W
-    const nH = even(measured[nId]?.height ?? layoutSize.get(nId)?.h ?? LEAF_H)
-
-    const nCenterX = nPos.x + nW / 2
-    const nCenterY = nPos.y + nH / 2
-
-    const siblings = allNodes.filter(
-      other => other.id !== nId &&
-               (parentOfMap.get(other.id) ?? null) === parentId &&
-               !containerBoxIds.has(other.id) &&
-               other.type !== 'box'
-    )
-
-    const updates: Record<string, { x: number; y: number }> = {}
-
-    for (const other of siblings) {
-      const oId = other.id
-      const oPos = updates[oId] ?? dragged[oId] ?? other.position
-      const oW = measured[oId]?.width ?? layoutSize.get(oId)?.w ?? LEAF_W
-      const oH = even(measured[oId]?.height ?? layoutSize.get(oId)?.h ?? LEAF_H)
-
-      const xOverlap = nPos.x < oPos.x + oW && nPos.x + nW > oPos.x
-      const yOverlap = nPos.y < oPos.y + oH && nPos.y + nH > oPos.y
-
-      if (xOverlap && yOverlap) {
-        const oCenterX = oPos.x + oW / 2
-        const oCenterY = oPos.y + oH / 2
-
-        const diffX = oCenterX - nCenterX
-        const diffY = oCenterY - nCenterY
-
-        let newX = oPos.x
-        let newY = oPos.y
-
-        if (Math.abs(diffX) >= Math.abs(diffY)) {
-          if (diffX >= 0) {
-            newX = Math.ceil((nPos.x + nW + 24) / 24) * 24
-          } else {
-            newX = Math.floor((nPos.x - oW - 24) / 24) * 24
-          }
-        } else {
-          if (diffY >= 0) {
-            newY = even(Math.ceil((nPos.y + nH + 24) / 48) * 48)
-          } else {
-            newY = even(Math.floor((nPos.y - oH - 24) / 48) * 48)
-          }
-        }
-
-        updates[oId] = { x: newX, y: newY }
-      }
-    }
-
-    if (Object.keys(updates).length > 0) {
-      setDragged(prev => ({ ...prev, ...updates }))
-    }
-  }, [allNodes, containerBoxIds, dragged, layoutSize, measured, parentOfMap])
-
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
     if (node.type !== 'task' && node.type !== 'box') return
     const selectedList = Object.keys(selectedIds).filter(id => selectedIds[id])
@@ -2464,15 +2394,12 @@ function GraphCanvas({
         }
       }
       setDragged(prev => ({ ...prev, ...groupUpdates }))
-    } else if (Math.abs(dx) >= 8 || Math.abs(dy) >= 8) {
-      resolveCollisionPush(node, dx, dy)
     }
-  }, [resolveCollisionPush])
+  }, [])
 
   /**
    * 空間拖曳動態階層管理 (Spatial Drag-and-Drop Hierarchy Engine)：
-   * 1. 當任務拖移出大項目框外 -> 自動解除隸屬關係 (parentId = null)，同步左側 Menu！
-   * 2. 當任務拖移進母任務/大項目框內 -> 自動建立父子隸屬關係 (parentId = box.id)，同步左側 Menu！
+   * 卡片移入/移出收納盒僅更動 Menu 階層 (parentId)，絕不觸發任何收納盒位置或尺寸推移調整！
    */
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
     if (node.type !== 'task' && node.type !== 'box') return
@@ -2496,8 +2423,6 @@ function GraphCanvas({
         }
       }
       setDragged(prev => ({ ...prev, ...groupUpdates }))
-    } else if (Math.abs(dx) >= 8 || Math.abs(dy) >= 8) {
-      resolveCollisionPush(node, dx, dy)
     }
     dragStartPos.current = {}
 
@@ -2520,14 +2445,9 @@ function GraphCanvas({
     const nCenterX = nAbs.x + nodeW / 2
     const nCenterY = nAbs.y + nodeH / 2
 
-    // 找出全圖所有開啟收納模式的可作為容器之框體 (包含大項目框與收納模式卡片)
-    const boxes = allNodes.filter(
-      n => n.id !== nId && (containerBoxIds.has(n.id) || n.type === 'box')
-    )
-
     let newParentId: string | null = null
 
-    // 1. 若卡片目前隶屬某收納框 (currentParentId)，優先檢查是否依然在該框內部範圍
+    // 1. 若卡片目前隶屬某收納盒 (currentParentId)，檢查是否依然在該盒內部範圍
     if (currentParentId) {
       const bNode = allNodes.find(n => n.id === currentParentId)
       if (bNode) {
@@ -2539,7 +2459,7 @@ function GraphCanvas({
         const relX = nAbs.x - bAbs.x
         const relY = nAbs.y - bAbs.y
 
-        // 當卡片右側/下側/左側/上側超越框體實體邊界時，判定脫離收納框
+        // 當卡片右側/下側/左側/上側超越收納盒實體邊界時，判定脫離收納盒
         const cardRight = relX + nodeW
         const cardBottom = relY + nodeH
 
@@ -2551,7 +2471,7 @@ function GraphCanvas({
       }
     }
 
-    // 2. 若卡片已脫離原收納框 (或原本無父層)，檢查是否放置於【其它】收納框範圍內
+    // 2. 若卡片已脫離原收納盒 (或原本無父層)，檢查是否放置於【其它】收納盒範圍內
     if (!newParentId) {
       const otherBoxes = allNodes.filter(
         n => n.id !== nId && n.id !== currentParentId && (containerBoxIds.has(n.id) || n.type === 'box')
@@ -2574,40 +2494,22 @@ function GraphCanvas({
       }
     }
 
+    // 僅更新父子階層連動 (parentId)，絕不上移/拉大/推送任何收納盒或其它卡片
     if (newParentId !== currentParentId) {
       if (newParentId === null) {
-        // 移出收納框：優先放在游標放掉的絕對座標；若該位置已有其它框，則放在該框旁邊
-        let targetX = Math.round(nAbs.x / 24) * 24
-        let targetY = even(Math.round(nAbs.y / 48) * 48)
-
-        const rootNodes = allNodes.filter(
-          o => o.id !== nId &&
-               !parentOfMap.get(o.id) &&
-               (o.type === 'task' || o.type === 'box')
-        )
-
-        for (const other of rootNodes) {
-          const oPos = dragged[other.id] ?? other.position
-          const oW = measured[other.id]?.width ?? layoutSize.get(other.id)?.w ?? LEAF_W
-          const oH = even(measured[other.id]?.height ?? layoutSize.get(other.id)?.h ?? LEAF_H)
-
-          const xOverlap = targetX < oPos.x + oW && targetX + nodeW > oPos.x
-          const yOverlap = targetY < oPos.y + oH && targetY + nodeH > oPos.y
-
-          if (xOverlap && yOverlap) {
-            targetX = Math.ceil((oPos.x + oW + 24) / 24) * 24
-          }
-        }
-
+        // 移出收納盒：直接放在釋放游標時的靜態絕對座標
+        const targetX = Math.round(nAbs.x / 24) * 24
+        const targetY = even(Math.round(nAbs.y / 48) * 48)
         setDragged(prev => ({
           ...prev,
           [nId]: { x: targetX, y: targetY }
         }))
         setParentOverrides(prev => ({ ...prev, [nId]: null }))
       } else {
+        // 移入收納盒：直接計算相對座標，不觸發任何收納盒額外調整
         const bAbs = getAbs(newParentId)
-        let relX = Math.max(BOX_PAD, Math.round((nAbs.x - bAbs.x) / 24) * 24)
-        let relY = Math.max(BOX_HEADER, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
+        const relX = Math.max(24, Math.round((nAbs.x - bAbs.x) / 24) * 24)
+        const relY = Math.max(60, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
         setDragged(prev => ({
           ...prev,
           [nId]: { x: relX, y: relY }
@@ -2616,10 +2518,10 @@ function GraphCanvas({
       }
       updateTaskParent.mutate({ id: nId, parentId: newParentId })
     } else if (currentParentId !== null) {
-      // 在同一收納框內拖移：保留相對座標並限制邊界界限 (不移出邊界、不小於原點)
+      // 在同一收納盒內拖移：保留相對座標並靜態約束於盒內
       const bAbs = getAbs(currentParentId)
-      let relX = Math.max(BOX_PAD, Math.round((nAbs.x - bAbs.x) / 24) * 24)
-      let relY = Math.max(BOX_HEADER, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
+      const relX = Math.max(24, Math.round((nAbs.x - bAbs.x) / 24) * 24)
+      const relY = Math.max(60, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
       setDragged(prev => ({
         ...prev,
         [nId]: { x: relX, y: relY }
