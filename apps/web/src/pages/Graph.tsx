@@ -403,9 +403,9 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                       ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
                       : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                   )}
-                  title={data.isContainerMode ? '【收納模式：開】允許其它事件卡片拖放進入內部 (點擊關閉收納模式)' : '【收納模式：關】(點擊開啟收納模式，允許其它事件卡片拖放進入內部)'}
+                  title={data.isContainerMode ? '【收納盒模式：開】允許其它事件卡片拖放進入內部 (點擊切回事件卡片)' : '【事件卡片】點擊轉換為收納盒（允許其它事件卡片拖放進入內部）'}
                 >
-                  {data.isContainerMode ? '📦 收納(開)' : '📦 收納(關)'}
+                  {data.isContainerMode ? '📦 收納盒' : '📦 轉收納盒'}
                 </button>
                 <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   {data.ref}
@@ -495,9 +495,9 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                     ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                 )}
-                title={data.isContainerMode ? '【收納模式：開】允許其它事件卡片拖放進入內部 (點擊關閉收納模式)' : '【收納模式：關】(點擊開啟收納模式，允許其它事件卡片拖放進入內部)'}
+                title={data.isContainerMode ? '【收納盒模式：開】允許其它事件卡片拖放進入內部 (點擊切回事件卡片)' : '【事件卡片】點擊轉換為收納盒（允許其它事件卡片拖放進入內部）'}
               >
-                {data.isContainerMode ? '📦 收納(開)' : '📦 收納(關)'}
+                {data.isContainerMode ? '📦 收納盒' : '📦 轉收納盒'}
               </button>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {data.ref}
@@ -2841,11 +2841,11 @@ function GraphCanvas({
                 </svg>
               </div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                關閉收納模式確認
+                關閉收納盒確認
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              收納框內尚有 <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmCloseContainer.count}</span> 個事件卡片，關閉收納模式將會把內部事件卡片移出至外部畫布，確定要關閉嗎？
+              收納盒內尚有 <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmCloseContainer.count}</span> 個事件卡片，關閉收納盒將會把內部事件卡片移出至畫布，確定要轉換回事件卡片嗎？
             </p>
             <div className="mt-5 flex items-center justify-end gap-2.5">
               <Button variant="ghost" onClick={() => setConfirmCloseContainer(null)}>
