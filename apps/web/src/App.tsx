@@ -672,17 +672,18 @@ function ProjectWorkspace({
                 */}
               {view === 'dashboard' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingDashboard} />}>
-                  <DashboardView projectId={projectId} onOpenTask={setOpenTask} />
+                  <DashboardView projectId={projectId} onOpenTask={handleTaskSelect} />
                 </Suspense>
               )}
               {view === 'inquiry' && (
                 <InquiryBoard projectId={projectId} workspaceId={workspaceId}
-                              onOpenTask={setOpenTask} />
+                              onOpenTask={handleTaskSelect} onEditTask={handleTaskEdit}
+                              focusedTaskId={focusedTaskId} />
               )}
               {/* 頁籤上的成員頁：看人手上有什麼、以前經手過什麼 */}
               {view === 'members' && (
                 <MembersView projectId={projectId} workspaceId={workspaceId}
-                             onOpenTask={setOpenTask} />
+                             onOpenTask={handleTaskSelect} />
               )}
               {/* 頭像選單進來的成員管理：改角色、核准加入申請 */}
               {view === 'memberAdmin' && (

@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-116` | 2026-08-09 | [導覽：統一 DashboardView、InquiryBoard 與 MembersView 點擊選取事件行為](#cr-116) | `App.tsx` | 已驗證 |
 | `CR-115` | 2026-08-09 | [導覽：全頁籤同步連動 Menu 選取（看板與行事曆自動定位並加上亮藍外框高亮）](#cr-115) | `Board.tsx`, `Calendar.tsx`, `Week.tsx`, `App.tsx` | 已驗證 |
 | `CR-114` | 2026-08-09 | [關聯圖：徹底排除 layout 內之 draggedOffsets 重新算大小，修復事件卡片向右/向下無法移出框外 Bug](#cr-114) | `Graph.tsx` | 已驗證 |
 | `CR-113` | 2026-08-09 | [導覽：修正側欄 active 選取判定與高亮底色，確保切換 View 頁籤時 Menu 事件底色持續保留](#cr-113) | `EpicSidebar.tsx` | 已驗證 |

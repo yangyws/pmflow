@@ -13,11 +13,13 @@ import { T } from '../strings'
  * 所以跟行事曆一樣「拿回工作區的再依專案濾」；查詢的 key 也跟行事曆一致，
  * 兩個畫面共用同一份快取，不會各抓一次。
  */
-export default function InquiryBoard({ workspaceId, projectId, onOpenTask }: {
+export default function InquiryBoard({ workspaceId, projectId, onOpenTask, onEditTask, focusedTaskId }: {
   workspaceId: string
   projectId: string
   /** 點卡片 → 在右邊打開那張任務的詳情 */
   onOpenTask: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  focusedTaskId?: string | null
 }) {
   const [groupByUnit, setGroupByUnit] = useState(false)
   const { data, isLoading } = useQuery({
@@ -91,11 +93,11 @@ export default function InquiryBoard({ workspaceId, projectId, onOpenTask }: {
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {list.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} />)}
+                        {list.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={i.taskId === focusedTaskId} />)}
                       </div>
                     </div>
                   ))
-                : col.items.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} />)}
+                : col.items.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={i.taskId === focusedTaskId} />)}
             </div>
           </div>
         ))}
@@ -174,9 +176,11 @@ export default function InquiryBoard({ workspaceId, projectId, onOpenTask }: {
 
 type BoardItem = Awaited<ReturnType<typeof Api.inquiryBoard>>['inquiries'][number]
 
-function InquiryCard({ item, onOpen }: {
+function InquiryCard({ item, onOpen, onEdit, isFocused }: {
   item: BoardItem
   onOpen: (taskId: string) => void
+  onEdit?: (taskId: string) => void
+  isFocused?: boolean
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(item.taskId)
@@ -185,13 +189,25 @@ function InquiryCard({ item, onOpen }: {
   return (
     <button
       type="button"
+      ref={el => {
+        if (el && isFocused) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }}
       onClick={() => {
         if (hasUnread) markTaskRead(item.taskId)
         onOpen(item.taskId)
       }}
+      onDoubleClick={() => {
+        if (hasUnread) markTaskRead(item.taskId)
+        if (onEdit) onEdit(item.taskId)
+      }}
       title={T.inquiry.board.card.open(item.taskRef, item.taskTitle)}
       className={cx(
-        'w-full cursor-pointer rounded-lg bg-white p-2.5 text-left ring-1 ring-slate-200 transition hover:ring-2 hover:ring-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:bg-slate-900 dark:ring-slate-700 dark:hover:ring-slate-500 dark:focus-visible:ring-slate-100',
+        'w-full cursor-pointer rounded-lg p-2.5 text-left transition-all focus:outline-none',
+        isFocused
+          ? 'ring-2 ring-blue-500 bg-blue-50/90 dark:bg-blue-900/40 dark:ring-blue-400 shadow-md'
+          : 'bg-white ring-1 ring-slate-200 hover:ring-2 hover:ring-slate-400 dark:bg-slate-900 dark:ring-slate-700 dark:hover:ring-slate-500',
         hasUnread && 'pmflow-flash'
       )}
     >
