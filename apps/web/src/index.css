@@ -115,10 +115,17 @@ body {
 .dark .gantt_row.odd,
 .dark .gantt_task_row.odd { background: rgba(255, 255, 255, 0.03); }
 
+.gantt_row.gantt_selected,
+.gantt_task_row.gantt_selected { background: #e0f2fe !important; }
+.gantt_row.gantt_selected .gantt_tree_content,
+.gantt_row.gantt_selected .gantt_cell { color: #0f172a !important; font-weight: 500; }
+
 .dark .gantt_row:hover,
 .dark .gantt_task_row:hover { background: #1e293b; }
 .dark .gantt_row.gantt_selected,
-.dark .gantt_task_row.gantt_selected { background: #1e3a5f; }        /* 選取：帶藍的深色 */
+.dark .gantt_task_row.gantt_selected { background: #1e3a5f !important; }        /* 選取：帶藍的深色 */
+.dark .gantt_row.gantt_selected .gantt_tree_content,
+.dark .gantt_row.gantt_selected .gantt_cell { color: #f8fafc !important; }
 
 /* 假日整欄壓暗，不是壓亮 —— 淺色下它比白底深，深色下要比黑底再深 */
 .dark .gantt_task_cell.week_end { background: #020617; }
