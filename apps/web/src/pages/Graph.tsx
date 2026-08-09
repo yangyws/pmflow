@@ -367,21 +367,20 @@ function NodeProgressBar({ progress, accentColor }: { progress: number; accentCo
  * 下限是自動佈局算出來的尺寸：再小就會把裡面的任務蓋掉。
  */
 function BoxNodeView({ data }: NodeProps<TaskNode>) {
-  const meta = INQUIRY_META[data.inquiryState]
   const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
-  const [resizable, setResizable] = useState(false)
   return (
     <>
-      {data.isContainerMode && resizable && (
+      {data.isContainerMode && (
         <NodeResizer
           isVisible
           color={RESIZE_COLOR}
-          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : NODE_W}
-          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : NODE_H_FALLBACK}
+          handleStyle={{ width: 10, height: 10, borderRadius: 2 }}
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 384}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 288}
         />
       )}
       <div
-        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-start')}
+        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-start relative group/node')}
         style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
       >
         {/* 大項目框左右接點 100% 垂直置中於框體邊線中心 */}
@@ -390,9 +389,25 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
         
         <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
           <div className="shrink-0">
-            {/* 第一列：[收納按鈕] ＋ 編號 (MRG) ＋ 大項目徽章 ｜ 右側 [縮放按鈕 (僅收納開啟時才顯示)] */}
+            {/* 第一列：左側 [編號 (MRG) ＋ 大項目徽章] ｜ 右側 [模式切換按鈕 ＋ ✏️ 編輯按鈕] */}
             <div className="flex items-center justify-between gap-1">
               <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                  {data.ref}
+                </span>
+                <span
+                  className={cx(BADGE, 'shrink-0 border')}
+                  style={{
+                    backgroundColor: `${accentColor}18`,
+                    color: accentColor,
+                    borderColor: `${accentColor}40`,
+                  }}
+                >
+                  {getTypeName(data.taskType, data.typeName)}
+                </span>
+              </div>
+              
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -409,41 +424,19 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                 >
                   {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
                 </button>
-                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                  {data.ref}
-                </span>
-                <span
-                  className={cx(BADGE, 'shrink-0 border')}
-                  style={{
-                    backgroundColor: `${accentColor}18`,
-                    color: accentColor,
-                    borderColor: `${accentColor}40`,
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    data.onOpenEditDrawer?.(data.id)
                   }}
+                  className="w-6 h-6 rounded flex items-center justify-center text-xs opacity-80 hover:opacity-100 hover:scale-110 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:ring-2 hover:ring-blue-500 focus:opacity-100 focus:ring-2 focus:ring-blue-500 transition-all duration-150 cursor-pointer"
+                  title="編輯詳細內容"
+                  aria-label="編輯詳細內容"
                 >
-                  {getTypeName(data.taskType, data.typeName)}
-                </span>
+                  ✏️
+                </button>
               </div>
-              
-              {data.isContainerMode && (
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setResizable(r => !r)
-                    }}
-                    className={cx(
-                      'rounded px-1.5 py-0.5 text-[9px] font-medium transition-all cursor-pointer border',
-                      resizable
-                        ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
-                        : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                    )}
-                    title={resizable ? '點擊關閉縮放調整' : '點擊開啟【縮放調整】：可手動拖曳邊角調整框大小'}
-                  >
-                    {resizable ? '📐 縮放中' : '📐 縮放'}
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* 第二列：標題 (位置完全統一在標號正下方，固定第二行) */}
@@ -455,6 +448,16 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
             <NodeProgressBar progress={data.progress} accentColor={accentColor} />
           </div>
         </div>
+
+        {/* 右下角固定 ↘ 縮放控制按鈕 */}
+        {data.isContainerMode && (
+          <div
+            className="absolute bottom-1 right-1 z-20 flex items-center justify-center w-5 h-5 rounded bg-slate-200/90 hover:bg-slate-300 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-[11px] font-bold cursor-se-resize shadow border border-slate-300 dark:border-slate-600"
+            title="按住拖曳調整收納盒尺寸（手動縮放四邊不得小於盒內卡片邊界）"
+          >
+            ↘
+          </div>
+        )}
       </div>
     </>
   )
@@ -1456,6 +1459,17 @@ function GraphCanvas({
   useEffect(() => {
     localStorage.setItem('pmflow_graph_show_badges', String(showBadges))
   }, [showBadges])
+
+  // Esc 鍵一鍵解除所有選取 (Rule 1.2)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedIds({})
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   /** 開著時左鍵是拉框選取，不是平移畫面 */
   const [boxSelect, setBoxSelect] = useState(false)
   /** 按「重新排列」時 +1，把拖亂的節點放回自動佈局的位置 */
@@ -2170,7 +2184,7 @@ function GraphCanvas({
          */
         sourceHandle: scheduling && !simultaneous ? H_OUT : H_REL_OUT,
         targetHandle: scheduling && !simultaneous ? H_IN : H_REL_IN,
-        type: 'straight',
+        type: 'smoothstep',
         label: showEdgeLabels ? (LINK_CHIP[e.linkType] + lag) : undefined,
         labelShowBg: showEdgeLabels,
         labelBgStyle: {
