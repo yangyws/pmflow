@@ -60,9 +60,10 @@ const EMPTY_WEEKEND = 'fill-slate-50 dark:fill-slate-900'
 /** 超過負荷：狀態色，跟色階不共用；另外還有右上角那個三角形 */
 const OVER = 'fill-red-500 dark:fill-red-500'
 
-export default function WorkloadHeatmap({ data, metric }: {
+export default function WorkloadHeatmap({ data, metric, focusedUserId }: {
   data: WorkloadResult
   metric: DashboardMetric
+  focusedUserId?: string | null
 }) {
   const [asTable, setAsTable] = useState(false)
   const uid = useId()
@@ -98,8 +99,8 @@ export default function WorkloadHeatmap({ data, metric }: {
         <>
           <Legend hatchId={svgId(uid, 'legend-hatch')} />
           {asTable
-            ? <WorkloadTable data={data} metric={metric} />
-            : <Grid data={data} metric={metric} hatchId={svgId(uid, 'hatch')} />}
+            ? <WorkloadTable data={data} metric={metric} focusedUserId={focusedUserId} />
+            : <Grid data={data} metric={metric} hatchId={svgId(uid, 'hatch')} focusedUserId={focusedUserId} />}
 
           <div className="mt-3 space-y-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             <p>{T.dashboard.workload.capacity(fmt(data.capacity, metric))}</p>
@@ -166,10 +167,11 @@ function LeaveHatch({ id }: { id: string }) {
 }
 
 // ── 格子 ────────────────────────────────────────────────
-function Grid({ data, metric, hatchId }: {
+function Grid({ data, metric, hatchId, focusedUserId }: {
   data: WorkloadResult
   metric: DashboardMetric
   hatchId: string
+  focusedUserId?: string | null
 }) {
   const [hover, setHover] = useState<{ r: number; i: number } | null>(null)
   const clipId = svgId(useId(), 'name-clip')
@@ -232,15 +234,21 @@ function Grid({ data, metric, hatchId }: {
           <div className="flex h-[50px] items-end pb-2.5 px-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
             {T.dashboard.tableView.person}
           </div>
-          {rows.map((row) => (
-            <div key={row.userId ?? '__unassigned__'}
-                 style={{ height: ROW_H }}
-                 className={cx('flex items-center px-2 text-[12px] truncate', row.userId === null
-                   ? 'text-slate-500 italic dark:text-slate-400'
-                   : 'text-slate-700 font-medium dark:text-slate-200')}>
-              {rowLabel(row)}
-            </div>
-          ))}
+          {rows.map((row) => {
+            const isFocused = focusedUserId !== undefined && (row.userId === focusedUserId || (row.userId === null && focusedUserId === null))
+            return (
+              <div key={row.userId ?? '__unassigned__'}
+                   style={{ height: ROW_H }}
+                   className={cx('flex items-center px-2 text-[12px] truncate transition-colors',
+                     isFocused
+                       ? 'bg-blue-100 text-blue-900 font-bold dark:bg-blue-900/80 dark:text-blue-100 ring-2 ring-blue-500 z-10'
+                       : row.userId === null
+                         ? 'text-slate-500 italic dark:text-slate-400'
+                         : 'text-slate-700 font-medium dark:text-slate-200')}>
+                {rowLabel(row)}
+              </div>
+            )
+          })}
         </div>
 
         <svg width={gridW + SUM_W + PEAK_W} height={svgH} viewBox={`0 0 ${gridW + SUM_W + PEAK_W} ${svgH}`}
@@ -423,7 +431,7 @@ function CellTooltip({ row, cell, metric, capacity, x, y, boxWidth }: {
 }
 
 // ── 表格版 ──────────────────────────────────────────────
-function WorkloadTable({ data, metric }: { data: WorkloadResult; metric: DashboardMetric }) {
+function WorkloadTable({ data, metric, focusedUserId }: { data: WorkloadResult; metric: DashboardMetric; focusedUserId?: string | null }) {
   const L = T.dashboard.workload.legend
   const th = 'px-2 py-1.5 font-medium whitespace-nowrap'
   return (

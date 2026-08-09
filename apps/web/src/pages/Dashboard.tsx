@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Api, type DashboardMetric } from '../lib/api'
@@ -24,14 +24,41 @@ import { T } from '../strings'
  * 兩張圖各自打自己的端點，不共用一次查詢：熱圖要的是「每人每天」，
  * 燃盡圖要的是「每天一個總數」，合在一起算會讓其中一張等另一張。
  */
-export default function Dashboard({ projectId }: {
+export default function Dashboard({ projectId, onOpenTask, focusedTaskId }: {
   projectId: string
   /** 之後要從熱圖點進單張任務時會用到，先留著 */
   onOpenTask: (id: string) => void
+  focusedTaskId?: string | null
 }) {
   const [metric, setMetric] = useState<DashboardMetric>('count')
   /** null = 還沒自己選過，用後端的預設區間 */
   const [range, setRange] = useState<{ from: string; to: string } | null>(null)
+
+  const { data: taskData } = useQuery({
+    queryKey: ['tasks', projectId],
+    queryFn: () => Api.tasks(projectId),
+    enabled: !!projectId,
+  })
+
+  const focusedUserId = useMemo(() => {
+    if (!focusedTaskId || !taskData?.tasks) return undefined
+    const targetTask = taskData.tasks.find(t => t.id === focusedTaskId)
+    if (targetTask) return targetTask.assigneeId ?? null
+
+    const kids = new Set<string>([focusedTaskId])
+    let added = true
+    while (added) {
+      added = false
+      for (const t of taskData.tasks) {
+        if (t.parentId && kids.has(t.parentId) && !kids.has(t.id)) {
+          kids.add(t.id)
+          added = true
+        }
+      }
+    }
+    const assignees = taskData.tasks.filter(t => kids.has(t.id) && t.assigneeId).map(t => t.assigneeId!)
+    return assignees[0] ?? null
+  }, [focusedTaskId, taskData?.tasks])
 
   // 反過來填（起比訖晚）就對調，不然兩張圖會一起空白，而人看不出是自己填反了
   const sent = range
@@ -118,7 +145,7 @@ export default function Dashboard({ projectId }: {
           {d => <BurndownChart data={d} metric={metric} />}
         </Panel>
         <Panel query={workload}>
-          {d => <WorkloadHeatmap data={d} metric={metric} />}
+          {d => <WorkloadHeatmap data={d} metric={metric} focusedUserId={focusedUserId} />}
         </Panel>
       </div>
     </div>

@@ -528,7 +528,7 @@ function ProjectWorkspace({
         onSelectEpic={id => {
           setEpicId(id)
           setOpenTask(null)
-          setFocusedTaskId(null)
+          setFocusedTaskId(id)
         }}
         view={view}
         selectedTaskId={focusedTaskId ?? openTask}
@@ -672,18 +672,19 @@ function ProjectWorkspace({
                 */}
               {view === 'dashboard' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingDashboard} />}>
-                  <DashboardView projectId={projectId} onOpenTask={handleTaskSelect} />
+                  <DashboardView projectId={projectId} onOpenTask={handleTaskSelect} focusedTaskId={focusedTaskId ?? epicId} />
                 </Suspense>
               )}
               {view === 'inquiry' && (
-                <InquiryBoard projectId={projectId} workspaceId={workspaceId}
+                <InquiryBoard projectId={projectId} workspaceId={workspaceId} tasks={tasks}
                               onOpenTask={handleTaskSelect} onEditTask={handleTaskEdit}
-                              focusedTaskId={focusedTaskId} />
+                              focusedTaskId={focusedTaskId ?? epicId} />
               )}
               {/* 頁籤上的成員頁：看人手上有什麼、以前經手過什麼 */}
               {view === 'members' && (
                 <MembersView projectId={projectId} workspaceId={workspaceId}
-                             onOpenTask={handleTaskSelect} />
+                             onOpenTask={handleTaskSelect} onEditTask={handleTaskEdit}
+                             focusedTaskId={focusedTaskId ?? epicId} />
               )}
               {/* 頭像選單進來的成員管理：改角色、核准加入申請 */}
               {view === 'memberAdmin' && (

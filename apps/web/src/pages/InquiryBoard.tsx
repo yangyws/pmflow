@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Api } from '../lib/api'
+import { Api, type Task } from '../lib/api'
 import { Spinner, Empty, cx } from '../components/ui'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { T } from '../strings'
@@ -13,9 +13,10 @@ import { T } from '../strings'
  * 所以跟行事曆一樣「拿回工作區的再依專案濾」；查詢的 key 也跟行事曆一致，
  * 兩個畫面共用同一份快取，不會各抓一次。
  */
-export default function InquiryBoard({ workspaceId, projectId, onOpenTask, onEditTask, focusedTaskId }: {
+export default function InquiryBoard({ workspaceId, projectId, tasks, onOpenTask, onEditTask, focusedTaskId }: {
   workspaceId: string
   projectId: string
+  tasks?: Task[]
   /** 點卡片 → 在右邊打開那張任務的詳情 */
   onOpenTask: (taskId: string) => void
   onEditTask?: (taskId: string) => void
@@ -32,6 +33,24 @@ export default function InquiryBoard({ workspaceId, projectId, onOpenTask, onEdi
     () => (data?.inquiries ?? []).filter(i => i.projectId === projectId),
     [data, projectId]
   )
+
+  const matchingTaskIds = useMemo(() => {
+    if (!focusedTaskId) return new Set<string>()
+    const set = new Set<string>([focusedTaskId])
+    if (tasks?.length) {
+      let added = true
+      while (added) {
+        added = false
+        for (const t of tasks) {
+          if (t.parentId && set.has(t.parentId) && !set.has(t.id)) {
+            set.add(t.id)
+            added = true
+          }
+        }
+      }
+    }
+    return set
+  }, [focusedTaskId, tasks])
 
   // 欄名直接用徽章那組字：同一個狀態在看板與卡片上要是同一個說法
   const cols = useMemo(() => [
@@ -93,11 +112,11 @@ export default function InquiryBoard({ workspaceId, projectId, onOpenTask, onEdi
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {list.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={i.taskId === focusedTaskId} />)}
+                        {list.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={Boolean(focusedTaskId && (i.taskId === focusedTaskId || i.id === focusedTaskId || matchingTaskIds.has(i.taskId)))} />)}
                       </div>
                     </div>
                   ))
-                : col.items.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={i.taskId === focusedTaskId} />)}
+                : col.items.map(i => <InquiryCard key={i.id} item={i} onOpen={onOpenTask} onEdit={onEditTask} isFocused={Boolean(focusedTaskId && (i.taskId === focusedTaskId || i.id === focusedTaskId || matchingTaskIds.has(i.taskId)))} />)}
             </div>
           </div>
         ))}

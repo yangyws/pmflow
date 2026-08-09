@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Api } from '../lib/api'
@@ -22,7 +22,7 @@ import { T } from '../strings'
  * 授權在後端：同專案的人都看得到，不要求管理者 —— 這是「誰在做什麼」，
  * 不是管理功能。
  */
-export default function MembersView({ projectId, onOpenTask }: {
+export default function MembersView({ projectId, onOpenTask, onEditTask, focusedTaskId }: {
   projectId: string
   /**
    * 頁籤那一排統一把工作區帶進來。這一頁用不到（成員與任務都只認專案），
@@ -31,6 +31,8 @@ export default function MembersView({ projectId, onOpenTask }: {
   workspaceId: string
   /** 點一列任務 → 在右邊打開那張任務的詳情 */
   onOpenTask: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  focusedTaskId?: string | null
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -67,6 +69,30 @@ export default function MembersView({ projectId, onOpenTask }: {
     queryFn: () => Api.tasks(projectId),
     enabled: !!projectId,
   })
+
+  useEffect(() => {
+    if (!focusedTaskId || !taskData?.tasks) return
+    const target = taskData.tasks.find(t => t.id === focusedTaskId)
+    if (target) {
+      setSelected(target.assigneeId ?? 'UNASSIGNED')
+    } else {
+      const kids = new Set<string>([focusedTaskId])
+      let added = true
+      while (added) {
+        added = false
+        for (const t of taskData.tasks) {
+          if (t.parentId && kids.has(t.parentId) && !kids.has(t.id)) {
+            kids.add(t.id)
+            added = true
+          }
+        }
+      }
+      const assignees = taskData.tasks.filter(t => kids.has(t.id)).map(t => t.assigneeId ?? 'UNASSIGNED')
+      if (assignees.length > 0) {
+        setSelected(assignees[0])
+      }
+    }
+  }, [focusedTaskId, taskData?.tasks])
   const countOf = useMemo(() => {
     const n = new Map<string, number>()
     for (const t of taskData?.tasks ?? []) {
@@ -184,12 +210,12 @@ export default function MembersView({ projectId, onOpenTask }: {
       {/* ── 右：他手上與經手過的任務 / 未分派事件 ── */}
       <div className="min-w-0 flex-1 overflow-auto p-4">
         {selected === 'UNASSIGNED' ? (
-          <UnassignedTasks projectId={projectId} types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} />
+          <UnassignedTasks projectId={projectId} types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} onEditTask={onEditTask} focusedTaskId={focusedTaskId} />
         ) : !picked ? (
           <Empty>{T.member.pickHint}</Empty>
         ) : (
           <MemberTasks key={picked.id} projectId={projectId} member={picked}
-                       types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} />
+                       types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} onEditTask={onEditTask} focusedTaskId={focusedTaskId} />
         )}
       </div>
     </div>
@@ -198,13 +224,15 @@ export default function MembersView({ projectId, onOpenTask }: {
 
 type Member = NonNullable<Awaited<ReturnType<typeof Api.members>>['members'][number]>
 
-function MemberTasks({ projectId, member, types, statusOf, onOpenTask }: {
+function MemberTasks({ projectId, member, types, statusOf, onOpenTask, onEditTask, focusedTaskId }: {
   projectId: string
   member: Member
   /** 這個專案自己的任務種類。`undefined` 是「專案還沒讀到」，不是「一種都沒有」 */
   types: ProjectParam[] | undefined
   statusOf: (key: string) => TaskStatus | undefined
   onOpenTask: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  focusedTaskId?: string | null
 }) {
   /**
    * 快取鍵裡的 id 是**被看的那個人**，不是登入的人 ——
@@ -261,7 +289,7 @@ function MemberTasks({ projectId, member, types, statusOf, onOpenTask }: {
           <Section title={T.member.current.title} hint={T.member.current.hint}
                    count={data?.current.length ?? 0}>
             {data?.current.length
-              ? <TaskTable groups={currentGroups} statusOf={statusOf} onOpenTask={onOpenTask}
+              ? <TaskTable groups={currentGroups} statusOf={statusOf} onOpenTask={onOpenTask} onEditTask={onEditTask} focusedTaskId={focusedTaskId}
                            {...toggler('current')} />
               : <Empty>{T.member.current.empty}</Empty>}
           </Section>
@@ -270,7 +298,7 @@ function MemberTasks({ projectId, member, types, statusOf, onOpenTask }: {
                    count={data?.past.length ?? 0}>
             {data?.past.length
               ? <TaskTable
-                  groups={pastGroups} statusOf={statusOf} onOpenTask={onOpenTask}
+                  groups={pastGroups} statusOf={statusOf} onOpenTask={onOpenTask} onEditTask={onEditTask} focusedTaskId={focusedTaskId}
                   {...toggler('past')}
                   extra={t => <Handover task={t as PastMemberTask} />} />
               : <Empty>{T.member.past.empty}</Empty>}
@@ -350,10 +378,12 @@ function groupByType(tasks: MemberTask[], types: ProjectParam[]): TypeGroup[] {
  * 而共用同一張表格的欄寬，收合到剩兩組時各欄也還對得齊。
  * 每一列不再標種類徽章 —— 組標題已經寫著同一個名字了。
  */
-function TaskTable({ groups, statusOf, onOpenTask, isCollapsed, onToggle, extra }: {
+function TaskTable({ groups, statusOf, onOpenTask, onEditTask, focusedTaskId, isCollapsed, onToggle, extra }: {
   groups: TypeGroup[]
   statusOf: (key: string) => TaskStatus | undefined
   onOpenTask: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  focusedTaskId?: string | null
   isCollapsed: (key: string) => boolean
   onToggle: (key: string) => void
   extra?: (t: MemberTask) => ReactNode
@@ -409,12 +439,23 @@ function TaskTable({ groups, statusOf, onOpenTask, isCollapsed, onToggle, extra 
 
             {!off && g.tasks.map(t => {
               const st = statusOf(t.statusKey)
+              const isFocused = t.id === focusedTaskId
               return (
                 <tr
                   key={t.id}
+                  ref={el => {
+                    if (el && isFocused) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }
+                  }}
                   onClick={() => onOpenTask(t.id)}
-                  className="cursor-pointer border-t border-slate-100 align-top
-                             hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                  onDoubleClick={() => onEditTask?.(t.id)}
+                  className={cx(
+                    'cursor-pointer border-t align-top transition-colors',
+                    isFocused
+                      ? 'bg-blue-50/90 dark:bg-blue-900/40 text-blue-950 font-medium border-blue-200 dark:border-blue-800'
+                      : 'border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800'
+                  )}
                 >
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -488,11 +529,13 @@ function Handover({ task }: { task: PastMemberTask }) {
 }
 
 /** 未分派任務展示區塊 (Ref: CR-101) */
-function UnassignedTasks({ projectId, types, statusOf, onOpenTask }: {
+function UnassignedTasks({ projectId, types, statusOf, onOpenTask, onEditTask, focusedTaskId }: {
   projectId: string
   types: ProjectParam[] | undefined
   statusOf: (key: string) => TaskStatus | undefined
   onOpenTask: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  focusedTaskId?: string | null
 }) {
   const { data: taskData, isLoading } = useQuery({
     queryKey: ['tasks', projectId],
@@ -542,7 +585,7 @@ function UnassignedTasks({ projectId, types, statusOf, onOpenTask }: {
         <div className="space-y-6">
           <Section title="未分派任務清單" hint="點擊列即可指定負責人" count={unassignedTasks.length}>
             {unassignedTasks.length
-              ? <TaskTable groups={groups} statusOf={statusOf} onOpenTask={onOpenTask} {...toggler('current')} />
+              ? <TaskTable groups={groups} statusOf={statusOf} onOpenTask={onOpenTask} onEditTask={onEditTask} focusedTaskId={focusedTaskId} {...toggler('current')} />
               : <Empty>目前沒有未分派的任務，所有任務皆已指定負責人。</Empty>}
           </Section>
         </div>
