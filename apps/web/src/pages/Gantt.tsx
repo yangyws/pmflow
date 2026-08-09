@@ -150,23 +150,33 @@ export default function GanttView({
     if (!g || !tasks.length) return
 
     const critical = new Set(sched?.criticalPath ?? [])
-    // 父任務進度用彙總值，跟清單視圖同一套算法，兩邊數字才會一致
+    // 父任務進度與起迄日用彙總值 (rollup)，確保主事件與大項目能正確顯示於甘特圖中
     const rolled = rollup(tasks)
+    const kidsSet = new Set(tasks.map(t => t.parentId).filter(Boolean))
+
     const data = tasks
-      .filter(t => t.startDate && t.dueDate)
-      .map(t => ({
-        id: t.id,
-        text: `${t.ref} ${t.title}`,
-        start_date: t.startDate!.slice(0, 10),
-        // dhtmlx 的 end_date 是「不含」的，我們的 dueDate 是含尾，所以要 +1 天
-        end_date: addDay(t.dueDate!.slice(0, 10)),
-        progress: (rolled.get(t.id)?.progress ?? t.progress ?? 0) / 100,
-        parent: t.parentId ?? 0,
-        type: t.type === 'MILESTONE' ? 'milestone' : undefined,
-        critical: critical.has(t.id),
-        inquiry: t.inquiryState,
-        open: true,
-      }))
+      .map(t => {
+        const r = rolled.get(t.id)
+        const startDate = r?.startDate ?? t.startDate
+        const dueDate = r?.dueDate ?? t.dueDate
+        if (!startDate || !dueDate) return null
+
+        const isParent = kidsSet.has(t.id) || t.type === 'EPIC'
+        return {
+          id: t.id,
+          text: `${t.ref} ${t.title}`,
+          start_date: startDate.slice(0, 10),
+          // dhtmlx 的 end_date 是「不含」的，我們的 dueDate 是含尾，所以要 +1 天
+          end_date: addDay(dueDate.slice(0, 10)),
+          progress: (r?.progress ?? t.progress ?? 0) / 100,
+          parent: t.parentId ?? 0,
+          type: t.type === 'MILESTONE' ? 'milestone' : isParent ? 'project' : undefined,
+          critical: critical.has(t.id),
+          inquiry: t.inquiryState,
+          open: true,
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
 
     // 只把排程類依賴畫成連線；語意類（RELATES / BLOCKS…）不影響日期，
     // 畫在甘特上只會變成雜訊，改在任務詳情頁呈現。
