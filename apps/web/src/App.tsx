@@ -506,8 +506,12 @@ function ProjectWorkspace({
   }, [tasks, epicId])
 
   const epic = epicId ? tasks.find(t => t.id === epicId) : undefined
-
   const overdue = visible.filter(t => t.inquiryState === 'OVERDUE').length
+
+  const handleTaskOpen = (id: string) => {
+    setFocusedTaskId(id)
+    setOpenTask(id)
+  }
 
   return (
     <div className="flex h-full">
@@ -521,6 +525,7 @@ function ProjectWorkspace({
           setOpenTask(null)
           setFocusedTaskId(null)
         }}
+        view={view}
         selectedTaskId={focusedTaskId ?? openTask}
         onOpenTask={id => {
           setFocusedTaskId(id)
@@ -530,10 +535,7 @@ function ProjectWorkspace({
             setOpenTask(id)
           }
         }}
-        onOpenEditTask={id => {
-          setFocusedTaskId(id)
-          setOpenTask(id)
-        }}
+        onOpenEditTask={handleTaskOpen}
         onSwitchProject={onSwitchProject}
       />
 
@@ -640,27 +642,27 @@ function ProjectWorkspace({
             <>
               {view === 'list' && (
                 <ListView projectId={projectId} tasks={visible} parentForNew={epicId}
-                          statuses={project?.statuses ?? []} onOpen={setOpenTask}
+                          statuses={project?.statuses ?? []} onOpen={handleTaskOpen}
                           focusedTaskId={focusedTaskId} />
               )}
               {view === 'board' && (
                 <Board projectId={projectId} tasks={visible}
-                       statuses={project?.statuses ?? []} onOpen={setOpenTask} />
+                       statuses={project?.statuses ?? []} onOpen={handleTaskOpen} />
               )}
               {view === 'calendar' && (
                 <CalendarView projectId={projectId} workspaceId={workspaceId}
                               tasks={visible} statuses={project?.statuses ?? []}
-                              onOpen={setOpenTask} />
+                              onOpen={handleTaskOpen} />
               )}
               {view === 'gantt' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
-                  <GanttView projectId={projectId} tasks={visible} onOpen={setOpenTask} focusedTaskId={focusedTaskId} />
+                  <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskOpen} focusedTaskId={focusedTaskId} />
                 </Suspense>
               )}
               {view === 'graph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <GraphView projectId={projectId} tasks={visible}
-                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={setOpenTask}
+                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={handleTaskOpen}
                              focusedTaskId={focusedTaskId} />
                 </Suspense>
               )}

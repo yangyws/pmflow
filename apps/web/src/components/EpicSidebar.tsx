@@ -152,7 +152,7 @@ function rememberCollapsed(v: boolean): void {
 }
 
 export function EpicSidebar({
-  project, tasks, types = [], selectedEpicId, onSelectEpic, selectedTaskId, onOpenTask, onOpenEditTask,
+  project, tasks, types = [], selectedEpicId, onSelectEpic, view, selectedTaskId, onOpenTask, onOpenEditTask,
   onSwitchProject,
 }: {
   project?: Project
@@ -166,6 +166,8 @@ export function EpicSidebar({
   /** null = 全部任務（不篩選） */
   selectedEpicId: string | null
   onSelectEpic: (id: string | null) => void
+  /** 目前右側運行的頁籤視角 */
+  view?: string
   /** 目前在右邊顯示詳情的任務 */
   selectedTaskId: string | null
   /** 點小項目 → 在右邊顯示那張任務 */
@@ -383,31 +385,31 @@ export function EpicSidebar({
   /** 一列任務的問題數：底下的，加上自己（如果它本身就是一張問題） */
   const bugCount = (t: Task) => bugsUnder(t.id) + (t.type === 'BUG' ? 1 : 0)
 
-  // 右邊正在看的任務，它所屬的大項目自動展開，不然使用者會找不到自己在哪
-  const autoOpen = useMemo(() => {
-    if (!selectedTaskId) return null
+  // 當右側選擇新任務時，自動遞迴展開該任務的所有祖先父節點，確保在左側側欄中完好呈現在視野中
+  useEffect(() => {
+    if (!selectedTaskId) return
+    const parentsToExpand = new Set<string>()
     let cur = tasks.find(t => t.id === selectedTaskId)
     const guard = new Set<string>()
     while (cur?.parentId && !guard.has(cur.id)) {
       guard.add(cur.id)
-      const parent = tasks.find(t => t.id === cur!.parentId)
-      if (!parent) break
-      cur = parent
+      parentsToExpand.add(cur.parentId)
+      cur = tasks.find(t => t.id === cur!.parentId)
     }
-    return cur?.id ?? null
-  }, [selectedTaskId, tasks])
-
-  // 當選擇新任務時，將其大項目自動寫入 expanded 集合，但不強制覆蓋使用者的手動折疊
-  useEffect(() => {
-    if (autoOpen) {
+    if (parentsToExpand.size > 0) {
       setExpanded(prev => {
-        if (prev.has(autoOpen)) return prev
+        let changed = false
         const next = new Set(prev)
-        next.add(autoOpen)
-        return next
+        for (const pId of parentsToExpand) {
+          if (!next.has(pId)) {
+            next.add(pId)
+            changed = true
+          }
+        }
+        return changed ? next : prev
       })
     }
-  }, [autoOpen])
+  }, [selectedTaskId, tasks])
 
   function toggle(id: string) {
     setExpanded(prev => {
@@ -543,7 +545,6 @@ export function EpicSidebar({
               inquiriesIn={inquiriesIn}
               types={typeList}
               expanded={expanded}
-              autoOpen={autoOpen}
               toggle={toggle}
               expand={expand}
               selectedEpicId={selectedEpicId}
@@ -623,7 +624,7 @@ export function EpicSidebar({
  */
 function TreeNode({
   task, depth, projectId, childrenOf, stat, bugsUnder, overdueIn, inquiriesIn, types,
-  expanded, autoOpen, toggle, expand, selectedEpicId, selectedTaskId, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
+  expanded, toggle, expand, selectedEpicId, selectedTaskId, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
   depth: number
@@ -637,7 +638,6 @@ function TreeNode({
   overdueIn: (id: string) => number
   inquiriesIn: (id: string) => number
   expanded: Set<string>
-  autoOpen: string | null
   toggle: (id: string) => void
   /** 新增完子任務要把這一列展開，不然看不到剛剛建的那張 */
   expand: (id: string) => void
@@ -918,7 +918,6 @@ function TreeNode({
           inquiriesIn={inquiriesIn}
           types={types}
           expanded={expanded}
-          autoOpen={autoOpen}
           toggle={toggle}
           expand={expand}
           selectedEpicId={selectedEpicId}
