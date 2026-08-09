@@ -198,13 +198,7 @@ export default function GanttView({
               </>}
         </div>
       )}
-      {sched && sched.criticalPath.length > 0 && (
-        <div className="border-b border-slate-200 bg-white px-4 py-1.5 text-xs text-slate-500
-                        dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          <span className="mr-1 inline-block h-2 w-4 rounded-sm bg-red-600 align-middle" />
-          {G.criticalPath(sched.criticalPath.length)}
-        </div>
-      )}
+      {/* Ref: CR-100 - 依需求移除頂部關鍵路徑提示列 */}
       <div ref={hostRef} className="min-h-0 flex-1" />
     </div>
   )
