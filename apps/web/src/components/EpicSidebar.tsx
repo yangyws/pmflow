@@ -683,9 +683,7 @@ function TreeNode({
   const kindName = kind?.name ?? task.type
   const kindColor = kind?.color ?? DEFAULT_TYPE_COLORS[task.type] ?? '#94a3b8'
   const isRoot = depth === 0
-  const active = isRoot
-    ? selectedEpicId === task.id && !selectedTaskId
-    : task.id === selectedTaskId
+  const active = task.id === selectedTaskId || (isRoot && selectedEpicId === task.id)
 
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
@@ -738,8 +736,8 @@ function TreeNode({
 
   return (
     <div className={isRoot ? 'mb-0.5' : undefined}>
-      <div className={cx('group/row flex items-start rounded-md',
-        active ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800',
+      <div className={cx('group/row flex items-start rounded-md transition-colors',
+        active ? 'bg-blue-100/80 dark:bg-blue-900/60 ring-1 ring-blue-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800',
         hasUnread && 'pmflow-flash')}>
 
         {/* 沒有子項的列一樣佔一格箭頭的寬度，不然同一層的文字會左右參差 */}
@@ -783,9 +781,7 @@ function TreeNode({
             <span className={cx('min-w-0 flex-1 truncate',
               isRoot ? 'text-sm' : 'text-[13px]',
               active
-                ? isRoot
-                  ? 'font-medium text-slate-800 dark:text-slate-100'
-                  : 'font-medium text-blue-700 dark:text-blue-300'
+                ? 'font-semibold text-blue-900 dark:text-blue-100'
                 : isRoot
                   ? 'text-slate-700 dark:text-slate-300'
                   : 'text-slate-500 dark:text-slate-400'
