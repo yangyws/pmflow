@@ -724,6 +724,7 @@ function layout(
     const cached = size.get(id)
     if (cached) return cached
     const kids = kidsOf.get(id) ?? []
+    const isContainerBox = boxes.has(id)
     let box: Box
     const snap48 = (v: number) => Math.ceil(v / 48) * 48
     if (kids.length) {
@@ -738,9 +739,11 @@ function layout(
         }
       }
       box = {
-        w: Math.max(snap48(maxRight + BOX_PAD * 2), LEAF_W + BOX_PAD * 2),
-        h: Math.max(snap48(maxBottom + BOX_HEADER + BOX_PAD * 2), LEAF_H + BOX_HEADER),
+        w: Math.max(snap48(maxRight + BOX_PAD * 2), 384),
+        h: Math.max(snap48(maxBottom + BOX_HEADER + BOX_PAD * 2), 288),
       }
+    } else if (isContainerBox) {
+      box = { w: 384, h: 288 }
     } else {
       box = { w: LEAF_W, h: LEAF_H }
     }
@@ -806,7 +809,7 @@ function layout(
         maxRight = Math.max(maxRight, staticPos.x + w)
       }
 
-      return { w: Math.max(maxRight, LEAF_W), h: maxBottom }
+      return { w: Math.max(maxRight, 384), h: Math.max(maxBottom, 288) }
     }
 
     const colGap = isInsideBox ? 24 : COL_GAP - LEAF_W
