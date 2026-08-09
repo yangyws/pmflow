@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-098` | 2026-08-09 | [甘特圖：區分左右區塊滾輪行為（左側清單控制上下捲動，右側時間軸進度條控制左右捲動）](#cr-098) | `Gantt.tsx` | 已驗證 |
 | `CR-097` | 2026-08-09 | [全系統：重構所有原生 alert/confirm 為自訂 UI Modal 提示窗，達成設計風格 100% 統一](#cr-097) | `Graph.tsx`, `Gantt.tsx`, `Calendar.tsx`, `ProjectSettings.tsx`, `MembersPanel.tsx`, `AdminPanel.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-096` | 2026-08-09 | [關聯圖：關閉收納框內部事件卡片碰撞互斥避讓機制 (resolveCollisionPush)，實現框內自由擺放](#cr-096) | `Graph.tsx` | 已驗證 |
 | `CR-095` | 2026-08-09 | [關聯圖：重構 BoxNodeView 與 TaskNodeView 為 justify-start，徹底解決切換收納模式時內部資訊上下位移 Bug](#cr-095) | `Graph.tsx` | 已驗證 |
@@ -155,6 +156,12 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-098"></a>CR-098 (2026-08-09) — 甘特圖：區分左右區塊滾輪行為（左側清單控制上下捲動，右側時間軸進度條控制左右捲動）
+
+1. **區分左右滾輪區域**：於 `Gantt.tsx` 的 `handleWheel` 事件中新增 `target?.closest('.gantt_grid')` 判斷。
+2. **左側清單上下捲動**：游標懸停在左側任務清單表格時，保持瀏覽器與甘特圖原生的垂直上下捲動。
+3. **右側進度條左右捲動**：游標懸停在右側時間軸與進度條長條圖時，攔截滾輪事件並調用 `scrollTo` 控制 `x` 軸左右水平捲動。
 
 ### <a id="cr-097"></a>CR-097 (2026-08-09) — 全系統：重構所有原生 alert/confirm 為自訂 UI Modal 提示窗，達成設計風格 100% 統一
 

@@ -169,9 +169,13 @@ export default function GanttView({
       return false
     }, {})
 
+    // Ref: CR-098 - 區分甘特圖左右區塊滾輪：左側清單上下捲動，右側進度條左右捲動
     const hostEl = hostRef.current
     const handleWheel = (e: WheelEvent) => {
       if (!ganttRef.current) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('.gantt_grid')) return // 左側任務清單維持原生上下捲動
+
       const delta = e.deltaY || e.deltaX
       if (delta && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
         e.preventDefault()
