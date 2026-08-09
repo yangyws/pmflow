@@ -12,10 +12,10 @@ import { T } from '../strings'
 
 /** 清單／樹狀視圖：依 parentId 展開階層（上下關聯） */
 export default function ListView({
-  projectId, tasks, statuses, onOpen, parentForNew, focusedTaskId,
+  projectId, tasks, statuses, onOpen, onEdit, parentForNew, focusedTaskId,
 }: {
   projectId: string
-  tasks: Task[]; statuses: TaskStatus[]; onOpen: (id: string) => void
+  tasks: Task[]; statuses: TaskStatus[]; onOpen: (id: string) => void; onEdit?: (id: string) => void
   /** 側欄選了大項目時，最下面那一列新增的任務要掛在它底下 */
   parentForNew?: string | null
   focusedTaskId?: string | null
@@ -223,6 +223,10 @@ export default function ListView({
                   onClick={() => {
                     if (hasUnread) markTaskRead(t.id)
                     onOpen(t.id)
+                  }}
+                  onDoubleClick={() => {
+                    if (hasUnread) markTaskRead(t.id)
+                    if (onEdit) onEdit(t.id)
                   }}
                   className={cx(
                     'group cursor-pointer border-t border-slate-100 transition-colors dark:border-slate-800',
