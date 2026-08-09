@@ -58,7 +58,7 @@ const GROUP_BY_LABEL: Record<GroupBy, string> = {
 const NO_ASSIGNEE = '__unassigned__'
 
 export default function WeekView({
-  projectId, tasks, statuses, types, onOpen,
+  projectId, tasks, statuses, types, onOpen, extraHeaderLeft,
 }: {
   /** 只拿來當收合偏好的鍵 —— 狀態是每個專案自己一份，鍵不分專案會互相蓋掉 */
   projectId: string
@@ -67,6 +67,8 @@ export default function WeekView({
   /** 這個專案自己的任務類型（0011_project_parameters.sql）。名稱與顏色都是他自己設的 */
   types: ProjectParam[]
   onOpen: (taskId: string) => void
+  /** 工具列最左側額外注入元素（如行事曆之 [月視角 | 週視角] 切換鈕） */
+  extraHeaderLeft?: React.ReactNode
 }) {
   const today = todayYmd()
   /** 目前看的是哪一週，存的是那一週的星期日 */
@@ -270,6 +272,7 @@ export default function WeekView({
       {/* ── 工具列 ── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
                       dark:border-slate-700 dark:bg-slate-900">
+        {extraHeaderLeft}
         <Button variant="ghost" onClick={() => { setSelectedDay(null); go(-1) }} aria-label={W.prevWeek}>‹</Button>
         <div className="min-w-[8rem] text-center">
           <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
