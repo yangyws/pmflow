@@ -1283,18 +1283,21 @@ function layout(
     }
   }
 
-  // ── 依據內部對齊後的節點位置，外框僅動態重新計算並擴充框體大小 (`size`) ──
-  // 座標 100% 以底圖網點為主，外框僅改變寬高以包覆內部所有對齊後的節點
+  // ── 依據內部對齊後的節點靜態位置計算外框大小 (`size`) ──
+  // 不計入即時拖曳座標 (draggedOffsets)，確保拖曳卡片時框體尺寸絕對固定，卡片往右/向下拖移可順暢移出框外
   for (const bId of boxes) {
     const kids = kidsOf.get(bId) ?? []
     if (!kids.length) continue
     let maxRight = 0
     let maxBottom = 0
     for (const k of kids) {
+      const dOffset = draggedOffsets?.[k]
       const r = rel.get(k)
       if (r) {
-        maxRight = Math.max(maxRight, r.x + getNodeW(k))
-        maxBottom = Math.max(maxBottom, r.y + getNodeH(k))
+        const staticX = dOffset ? r.x - dOffset.x : r.x
+        const staticY = dOffset ? r.y - dOffset.y : r.y
+        maxRight = Math.max(maxRight, staticX + getNodeW(k))
+        maxBottom = Math.max(maxBottom, staticY + getNodeH(k))
       }
     }
     const snap48 = (v: number) => Math.ceil(v / 48) * 48
@@ -2549,8 +2552,11 @@ function GraphCanvas({
         const relY = nAbs.y - bAbs.y
 
         // 當卡片中心點超越右側/下側/左側/上側實體邊界時，判定脫離收納框
-        const inBoxX = relX >= -24 && (relX + nodeW / 2) <= bW
-        const inBoxY = relY >= 0 && (relY + nodeH / 2) <= bH
+        const cardCenterX = relX + nodeW / 2
+        const cardCenterY = relY + nodeH / 2
+
+        const inBoxX = relX >= -12 && cardCenterX <= (bW - 12)
+        const inBoxY = relY >= 12 && cardCenterY <= (bH - 12)
 
         if (inBoxX && inBoxY) {
           newParentId = currentParentId
