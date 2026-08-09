@@ -2517,40 +2517,52 @@ function GraphCanvas({
 
     let newParentId: string | null = null
 
-    for (const bNode of boxes) {
-      const isCurrent = bNode.id === currentParentId
-      const bAbs = getAbs(bNode.id)
-      const bStyle = styledNodes.find(s => s.id === bNode.id)
-      const bW = bStyle?.style?.width
-        ? Number(bStyle.style.width)
-        : (resized[bNode.id]?.width ?? measured[bNode.id]?.width ?? layoutSize.get(bNode.id)?.w ?? 384)
-      const bH = even(
-        bStyle?.style?.height
-          ? Number(bStyle.style.height)
-          : (resized[bNode.id]?.height ?? measured[bNode.id]?.height ?? layoutSize.get(bNode.id)?.h ?? 288)
-      )
+    // 1. 若卡片目前隶屬某收納框 (currentParentId)，優先檢查是否依然在該框內部範圍
+    if (currentParentId) {
+      const bNode = allNodes.find(n => n.id === currentParentId)
+      if (bNode) {
+        const bAbs = getAbs(bNode.id)
+        const bStyle = styledNodes.find(s => s.id === bNode.id)
+        const bW = typeof bStyle?.style?.width === 'number'
+          ? bStyle.style.width
+          : parseFloat(String(bStyle?.style?.width ?? '384')) || (layoutSize.get(bNode.id)?.w ?? 384)
+        const bH = typeof bStyle?.style?.height === 'number'
+          ? bStyle.style.height
+          : parseFloat(String(bStyle?.style?.height ?? '288')) || (layoutSize.get(bNode.id)?.h ?? 288)
 
-      if (isCurrent) {
-        // Ref: CR-084 — 當前所隸屬之收納框：只要卡片拖移超越上、下、左、右任一實體邊界 (24px 容錯)，即判定脫離
         const relX = nAbs.x - bAbs.x
         const relY = nAbs.y - bAbs.y
-        if (
-          relX >= -24 &&
-          relX + nodeW <= bW + 24 &&
-          relY >= -24 &&
-          relY + nodeH <= bH + 24
-        ) {
-          newParentId = bNode.id
-          break
+
+        // 當卡片中心點超越右側/下側/左側/上側實體邊界時，判定脫離收納框
+        const inBoxX = relX >= -24 && (relX + nodeW / 2) <= bW
+        const inBoxY = relY >= 0 && (relY + nodeH / 2) <= bH
+
+        if (inBoxX && inBoxY) {
+          newParentId = currentParentId
         }
-      } else {
-        // 其它收納框：當卡片中心落入該框範圍 (48px 吸附區域) 時判定移入
-        const MARGIN = 48
+      }
+    }
+
+    // 2. 若卡片已脫離原收納框 (或原本無父層)，檢查是否放置於【其它】收納框範圍內
+    if (!newParentId) {
+      const otherBoxes = allNodes.filter(
+        n => n.id !== nId && n.id !== currentParentId && (containerBoxIds.has(n.id) || n.type === 'box')
+      )
+      for (const bNode of otherBoxes) {
+        const bAbs = getAbs(bNode.id)
+        const bStyle = styledNodes.find(s => s.id === bNode.id)
+        const bW = typeof bStyle?.style?.width === 'number'
+          ? bStyle.style.width
+          : parseFloat(String(bStyle?.style?.width ?? '384')) || (layoutSize.get(bNode.id)?.w ?? 384)
+        const bH = typeof bStyle?.style?.height === 'number'
+          ? bStyle.style.height
+          : parseFloat(String(bStyle?.style?.height ?? '288')) || (layoutSize.get(bNode.id)?.h ?? 288)
+
         if (
-          nCenterX >= bAbs.x - MARGIN &&
-          nCenterX <= bAbs.x + bW + MARGIN &&
-          nCenterY >= bAbs.y - MARGIN &&
-          nCenterY <= bAbs.y + bH + MARGIN
+          nCenterX >= bAbs.x &&
+          nCenterX <= bAbs.x + bW &&
+          nCenterY >= bAbs.y + 24 &&
+          nCenterY <= bAbs.y + bH
         ) {
           newParentId = bNode.id
           break
