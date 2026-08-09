@@ -403,9 +403,9 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                       ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
                       : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                   )}
-                  title={data.isContainerMode ? '【收納盒模式：開】允許其它事件卡片拖放進入內部 (點擊切回事件卡片)' : '【事件卡片】點擊轉換為收納盒（允許其它事件卡片拖放進入內部）'}
+                  title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
                 >
-                  {data.isContainerMode ? '📦 收納盒' : '📦 轉收納盒'}
+                  {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
                 </button>
                 <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                   {data.ref}
@@ -495,9 +495,9 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                     ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                 )}
-                title={data.isContainerMode ? '【收納盒模式：開】允許其它事件卡片拖放進入內部 (點擊切回事件卡片)' : '【事件卡片】點擊轉換為收納盒（允許其它事件卡片拖放進入內部）'}
+                title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
               >
-                {data.isContainerMode ? '📦 收納盒' : '📦 轉收納盒'}
+                {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
               </button>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {data.ref}
