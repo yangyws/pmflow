@@ -19,6 +19,7 @@ import {
   WEEKDAY_LABELS, diffDays, monthGrid, monthLabel, parseYmd,
   shiftYmd, shortDate, todayYmd, toYmd, ymd,
 } from '../lib/date'
+import WeekView from './Week'
 
 /**
  * Ref: CR-002 (行事曆月格與跨日長條 lane packing 設計緣由，詳見 CHANGELOG.md)
@@ -132,6 +133,14 @@ export default function CalendarView({
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
   })
+  // Ref: CR-102 - 整合「週檢視」至行事曆頂部 [月視角 | 週視角] 切換
+  const [calViewMode, setCalViewMode] = useRemembered<'month' | 'week'>('calendar.viewMode', 'month')
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId),
+    enabled: !!projectId && calViewMode === 'week',
+  })
+
   // 「我想看什麼」是長期偏好，不是這次瀏覽的暫時狀態 —— 每次回來都重勾很煩
   const [showTasks, setShowTasks] = useRemembered('calendar.tasks', true)
   const [showInquiries, setShowInquiries] = useRemembered('calendar.inquiries', true)
@@ -403,6 +412,40 @@ export default function CalendarView({
     })
   }
 
+  if (calViewMode === 'week') {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-center rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+            <button
+              type="button"
+              onClick={() => setCalViewMode('month')}
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              📅 月視角
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalViewMode('week')}
+              className="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-800 shadow-xs transition-colors dark:bg-slate-700 dark:text-slate-100"
+            >
+              🗓️ 週視角
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <WeekView
+            projectId={projectId}
+            tasks={tasks}
+            statuses={statuses}
+            types={project?.types ?? []}
+            onOpen={onOpen}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="flex h-full flex-col">
@@ -410,6 +453,23 @@ export default function CalendarView({
         {/* ── 工具列 ── */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
                         dark:border-slate-700 dark:bg-slate-900">
+          <div className="mr-2 flex items-center rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+            <button
+              type="button"
+              onClick={() => setCalViewMode('month')}
+              className="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-800 shadow-xs transition-colors dark:bg-slate-700 dark:text-slate-100"
+            >
+              📅 月視角
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalViewMode('week')}
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              🗓️ 週視角
+            </button>
+          </div>
+
           <Button variant="ghost" onClick={() => go(-1)} aria-label={C.prevMonth}>‹</Button>
           <div className="min-w-[7.5rem] text-center text-sm font-semibold text-slate-800
                           dark:text-slate-100">

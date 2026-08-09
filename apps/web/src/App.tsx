@@ -34,12 +34,11 @@ import MembersView from './pages/Members'
 import ProjectSettings from './components/ProjectSettings'
 import AccountPanel from './components/AccountPanel'
 import AdminPanel from './components/AdminPanel'
-import WeekView from './pages/Week'
 // 儀表板一進去就要打兩支要算的 API，圖表本身也只有這一頁用得到，
 // 跟甘特、關聯圖一樣延後載入
 const DashboardView = lazy(() => import('./pages/Dashboard'))
 
-type View = 'list' | 'board' | 'week' | 'calendar' | 'gantt' | 'graph' | 'dashboard'
+type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'dashboard'
   | 'inquiry' | 'members' | 'memberAdmin' | 'settings'
 
 /**
@@ -51,9 +50,7 @@ type AccountView = 'profile' | 'admin' | null
 const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'list', label: T.nav.views.list },
   { key: 'board', label: T.nav.views.board },
-  // 週檢視排在行事曆前面：月曆看得到日期，週檢視回答的是「這禮拜卡在哪一關」，
-  // 後者是每週例行要問的，翻開的次數比月曆多
-  { key: 'week', label: T.nav.views.week },
+  // Ref: CR-102 - 週檢視已整合至「行事曆」頂部 [月視角 | 週視角] 切換
   { key: 'calendar', label: T.nav.views.calendar },
   { key: 'gantt', label: T.nav.views.gantt },
   { key: 'graph', label: T.nav.views.graph },
@@ -638,11 +635,6 @@ function ProjectWorkspace({
               {view === 'board' && (
                 <Board projectId={projectId} tasks={visible}
                        statuses={project?.statuses ?? []} onOpen={setOpenTask} />
-              )}
-              {view === 'week' && (
-                <WeekView projectId={projectId} tasks={visible}
-                          statuses={project?.statuses ?? []} types={project?.types ?? []}
-                          onOpen={setOpenTask} />
               )}
               {view === 'calendar' && (
                 <CalendarView projectId={projectId} workspaceId={workspaceId}
