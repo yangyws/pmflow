@@ -764,8 +764,9 @@ function layout(
     if (isInsideBox) {
       const occupiedSlots = new Set<number>()
       const assigned = new Map<string, { x: number; y: number }>()
+      const staticAssigned = new Map<string, { x: number; y: number }>()
 
-      // 1. Ref: CR-085/CR-093 — 手動拖曳卡片保持其手動座標 (吸附 24px/48px 網點)，且約束於標頭下方 (y >= 60, x >= 24)
+      // 1. 手動拖曳卡片時保持其相對座標 (吸附 24px/48px 網點)，約束於標頭下方 (y >= 60, x >= 24)
       for (const id of members) {
         if (draggedOffsets?.[id]) {
           const posX = Math.max(24, Math.round(draggedOffsets[id].x / 24) * 24)
@@ -774,29 +775,35 @@ function layout(
         }
       }
 
-      // 2. 針對其餘卡片（包含剛移入的新卡片），自動依序填補最低的空位 (Vacant Slot，起點 x=24, y=60)
+      // 2. 依序計算靜態網格槽位與繪製座標
       let maxBottom = 0
       let maxRight = 0
 
       for (const id of members) {
-        if (!assigned.has(id)) {
-          let k = 0
-          while (occupiedSlots.has(k)) {
-            k++
-          }
-          occupiedSlots.add(k)
-          const cIdx = Math.floor(k / 5)
-          const rIdx = k % 5
-          assigned.set(id, { x: 24 + cIdx * 312, y: 60 + rIdx * 120 })
+        let k = 0
+        while (occupiedSlots.has(k)) {
+          k++
         }
+        occupiedSlots.add(k)
+        const cIdx = Math.floor(k / 5)
+        const rIdx = k % 5
+        const defaultPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
+
+        if (!assigned.has(id)) {
+          assigned.set(id, defaultPos)
+        }
+        staticAssigned.set(id, defaultPos)
 
         const pos = assigned.get(id)!
         rel.set(id, pos)
 
+        // 計算收納框本體尺寸 (maxRight / maxBottom) 時統一採用靜態網格槽位 staticPos，
+        // 確保卡片向右或向下拖曳時絕不推大收納框，允許卡片跨越邊界移出框外！
+        const staticPos = staticAssigned.get(id)!
         const h = getNodeH(id)
         const w = getNodeW(id)
-        maxBottom = Math.max(maxBottom, pos.y + h)
-        maxRight = Math.max(maxRight, pos.x + w)
+        maxBottom = Math.max(maxBottom, staticPos.y + h)
+        maxRight = Math.max(maxRight, staticPos.x + w)
       }
 
       return { w: Math.max(maxRight, LEAF_W), h: maxBottom }
