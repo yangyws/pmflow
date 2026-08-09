@@ -5,6 +5,7 @@ import 'dhtmlx-gantt/codebase/dhtmlxgantt.css'
 import { Api, type Task, type LinkType } from '../lib/api'
 import { rollup } from '../lib/rollup'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
+import { todayYmd } from '../lib/date'
 import { T } from '../strings'
 import { Button } from '../components/ui'
 
@@ -54,6 +55,7 @@ export default function GanttView({
     ganttRef.current = g
 
     // Ref: CR-099 - 關閉甘特圖互動式拖拉改期與依賴連線編輯功能，改為純唯讀模式
+    g.config.fit_tasks = true
     g.config.date_format = '%Y-%m-%d'
     g.config.readonly = true
     g.config.drag_progress = false
@@ -99,11 +101,12 @@ export default function GanttView({
     g.i18n.setLocale('zh-TW')
 
     // 關鍵路徑與對外詢問的狀態上色
-    g.templates.task_class = (_s: Date, _e: Date, t: { id?: string | number; critical?: boolean; inquiry?: string; type?: string }) => {
+    g.templates.task_class = (_s: Date, _e: Date, t: { id?: string | number; critical?: boolean; inquiry?: string; type?: string; noDates?: boolean }) => {
       const cls: string[] = []
       if (t.critical) cls.push('critical')
       if (t.inquiry === 'OVERDUE') cls.push('inq-overdue')
       else if (t.inquiry === 'AWAITING' || t.inquiry === 'PARTIAL') cls.push('inq-awaiting')
+      if (t.noDates) cls.push('no-dates')
       if (t.id && unreadTaskIds.has(String(t.id))) cls.push('pmflow-flash')
       return cls.join(' ')
     }
@@ -154,12 +157,22 @@ export default function GanttView({
     const rolled = rollup(tasks)
     const kidsSet = new Set(tasks.map(t => t.parentId).filter(Boolean))
 
+    // 找出全專案中最早與最晚的有效日期作為未排期任務的基準
+    let defaultStart = todayYmd()
+    const validDates = tasks.map(t => t.startDate || t.dueDate).filter((x): x is string => Boolean(x))
+    if (validDates.length > 0) {
+      validDates.sort()
+      defaultStart = validDates[0]
+    }
+
     const data = tasks
       .map(t => {
         const r = rolled.get(t.id)
-        const startDate = r?.startDate ?? t.startDate
-        const dueDate = r?.dueDate ?? t.dueDate
-        if (!startDate || !dueDate) return null
+        const rawStart = r?.startDate ?? t.startDate
+        const rawDue = r?.dueDate ?? t.dueDate
+        const noDates = !rawStart && !rawDue
+        const startDate = rawStart ?? rawDue ?? defaultStart
+        const dueDate = rawDue ?? rawStart ?? startDate
 
         const isParent = kidsSet.has(t.id) || t.type === 'EPIC'
         return {
@@ -173,10 +186,10 @@ export default function GanttView({
           type: t.type === 'MILESTONE' ? 'milestone' : isParent ? 'project' : undefined,
           critical: critical.has(t.id),
           inquiry: t.inquiryState,
+          noDates,
           open: true,
         }
       })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
 
     // 只把排程類依賴畫成連線；語意類（RELATES / BLOCKS…）不影響日期，
     // 畫在甘特上只會變成雜訊，改在任務詳情頁呈現。
