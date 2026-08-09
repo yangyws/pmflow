@@ -726,23 +726,10 @@ function layout(
     const kids = kidsOf.get(id) ?? []
     const isContainerBox = boxes.has(id)
     let box: Box
-    const snap48 = (v: number) => Math.ceil(v / 48) * 48
-    if (kids.length) {
-      const inner = place(kids)
-      let maxRight = inner.w
-      let maxBottom = inner.h
-      for (const k of kids) {
-        const r = rel.get(k)
-        if (r) {
-          maxRight = Math.max(maxRight, r.x + getNodeW(k))
-          maxBottom = Math.max(maxBottom, r.y + getNodeH(k))
-        }
+    if (isContainerBox) {
+      if (kids.length) {
+        place(kids)
       }
-      box = {
-        w: Math.max(snap48(maxRight + BOX_PAD * 2), 384),
-        h: Math.max(snap48(maxBottom + BOX_HEADER + BOX_PAD * 2), 288),
-      }
-    } else if (isContainerBox) {
       box = { w: 384, h: 288 }
     } else {
       box = { w: LEAF_W, h: LEAF_H }
@@ -1289,25 +1276,7 @@ function layout(
   // ── 依據內部對齊後的節點靜態位置計算外框大小 (`size`) ──
   // 不計入即時拖曳座標 (draggedOffsets)，確保拖曳卡片時框體尺寸絕對固定，卡片往右/向下拖移可順暢移出框外
   for (const bId of boxes) {
-    const kids = kidsOf.get(bId) ?? []
-    if (!kids.length) continue
-    let maxRight = 0
-    let maxBottom = 0
-    for (const k of kids) {
-      const dOffset = draggedOffsets?.[k]
-      const r = rel.get(k)
-      if (r) {
-        const staticX = dOffset ? r.x - dOffset.x : r.x
-        const staticY = dOffset ? r.y - dOffset.y : r.y
-        maxRight = Math.max(maxRight, staticX + getNodeW(k))
-        maxBottom = Math.max(maxBottom, staticY + getNodeH(k))
-      }
-    }
-    const snap48 = (v: number) => Math.ceil(v / 48) * 48
-    size.set(bId, {
-      w: Math.max(snap48(maxRight + BOX_PAD), LEAF_W + BOX_PAD * 2),
-      h: Math.max(snap48(maxBottom + BOX_PAD), LEAF_H + BOX_HEADER + BOX_PAD),
-    })
+    size.set(bId, { w: 384, h: 288 })
   }
 
   refreshAbs()
