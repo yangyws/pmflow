@@ -137,6 +137,7 @@ const even = (v: number): number => {
 }
 
 type TaskNodeData = {
+  id: string
   ref: string
   title: string
   /** 顏色不存在節點裡，每次算 —— 見下面建立節點那段的說明 */
@@ -152,6 +153,7 @@ type TaskNodeData = {
   isMilestone: boolean
   isContainerMode: boolean
   onToggleContainer?: () => void
+  onOpenEditDrawer?: (id: string) => void
   /** 框裡直接放著幾張任務。0＝不是框 */
   childCount: number
   /**
@@ -459,28 +461,27 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
 }
 
 function TaskNodeView({ data }: NodeProps<TaskNode>) {
-  const meta = INQUIRY_META[data.inquiryState]
   const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
-  const [resizable, setResizable] = useState(false)
   return (
     <>
-      {data.isContainerMode && resizable && (
+      {data.isContainerMode && (
         <NodeResizer
           isVisible
           color={RESIZE_COLOR}
-          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : NODE_W}
-          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : NODE_H_FALLBACK}
+          handleStyle={{ width: 10, height: 10, borderRadius: 2 }}
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 384}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 288}
         />
       )}
       <div
-        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-start')}
+        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-start relative group/node')}
         style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
       >
         <NodeHandles />
         <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
 
         <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
-          {/* 第一列：[收納按鈕] ＋ 編號 (MRG) ＋ 類型徽章 ｜ 右側 [縮放按鈕 (僅收納開啟時才顯示)] */}
+          {/* 第一列：[模式按鈕] ＋ 編號 (MRG) ＋ 類型徽章 ｜ 右側 ✏️ 編輯按鈕 */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex min-w-0 items-center gap-1 overflow-hidden">
               <button
@@ -533,26 +534,20 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               )}
             </div>
 
-            {data.isContainerMode && (
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setResizable(r => !r)
-                  }}
-                  className={cx(
-                    'rounded px-1.5 py-0.5 text-[9px] font-medium transition-all cursor-pointer border',
-                    resizable
-                      ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                  )}
-                  title={resizable ? '點擊關閉縮放調整' : '點擊開啟【縮放調整】：可手動拖曳卡片邊角改大小'}
-                >
-                  {resizable ? '📐 縮放中' : '📐 縮放'}
-                </button>
-              </div>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  data.onOpenEditDrawer?.(data.id)
+                }}
+                className="w-6 h-6 rounded flex items-center justify-center text-xs opacity-80 hover:opacity-100 hover:scale-110 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:ring-2 hover:ring-blue-500 focus:opacity-100 focus:ring-2 focus:ring-blue-500 transition-all duration-150 cursor-pointer"
+                title="編輯詳細內容"
+                aria-label="編輯詳細內容"
+              >
+                ✏️
+              </button>
+            </div>
           </div>
 
           {/* 第二列：標題 (位置完全統一在第二列) */}
@@ -563,6 +558,16 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
           {/* 第三列：進度條 */}
           <NodeProgressBar progress={data.progress} accentColor={accentColor} />
         </div>
+
+        {/* 右下角固定 ↘ 縮放控制按鈕 */}
+        {data.isContainerMode && (
+          <div
+            className="absolute bottom-1 right-1 z-20 flex items-center justify-center w-5 h-5 rounded bg-slate-200/90 hover:bg-slate-300 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-[11px] font-bold cursor-se-resize shadow border border-slate-300 dark:border-slate-600"
+            title="按住拖曳調整收納盒尺寸（手動縮放四邊不得小於盒內卡片邊界）"
+          >
+            ↘
+          </div>
+        )}
       </div>
     </>
   )
@@ -756,28 +761,44 @@ function layout(
       const assigned = new Map<string, { x: number; y: number }>()
       const staticAssigned = new Map<string, { x: number; y: number }>()
 
-      // 1. 手動拖曳卡片時保持其相對座標 (吸附 24px/48px 網點)，約束於標頭下方 (y >= 60, x >= 24)
+      // 1. 若手動拖曳過卡片，收集手動卡片的絕對右側邊界 customMaxX
+      let customMaxX = 0
+      let hasCustom = false
       for (const id of members) {
         if (draggedOffsets?.[id]) {
+          hasCustom = true
           const posX = Math.max(24, Math.round(draggedOffsets[id].x / 24) * 24)
           const posY = Math.max(60, even(Math.round(draggedOffsets[id].y / 48) * 48))
           assigned.set(id, { x: posX, y: posY })
+          const w = getNodeW(id)
+          customMaxX = Math.max(customMaxX, posX + w)
         }
       }
 
-      // 2. 依序計算靜態網格槽位與繪製座標
+      // 2. 依序計算網格槽位
       let maxBottom = 0
       let maxRight = 0
 
+      let unassignedIdx = 0
       for (const id of members) {
-        let k = 0
-        while (occupiedSlots.has(k)) {
-          k++
+        let defaultPos: { x: number; y: number }
+        if (hasCustom && !draggedOffsets?.[id]) {
+          // 手動移動狀況：自動排序改從手動位置項目的右側 (customMaxX + 24) 接續向右/向下排列
+          const cIdx = unassignedIdx % 5
+          const rIdx = Math.floor(unassignedIdx / 5)
+          defaultPos = { x: Math.ceil((customMaxX + 24) / 24) * 24 + cIdx * 312, y: 60 + rIdx * 120 }
+          unassignedIdx++
+        } else {
+          // 預設位置狀況：空位自動優先補位機制
+          let k = 0
+          while (occupiedSlots.has(k)) {
+            k++
+          }
+          occupiedSlots.add(k)
+          const cIdx = k % 5
+          const rIdx = Math.floor(k / 5)
+          defaultPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
         }
-        occupiedSlots.add(k)
-        const cIdx = Math.floor(k / 5)
-        const rIdx = k % 5
-        const defaultPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
 
         if (!assigned.has(id)) {
           assigned.set(id, defaultPos)
@@ -787,8 +808,6 @@ function layout(
         const pos = assigned.get(id)!
         rel.set(id, pos)
 
-        // 計算收納框本體尺寸 (maxRight / maxBottom) 時統一採用靜態網格槽位 staticPos，
-        // 確保卡片向右或向下拖曳時絕不推大收納框，允許卡片跨越邊界移出框外！
         const staticPos = staticAssigned.get(id)!
         const h = getNodeH(id)
         const w = getNodeW(id)
@@ -1618,6 +1637,7 @@ function GraphCanvas({
             }
           : {}),
         data: {
+          id: n.id,
           ref: n.ref,
           title: n.title,
           statusKey: n.statusKey,
@@ -1628,6 +1648,7 @@ function GraphCanvas({
           isEpic: n.type === 'EPIC',
           isContainerMode: isBox || containerBoxIds.has(n.id),
           onToggleContainer: () => toggleContainerMode(n.id),
+          onOpenEditDrawer: onOpen,
           childCount: L.childCount.get(n.id) ?? 0,
           isEntry: L.entries.has(n.id),
           isBug: n.type === 'BUG',
