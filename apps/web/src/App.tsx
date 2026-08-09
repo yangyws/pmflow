@@ -645,12 +645,14 @@ function ProjectWorkspace({
               )}
               {view === 'board' && (
                 <Board projectId={projectId} tasks={visible}
-                       statuses={project?.statuses ?? []} onOpen={handleTaskEdit} />
+                       statuses={project?.statuses ?? []} onOpen={handleTaskSelect} onEdit={handleTaskEdit}
+                       focusedTaskId={focusedTaskId} />
               )}
               {view === 'calendar' && (
                 <CalendarView projectId={projectId} workspaceId={workspaceId}
                               tasks={visible} statuses={project?.statuses ?? []}
-                              onOpen={handleTaskEdit} />
+                              onOpen={handleTaskSelect} onEdit={handleTaskEdit}
+                              focusedTaskId={focusedTaskId} />
               )}
               {view === 'gantt' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>

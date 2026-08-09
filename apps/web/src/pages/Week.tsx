@@ -58,7 +58,7 @@ const GROUP_BY_LABEL: Record<GroupBy, string> = {
 const NO_ASSIGNEE = '__unassigned__'
 
 export default function WeekView({
-  projectId, tasks, statuses, types, onOpen, extraHeaderLeft,
+  projectId, tasks, statuses, types, onOpen, onEdit, focusedTaskId, extraHeaderLeft,
 }: {
   /** 只拿來當收合偏好的鍵 —— 狀態是每個專案自己一份，鍵不分專案會互相蓋掉 */
   projectId: string
@@ -67,6 +67,8 @@ export default function WeekView({
   /** 這個專案自己的任務類型（0011_project_parameters.sql）。名稱與顏色都是他自己設的 */
   types: ProjectParam[]
   onOpen: (taskId: string) => void
+  onEdit?: (taskId: string) => void
+  focusedTaskId?: string | null
   /** 工具列最左側額外注入元素（如行事曆之 [月視角 | 週視角] 切換鈕） */
   extraHeaderLeft?: React.ReactNode
 }) {
@@ -442,8 +444,9 @@ export default function WeekView({
                   </button>
 
                   {!off && g.rows.map(r => (
-                    <TaskRow key={r.task.id} row={r} onOpen={onOpen}
-                             typeName={typeOf(r.task.type)} typeColor={typeColorOf(r.task.type)} />
+                    <TaskRow key={r.task.id} row={r} onOpen={onOpen} onEdit={onEdit}
+                             typeName={typeOf(r.task.type)} typeColor={typeColorOf(r.task.type)}
+                             isFocused={r.task.id === focusedTaskId} />
                   ))}
                 </section>
               )
@@ -466,12 +469,14 @@ export default function WeekView({
 const GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_14rem_8rem_7rem] items-center gap-3'
 
 // ── 一張任務 ────────────────────────────────────────────
-function TaskRow({ row, onOpen, typeName, typeColor }: {
+function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
   row: Row
   onOpen: (taskId: string) => void
+  onEdit?: (taskId: string) => void
   /** 這是任務還是問題。看板與清單都標了，週檢視不標的話同一張任務在三個畫面長得不一樣 */
   typeName: string
   typeColor: string
+  isFocused?: boolean
 }) {
   const t = row.task
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
@@ -479,15 +484,26 @@ function TaskRow({ row, onOpen, typeName, typeColor }: {
 
   return (
     <div
+      ref={el => {
+        if (el && isFocused) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }}
       onClick={() => {
         if (hasUnread) markTaskRead(t.id)
         onOpen(t.id)
+      }}
+      onDoubleClick={() => {
+        if (hasUnread) markTaskRead(t.id)
+        if (onEdit) onEdit(t.id)
       }}
       title={W.rowTooltip(t.ref, t.title)}
       className={cx(
         GRID,
         'cursor-pointer border-t border-slate-100 px-3 py-2 text-sm transition-colors',
-        'hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800',
+        isFocused
+          ? 'bg-blue-50/90 dark:bg-blue-900/40 text-blue-950 font-medium'
+          : 'hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800',
         hasUnread && 'pmflow-flash'
       )}
     >

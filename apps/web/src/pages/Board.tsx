@@ -22,12 +22,14 @@ import { T } from '../strings'
  * 失敗才回滾 —— 這是所有拖曳互動共用的協定。
  */
 export default function Board({
-  projectId, tasks, statuses, onOpen,
+  projectId, tasks, statuses, onOpen, onEdit, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]
   statuses: TaskStatus[]
   onOpen: (id: string) => void
+  onEdit?: (id: string) => void
+  focusedTaskId?: string | null
 }) {
   const qc = useQueryClient()
   const [dragging, setDragging] = useState<Task | null>(null)
@@ -141,8 +143,8 @@ export default function Board({
                   onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="flex flex-1 gap-3 overflow-x-auto p-4">
           {columns.map(col => (
-            <Column key={col.key} column={col} onOpen={onOpen} canDrag={canDrag}
-                    topPriority={topPriority} />
+            <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
+                    topPriority={topPriority} focusedTaskId={focusedTaskId} />
           ))}
         </div>
         <DragOverlay>
@@ -155,13 +157,15 @@ export default function Board({
 }
 
 function Column({
-  column, onOpen, canDrag, topPriority,
+  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId,
 }: {
   column: TaskStatus & { tasks: Task[] }
   onOpen: (id: string) => void
+  onEdit?: (id: string) => void
   topPriority?: { key: string; name: string; color: string }
   /** 這張卡片這個人能不能拖 —— 拖曳等於改狀態，權限跟改任務同一條 */
   canDrag: (t: Task) => boolean
+  focusedTaskId?: string | null
 }) {
   const { setNodeRef, isOver } = useSortable({ id: column.key, data: { type: 'column' } })
   const overdue = column.tasks.filter(t => t.inquiryState === 'OVERDUE').length
@@ -188,8 +192,8 @@ function Column({
       <SortableContext items={column.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-3">
           {column.tasks.map(t => (
-            <SortableCard key={t.id} task={t} onOpen={onOpen} canDrag={canDrag(t)}
-                          topPriority={topPriority} />
+            <SortableCard key={t.id} task={t} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag(t)}
+                          topPriority={topPriority} focusedTaskId={focusedTaskId} />
           ))}
           {column.tasks.length === 0 && (
             <div className="rounded-md border-2 border-dashed border-slate-200 py-6 text-center text-xs
@@ -203,35 +207,39 @@ function Column({
   )
 }
 
-function SortableCard({ task, onOpen, canDrag, topPriority }: {
-  task: Task; onOpen: (id: string) => void; canDrag: boolean
+function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId }: {
+  task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; canDrag: boolean
   topPriority?: { key: string; name: string; color: string }
+  focusedTaskId?: string | null
 }) {
   // disabled 讓 dnd-kit 連感應器都不掛上去，滑鼠與鍵盤兩條路徑一起擋掉
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id, disabled: !canDrag })
+  const isFocused = task.id === focusedTaskId
+
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners}
+    <div ref={el => {
+           setNodeRef(el)
+           if (el && isFocused) {
+             el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+           }
+         }}
+         {...attributes} {...listeners}
          style={{ transform: CSS.Transform.toString(transform), transition }}
          className={isDragging ? 'opacity-30' : ''}>
-      <Card task={task} onOpen={onOpen} draggable={canDrag} topPriority={topPriority} />
+      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} />
     </div>
   )
 }
 
 function Card({
-  task, onOpen, overlay, draggable, topPriority,
+  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused,
 }: {
-  task: Task; onOpen: (id: string) => void; overlay?: boolean
+  task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; overlay?: boolean
   /** 拖不動的卡片不要長成「可以拖」的樣子 —— 手形游標本身就是一種承諾 */
   draggable?: boolean
-  /**
-   * 這個專案裡最急的那一級（優先度清單的最後一個）。
-   * 優先度現在每個專案自己定，不能再認死 'URGENT' 這個 key ——
-   * 有人會把它改名叫「火燒屁股」，也有人會刪掉它。卡片上只標最急的那一級，
-   * 每一級都標的話等於沒標。
-   */
   topPriority?: { key: string; name: string; color: string }
+  isFocused?: boolean
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
@@ -242,12 +250,18 @@ function Card({
         if (hasUnread) markTaskRead(task.id)
         onOpen(task.id)
       }}
+      onDoubleClick={() => {
+        if (hasUnread) markTaskRead(task.id)
+        if (onEdit) onEdit(task.id)
+      }}
       title={draggable ? undefined : T.task.permission.cannotDragCard}
       className={cx(
-        'rounded-lg bg-white p-2.5 ring-1 ring-slate-200',
+        'rounded-lg p-2.5 transition-all',
+        isFocused
+          ? 'ring-2 ring-blue-500 bg-blue-50/90 dark:bg-blue-900/40 dark:ring-blue-400 shadow-md'
+          : 'bg-white ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
-        'dark:bg-slate-900 dark:ring-slate-700',
-        overlay ? 'rotate-2 shadow-xl' : 'hover:ring-slate-300 dark:hover:ring-slate-600',
+        overlay ? 'rotate-2 shadow-xl' : '',
         hasUnread && 'pmflow-flash'
       )}
     >
