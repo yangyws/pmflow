@@ -75,6 +75,11 @@ export default function MembersView({ projectId, onOpenTask }: {
     return (userId: string) => n.get(userId) ?? 0
   }, [taskData])
 
+  const unassignedCount = useMemo(
+    () => (taskData?.tasks ?? []).filter(t => !t.assigneeId).length,
+    [taskData]
+  )
+
   const members = useMemo(() => {
     const k = q.trim().toLowerCase()
     const all = memberData?.members ?? []
@@ -92,7 +97,7 @@ export default function MembersView({ projectId, onOpenTask }: {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* ── 左：這個專案的成員 ── */}
+      {/* ── 左：這個專案的成員與未分派事件 ── */}
       <aside className="flex w-72 shrink-0 flex-col border-r border-slate-200 bg-white
                         dark:border-slate-700 dark:bg-slate-900">
         <div className="border-b border-slate-100 px-3 py-3 dark:border-slate-800">
@@ -106,6 +111,39 @@ export default function MembersView({ projectId, onOpenTask }: {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto py-1">
+          {/* Ref: CR-101 - 置頂未分派事件項目 */}
+          <button
+            type="button"
+            onClick={() => setSelected('UNASSIGNED')}
+            className={cx(
+              'flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2.5 text-left transition-colors dark:border-slate-800',
+              selected === 'UNASSIGNED'
+                ? 'bg-amber-50 dark:bg-amber-500/15'
+                : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+            )}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+              👤
+            </div>
+            <span className="min-w-0 flex-1">
+              <span className={cx('block truncate text-sm font-medium',
+                selected === 'UNASSIGNED'
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : 'text-slate-800 dark:text-slate-100')}>
+                未分派事件
+              </span>
+              <span className="block truncate text-xs text-slate-400 dark:text-slate-400">
+                尚未指定負責人
+              </span>
+            </span>
+            <span className={cx('shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium',
+              unassignedCount > 0
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}>
+              {unassignedCount} 張
+            </span>
+          </button>
+
           {members.length === 0 && <Empty>{T.member.empty}</Empty>}
           {members.map(m => {
             const on = m.id === selected
@@ -143,17 +181,16 @@ export default function MembersView({ projectId, onOpenTask }: {
         </div>
       </aside>
 
-      {/* ── 右：他手上與經手過的任務 ── */}
+      {/* ── 右：他手上與經手過的任務 / 未分派事件 ── */}
       <div className="min-w-0 flex-1 overflow-auto p-4">
-        {!picked
-          ? <Empty>{T.member.pickHint}</Empty>
-          /*
-           * key 換人就整個重掛。底下的收合偏好用 useRemembered 存，
-           * 那個 hook 只在掛載時讀一次 —— 不重掛的話，換一個人看到的
-           * 會是上一個人的收合狀態。
-           */
-          : <MemberTasks key={picked.id} projectId={projectId} member={picked}
-                         types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} />}
+        {selected === 'UNASSIGNED' ? (
+          <UnassignedTasks projectId={projectId} types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} />
+        ) : !picked ? (
+          <Empty>{T.member.pickHint}</Empty>
+        ) : (
+          <MemberTasks key={picked.id} projectId={projectId} member={picked}
+                       types={project?.types} statusOf={statusOf} onOpenTask={onOpenTask} />
+        )}
       </div>
     </div>
   )
@@ -444,6 +481,70 @@ function Handover({ task }: { task: PastMemberTask }) {
       {task.handoverNote && (
         <div className="text-slate-500 dark:text-slate-400">
           {T.member.past.note(task.handoverNote)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 未分派任務展示區塊 (Ref: CR-101) */
+function UnassignedTasks({ projectId, types, statusOf, onOpenTask }: {
+  projectId: string
+  types: ProjectParam[] | undefined
+  statusOf: (key: string) => TaskStatus | undefined
+  onOpenTask: (taskId: string) => void
+}) {
+  const { data: taskData, isLoading } = useQuery({
+    queryKey: ['tasks', projectId],
+    queryFn: () => Api.tasks(projectId),
+    enabled: !!projectId,
+  })
+
+  const unassignedTasks = useMemo(
+    () => (taskData?.tasks ?? []).filter(t => !t.assigneeId) as MemberTask[],
+    [taskData]
+  )
+
+  const [collapsed, setCollapsed] = useRemembered<string[]>(
+    `unassigned.collapsed.${projectId}`, []
+  )
+
+  const toggler = (area: 'current' | 'past') => ({
+    isCollapsed: (key: string) => collapsed.includes(`${area}:${key}`),
+    onToggle: (key: string) => {
+      const k = `${area}:${key}`
+      setCollapsed(collapsed.includes(k) ? collapsed.filter(x => x !== k) : [...collapsed, k])
+    },
+  })
+
+  const groups = useMemo(
+    () => groupByType(unassignedTasks, types ?? []),
+    [unassignedTasks, types]
+  )
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-base text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+          👤
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold text-slate-800 dark:text-slate-100">
+            未分派事件與任務
+          </div>
+          <div className="truncate text-xs text-slate-400 dark:text-slate-400">
+            本專案中目前尚未指定負責人的事件（點擊列可開啟詳情並指定負責人）
+          </div>
+        </div>
+      </div>
+
+      {isLoading || !types ? <Spinner /> : (
+        <div className="space-y-6">
+          <Section title="未分派任務清單" hint="點擊列即可指定負責人" count={unassignedTasks.length}>
+            {unassignedTasks.length
+              ? <TaskTable groups={groups} statusOf={statusOf} onOpenTask={onOpenTask} {...toggler('current')} />
+              : <Empty>目前沒有未分派的任務，所有任務皆已指定負責人。</Empty>}
+          </Section>
         </div>
       )}
     </div>

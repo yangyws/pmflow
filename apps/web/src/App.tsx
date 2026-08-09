@@ -40,7 +40,7 @@ import WeekView from './pages/Week'
 const DashboardView = lazy(() => import('./pages/Dashboard'))
 
 type View = 'list' | 'board' | 'week' | 'calendar' | 'gantt' | 'graph' | 'dashboard'
-  | 'inquiry' | 'members' | 'unassigned' | 'memberAdmin' | 'settings'
+  | 'inquiry' | 'members' | 'memberAdmin' | 'settings'
 
 /**
  * 帳號設定與系統管理不是專案底下的視圖 —— 沒選專案也要進得去，
@@ -72,8 +72,6 @@ const VIEWS: Array<{ key: View; label: string }> = [
    * 走 `memberAdmin` —— 看人跟管人是兩件事，混在一頁只會兩邊都難用。
    */
   { key: 'members', label: T.nav.views.members },
-  // Ref: CR-101 - 未分派頁籤：找出未被分派負責人的事件與任務
-  { key: 'unassigned', label: T.nav.views.unassigned },
 ]
 
 /**
@@ -679,11 +677,6 @@ function ProjectWorkspace({
               {view === 'members' && (
                 <MembersView projectId={projectId} workspaceId={workspaceId}
                              onOpenTask={setOpenTask} />
-              )}
-              {/* Ref: CR-101 - 未分派頁籤：過濾無負責人之事件與任務 */}
-              {view === 'unassigned' && (
-                <ListView projectId={projectId} tasks={visible.filter(t => !t.assigneeId)} parentForNew={epicId}
-                          statuses={project?.statuses ?? []} onOpen={setOpenTask} />
               )}
               {/* 頭像選單進來的成員管理：改角色、核准加入申請 */}
               {view === 'memberAdmin' && (
