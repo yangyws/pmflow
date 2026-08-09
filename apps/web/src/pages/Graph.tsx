@@ -1979,21 +1979,10 @@ function GraphCanvas({
         let width = userSize?.width ?? layoutSize.get(n.id)?.w
         let height = userSize?.height ? even(userSize.height) : layoutSize.get(n.id)?.h
 
-        // 若為大項目/收納框：當內部事件卡片放進框內且尺寸不夠時，自動擴大框體以完美容納
+        // 若為大項目/收納框：採用使用者調整的尺寸或靜態佈局計算的槽位尺寸 layoutSize
         if (isBox) {
-          const kids = kidsMap.get(n.id) ?? []
-          let maxRight = 0
-          let maxBottom = 0
-          for (const k of kids) {
-            // 使用靜態 k.position 計算容納邊界（不採計 dragged 臨時拖曳位置），避免卡片向右拖曳時推大框體，實現順暢移出框外
-            const kPos = k.position
-            const kW = measured[k.id]?.width ?? layoutSize.get(k.id)?.w ?? NODE_W
-            const kH = even(measured[k.id]?.height ?? layoutSize.get(k.id)?.h ?? NODE_H_FALLBACK)
-            maxRight = Math.max(maxRight, kPos.x + kW + BOX_PAD)
-            maxBottom = Math.max(maxBottom, kPos.y + kH + BOX_PAD)
-          }
-          if (maxRight > 0) width = Math.max(width ?? 384, Math.ceil(maxRight / 24) * 24)
-          if (maxBottom > 0) height = even(Math.max(height ?? 288, maxBottom))
+          width = userSize?.width ?? layoutSize.get(n.id)?.w ?? 384
+          height = userSize?.height ? even(userSize.height) : (layoutSize.get(n.id)?.h ?? 288)
         }
 
         if (width) width = Math.ceil(width / 24) * 24
@@ -2540,25 +2529,20 @@ function GraphCanvas({
       const bNode = allNodes.find(n => n.id === currentParentId)
       if (bNode) {
         const bAbs = getAbs(bNode.id)
-        const bStyle = styledNodes.find(s => s.id === bNode.id)
-        const bW = typeof bStyle?.style?.width === 'number'
-          ? bStyle.style.width
-          : parseFloat(String(bStyle?.style?.width ?? '384')) || (layoutSize.get(bNode.id)?.w ?? 384)
-        const bH = typeof bStyle?.style?.height === 'number'
-          ? bStyle.style.height
-          : parseFloat(String(bStyle?.style?.height ?? '288')) || (layoutSize.get(bNode.id)?.h ?? 288)
+        const userSize = resized[bNode.id]
+        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 384
+        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 288)
 
         const relX = nAbs.x - bAbs.x
         const relY = nAbs.y - bAbs.y
 
-        // 當卡片中心點超越右側/下側/左側/上側實體邊界時，判定脫離收納框
-        const cardCenterX = relX + nodeW / 2
-        const cardCenterY = relY + nodeH / 2
+        // 當卡片右側/下側/左側/上側超越框體實體邊界時，判定脫離收納框
+        const cardRight = relX + nodeW
+        const cardBottom = relY + nodeH
 
-        const inBoxX = relX >= -12 && cardCenterX <= (bW - 12)
-        const inBoxY = relY >= 12 && cardCenterY <= (bH - 12)
+        const inBox = relX >= 12 && relY >= 36 && cardRight <= (bW - 12) && cardBottom <= (bH - 12)
 
-        if (inBoxX && inBoxY) {
+        if (inBox) {
           newParentId = currentParentId
         }
       }
@@ -2571,19 +2555,15 @@ function GraphCanvas({
       )
       for (const bNode of otherBoxes) {
         const bAbs = getAbs(bNode.id)
-        const bStyle = styledNodes.find(s => s.id === bNode.id)
-        const bW = typeof bStyle?.style?.width === 'number'
-          ? bStyle.style.width
-          : parseFloat(String(bStyle?.style?.width ?? '384')) || (layoutSize.get(bNode.id)?.w ?? 384)
-        const bH = typeof bStyle?.style?.height === 'number'
-          ? bStyle.style.height
-          : parseFloat(String(bStyle?.style?.height ?? '288')) || (layoutSize.get(bNode.id)?.h ?? 288)
+        const userSize = resized[bNode.id]
+        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 384
+        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 288)
 
         if (
-          nCenterX >= bAbs.x &&
-          nCenterX <= bAbs.x + bW &&
-          nCenterY >= bAbs.y + 24 &&
-          nCenterY <= bAbs.y + bH
+          nCenterX >= bAbs.x + 12 &&
+          nCenterX <= bAbs.x + bW - 12 &&
+          nCenterY >= bAbs.y + 36 &&
+          nCenterY <= bAbs.y + bH - 12
         ) {
           newParentId = bNode.id
           break
