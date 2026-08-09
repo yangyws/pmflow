@@ -38,6 +38,8 @@ export const nav = {
      * 那就跟其他頁籤一樣是「同一批任務的另一種看法」，該站到這一排來。
      */
     members: '成員',
+    /** 找出未被指派負責人的事件與任務 (Ref: CR-101) */
+    unassigned: '未分派',
   },
   loadingGantt: '載入甘特圖…',
   loadingGraph: '載入關聯圖…',
