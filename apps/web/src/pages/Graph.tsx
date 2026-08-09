@@ -2832,7 +2832,7 @@ function GraphCanvas({
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              收納框內尚有 <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmCloseContainer.count}</span> 個事件框，關閉收納模式將會把內部事件框移出至外部畫布，確定要關閉嗎？
+              收納框內尚有 <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmCloseContainer.count}</span> 個事件卡片，關閉收納模式將會把內部事件卡片移出至外部畫布，確定要關閉嗎？
             </p>
             <div className="mt-5 flex items-center justify-end gap-2.5">
               <Button variant="ghost" onClick={() => setConfirmCloseContainer(null)}>
