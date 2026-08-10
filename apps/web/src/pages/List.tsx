@@ -10,6 +10,8 @@ import { rollup, isTaskOverdue } from '../lib/rollup'
 import { typesAllowedUnder } from '../lib/hierarchy'
 import { T } from '../strings'
 import { useRemembered } from '../lib/remember'
+import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar' // Ref: CR-125
+
 
 /** 清單／樹狀視圖：依 parentId 展開階層（上下關聯） */
 export default function ListView({
