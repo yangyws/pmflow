@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-126` | 2026-08-11 | [任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）](#cr-126) | `hierarchy.ts` | 已驗證 |
 | `CR-125` | 2026-08-11 | [清單視角：修復 List.tsx 缺失 DEFAULT_TYPE_COLORS 引用導致型別檢查失敗 Bug](#cr-125) | `List.tsx` | 已驗證 |
 | `CR-124` | 2026-08-09 | [關聯圖：依照使用者五大規格書全面重構——右下角固定 ↘ 縮放手把、標頭 ✏️ 鉛筆 Hover 高亮、空位自動優先補位與手動位置右側接續網格，通過類型建置測試](#cr-124) |
 | `CR-123` | 2026-08-09 | [關聯圖：徹底移除卡片移入收納盒時觸發之動態拉大與尺寸重新計算邏輯 (固定 384x288)](#cr-123) | `Graph.tsx` | 已驗證 |
@@ -183,6 +184,11 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-126"></a>CR-126 (2026-08-11) — 任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）
+
+1. **後端守門員**：恢復 `apps/api/src/lib/hierarchy.ts` 之 `checkPlacement` 驗證，禁止孤兒 BUG 站在最上層或掛在大項目/里程碑/錯誤底下；禁止 EPIC 掛在 TASK/BUG/MILESTONE 底下。
+2. **前端守門員**：同步恢復 `apps/web/src/lib/hierarchy.ts` 之 `canBeUnder` 驗證，確保 UI 下拉選單與拖曳放置規則一致。
 
 ### <a id="cr-125"></a>CR-125 (2026-08-11) — 清單視角：修復 List.tsx 缺失 DEFAULT_TYPE_COLORS 引用導致型別檢查失敗 Bug
 
