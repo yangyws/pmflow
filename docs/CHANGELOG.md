@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-127` | 2026-08-11 | [任務種類上下關係：全數解鎖放行，移除階層嵌套限制並同步更新 AGENTS.md 條文與 API 測試 (e2e.sh)](#cr-127) | `AGENTS.md`, `hierarchy.ts`, `e2e.sh` | 已驗證 |
 | `CR-126` | 2026-08-11 | [任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）](#cr-126) | `hierarchy.ts` | 已驗證 |
 | `CR-125` | 2026-08-11 | [清單視角：修復 List.tsx 缺失 DEFAULT_TYPE_COLORS 引用導致型別檢查失敗 Bug](#cr-125) | `List.tsx` | 已驗證 |
 | `CR-124` | 2026-08-09 | [關聯圖：依照使用者五大規格書全面重構——右下角固定 ↘ 縮放手把、標頭 ✏️ 鉛筆 Hover 高亮、空位自動優先補位與手動位置右側接續網格，通過類型建置測試](#cr-124) |
@@ -184,6 +185,12 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-127"></a>CR-127 (2026-08-11) — 任務種類上下關係：全數解鎖放行，移除階層嵌套限制並同步更新 AGENTS.md 條文與 API 測試 (e2e.sh)
+
+1. **規則更新**：依據使用者指示，於 `D:\NewProject\AGENTS.md` 更新「任務種類的上下關係」規則，移除卡片種類限制。
+2. **前後端放行**：將 `apps/api/src/lib/hierarchy.ts` 的 `checkPlacement` 與 `apps/web/src/lib/hierarchy.ts` 的 `canBeUnder` 設定為全數放行 (`return null` / `return true`)。
+3. **API 測試同步**：更新 `apps/api/test/e2e.sh` 第 24 項種類測試之 HTTP 預期碼，前後端型別檢查 0 錯誤通過。
 
 ### <a id="cr-126"></a>CR-126 (2026-08-11) — 任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）
 

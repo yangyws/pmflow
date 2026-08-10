@@ -304,22 +304,21 @@ chkc "建立：沒填種類（預設就是任務）站在最上層 → 201" "201
   -X POST $TURL -d '{"title":"種類規則－獨立預設"}'
 chkc "建立：里程碑站在最上層 → 201" "201" "$TOK" \
   -X POST $TURL -d '{"title":"種類規則－獨立里程碑","type":"MILESTONE"}'
-chkcw "建立：錯誤站在最上層 → 400" "400" "任務" "$TOK" \
+chkc "建立：錯誤站在最上層 → 201" "201" "$TOK" \
   -X POST $TURL -d '{"title":"種類規則－孤兒錯誤","type":"BUG"}'
-chkcw "建立：錯誤掛在大項目底下 → 400" "400" "任務" "$TOK" \
+chkc "建立：錯誤掛在大項目底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－錯誤甲\",\"type\":\"BUG\",\"parentId\":\"$H_E1\"}"
-chkc "建立：錯誤掛在錯誤底下 → 400" "400" "$TOK" \
+chkc "建立：錯誤掛在錯誤底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－錯誤乙\",\"type\":\"BUG\",\"parentId\":\"$H_B1\"}"
-chkc "建立：錯誤掛在里程碑底下 → 400" "400" "$TOK" \
+chkc "建立：錯誤掛在里程碑底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－錯誤丙\",\"type\":\"BUG\",\"parentId\":\"$H_M1\"}"
-chkcw "建立：大項目掛在任務底下 → 400" "400" "大項目" "$TOK" \
+chkc "建立：大項目掛在任務底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－大項目丙\",\"type\":\"EPIC\",\"parentId\":\"$H_T1\"}"
-chkc "建立：大項目掛在里程碑底下 → 400" "400" "$TOK" \
+chkc "建立：大項目掛在里程碑底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－大項目丁\",\"type\":\"EPIC\",\"parentId\":\"$H_M1\"}"
 
 # ── ② 改種類 ──
-# 底下掛著錯誤的任務改成大項目 → 那些錯誤就變成掛在大項目底下，要擋
-chkc "改種類：底下有錯誤的任務改成大項目 → 400" "400" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"type":"EPIC"}'
+chkc "改種類：底下有錯誤的任務改成大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"type":"EPIC"}'
 chkc "改種類：大項目底下的大項目改成任務 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"TASK"}'
 chkc "改種類：最上層的大項目改成任務 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_E1 -d '{"type":"TASK"}'
@@ -331,16 +330,16 @@ chkc "只改標題不受影響 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -
 # ── ③ 改上層 ──
 chkc "改上層：把子任務搬到最上層 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_T2 -d '{"parentId":null}'
-chkc "改上層：把錯誤搬到大項目底下 → 400" "400" "$TOK" \
+chkc "改上層：把錯誤搬到大項目底下 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_B1 -d "{\"parentId\":\"$H_E1\"}"
 chkc "改上層：把子任務搬到另一個大項目底下 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_T2 -d "{\"parentId\":\"$H_E2\"}"
 
-# ── ④ 拖曳（跟在詳情頁改上層是同一件事，一樣要擋）──
+# ── ④ 拖曳 ──
 chkc "拖曳：把任務拖到最上層 → 200" "200" "$TOK" -X POST $API/tasks/$H_T2/move -d '{"parentId":null}'
-chkc "拖曳：把錯誤拖到大項目底下 → 400" "400" "$TOK" \
+chkc "拖曳：把錯誤拖到大項目底下 → 200" "200" "$TOK" \
   -X POST $API/tasks/$H_B1/move -d "{\"parentId\":\"$H_E1\"}"
-chkc "拖曳：把大項目拖到任務底下 → 400" "400" "$TOK" \
+chkc "拖曳：把大項目拖到任務底下 → 200" "200" "$TOK" \
   -X POST $API/tasks/$H_E2/move -d "{\"parentId\":\"$H_T1\"}"
 chkc "拖曳：把任務拖回任務底下 → 200" "200" "$TOK" \
   -X POST $API/tasks/$H_T2/move -d "{\"parentId\":\"$H_T1\"}"

@@ -58,36 +58,10 @@ interface Violation { title: string; detail: string }
  * `parentType === null` 代表放在最上層。上層是自訂種類時一律放行。
  */
 function checkPlacement(type: string, parentType: string | null): Violation | null {
-  // Ref: CR-126
-  if (!isBuiltin(type)) return null
-  if (parentType !== null && !isBuiltin(parentType)) return null
-
-  if (type === EPIC) {
-    if (parentType !== null && parentType !== EPIC) {
-      return {
-        title: `「${label(EPIC)}」不能放在${label(parentType)}底下`,
-        detail: `${label(EPIC)}只能在最上層或放在另一個${label(EPIC)}底下。`,
-      }
-    }
-  }
-
-  if (type === BUG) {
-    if (parentType === null) {
-      return {
-        title: `「${label(BUG)}」不能在最上層`,
-        detail: `${label(BUG)}的上層必須是一張任務。`,
-      }
-    }
-    if (parentType !== TASK) {
-      return {
-        title: `「${label(BUG)}」只能掛在任務底下`,
-        detail: `${label(BUG)}的上層必須是一張任務。`,
-      }
-    }
-  }
-
+  // Ref: CR-127 (全數解鎖放行：任何種類的卡片皆可自由放在最上層或任何收納盒/父卡片底下)
   return null
 }
+
 
 
 /** 上層是誰、它是什麼種類。找不到（不存在或已刪）就回 undefined，交給呼叫端原本的檢查處理 */

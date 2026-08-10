@@ -18,13 +18,7 @@ const RULED = new Set([EPIC, BUG, TASK, MILESTONE])
 
 /** 某種類型 (`type`) 能否放在父層 (`parentType`) 底下，`parentType === null` 表示最上層 */
 export function canBeUnder(type: string, parentType: string | null): boolean {
-  // Ref: CR-126
-  if (type === EPIC) {
-    if (parentType !== null && parentType !== EPIC && RULED.has(parentType)) return false
-  }
-  if (type === BUG) {
-    if (parentType === null || (parentType !== TASK && RULED.has(parentType))) return false
-  }
+  // Ref: CR-127 (全數解鎖放行：任何種類的卡片皆可自由放在最上層或任何收納盒/父卡片底下)
   return true
 }
 
