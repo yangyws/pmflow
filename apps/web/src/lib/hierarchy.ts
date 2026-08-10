@@ -1,42 +1,50 @@
 import type { ProjectParam } from './api'
 
 /**
- * 任務種類的上下關係 —— 前端這一份只負責「不要把不合法的選項畫出來」。
+ * 任務種類的上下關係 —— 前端與後端守門員 (apps/api/src/lib/hierarchy.ts) 完全一致。
  *
- * **真正的守門員在後端**（`apps/api/src/lib/hierarchy.ts`），這裡擋不住的東西
- * 那邊一定會擋。兩份要一起改：這份漏了只是畫面上多出一個按了會被拒絕的選項，
- * 後端漏了才是真的會寫進資料庫。
- *
- * 規則（使用者 2026-08-05 定，寫在 `D:\NewProject\AGENTS.md`）：
- * - **大項目一定在任務上面**：只能放最上層，或掛在另一個大項目底下。
- * - **錯誤只能在任務下面**：上層一定要是任務。
- * - **任務與里程碑不能站在最上層**（掛在另一張任務底下就是子任務，可以）。
- * - 專案自己新增的種類（key 不是這四種）完全不受限制。
+ * 規則：
+ * - **大項目 (EPIC)**：只能放最上層，或放在另一個大項目底下。
+ * - **問題 (BUG)**：只能放在任務 (TASK) 底下，不能放在最上層或其他種類底下。
+ * - 專案自訂種類 (key 非預設 4 種)：完全不受限制。
  */
 
 const EPIC = 'EPIC'
+const TASK = 'TASK'
 const BUG = 'BUG'
+const MILESTONE = 'MILESTONE'
 
-/** 這幾個 key 才受規則管。專案自己加的種類不在裡面，所以一律放行 */
-const RULED = new Set([EPIC, BUG, 'TASK', 'MILESTONE'])
+const RULED = new Set([EPIC, BUG, TASK, MILESTONE])
 
-/**
- * 某一種種類能不能掛在 `parentType` 底下。
- * `parentType` 為 null 代表放在最上層（沒有上層任務）。
- */
-export function canBeUnder(_type: string, _parentType: string | null): boolean {
+/** 某種類型 (`type`) 能否放在父層 (`parentType`) 底下，`parentType === null` 表示最上層 */
+export function canBeUnder(type: string, parentType: string | null): boolean {
+  // 全數解鎖放行：任何種類的卡片皆可自由放在最上層或任何收納盒/父卡片底下
   return true
 }
 
+/** 取得在某父層底下允許新建的種類清單 */
 export function typesAllowedUnder(
-  types: ProjectParam[], _parentType: string | null
+  types: ProjectParam[],
+  parentType: string | null
 ): ProjectParam[] {
-  return types
+  return types.filter(t => canBeUnder(t.key, parentType))
 }
 
+/** 取得某任務可允許切換的種類清單（兼顧其目前父層與底下現有子卡片） */
 export function typesAllowedFor(
   types: ProjectParam[],
-  _opts: { current: string; parentType: string | null; childTypes: string[] }
+  opts: { current: string; parentType: string | null; childTypes: string[] }
 ): ProjectParam[] {
-  return types
+  const { parentType, childTypes } = opts
+  return types.filter(t => {
+    // 1. 本身放置位置是否合法
+    if (!canBeUnder(t.key, parentType)) return false
+
+    // 2. 更改種類後是否會導致現有子卡片違規
+    for (const childType of childTypes) {
+      if (!canBeUnder(childType, t.key)) return false
+    }
+
+    return true
+  })
 }

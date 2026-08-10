@@ -12,47 +12,51 @@ import { useTheme } from '../lib/theme'
  * Ref: CR-006 (專案樹狀側欄架構與折疊狀態持久化，詳見 CHANGELOG.md)
  */
 
+export const DEFAULT_TYPE_COLORS: Record<string, string> = {
+  EPIC: '#d97706',
+  TASK: '#3178c6',
+  BUG: '#dc2626',
+  MILESTONE: '#8b5cf6',
+}
+
 /**
  * 收折狀態存在瀏覽器。
  *
  * 「側欄要不要收起來」是看螢幕決定的 —— 在筆電上為了甘特圖寬一點而收起來的人，
  * 換到大螢幕未必想收。存進帳號會讓兩台裝置互相蓋掉，跟深色模式同一個道理。
  */
-function sortTasksTopologically(taskList: Task[], edges: Array<{ sourceId: string; targetId: string }>, allTasks?: Task[]): Task[] {
-  if (!taskList.length) return []
-  const itemMap = new Map(taskList.map(t => [t.id, t]))
+function divideAndSortLinked(
+  taskList: Task[],
+  edges: Array<{ sourceId: string; targetId: string; linkType?: string }>,
+  allTasks?: Task[]
+): { linkedTasks: Task[]; unlinkedTasks: Task[] } {
+  if (!taskList.length) return { linkedTasks: [], unlinkedTasks: [] }
 
-  // 建立所有任務的父子關係映射
+  const itemMap = new Map(taskList.map(t => [t.id, t]))
   const parentOfMap = new Map<string, string>()
-  const hasKidsSet = new Set<string>()
+
   if (allTasks) {
     for (const t of allTasks) {
       if (t.parentId) {
         parentOfMap.set(t.id, t.parentId)
-        hasKidsSet.add(t.parentId)
       }
     }
   }
 
-  // 判斷是否為事件框或框內事件（僅以實際階層包含關係判定，不再依據「類型」欄位）
-  const isBoxedOrInBox = (t: Task) => !!t.parentId || hasKidsSet.has(t.id)
-
-  const comparePriority = (a: Task, b: Task) => {
-    // 1. 事件框／框內事件優先於散落無框獨立事件
-    const boxA = isBoxedOrInBox(a) ? 1 : 0
-    const boxB = isBoxedOrInBox(b) ? 1 : 0
-    if (boxA !== boxB) return boxB - boxA
-
-    // 2. 基本順序：依據開任務的編號順序 (MRG-1, MRG-2, MRG-3...)
+  const compareRef = (a: Task, b: Task) => {
     const numA = a.number ?? 0
     const numB = b.number ?? 0
     if (numA !== numB) return numA - numB
-
     return a.ref.localeCompare(b.ref, undefined, { numeric: true })
   }
 
-  // 將子任務的連線向上映射至頂層大項目，確保跨子任務連線能正確影響大項目的先後排序
-  const epicEdges: Array<{ sourceId: string; targetId: string }> = []
+  const SCHEDULING_SET = new Set(['FS', 'SS', 'FF', 'SF'])
+  const isHorizontalLink = (linkType?: string) => !linkType || SCHEDULING_SET.has(linkType)
+
+  // 將子任務的連線向上映射至頂層大項目，並區分為左右關聯與上下關聯
+  const horizEdges: Array<{ sourceId: string; targetId: string }> = []
+  const vertEdges: Array<{ sourceId: string; targetId: string }> = []
+
   for (const e of edges) {
     let src = e.sourceId
     let tgt = e.targetId
@@ -63,73 +67,83 @@ function sortTasksTopologically(taskList: Task[], edges: Array<{ sourceId: strin
       tgt = parentOfMap.get(tgt)!
     }
     if (itemMap.has(src) && itemMap.has(tgt) && src !== tgt) {
-      epicEdges.push({ sourceId: src, targetId: tgt })
+      if (isHorizontalLink(e.linkType)) {
+        horizEdges.push({ sourceId: src, targetId: tgt })
+      } else {
+        vertEdges.push({ sourceId: src, targetId: tgt })
+      }
     }
   }
 
-  // 找出有參與關聯的 ID
-  const connectedIds = new Set<string>()
-  for (const e of epicEdges) {
-    connectedIds.add(e.sourceId)
-    connectedIds.add(e.targetId)
+  const horizIds = new Set<string>()
+  for (const e of horizEdges) {
+    horizIds.add(e.sourceId)
+    horizIds.add(e.targetId)
   }
 
-  // 分離出「有關聯」與「無關聯」兩群
-  const connectedTasks = taskList.filter(t => connectedIds.has(t.id))
-  const unconnectedTasks = taskList.filter(t => !connectedIds.has(t.id)).sort(comparePriority)
-
-  // 如果全都沒有關聯，依據「事件框優先」與 rank/ref 排序後回傳
-  if (connectedTasks.length === 0) return [...taskList].sort(comparePriority)
-
-  const inDegree = new Map<string, number>()
-  const childrenMap = new Map<string, string[]>()
-  
-  for (const t of connectedTasks) {
-    inDegree.set(t.id, 0)
-    childrenMap.set(t.id, [])
-  }
-  
-  for (const e of epicEdges) {
-    childrenMap.get(e.sourceId)?.push(e.targetId)
-    inDegree.set(e.targetId, (inDegree.get(e.targetId) ?? 0) + 1)
+  const vertIds = new Set<string>()
+  for (const e of vertEdges) {
+    if (!horizIds.has(e.sourceId)) vertIds.add(e.sourceId)
+    if (!horizIds.has(e.targetId)) vertIds.add(e.targetId)
   }
 
-  // 根節點（沒有入度的事件），依據事件框優先度與 rank/ref 排序
-  const roots = connectedTasks.filter(t => (inDegree.get(t.id) ?? 0) === 0).sort(comparePriority)
+  const sortSubGroup = (groupTasks: Task[], groupEdges: Array<{ sourceId: string; targetId: string }>): Task[] => {
+    if (!groupTasks.length) return []
+    const gMap = new Map(groupTasks.map(t => [t.id, t]))
+    const inDegree = new Map<string, number>()
+    const childrenMap = new Map<string, string[]>()
 
-  const connectedResult: Task[] = []
-  const visited = new Set<string>()
-
-  // 深度優先走訪 (DFS)，當上游連線到下游時，下游緊貼在預設上游正後方，中間不插入無關事件
-  function dfs(id: string) {
-    if (visited.has(id)) return
-    visited.add(id)
-    const task = itemMap.get(id)
-    if (task) connectedResult.push(task)
-
-    const nextTasks = (childrenMap.get(id) ?? [])
-      .map(nid => itemMap.get(nid))
-      .filter((t): t is Task => !!t && !visited.has(t.id))
-      .sort(comparePriority)
-
-    for (const next of nextTasks) {
-      dfs(next.id)
+    for (const t of groupTasks) {
+      inDegree.set(t.id, 0)
+      childrenMap.set(t.id, [])
     }
-  }
 
-  for (const root of roots) {
-    dfs(root.id)
-  }
-
-  // 預防環形依賴或遺漏的有連線節點
-  for (const t of connectedTasks) {
-    if (!visited.has(t.id)) {
-      connectedResult.push(t)
+    for (const e of groupEdges) {
+      if (gMap.has(e.sourceId) && gMap.has(e.targetId)) {
+        childrenMap.get(e.sourceId)?.push(e.targetId)
+        inDegree.set(e.targetId, (inDegree.get(e.targetId) ?? 0) + 1)
+      }
     }
+
+    const roots = groupTasks.filter(t => (inDegree.get(t.id) ?? 0) === 0).sort(compareRef)
+    const res: Task[] = []
+    const visited = new Set<string>()
+
+    function dfs(id: string) {
+      if (visited.has(id)) return
+      visited.add(id)
+      const task = gMap.get(id)
+      if (task) res.push(task)
+
+      const nextTasks = (childrenMap.get(id) ?? [])
+        .map(nid => gMap.get(nid))
+        .filter((t): t is Task => !!t && !visited.has(t.id))
+        .sort(compareRef)
+
+      for (const next of nextTasks) {
+        dfs(next.id)
+      }
+    }
+
+    for (const root of roots) {
+      dfs(root.id)
+    }
+
+    for (const t of groupTasks) {
+      if (!visited.has(t.id)) res.push(t)
+    }
+    return res
   }
 
-  // 無關聯的事件統一排在 Menu 最下方！
-  return [...connectedResult, ...unconnectedTasks]
+  const horizGroup = taskList.filter(t => horizIds.has(t.id))
+  const vertGroup = taskList.filter(t => vertIds.has(t.id))
+  const unlinkedTasks = taskList.filter(t => !horizIds.has(t.id) && !vertIds.has(t.id)).sort(compareRef)
+
+  const sortedHoriz = sortSubGroup(horizGroup, horizEdges)
+  const sortedVert = sortSubGroup(vertGroup, vertEdges)
+
+  // 左右關聯排序在最上面 (收納盒下方)，上下關聯緊跟在後
+  return { linkedTasks: [...sortedHoriz, ...sortedVert], unlinkedTasks }
 }
 
 const COLLAPSE_KEY = 'pmflow.sidebar'
@@ -192,6 +206,18 @@ export function EpicSidebar({
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [collapsed, setCollapsed] = useState<boolean>(() => storedCollapsed())
 
+  const [containerBoxTick, setContainerBoxTick] = useState(0)
+
+  useEffect(() => {
+    const handleUpdate = () => setContainerBoxTick(t => t + 1)
+    window.addEventListener('pmflow_container_boxes_changed', handleUpdate)
+    window.addEventListener('storage', handleUpdate)
+    return () => {
+      window.removeEventListener('pmflow_container_boxes_changed', handleUpdate)
+      window.removeEventListener('storage', handleUpdate)
+    }
+  }, [])
+
   const { data: graphData } = useQuery({
     queryKey: ['graph', project?.id],
     queryFn: () => Api.graph(project!.id),
@@ -210,26 +236,50 @@ export function EpicSidebar({
     })()
 
     const rawKids = new Map<string, Task[]>()
+    const hasKidsSet = new Set<string>()
     for (const t of tasks) {
       if (!t.parentId || !ids.has(t.parentId)) continue
+      hasKidsSet.add(t.parentId)
       const a = rawKids.get(t.parentId) ?? []; a.push(t); rawKids.set(t.parentId, a)
     }
 
+    const isBox = (t: Task) => containerBoxSet.has(t.id) || hasKidsSet.has(t.id)
+
     const rawEpics = tasks.filter(t => !t.parentId)
-    const sortedRaw = sortTasksTopologically(rawEpics, edges, tasks)
 
-    // 收納開的事件框 (大項目 / 收納框) 於 Menu 排序統一最高
-    const containerBoxes = sortedRaw.filter(t => t.type === 'EPIC' || containerBoxSet.has(t.id) || (rawKids.get(t.id)?.length ?? 0) > 0)
-    const regularTasks = sortedRaw.filter(t => !(t.type === 'EPIC' || containerBoxSet.has(t.id) || (rawKids.get(t.id)?.length ?? 0) > 0))
+    const compareRef = (a: Task, b: Task) => {
+      const numA = a.number ?? 0
+      const numB = b.number ?? 0
+      if (numA !== numB) return numA - numB
+      return a.ref.localeCompare(b.ref, undefined, { numeric: true })
+    }
 
-    const epics = [...containerBoxes, ...regularTasks]
-    const lastContainerBoxId = containerBoxes.length > 0 && regularTasks.length > 0 ? containerBoxes[containerBoxes.length - 1].id : null
+    // 1. 第一優先：收納盒 (Storage Boxes)，依 MRG / Ref 數字大小排序
+    const boxesGroup = rawEpics.filter(t => isBox(t)).sort(compareRef)
 
+    // 2. 第二優先：有相依關聯線的卡片 (Linked Cards)，依拓撲相依結構排序
+    // 3. 第三優先：沒有關聯線的獨立卡片 (Unlinked Cards)，依 MRG / Ref 數字大小排序
+    const nonBoxEpics = rawEpics.filter(t => !isBox(t))
+    const { linkedTasks, unlinkedTasks } = divideAndSortLinked(nonBoxEpics, edges, tasks)
+
+    const epics = [...boxesGroup, ...linkedTasks, ...unlinkedTasks]
+
+    // 4. 插入分隔線位置：每個收納盒區塊下方皆繪製一條分隔線！連線卡片區塊下方也繪製一條分隔線！
+    const dividerAfterTaskIdSet = new Set<string>()
+    for (const box of boxesGroup) {
+      dividerAfterTaskIdSet.add(box.id)
+    }
+    if (linkedTasks.length > 0) {
+      dividerAfterTaskIdSet.add(linkedTasks[linkedTasks.length - 1].id)
+    }
+
+    const lastContainerBoxId = null
     const rolled = rollup(tasks)
 
     const kids = new Map<string, Task[]>()
     for (const [pId, list] of rawKids.entries()) {
-      kids.set(pId, sortTasksTopologically(list, edges, tasks))
+      const { linkedTasks: kLinked, unlinkedTasks: kUnlinked } = divideAndSortLinked(list, edges, tasks)
+      kids.set(pId, [...kLinked, ...kUnlinked])
     }
     const overdueIn = (rootId: string): number => {
       let n = 0
@@ -306,81 +356,8 @@ export function EpicSidebar({
 
     const looseCount = tasks.filter(t => t.parentId && !ids.has(t.parentId)).length
 
-    // 找出每個事件框及其向下衍生關聯在 Menu 中最後出現的任務 ID
-    const dividerAfterTaskIdSet = new Set<string>()
-
-    const childrenMap = new Map<string, string[]>()
-    for (const t of tasks) {
-      if (t.parentId) {
-        const list = childrenMap.get(t.parentId) ?? []
-        list.push(t.id)
-        childrenMap.set(t.parentId, list)
-      }
-    }
-
-    const outEdgesMap = new Map<string, string[]>()
-    for (const e of edges) {
-      const list = outEdgesMap.get(e.sourceId) ?? []
-      list.push(e.targetId)
-      outEdgesMap.set(e.sourceId, list)
-    }
-
-    // 將所有 Menu 中呈現的任務依深層順序展平，求得在 Menu 上的精確列數索引
-    const flatMenuTasks: Task[] = []
-    function flattenMenu(tList: Task[]) {
-      for (const t of tList) {
-        flatMenuTasks.push(t)
-        const subKids = kids.get(t.id) ?? []
-        if (subKids.length > 0) {
-          flattenMenu(subKids)
-        }
-      }
-    }
-    flattenMenu(epics)
-
-    const flatOrderMap = new Map<string, number>()
-    flatMenuTasks.forEach((t, index) => flatOrderMap.set(t.id, index))
-
-    // 針對每一個事件框（包含子事件的大項目），搜尋其本體與子任務所衍生出的所有關聯項目
-    for (const epic of epics) {
-      if (!childrenMap.has(epic.id)) continue
-
-      const relSet = new Set<string>()
-      const queue: string[] = [epic.id]
-      while (queue.length > 0) {
-        const curr = queue.shift()!
-        if (relSet.has(curr)) continue
-        relSet.add(curr)
-
-        // 加入子任務
-        for (const kId of childrenMap.get(curr) ?? []) {
-          if (!relSet.has(kId)) queue.push(kId)
-        }
-
-        // 加入出度連線 (source -> target)
-        for (const tId of outEdgesMap.get(curr) ?? []) {
-          if (!relSet.has(tId)) queue.push(tId)
-        }
-      }
-
-      // 在 flatMenuTasks 中找出屬於 relSet 且在 Menu 中最靠後的任務
-      let maxIdx = -1
-      let lastTaskIdInRel = ''
-      for (const id of relSet) {
-        const idx = flatOrderMap.get(id)
-        if (idx !== undefined && idx > maxIdx) {
-          maxIdx = idx
-          lastTaskIdInRel = id
-        }
-      }
-
-      if (lastTaskIdInRel) {
-        dividerAfterTaskIdSet.add(lastTaskIdInRel)
-      }
-    }
-
     return { epics, lastContainerBoxId, stat, looseCount, childrenOf: kids, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet }
-  }, [tasks])
+  }, [tasks, graphData, containerBoxTick])
 
   /** 一列任務的問題數：底下的，加上自己（如果它本身就是一張問題） */
   const bugCount = (t: Task) => bugsUnder(t.id) + (t.type === 'BUG' ? 1 : 0)
@@ -476,27 +453,27 @@ export function EpicSidebar({
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white
                       dark:border-slate-700 dark:bg-slate-900">
 
-      {/* ── 專案標頭：切換專案的入口在這裡 ── */}
-      <div className="border-b border-slate-200 px-3 py-3 dark:border-slate-700">
-        <div className="flex items-center gap-2">
+      {/* ── 專案標頭 (與右側頂欄第一層 h-12 完美對齊) ── */}
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 px-3 dark:border-slate-700">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: project?.color ?? '#94a3b8' }} />
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800
+          {project?.key && (
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 shrink-0">
+              {project.key}
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-base font-bold text-slate-800
                            dark:text-slate-100">
             {project?.name ?? T.common.none}
           </span>
-          <button onClick={() => setCollapse(true)}
-                  title={T.nav.sidebar.collapseSidebar}
-                  aria-label={T.nav.sidebar.collapseSidebar}
-                  className="shrink-0 rounded px-1 text-sm text-slate-400 hover:text-slate-700
-                             dark:text-slate-400 dark:hover:text-slate-300">
-            «
-          </button>
         </div>
-        <button onClick={onSwitchProject}
-                className="mt-1.5 text-xs text-slate-400 hover:text-slate-600
+        <button onClick={() => setCollapse(true)}
+                title={T.nav.sidebar.collapseSidebar}
+                aria-label={T.nav.sidebar.collapseSidebar}
+                className="shrink-0 rounded px-1 text-sm text-slate-400 hover:text-slate-700
                            dark:text-slate-400 dark:hover:text-slate-300">
-          ⇄ {T.nav.sidebar.switchProject}
+          «
         </button>
       </div>
 
@@ -504,9 +481,7 @@ export function EpicSidebar({
         <div className="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-400">
           {T.nav.sidebar.epics}
         </div>
-        <div className="mt-0.5 text-[11px] leading-snug text-slate-400 dark:text-slate-400">
-          {T.nav.sidebar.epicsHint}
-        </div>
+
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -569,16 +544,35 @@ export function EpicSidebar({
         {adding ? (
           <div className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2 dark:bg-slate-800">
             <div className="flex gap-1.5 items-center">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{
+                  backgroundColor:
+                    typeList.find(t => t.key === createType)?.color ||
+                    DEFAULT_TYPE_COLORS[createType] ||
+                    '#3178c6',
+                }}
+              />
               <span className="text-xs text-slate-500 shrink-0">類型：</span>
               <Select
                 value={createType}
                 onChange={e => setCreateType(e.target.value)}
-                style={typeList.find(t => t.key === createType)?.color ? { color: readableColor(typeList.find(t => t.key === createType)?.color, dark) } : undefined}
-                className="text-xs py-1 flex-1 font-medium"
+                style={{
+                  color:
+                    typeList.find(t => t.key === createType)?.color ||
+                    DEFAULT_TYPE_COLORS[createType] ||
+                    '#3178c6',
+                }}
+                className="text-xs py-1 flex-1 font-semibold"
               >
                 {typeList.map(t => (
-                  <ColorOption key={t.key} value={t.key} color={t.color} dark={dark}>
-                    {t.name}
+                  <ColorOption
+                    key={t.key}
+                    value={t.key}
+                    color={t.color || DEFAULT_TYPE_COLORS[t.key] || '#3178c6'}
+                    dark={dark}
+                  >
+                    ● {t.name}
                   </ColorOption>
                 ))}
               </Select>
@@ -673,12 +667,6 @@ function TreeNode({
     return false
   }, [dividerAfterTaskIdSet, task.id, open, kids, childrenOf])
   // Ref: CR-086 — 設定預設種類顏色對映，修改種類時側欄即時切換顏色
-  const DEFAULT_TYPE_COLORS: Record<string, string> = {
-    EPIC: '#d97706',
-    TASK: '#3178c6',
-    BUG: '#dc2626',
-    MILESTONE: '#8b5cf6',
-  }
   const kind = types.find(t => t.key === task.type)
   const kindName = kind?.name ?? task.type
   const kindColor = kind?.color ?? DEFAULT_TYPE_COLORS[task.type] ?? '#94a3b8'
@@ -736,7 +724,7 @@ function TreeNode({
 
   return (
     <div className={isRoot ? 'mb-0.5' : undefined}>
-      <div className={cx('group/row flex items-start rounded-md transition-colors',
+      <div className={cx('group/row flex items-center rounded-md transition-colors',
         active ? 'bg-blue-100/80 dark:bg-blue-900/60 ring-1 ring-blue-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800',
         hasUnread && 'pmflow-flash')}>
 
@@ -761,8 +749,8 @@ function TreeNode({
             onOpenTask(task.id)
           }}
           title={isRoot && stat?.hasChildren
-            ? T.nav.sidebar.epicSummary(task.title, stat.done, stat.total)
-            : T.nav.sidebar.taskTitle(task.ref, task.title)}
+            ? `[${task.ref}] ${task.title} (${stat.done}/${stat.total})`
+            : `[${task.ref}] ${task.title}`}
           aria-current={!isRoot && active ? 'true' : undefined}
           className={cx('block min-w-0 flex-1 rounded-md pr-2.5 text-left',
                         isRoot ? 'py-2' : 'py-1.5')}>
@@ -778,6 +766,14 @@ function TreeNode({
             <span className={cx('shrink-0 rounded-full', isRoot ? 'h-4 w-1' : 'h-3 w-0.5')}
                   title={kindName}
                   style={{ background: kindColor }} />
+            <span className="shrink-0 text-xs select-none">
+              {kids.length > 0 || (typeof window !== 'undefined' && (() => {
+                try {
+                  const saved = localStorage.getItem('pmflow_graph_container_boxes')
+                  return saved ? new Set(JSON.parse(saved)).has(task.id) : false
+                } catch { return false }
+              })()) ? '📦' : '📇'}
+            </span>
             <span className={cx('min-w-0 flex-1 truncate',
               isRoot ? 'text-sm' : 'text-[13px]',
               active
@@ -832,7 +828,7 @@ function TreeNode({
             <div className="mt-1.5 flex items-center gap-2">
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                 <span className={cx('block h-full',
-                        stat.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
+                        stat.progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
                       style={{ width: `${stat.progress}%` }} />
               </span>
               <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
@@ -861,10 +857,10 @@ function TreeNode({
           onClick={e => { e.stopPropagation(); (onOpenEditTask ?? onOpenTask)(task.id) }}
           title="編輯詳細內容"
           aria-label="編輯詳細內容"
-          className={cx('w-6 shrink-0 rounded text-xs opacity-0 transition-opacity',
-            'group-hover/row:opacity-100 focus:opacity-100',
-            isRoot ? 'py-2.5' : 'py-1.5',
-            'text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300')}>
+          className={cx('w-5 h-5 shrink-0 rounded flex items-center justify-center text-[11px] transition-colors cursor-pointer border select-none',
+            'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
+            'dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900',
+            'opacity-0 group-hover/row:opacity-100 focus:opacity-100')}>
           ✏️
         </button>
         {addType && projectId && !addingChild && (

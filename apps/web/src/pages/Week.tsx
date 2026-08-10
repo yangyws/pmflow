@@ -58,7 +58,7 @@ const GROUP_BY_LABEL: Record<GroupBy, string> = {
 const NO_ASSIGNEE = '__unassigned__'
 
 export default function WeekView({
-  projectId, tasks, statuses, types, onOpen, onEdit, focusedTaskId, extraHeaderLeft,
+  projectId, tasks, statuses, types, onOpen, onEdit, focusedTaskId, extraHeaderLeft, initialWeekStart,
 }: {
   /** 只拿來當收合偏好的鍵 —— 狀態是每個專案自己一份，鍵不分專案會互相蓋掉 */
   projectId: string
@@ -71,10 +71,11 @@ export default function WeekView({
   focusedTaskId?: string | null
   /** 工具列最左側額外注入元素（如行事曆之 [月視角 | 週視角] 切換鈕） */
   extraHeaderLeft?: React.ReactNode
+  initialWeekStart?: string
 }) {
   const today = todayYmd()
   /** 目前看的是哪一週，存的是那一週的星期日 */
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(today))
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart ? startOfWeek(initialWeekStart) : startOfWeek(today))
   /** 目前選取的單一日，null＝看整週 7 天 */
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
 

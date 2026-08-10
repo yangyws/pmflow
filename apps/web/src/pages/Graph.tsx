@@ -4,7 +4,7 @@ import {
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Background, BackgroundVariant, Handle, MarkerType, NodeResizer, Panel, Position, ReactFlow,
+  Background, BackgroundVariant, Handle, MarkerType, NodeResizeControl, Panel, Position, ReactFlow,
   ReactFlowProvider, useNodesInitialized, useReactFlow,
   type Connection, type Edge, type FitViewOptions, type Node, type NodeChange, type NodeProps,
 } from '@xyflow/react'
@@ -16,6 +16,7 @@ import { Button, Empty, INQUIRY_META, Select, Spinner, cx } from '../components/
 import { LINK_CHIP, LINK_LABEL } from '../lib/linkText'
 import { useTheme } from '../lib/theme'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
+import { rollup } from '../lib/rollup'
 import { T } from '../strings'
 
 /**
@@ -134,6 +135,11 @@ const JUNCTION_SPAN = JUNCTION_GAP + JUNCTION_SIZE
 /** 強制將像素高度/尺寸轉換為 48px 網格倍數，確保 Handle 垂直中點 (height / 2) 精確落於 24px 背景網點點陣上 */
 const even = (v: number): number => {
   return Math.ceil(Math.max(v, LEAF_H) / 48) * 48
+}
+
+/** 強制將 Y 座標對齊 48px 網格（允許任意正負座標，不受尺寸下限限制） */
+const evenPos = (v: number): number => {
+  return Math.round(v / 48) * 48
 }
 
 type TaskNodeData = {
@@ -328,20 +334,20 @@ const RESIZE_COLOR = '#8b5cf6'
  * 把手只在框被選起來時出現 —— 常駐的話每個框的四角都多四顆點，圖會很吵。
  * 下限是自動佈局算出來的尺寸：再小就會把裡面的任務蓋掉。
  */
-function NodeProgressBar({ progress, accentColor }: { progress: number; accentColor: string }) {
-  const barColor = progress === 100 ? '#10b981' : progress === 0 ? '#cbd5e1' : accentColor
+function NodeProgressBar({ progress }: { progress: number; accentColor?: string }) {
+  const barColor = progress >= 100 ? '#10b981' : '#ef4444'
   return (
     <div className="mt-1.5 flex items-center gap-1.5 w-full">
       <div className="h-1 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
         <div
           className={cx("h-1 rounded transition-all duration-300", progress === 0 && "opacity-40")}
           style={{
-            width: `${Math.max(progress, progress === 0 ? 100 : progress)}%`,
+            width: `${Math.min(100, Math.max(progress, progress === 0 ? 100 : progress))}%`,
             backgroundColor: barColor
           }}
         />
       </div>
-      {progress === 100 ? (
+      {progress >= 100 ? (
         <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title="已完成">
           ✓
         </span>
@@ -358,135 +364,20 @@ function NodeProgressBar({ progress, accentColor }: { progress: number; accentCo
   )
 }
 
-/**
- * 框裡面刻意留空、只有很淡的底色：真正的內容是那些子節點，框只負責圈範圍。
- * 標題列做成一整條可以點的區域，點它就是點這張任務（聚焦、雙擊開啟都照舊）。
- *
- * 框的大小預設是佈局算出來的，但使用者可以自己拉（NodeResizer，React Flow 內建）。
- * 把手只在框被選起來時出現 —— 常駐的話每個框的四角都多四顆點，圖會很吵。
- * 下限是自動佈局算出來的尺寸：再小就會把裡面的任務蓋掉。
- */
 function BoxNodeView({ data }: NodeProps<TaskNode>) {
   const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
   return (
-    <>
-      {data.isContainerMode && (
-        <NodeResizer
-          isVisible
-          color={RESIZE_COLOR}
-          handleStyle={{ width: 10, height: 10, borderRadius: 2 }}
-          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 384}
-          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 288}
-        />
-      )}
-      <div
-        className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-start relative group/node')}
-        style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
-      >
-        {/* 大項目框左右接點 100% 垂直置中於框體邊線中心 */}
-        <NodeHandles />
-        <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
-        
-        <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
-          <div className="shrink-0">
-            {/* 第一列：左側 [編號 (MRG) ＋ 大項目徽章] ｜ 右側 [模式切換按鈕 ＋ ✏️ 編輯按鈕] */}
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                  {data.ref}
-                </span>
-                <span
-                  className={cx(BADGE, 'shrink-0 border')}
-                  style={{
-                    backgroundColor: `${accentColor}18`,
-                    color: accentColor,
-                    borderColor: `${accentColor}40`,
-                  }}
-                >
-                  {getTypeName(data.taskType, data.typeName)}
-                </span>
-              </div>
-              
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    data.onToggleContainer?.()
-                  }}
-                  className={cx(
-                    'shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium transition-all cursor-pointer border',
-                    data.isContainerMode
-                      ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                  )}
-                  title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
-                >
-                  {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    data.onOpenEditDrawer?.(data.id)
-                  }}
-                  className="w-6 h-6 rounded flex items-center justify-center text-xs opacity-80 hover:opacity-100 hover:scale-110 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:ring-2 hover:ring-blue-500 focus:opacity-100 focus:ring-2 focus:ring-blue-500 transition-all duration-150 cursor-pointer"
-                  title="編輯詳細內容"
-                  aria-label="編輯詳細內容"
-                >
-                  ✏️
-                </button>
-              </div>
-            </div>
-
-            {/* 第二列：標題 (位置完全統一在標號正下方，固定第二行) */}
-            <div className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-slate-800 dark:text-slate-100" title={data.title}>
-              {data.title}
-            </div>
-
-            {/* 第三列：進度條 (滿寬適配，框變大時自動伸縮填滿) */}
-            <NodeProgressBar progress={data.progress} accentColor={accentColor} />
-          </div>
-        </div>
-
-        {/* 右下角固定 ↘ 縮放控制按鈕 */}
-        {data.isContainerMode && (
-          <div
-            className="absolute bottom-1 right-1 z-20 flex items-center justify-center w-5 h-5 rounded bg-slate-200/90 hover:bg-slate-300 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-[11px] font-bold cursor-se-resize shadow border border-slate-300 dark:border-slate-600"
-            title="按住拖曳調整收納盒尺寸（手動縮放四邊不得小於盒內卡片邊界）"
-          >
-            ↘
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-function TaskNodeView({ data }: NodeProps<TaskNode>) {
-  const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
-  return (
-    <>
-      {data.isContainerMode && (
-        <NodeResizer
-          isVisible
-          color={RESIZE_COLOR}
-          handleStyle={{ width: 10, height: 10, borderRadius: 2 }}
-          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 384}
-          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 288}
-        />
-      )}
-      <div
-        className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-start relative group/node')}
-        style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
-      >
-        <NodeHandles />
-        <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
-
-        <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
-          {/* 第一列：[模式按鈕] ＋ 編號 (MRG) ＋ 類型徽章 ｜ 右側 ✏️ 編輯按鈕 */}
+    <div
+      className={cx(frameClass(data), 'h-full w-full bg-white dark:bg-slate-900 rounded-lg overflow-hidden border shadow-sm flex flex-col justify-start relative group/node')}
+      style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
+    >
+      <NodeHandles />
+      <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
+      
+      <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
+        <div className="shrink-0">
           <div className="flex items-center justify-between gap-1">
-            <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
               <button
                 type="button"
                 onClick={(e) => {
@@ -494,14 +385,26 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                   data.onToggleContainer?.()
                 }}
                 className={cx(
-                  'shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium transition-all cursor-pointer border',
+                  'shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none',
                   data.isContainerMode
-                    ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500 font-semibold'
+                    ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                 )}
                 title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
               >
                 {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  data.onOpenEditDrawer?.(data.id)
+                }}
+                className="w-5 h-5 shrink-0 rounded flex items-center justify-center text-[11px] bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer font-bold select-none"
+                title="編輯詳細內容"
+                aria-label="編輯詳細內容"
+              >
+                ✏️
               </button>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {data.ref}
@@ -516,63 +419,135 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               >
                 {getTypeName(data.taskType, data.typeName)}
               </span>
-              {data.showBadges && data.kin && (
-                <span className={cx(BADGE, BADGE_VIOLET)}
-                      title={data.kin === 'parent' ? G.badge.kinParentTaskTip : G.badge.kinChildTip}>
-                  {data.kin === 'parent' ? G.badge.kinParent : G.badge.kinChild}
-                </span>
-              )}
-              {data.showBadges && data.isEntry && (
-                <span className={cx(BADGE, BADGE_EMERALD)} title={G.badge.entryTaskTip}>
-                  {G.badge.entry}
-                </span>
-              )}
-              {data.showBadges && data.blockedBy.length > 0 && (
-                <span className={cx(BADGE, BADGE_RED)}
-                      title={G.badge.blockedTip(data.blockedBy.join('、'))}>{G.badge.blocked}</span>
-              )}
-              {data.showBadges && data.problem && (
-                <span className={cx(BADGE, BADGE_FUCHSIA)}
-                      title={G.badge.problemTip(data.problem)}>{G.badge.problem}</span>
-              )}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  data.onOpenEditDrawer?.(data.id)
-                }}
-                className="w-6 h-6 rounded flex items-center justify-center text-xs opacity-80 hover:opacity-100 hover:scale-110 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:ring-2 hover:ring-blue-500 focus:opacity-100 focus:ring-2 focus:ring-blue-500 transition-all duration-150 cursor-pointer"
-                title="編輯詳細內容"
-                aria-label="編輯詳細內容"
-              >
-                ✏️
-              </button>
             </div>
           </div>
 
-          {/* 第二列：標題 (位置完全統一在第二列) */}
           <div className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-slate-800 dark:text-slate-100" title={data.title}>
             {data.title}
           </div>
 
-          {/* 第三列：進度條 */}
           <NodeProgressBar progress={data.progress} accentColor={accentColor} />
         </div>
+      </div>
 
-        {/* 右下角固定 ↘ 縮放控制按鈕 */}
-        {data.isContainerMode && (
+      {data.isContainerMode && (
+        <NodeResizeControl
+          position="bottom-right"
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 288}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 96}
+          className="!w-4 !h-4 !bottom-0.5 !right-0.5 !border-0 !bg-transparent"
+        >
           <div
-            className="absolute bottom-1 right-1 z-20 flex items-center justify-center w-5 h-5 rounded bg-slate-200/90 hover:bg-slate-300 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-[11px] font-bold cursor-se-resize shadow border border-slate-300 dark:border-slate-600"
-            title="按住拖曳調整收納盒尺寸（手動縮放四邊不得小於盒內卡片邊界）"
+            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
+            title="按住拖曳調整收納盒尺寸"
           >
             ↘
           </div>
-        )}
+        </NodeResizeControl>
+      )}
+    </div>
+  )
+}
+
+function TaskNodeView({ data }: NodeProps<TaskNode>) {
+  const accentColor = getTypeColor(data.taskType, data.typeColor ?? data.color)
+  return (
+    <div
+      className={cx(frameClass(data), data.isContainerMode ? 'h-full w-full' : 'w-[288px] h-[96px]', 'bg-white dark:bg-slate-900 shadow-sm rounded-lg overflow-hidden border flex flex-col justify-start relative group/node')}
+      style={{ borderColor: !data.focused && !data.blockedBy.length && !data.kin ? accentColor : undefined }}
+    >
+      <NodeHandles />
+      <div className="h-1 rounded-t-lg shrink-0" style={{ backgroundColor: accentColor }} />
+
+      <div className="px-2.5 py-2 shrink-0 flex flex-col justify-start">
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                data.onToggleContainer?.()
+              }}
+              className={cx(
+                'shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none',
+                data.isContainerMode
+                  ? 'bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+              )}
+              title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
+            >
+              {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                data.onOpenEditDrawer?.(data.id)
+              }}
+              className="w-5 h-5 shrink-0 rounded flex items-center justify-center text-[11px] bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer font-bold select-none"
+              title="編輯詳細內容"
+              aria-label="編輯詳細內容"
+            >
+              ✏️
+            </button>
+            <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+              {data.ref}
+            </span>
+            <span
+              className={cx(BADGE, 'shrink-0 border')}
+              style={{
+                backgroundColor: `${accentColor}18`,
+                color: accentColor,
+                borderColor: `${accentColor}40`,
+              }}
+            >
+              {getTypeName(data.taskType, data.typeName)}
+            </span>
+            {data.showBadges && data.kin && (
+              <span className={cx(BADGE, BADGE_VIOLET)}
+                    title={data.kin === 'parent' ? G.badge.kinParentTaskTip : G.badge.kinChildTip}>
+                {data.kin === 'parent' ? G.badge.kinParent : G.badge.kinChild}
+              </span>
+            )}
+            {data.showBadges && data.isEntry && (
+              <span className={cx(BADGE, BADGE_EMERALD)} title={G.badge.entryTaskTip}>
+                {G.badge.entry}
+              </span>
+            )}
+            {data.showBadges && data.blockedBy.length > 0 && (
+              <span className={cx(BADGE, BADGE_RED)}
+                    title={G.badge.blockedTip(data.blockedBy.join('、'))}>{G.badge.blocked}</span>
+            )}
+            {data.showBadges && data.problem && (
+              <span className={cx(BADGE, BADGE_FUCHSIA)}
+                    title={G.badge.problemTip(data.problem)}>{G.badge.problem}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-slate-800 dark:text-slate-100" title={data.title}>
+          {data.title}
+        </div>
+
+        <NodeProgressBar progress={data.progress} accentColor={accentColor} />
       </div>
-    </>
+
+      {data.isContainerMode && (
+        <NodeResizeControl
+          position="bottom-right"
+          minWidth={data.minSize?.w ? Math.ceil(data.minSize.w / 24) * 24 : 288}
+          minHeight={data.minSize?.h ? Math.ceil(data.minSize.h / 24) * 24 : 96}
+          className="!w-4 !h-4 !bottom-0.5 !right-0.5 !border-0 !bg-transparent"
+        >
+          <div
+            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
+            title="按住拖曳調整收納盒尺寸"
+          >
+            ↘
+          </div>
+        </NodeResizeControl>
+      )}
+    </div>
   )
 }
 
@@ -736,9 +711,10 @@ function layout(
     let box: Box
     if (isContainerBox) {
       if (kids.length) {
-        place(kids)
+        box = place(kids, true)
+      } else {
+        box = { w: LEAF_W, h: LEAF_H }
       }
-      box = { w: 384, h: 288 }
     } else {
       box = { w: LEAF_W, h: LEAF_H }
     }
@@ -750,75 +726,112 @@ function layout(
   const colWidth = (col: string[]) =>
     col.reduce((w, id) => Math.max(w, getNodeW(id)), LEAF_W)
 
+  const sortMembers = (members: string[]): string[] => {
+    if (members.length <= 1) return members
+    const itemSet = new Set(members)
+    const inDegree = new Map<string, number>()
+    const childrenMap = new Map<string, string[]>()
+    for (const id of members) {
+      inDegree.set(id, 0)
+      childrenMap.set(id, [])
+    }
+
+    for (const e of usable) {
+      if (itemSet.has(e.sourceId) && itemSet.has(e.targetId) && e.sourceId !== e.targetId) {
+        childrenMap.get(e.sourceId)?.push(e.targetId)
+        inDegree.set(e.targetId, (inDegree.get(e.targetId) ?? 0) + 1)
+      }
+    }
+
+    const compareRef = (a: string, b: string) => {
+      const refA = refOf.get(a) ?? ''
+      const refB = refOf.get(b) ?? ''
+      return refA.localeCompare(refB, undefined, { numeric: true })
+    }
+
+    const roots = members.filter(id => (inDegree.get(id) ?? 0) === 0).sort(compareRef)
+    const result: string[] = []
+    const visited = new Set<string>()
+
+    function dfs(id: string) {
+      if (visited.has(id)) return
+      visited.add(id)
+      result.push(id)
+      const nexts = (childrenMap.get(id) ?? [])
+        .filter(nid => !visited.has(nid))
+        .sort(compareRef)
+      for (const nextId of nexts) {
+        dfs(nextId)
+      }
+    }
+
+    for (const rootId of roots) {
+      dfs(rootId)
+    }
+
+    for (const id of members) {
+      if (!visited.has(id)) {
+        result.push(id)
+      }
+    }
+
+    return result
+  }
+
   /**
    * 把一組同層的任務排好，回傳它們佔掉的範圍。
    * 位置寫進 rel，相對於這一層的左上角。
    */
-  function place(members: string[]): Box {
+  function place(members: string[], isInsideBoxParam = false): Box {
     for (const id of members) measure(id)
     const inLevel = new Set(members)
-    const isInsideBox = members.length > 0 && !!parentOf.get(members[0])
+    const isInsideBox = isInsideBoxParam || (members.length > 0 && !!parentOf.get(members[0]))
+    const orderedMembers = members
 
     if (isInsideBox) {
-      const occupiedSlots = new Set<number>()
       const assigned = new Map<string, { x: number; y: number }>()
-      const staticAssigned = new Map<string, { x: number; y: number }>()
+      const occupiedSlots = new Set<number>()
 
-      // 1. 若手動拖曳過卡片，收集手動卡片的絕對右側邊界 customMaxX
-      let customMaxX = 0
-      let hasCustom = false
-      for (const id of members) {
+      // 1. 若卡片在收納盒內有手動拖曳座標，先鎖定其相對座標並記錄佔用槽位索引
+      for (const id of orderedMembers) {
         if (draggedOffsets?.[id]) {
-          hasCustom = true
           const posX = Math.max(24, Math.round(draggedOffsets[id].x / 24) * 24)
-          const posY = Math.max(60, even(Math.round(draggedOffsets[id].y / 48) * 48))
+          const posY = Math.max(60, evenPos(Math.round(draggedOffsets[id].y / 48) * 48))
           assigned.set(id, { x: posX, y: posY })
-          const w = getNodeW(id)
-          customMaxX = Math.max(customMaxX, posX + w)
+
+          const cIdx = Math.max(0, Math.round((posX - 24) / 312))
+          const rIdx = Math.max(0, Math.min(4, Math.round((posY - 60) / 120)))
+          occupiedSlots.add(cIdx * 5 + rIdx)
         }
       }
 
-      // 2. 依序計算網格槽位
-      let maxBottom = 0
-      let maxRight = 0
-
-      let unassignedIdx = 0
-      for (const id of members) {
-        let defaultPos: { x: number; y: number }
-        if (hasCustom && !draggedOffsets?.[id]) {
-          // 手動移動狀況：自動排序改從手動位置項目的右側 (customMaxX + 24) 接續向右/向下排列
-          const cIdx = unassignedIdx % 5
-          const rIdx = Math.floor(unassignedIdx / 5)
-          defaultPos = { x: Math.ceil((customMaxX + 24) / 24) * 24 + cIdx * 312, y: 60 + rIdx * 120 }
-          unassignedIdx++
-        } else {
-          // 預設位置狀況：空位自動優先補位機制
-          let k = 0
-          while (occupiedSlots.has(k)) {
-            k++
-          }
-          occupiedSlots.add(k)
-          const cIdx = k % 5
-          const rIdx = Math.floor(k / 5)
-          defaultPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
-        }
-
+      // 2. 對於未手動移動的卡片，從 Slot 0 開始依時序掃描第一個空白槽位 (Rule 2.B.3: y=60 + rIdx*120)
+      let slotIdx = 0
+      for (const id of orderedMembers) {
         if (!assigned.has(id)) {
+          while (occupiedSlots.has(slotIdx)) {
+            slotIdx++
+          }
+          const cIdx = Math.floor(slotIdx / 5)
+          const rIdx = slotIdx % 5
+          const defaultPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
           assigned.set(id, defaultPos)
+          occupiedSlots.add(slotIdx)
+          slotIdx++
         }
-        staticAssigned.set(id, defaultPos)
 
         const pos = assigned.get(id)!
         rel.set(id, pos)
-
-        const staticPos = staticAssigned.get(id)!
-        const h = getNodeH(id)
-        const w = getNodeW(id)
-        maxBottom = Math.max(maxBottom, staticPos.y + h)
-        maxRight = Math.max(maxRight, staticPos.x + w)
       }
 
-      return { w: Math.max(maxRight, 384), h: Math.max(maxBottom, 288) }
+      // 依據自動網格槽位容量計算外框尺寸，手動拖移卡片 100% 不拉大 layoutSize
+      const totalCount = orderedMembers.length
+      const cols = Math.ceil(Math.max(1, totalCount) / 5)
+      const maxRows = Math.min(5, Math.max(1, totalCount))
+      const gridW = Math.max(288, 24 + cols * 312)
+      const gridH = Math.max(96, even(60 + maxRows * 120))
+
+      return { w: gridW, h: gridH }
     }
 
     const colGap = isInsideBox ? 24 : COL_GAP - LEAF_W
@@ -1298,7 +1311,7 @@ function layout(
   // ── 依據內部對齊後的節點靜態位置計算外框大小 (`size`) ──
   // 不計入即時拖曳座標 (draggedOffsets)，確保拖曳卡片時框體尺寸絕對固定，卡片往右/向下拖移可順暢移出框外
   for (const bId of boxes) {
-    size.set(bId, { w: 384, h: 288 })
+    size.set(bId, { w: 288, h: 96 })
   }
 
   refreshAbs()
@@ -1355,7 +1368,7 @@ function GraphCanvas({
 }) {
   const qc = useQueryClient()
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
-  const { fitView, getViewport, setViewport } = useReactFlow()
+  const { fitView, getViewport, setViewport, screenToFlowPosition } = useReactFlow()
   const nodesInitialized = useNodesInitialized()
   // 背景點陣的顏色是 SVG 屬性，吃不到 CSS 變數，只能自己看現在是哪一個主題
   const dark = useTheme().resolved === 'dark'
@@ -1450,7 +1463,22 @@ function GraphCanvas({
     return saved !== null ? saved === 'true' : true
   })
   /** 任務卡片與框內部的警示標籤要不要顯示 (預設強制隱藏) */
-  const [showBadges, setShowBadges] = useState(false)
+  const [showBadges, setShowBadges] = useState(true)
+  const [showLegendPopover, setShowLegendPopover] = useState(false)
+  const legendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const toggleLegendPopover = () => {
+    if (showLegendPopover) {
+      if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+      setShowLegendPopover(false)
+    } else {
+      if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+      setShowLegendPopover(true)
+      legendTimerRef.current = setTimeout(() => {
+        setShowLegendPopover(false)
+      }, 5000)
+    }
+  }
 
   useEffect(() => {
     localStorage.setItem('pmflow_graph_show_edge_labels', String(showEdgeLabels))
@@ -1502,6 +1530,7 @@ function GraphCanvas({
    */
   const userAdjusted = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const justDroppedUntilRef = useRef<Record<string, number>>({})
 
   const { data: graph, isLoading } = useQuery({
     queryKey: ['graph', projectId],
@@ -1626,19 +1655,25 @@ function GraphCanvas({
    * statuses 是 `project?.statuses ?? []`，每次 render 都是新陣列，放進相依
    * 等於「父層一 render 就把版面洗掉」。所以顏色改在 styledNodes 那邊算。
    */
-  const { baseNodes, layoutAbs, layoutSize } = useMemo(() => {
+  const { baseNodes, layoutAbs, layoutRel, layoutSize } = useMemo(() => {
     const present = new Set(shownNodes.map(n => n.id))
-    const parentOf = new Map(shownNodes.map(n => [n.id, n.parentId]))
+    const getEffectiveParent = (id: string): string | null => {
+      const p = parentOverrides[id]
+      return p !== undefined ? (p ?? null) : (shownNodes.find(n => n.id === id)?.parentId ?? null)
+    }
+
+    const parentOf = new Map(shownNodes.map(n => [n.id, getEffectiveParent(n.id)]))
     const refOf = new Map(shownNodes.map(n => [n.id, n.ref]))
     const L = layout(shownNodes.map(n => n.id), parentOf, refOf, schedEdges, simul.hubs, measured, graph?.edges, containerBoxIds, dragged)
 
     const nodes: TaskNode[] = shownNodes.map(n => {
       const isBox = L.boxes.has(n.id)
-      const parent = n.parentId && present.has(n.parentId) ? n.parentId : undefined
+      const pId = getEffectiveParent(n.id)
+      const parent = pId && present.has(pId) ? pId : undefined
       const size = L.size.get(n.id)
       return {
         id: n.id,
-        type: (isBox ? 'box' : 'task') as 'box' | 'task',
+        type: 'task',
         position: L.rel.get(n.id) ?? { x: 0, y: 0 },
         // Ref: CR-086 — 有父框時解鎖 extent 限制，允許自由穿透框線拖移離框
         extent: [[-100000, -100000], [100000, 100000]],
@@ -1690,33 +1725,23 @@ function GraphCanvas({
     }
     nodes.sort((a, b) => depth(a.id) - depth(b.id))
 
-    return { baseNodes: nodes, layoutAbs: L.abs, layoutSize: L.size }
-  }, [shownNodes, schedEdges, simul, measured, graph, containerBoxIds, dragged])
+    return { baseNodes: nodes, layoutAbs: L.abs, layoutRel: L.rel, layoutSize: L.size }
+  }, [shownNodes, schedEdges, simul, measured, graph, containerBoxIds, dragged, parentOverrides])
 
   const nodeKey = useMemo(() => baseNodes.map(n => n.id).join(','), [baseNodes])
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
-    const moves: Record<string, { x: number; y: number }> = {}
     const dims: Record<string, { width: number; height: number }> = {}
     const sizes: Record<string, { width: number; height: number }> = {}
+
     for (const c of changes) {
-      if (c.type === 'position' && c.position) {
-        moves[c.id] = {
-          x: Math.round(c.position.x / 24) * 24,
-          y: Math.round(c.position.y / 24) * 24,
-        }
-      }
-      else if (c.type === 'dimensions' && c.dimensions) {
+      if (c.type === 'dimensions' && c.dimensions) {
         if (c.resizing === undefined) dims[c.id] = c.dimensions
         else sizes[c.id] = {
           width: Math.round(c.dimensions.width / 24) * 24,
           height: Math.round(c.dimensions.height / 24) * 24,
         }
       }
-    }
-    if (Object.keys(moves).length) {
-      userAdjusted.current = true
-      setDragged(d => ({ ...d, ...moves }))
     }
     if (Object.keys(sizes).length) {
       userAdjusted.current = true
@@ -1965,11 +1990,9 @@ function GraphCanvas({
     return out
   }, [shownNodes, schedEdges, tasks, simul])
 
-  // 顏色、淡出、拖曳位移與量到的尺寸都在這裡疊上去。自動佈局的結果（baseNodes）
-  // 保持不變，所以狀態改色、切換聚焦都不會把使用者拖好的版面弄亂。
   const styledNodes = useMemo(
     () => {
-      // 建立父子關係與子節點動態邊界界限
+      const rolled = rollup(tasks)
       const kidsMap = new Map<string, typeof baseNodes>()
       for (const node of baseNodes) {
         const effectiveP = parentOverrides[node.id] !== undefined
@@ -1980,26 +2003,27 @@ function GraphCanvas({
         }
       }
 
-      return baseNodes.map(n => {
+      const result = baseNodes.map(n => {
         const isBox = n.type === 'box' || containerBoxIds.has(n.id)
         const userSize = resized[n.id]
-        let width = userSize?.width ?? layoutSize.get(n.id)?.w
-        let height = userSize?.height ? even(userSize.height) : layoutSize.get(n.id)?.h
-
-        // 若為大項目/收納框：採用使用者調整的尺寸或靜態佈局計算的槽位尺寸 layoutSize
-        if (isBox) {
-          width = userSize?.width ?? layoutSize.get(n.id)?.w ?? 384
-          height = userSize?.height ? even(userSize.height) : (layoutSize.get(n.id)?.h ?? 288)
-        }
-
-        if (width) width = Math.ceil(width / 24) * 24
-        if (height) height = even(height)
-
-        const sizeStyle = isBox && width && height ? { width, height } : {}
 
         const effectiveP = parentOverrides[n.id] !== undefined
           ? (parentOverrides[n.id] ?? undefined)
           : n.parentId
+
+        let width = userSize?.width ?? layoutSize.get(n.id)?.w ?? 288
+        let height = userSize?.height ? even(userSize.height) : (layoutSize.get(n.id)?.h ?? 96)
+
+        if (width) width = Math.ceil(width / 24) * 24
+        if (height) height = even(height)
+
+        const sizeStyle = isBox && width && height ? { width, height } : { width: 288, height: 96 }
+        const boxMinSize = isBox ? { w: width, h: height } : undefined
+
+        const rolledProgress = rolled.get(n.id)?.progress
+        const effectiveProgress = (isBox || n.data.isContainerMode) && rolledProgress !== undefined
+          ? rolledProgress
+          : n.data.progress
 
         return {
           ...n,
@@ -2008,9 +2032,10 @@ function GraphCanvas({
           position: dragged[n.id] ?? n.position,
           selected: !!selectedIds[n.id],
           style: { ...n.style, ...sizeStyle },
-          measured: (isBox && width && height ? { width, height } : undefined) ?? n.measured ?? measured[n.id],
+          measured: isBox && width && height ? { width, height } : { width: 288, height: 96 },
           data: {
             ...n.data,
+            progress: effectiveProgress,
             selected: !!selectedIds[n.id],
             typeColor: typeColorMap.get(n.data.taskType) ?? getTypeColor(n.data.taskType),
             typeName: typeNameMap.get(n.data.taskType) ?? getTypeName(n.data.taskType),
@@ -2022,13 +2047,18 @@ function GraphCanvas({
             blockedBy: blockedBy.get(n.id) ?? [],
             parallel: parallelWith.get(n.id) ?? NO_PARALLEL,
             showBadges,
-            minSize: isBox && width && height ? { w: width, h: height } : n.data.minSize,
+            minSize: boxMinSize ?? n.data.minSize,
           },
         }
       })
+
+      //依據 React Flow SKILL (Rule 73)：確保父收納盒節點在 nodes 陣列中始終排列於子卡片之前！
+      const boxNodes = result.filter(n => n.type === 'box' || containerBoxIds.has(n.id))
+      const cardNodes = result.filter(n => n.type !== 'box' && !containerBoxIds.has(n.id))
+      return [...boxNodes, ...cardNodes]
     },
     [baseNodes, dragged, resized, measured, selectedIds, neighbours, kin, focusId, statusColor,
-     blockedBy, parallelWith, unreadTaskIds, showBadges, layoutSize]
+     blockedBy, parallelWith, unreadTaskIds, showBadges, layoutRel, layoutSize, parentOverrides, containerBoxIds, typeColorMap, typeNameMap, tasks]
   )
 
   const junctionNodes = useMemo<JunctionNode[]>(() => {
@@ -2171,22 +2201,17 @@ function GraphCanvas({
         ? G.lag(e.lagDays)
         : ''
 
-      out.push({
-        id: e.id,
-        source,
-        target,
-        /*
-         * 排程有先後走左右；任務相關沒有先後，走上下才不會被讀成順序。
-         * 退回成直線的「同時開始／同時完成」也走上下：它們講的是兩張任務
-         * 貼在時間軸的同一個點，畫成左右會被讀成「先做這個再做那個」——
-         * 那正是當初把它們收成圓點要修掉的誤讀。而且併欄之後這兩張本來就
-         * 上下相鄰（見 layout），走上下就是一條乾淨的短線。
-         */
-        sourceHandle: scheduling && !simultaneous ? H_OUT : H_REL_OUT,
-        targetHandle: scheduling && !simultaneous ? H_IN : H_REL_IN,
-        type: 'smoothstep',
-        label: showEdgeLabels ? (LINK_CHIP[e.linkType] + lag) : undefined,
-        labelShowBg: showEdgeLabels,
+        const isJunctionLine = source.startsWith('fork:') || source.startsWith('join:') || target.startsWith('fork:') || target.startsWith('join:')
+        const edgeLabelText = isJunctionLine ? (LINK_CHIP[e.linkType] + lag) : (lag || undefined)
+        out.push({
+          id: e.id,
+          source,
+          target,
+          sourceHandle: scheduling && !simultaneous ? H_OUT : H_REL_OUT,
+          targetHandle: scheduling && !simultaneous ? H_IN : H_REL_IN,
+          type: 'smoothstep',
+          label: showEdgeLabels ? edgeLabelText : undefined,
+          labelShowBg: showEdgeLabels && !!edgeLabelText,
         labelBgStyle: {
           fill: dark ? '#090d16' : '#ffffff',
           stroke: color,
@@ -2316,6 +2341,7 @@ function GraphCanvas({
       next.delete(id)
       try {
         localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+        window.dispatchEvent(new Event('pmflow_container_boxes_changed'))
       } catch {}
       return next
     })
@@ -2345,8 +2371,15 @@ function GraphCanvas({
         }
         const next = new Set(prev)
         next.delete(id)
+        setResized(r => {
+          if (!r[id]) return r
+          const nr = { ...r }
+          delete nr[id]
+          return nr
+        })
         try {
           localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+          window.dispatchEvent(new Event('pmflow_container_boxes_changed'))
         } catch {}
         return next
       } else {
@@ -2354,6 +2387,7 @@ function GraphCanvas({
         next.add(id)
         try {
           localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify([...next]))
+          window.dispatchEvent(new Event('pmflow_container_boxes_changed'))
         } catch {}
         return next
       }
@@ -2361,23 +2395,39 @@ function GraphCanvas({
   }, [shownNodes])
 
   const dragStartPos = useRef<Record<string, { x: number; y: number }>>({})
+  const initialDraggedState = useRef<Record<string, { x: number; y: number } | undefined>>({})
 
-  const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+  const onNodeDragStart = useCallback((e: unknown, node: Node) => {
     if (node.type !== 'task' && node.type !== 'box') return
-    const selectedList = Object.keys(selectedIds).filter(id => selectedIds[id])
-    const activeGroup = selectedList.includes(node.id) && selectedList.length > 1
+    const mouseEvt = e as MouseEvent
+    const isModifierPressed = !!(mouseEvt?.shiftKey || mouseEvt?.ctrlKey || mouseEvt?.metaKey)
+
+    // 沒按住 Shift / Ctrl 快捷鍵時，強制定格為僅選取單一卡片，避免累積選取父收納盒或其他卡片
+    if (!isModifierPressed) {
+      setSelectedIds({ [node.id]: true })
+    }
+
+    const selectedList = isModifierPressed
+      ? Object.keys(selectedIds).filter(id => selectedIds[id])
+      : [node.id]
+
+    // 預設拖曳一律獨立單獨移動該卡片；只有按住 Shift / Ctrl 快捷鍵且已多選時，才允許整批多選拖移！
+    const activeGroup = (isModifierPressed && selectedList.includes(node.id) && selectedList.length > 1)
       ? selectedList
       : [node.id]
 
     const startMap: Record<string, { x: number; y: number }> = {}
+    const initDraggedMap: Record<string, { x: number; y: number } | undefined> = {}
     for (const id of activeGroup) {
       const nObj = allNodes.find(n => n.id === id)
       if (nObj) {
         startMap[id] = { ...nObj.position }
       }
+      initDraggedMap[id] = dragged[id] ? { ...dragged[id] } : undefined
     }
     dragStartPos.current = startMap
-  }, [allNodes, selectedIds])
+    initialDraggedState.current = initDraggedMap
+  }, [allNodes, selectedIds, dragged])
 
   const onNodeDrag = useCallback((_: unknown, node: Node) => {
     if (node.type !== 'task' && node.type !== 'box') return
@@ -2386,29 +2436,34 @@ function GraphCanvas({
     const dy = node.position.y - startPos.y
 
     const activeGroup = Object.keys(dragStartPos.current)
-    if (activeGroup.length > 1) {
-      const groupUpdates: Record<string, { x: number; y: number }> = {}
-      for (const id of activeGroup) {
-        const sPos = dragStartPos.current[id]
-        if (sPos) {
-          groupUpdates[id] = {
-            x: Math.round((sPos.x + dx) / 24) * 24,
-            y: even(Math.round((sPos.y + dy) / 48) * 48),
-          }
+    const targetGroup = activeGroup.length > 0 ? activeGroup : [node.id]
+
+    const groupUpdates: Record<string, { x: number; y: number }> = {}
+    for (const id of targetGroup) {
+      const sPos = dragStartPos.current[id]
+      if (sPos) {
+        groupUpdates[id] = {
+          x: sPos.x + dx,
+          y: sPos.y + dy,
         }
+      } else if (id === node.id) {
+        groupUpdates[id] = node.position
       }
-      setDragged(prev => ({ ...prev, ...groupUpdates }))
     }
+    setDragged(prev => ({ ...prev, ...groupUpdates }))
   }, [])
 
   /**
    * 空間拖曳動態階層管理 (Spatial Drag-and-Drop Hierarchy Engine)：
    * 卡片移入/移出收納盒僅更動 Menu 階層 (parentId)，絕不觸發任何收納盒位置或尺寸推移調整！
    */
-  const onNodeDragStop = useCallback((_: unknown, node: Node) => {
+  const onNodeDragStop = useCallback((evt: unknown, node: Node) => {
     if (node.type !== 'task' && node.type !== 'box') return
     const nId = node.id
-    const currentParentId = parentOfMap.get(nId) ?? null
+    const getEffectiveParent = (id: string): string | null =>
+      parentOverrides[id] !== undefined ? parentOverrides[id] : (parentOfMap.get(id) ?? null)
+
+    const currentParentId = getEffectiveParent(nId)
 
     const startPos = dragStartPos.current[nId] ?? node.position
     const dx = node.position.x - startPos.x
@@ -2422,7 +2477,7 @@ function GraphCanvas({
         if (sPos) {
           groupUpdates[id] = {
             x: Math.round((sPos.x + dx) / 24) * 24,
-            y: even(Math.round((sPos.y + dy) / 48) * 48),
+            y: evenPos(Math.round((sPos.y + dy) / 48) * 48),
           }
         }
       }
@@ -2432,9 +2487,9 @@ function GraphCanvas({
 
     // 換算正確的即時全畫布絕對座標 (遞迴向上累加所有父層座標與拖曳位移)
     const getAbs = (id: string, nObj?: Node): { x: number; y: number } => {
-      const pId = parentOfMap.get(id)
+      const pId = getEffectiveParent(id)
       const d = (nObj && id === nObj.id ? nObj.position : undefined) ?? dragged[id]
-      if (pId && parentOfMap.has(pId)) {
+      if (pId) {
         const pAbs = getAbs(pId)
         const rel = d ?? layoutAbs.get(id) ?? { x: 0, y: 0 }
         return { x: pAbs.x + rel.x, y: pAbs.y + rel.y }
@@ -2457,8 +2512,8 @@ function GraphCanvas({
       if (bNode) {
         const bAbs = getAbs(bNode.id)
         const userSize = resized[bNode.id]
-        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 384
-        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 288)
+        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 288
+        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 96)
 
         const relX = nAbs.x - bAbs.x
         const relY = nAbs.y - bAbs.y
@@ -2483,8 +2538,8 @@ function GraphCanvas({
       for (const bNode of otherBoxes) {
         const bAbs = getAbs(bNode.id)
         const userSize = resized[bNode.id]
-        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 384
-        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 288)
+        const bW = userSize?.width ?? layoutSize.get(bNode.id)?.w ?? 288
+        const bH = userSize?.height ? even(userSize.height) : (layoutSize.get(bNode.id)?.h ?? 96)
 
         if (
           nCenterX >= bAbs.x + 12 &&
@@ -2498,46 +2553,171 @@ function GraphCanvas({
       }
     }
 
-    // 僅更新父子階層連動 (parentId)，絕不上移/拉大/推送任何收納盒或其它卡片
+    if (newParentId && newParentId !== currentParentId) {
+      // 1. [需求 1] 檢查是否與目標收納盒存在相依關聯線，有線則禁止移入並彈窗提示
+      const hasDirectEdge = edges.some(
+        e => (e.source === nId && e.target === newParentId) || (e.source === newParentId && e.target === nId)
+      ) || (graph?.edges ?? []).some(
+        e => (e.sourceId === nId && e.targetId === newParentId) || (e.sourceId === newParentId && e.targetId === nId)
+      )
+
+      if (hasDirectEdge) {
+        const cardNode = shownNodes.find(n => n.id === nId)
+        const boxNode = shownNodes.find(n => n.id === newParentId)
+        const cardRef = cardNode?.ref ?? nId
+        const boxRef = boxNode?.ref ?? newParentId
+        setError(`無法移入收納盒：卡片 [${cardRef}] 與收納盒 [${boxRef}] 之間存在相依關聯線，無法放入收納盒中。`)
+        
+        const prevInit = initialDraggedState.current[nId]
+        setDragged(prev => {
+          const next = { ...prev }
+          if (prevInit) {
+            next[nId] = { ...prevInit }
+          } else {
+            delete next[nId]
+          }
+          return next
+        })
+        return
+      }
+    }
+
+    // 僅更新父子階層連動 (parentId)
     if (newParentId !== currentParentId) {
       if (newParentId === null) {
-        // 移出收納盒：直接放在釋放游標時的靜態絕對座標
-        const targetX = Math.round(nAbs.x / 24) * 24
-        const targetY = even(Math.round(nAbs.y / 48) * 48)
-        setDragged(prev => ({
-          ...prev,
-          [nId]: { x: targetX, y: targetY }
-        }))
+        // 移出收納盒：極致精確換算「卡片放開時的左上角畫布絕對座標」= (原父盒絕對座標 + 卡片相對位移)
+        const pAbs = currentParentId ? getAbs(currentParentId) : { x: 0, y: 0 }
+        const absX = pAbs.x + node.position.x
+        const absY = pAbs.y + node.position.y
+        const targetX = Math.max(0, Math.round(absX / 24) * 24)
+        const targetY = Math.max(0, evenPos(Math.round(absY / 48) * 48))
+
+        const frozen: Record<string, { x: number; y: number }> = {}
+        if (currentParentId) {
+          const remaining = shownNodes.filter(
+            n => n.id !== nId && (getEffectiveParent(n.id) === currentParentId || n.parentId === currentParentId)
+          )
+          for (const rChild of remaining) {
+            const rRel = dragged[rChild.id] ?? layoutRel.get(rChild.id) ?? { x: 24, y: 48 }
+            frozen[rChild.id] = { ...rRel }
+          }
+        }
+
         setParentOverrides(prev => ({ ...prev, [nId]: null }))
+        setDragged(prev => {
+          const next = { ...prev, ...frozen, [nId]: { x: targetX, y: targetY } }
+          if (projectId) {
+            try {
+              localStorage.setItem(`pmflow_graph_dragged_${projectId}`, JSON.stringify(next))
+            } catch {}
+          }
+          return next
+        })
       } else {
-        // 移入收納盒：直接計算相對座標，不觸發任何收納盒額外調整
-        const bAbs = getAbs(newParentId)
-        const relX = Math.max(24, Math.round((nAbs.x - bAbs.x) / 24) * 24)
-        const relY = Math.max(60, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
-        setDragged(prev => ({
-          ...prev,
-          [nId]: { x: relX, y: relY }
-        }))
+        // 移入收納盒：
+        // 1. 取得目標收納盒現有的所有子卡片
+        const currentChildren = shownNodes.filter(
+          n => n.id !== nId && (getEffectiveParent(n.id) === newParentId || n.parentId === newParentId)
+        )
+
+        // 2. 統計現有子卡片佔用的槽位索引 (cIdx * 5 + rIdx)
+        const occupiedSlots = new Set<number>()
+        const frozen: Record<string, { x: number; y: number }> = {}
+        for (const child of currentChildren) {
+          const childRel = dragged[child.id] ?? layoutRel.get(child.id) ?? { x: 24, y: 60 }
+          frozen[child.id] = { ...childRel }
+
+          const cIdx = Math.max(0, Math.round((childRel.x - 24) / 312))
+          const rIdx = Math.max(0, Math.min(4, Math.round((childRel.y - 60) / 120)))
+          occupiedSlots.add(cIdx * 5 + rIdx)
+        }
+
+        // 3. 從 Slot 0 開始掃描第一個空白槽位 (空位優先填補；無空位則自動推至末端 N+1)
+        let slotIdx = 0
+        while (occupiedSlots.has(slotIdx)) {
+          slotIdx++
+        }
+
+        const cIdx = Math.floor(slotIdx / 5)
+        const rIdx = slotIdx % 5
+        const targetPos = { x: 24 + cIdx * 312, y: 60 + rIdx * 120 }
+
+        // 4. [需求 4] 判斷塞不塞得下，若塞不下自動擴大收納盒尺寸 (寬度/高度)
+        const totalCount = occupiedSlots.size + 1
+        const cols = Math.ceil(totalCount / 5)
+        const maxRows = Math.min(5, totalCount)
+        const reqW = Math.max(288, 24 + cols * 312)
+        const reqH = Math.max(96, even(60 + maxRows * 120))
+
+        const userSize = resized[newParentId]
+        const curW = userSize?.width ?? layoutSize.get(newParentId)?.w ?? 288
+        const curH = userSize?.height ? even(userSize.height) : (layoutSize.get(newParentId)?.h ?? 96)
+
+        if (reqW > curW || reqH > curH) {
+          const newSize = { width: Math.max(curW, reqW), height: Math.max(curH, reqH) }
+          setResized(prev => ({ ...prev, [newParentId]: newSize }))
+          userAdjusted.current = true
+        }
+
         setParentOverrides(prev => ({ ...prev, [nId]: newParentId }))
+        setDragged(prev => {
+          const next = { ...prev, ...frozen, [nId]: targetPos }
+          if (projectId) {
+            try {
+              localStorage.setItem(`pmflow_graph_dragged_${projectId}`, JSON.stringify(next))
+            } catch {}
+          }
+          return next
+        })
       }
       updateTaskParent.mutate({ id: nId, parentId: newParentId })
-    } else if (currentParentId !== null) {
-      // 在同一收納盒內拖移：保留相對座標並靜態約束於盒內
+    } else if (currentParentId === null) {
+      // 獨立卡片在畫布主體間拖移：保留滑鼠釋放時的絕對座標
+      const targetX = Math.round(nAbs.x / 24) * 24
+      const targetY = evenPos(Math.round(nAbs.y / 48) * 48)
+      setDragged(prev => {
+        const next = { ...prev, [nId]: { x: targetX, y: targetY } }
+        if (projectId) {
+          try {
+            localStorage.setItem(`pmflow_graph_dragged_${projectId}`, JSON.stringify(next))
+          } catch {}
+        }
+        return next
+      })
+    } else {
+      // 在同一收納盒內拖移：保留相對座標，絕不觸發收納盒擴大 (尺寸 100% 保持固定)
       const bAbs = getAbs(currentParentId)
       const relX = Math.max(24, Math.round((nAbs.x - bAbs.x) / 24) * 24)
-      const relY = Math.max(60, even(Math.round((nAbs.y - bAbs.y) / 48) * 48))
-      setDragged(prev => ({
-        ...prev,
-        [nId]: { x: relX, y: relY }
-      }))
+      const relY = Math.max(48, evenPos(Math.round((nAbs.y - bAbs.y) / 48) * 48))
+
+      setDragged(prev => {
+        const next = { ...prev, [nId]: { x: relX, y: relY } }
+        if (projectId) {
+          try {
+            localStorage.setItem(`pmflow_graph_dragged_${projectId}`, JSON.stringify(next))
+          } catch {}
+        }
+        return next
+      })
     }
+    justDroppedUntilRef.current[nId] = Date.now() + 500
   }, [allNodes, containerBoxIds, dragged, layoutAbs, layoutSize, measured, parentOfMap, resized, updateTaskParent])
 
-  const [deleteTargetEdge, setDeleteTargetEdge] = useState<{ id: string; label: string } | null>(null)
+  const [deleteTargetEdge, setDeleteTargetEdge] = useState<{ id: string; sourceRef: string; targetRef: string } | null>(null)
 
   const onEdgeClick = useCallback((_: unknown, edge: Edge) => {
-    setDeleteTargetEdge({ id: edge.id, label: String(edge.label ?? '') })
-  }, [])
+    const rawEdge = graph?.edges?.find(e => e.id === edge.id)
+    const srcId = rawEdge?.sourceId ?? edge.source
+    const tgtId = rawEdge?.targetId ?? edge.target
+
+    const srcTask = tasks.find(t => t.id === srcId)
+    const tgtTask = tasks.find(t => t.id === tgtId)
+
+    const sourceRef = srcTask?.ref ?? srcId
+    const targetRef = tgtTask?.ref ?? tgtId
+
+    setDeleteTargetEdge({ id: edge.id, sourceRef, targetRef })
+  }, [graph, tasks])
 
   const focused = focusId ? shownNodes.find(n => n.id === focusId) : undefined
   const focusedLinks = useMemo(() => {
@@ -2616,9 +2796,61 @@ function GraphCanvas({
           {showBadges ? '🏷️ 警示標籤：顯示' : '🏷️ 警示標籤：預設隱藏'}
         </Button>
 
+        {/* 最右側：說明按鈕與圖示說明浮動面板 */}
+        <div className="relative ml-auto">
+          <Button
+            onClick={toggleLegendPopover}
+            onMouseEnter={() => {
+              if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+              setShowLegendPopover(true)
+            }}
+            onMouseLeave={() => {
+              if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+              legendTimerRef.current = setTimeout(() => setShowLegendPopover(false), 5000)
+            }}
+            className="border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-medium px-3 py-1 text-xs"
+            title="點擊保留說明 5 秒鐘，或懸浮檢視圖示說明"
+          >
+            說明
+          </Button>
 
-
-        {/* 說明整包收在畫布左下角的「線條說明」裡，工具列不佔位 */}
+          {showLegendPopover && (
+            <div
+              onMouseEnter={() => {
+                if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+                setShowLegendPopover(true)
+              }}
+              onMouseLeave={() => {
+                if (legendTimerRef.current) clearTimeout(legendTimerRef.current)
+                legendTimerRef.current = setTimeout(() => setShowLegendPopover(false), 5000)
+              }}
+              className="absolute right-0 top-full mt-1.5 z-50 w-72 rounded-lg border border-slate-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95 text-xs select-none"
+            >
+              <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-2 flex items-center justify-between">
+                <span>🏷️ 圖示說明</span>
+                <span className="text-[10px] font-normal text-slate-400">Icon Legend</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-2.5">
+                {ICON_HELP.map(h => (
+                  <span key={h.label} className={cx('rounded px-1.5 py-0.5 text-[11px] font-medium border border-slate-200 dark:border-slate-800', h.className)} title={h.text}>
+                    {h.label}
+                  </span>
+                ))}
+              </div>
+              <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-1 mb-2">
+                <span>💬 發文狀態說明</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(['AWAITING', 'OVERDUE', 'PARTIAL', 'REPLIED'] as const).map(st => (
+                  <span key={st} className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300" title={HELP.inquiry[st]}>
+                    <span>{INQUIRY_META[st].icon}</span>
+                    <span>{INQUIRY_META[st].label}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -2632,6 +2864,7 @@ function GraphCanvas({
 
       <div ref={wrapperRef} className="relative min-h-0 flex-1">
         <ReactFlow
+          proOptions={{ hideAttribution: true }}
           nodes={allNodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -2644,14 +2877,19 @@ function GraphCanvas({
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
-          // 點一下：切換多選 (Multi-select) / 雙擊：開啟事件頁面
-          onNodeClick={(_, n) => {
+          onNodeClick={(evt, n) => {
             if (n.type !== 'task' && n.type !== 'box') return
             if (unreadTaskIds.has(n.id)) markTaskRead(n.id)
-            setSelectedIds(prev => ({
-              ...prev,
-              [n.id]: !prev[n.id],
-            }))
+            const mouseEvt = evt as React.MouseEvent
+            const isMultiSelectKey = !!(mouseEvt?.shiftKey || mouseEvt?.ctrlKey || mouseEvt?.metaKey)
+            if (isMultiSelectKey) {
+              setSelectedIds(prev => ({
+                ...prev,
+                [n.id]: !prev[n.id],
+              }))
+            } else {
+              setSelectedIds({ [n.id]: true })
+            }
             setFocusId(n.id)
           }}
           onNodeDoubleClick={(_, n) => {
@@ -2720,7 +2958,7 @@ function GraphCanvas({
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              確定要刪除連線「<span className="font-semibold text-slate-900 dark:text-slate-100">{deleteTargetEdge.label || '無標籤連線'}</span>」嗎？
+              是否刪除 <span className="font-semibold font-mono text-slate-900 dark:text-slate-100">{deleteTargetEdge.sourceRef}</span> 與 <span className="font-semibold font-mono text-slate-900 dark:text-slate-100">{deleteTargetEdge.targetRef}</span> 的關聯？
             </p>
             <div className="mt-5 flex items-center justify-end gap-2.5">
               <Button variant="ghost" onClick={() => setDeleteTargetEdge(null)}>
@@ -2774,160 +3012,6 @@ function GraphCanvas({
         </div>
       )}
 
-      <LegendBar
-        showEdgeLabels={showEdgeLabels} setShowEdgeLabels={setShowEdgeLabels}
-        showBadges={showBadges} setShowBadges={setShowBadges}
-      />
-    </div>
-  )
-}
-
-/**
- * 說明與控制整合面板 —— 固定在畫面最下面，將原頂部勾選開關與圖示說明一體化。
- */
-function LegendBar({
-  showEdgeLabels, setShowEdgeLabels,
-  showBadges, setShowBadges,
-}: {
-  showEdgeLabels: boolean; setShowEdgeLabels: React.Dispatch<React.SetStateAction<boolean>>
-  showBadges: boolean; setShowBadges: React.Dispatch<React.SetStateAction<boolean>>
-}) {
-  const [tip, setTip] = useState<{ label: string; text: string; x: number } | null>(null)
-  const barRef = useRef<HTMLDivElement>(null)
-
-  const TIP_W = 560
-
-  const hover = (label: string, text: string) => (e: ReactMouseEvent<HTMLElement>) => {
-    const bar = barRef.current?.getBoundingClientRect()
-    const item = e.currentTarget.getBoundingClientRect()
-    if (!bar) return
-    const centre = item.left + item.width / 2 - bar.left
-    const x = Math.min(Math.max(8, centre - TIP_W / 2), Math.max(8, bar.width - TIP_W - 8))
-    setTip({ label, text, x })
-  }
-  const unhover = () => setTip(null)
-
-  return (
-    <div ref={barRef}
-         className="relative flex items-stretch border-t border-slate-200 bg-white
-                    text-[11px] text-slate-500
-                    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-      {tip && (
-        <div
-          className="pointer-events-none absolute bottom-full z-20 mb-1 w-max
-                     whitespace-pre rounded-md bg-slate-800 px-3 py-2 text-[11px]
-                     leading-5 text-white shadow-lg dark:bg-slate-700"
-          style={{ left: tip.x, maxWidth: TIP_W }}
-          role="tooltip">
-          <div className="font-medium text-white">{tip.label}</div>
-          <div className="text-slate-200">{tip.text}</div>
-        </div>
-      )}
-      {/* 開關與說明控制區：獨立於左側，上下 3 行對齊右側 3 行 */}
-      <div className="flex shrink-0 flex-col justify-around border-r border-slate-200 px-3 py-1
-                      dark:border-slate-700">
-        {/* 第一行：對齊形狀與框點 */}
-        <div className="flex items-center">
-          <span
-            className="cursor-help rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600
-                       hover:bg-slate-200
-                       dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            onMouseEnter={hover(G.legend.operationTitle, HELP.operation)}
-            onMouseLeave={unhover}>{G.legend.operation}</span>
-        </div>
-
-        {/* 第二行：對齊排程與關聯連線 */}
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() => setShowEdgeLabels((v: boolean) => !v)}
-            onMouseEnter={hover("線條文字開關", "點擊切換是否在關聯連線上顯示文字標籤（如：完成後開始、相關）")}
-            onMouseLeave={unhover}
-            className={cx(
-              'flex cursor-pointer items-center justify-center rounded-full px-3 py-0.5 text-[11px] font-semibold transition-all shadow-sm',
-              showEdgeLabels
-                ? 'bg-blue-600 text-white shadow-blue-500/20 hover:bg-blue-700'
-                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-200'
-            )}
-          >
-            <span>線條文字</span>
-          </button>
-        </div>
-
-        {/* 第三行：對齊警示與圖示徽章 */}
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() => setShowBadges((v: boolean) => !v)}
-            onMouseEnter={hover("警示徽章開關", "點擊切換是否顯示任務卡片內部的卡住、問題旗子、並行及詢問圖示徽章")}
-            onMouseLeave={unhover}
-            className={cx(
-              'flex cursor-pointer items-center justify-center rounded-full px-3 py-0.5 text-[11px] font-semibold transition-all shadow-sm',
-              showBadges
-                ? 'bg-rose-600 text-white shadow-rose-500/20 hover:bg-rose-700'
-                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-200'
-            )}
-          >
-            <span>警示徽章</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 右側：獨立拆為 3 行的完整原版美觀圖示與連線說明 */}
-      <div className="min-w-0 flex-1">
-        {/* 第一行：形狀說明 */}
-        <LegendRowStrip label={G.legend.rowShape}>
-          <button type="button"
-                  onMouseEnter={hover(G.legend.box, HELP.box)} onMouseLeave={unhover}
-                  className="flex shrink-0 cursor-help items-center gap-1.5
-                             hover:text-slate-800 dark:hover:text-slate-100">
-            <span className="inline-block h-3 w-5 rounded-sm border border-violet-400 bg-violet-50
-                             dark:bg-violet-500/20" />
-            {G.legend.box}
-          </button>
-          <LegendDot color={SCHEDULING_COLOR.SS} label={HELP.icon.sameStart.label}
-                     onMouseEnter={hover(HELP.icon.sameStart.label, HELP.icon.sameStart.text)}
-                     onMouseLeave={unhover} />
-          <LegendDot color={SCHEDULING_COLOR.FF} label={HELP.icon.sameFinish.label}
-                     onMouseEnter={hover(HELP.icon.sameFinish.label, HELP.icon.sameFinish.text)}
-                     onMouseLeave={unhover} />
-        </LegendRowStrip>
-
-        {/* 第二行：連線圖例 */}
-        <LegendRowStrip label={G.legend.rowScheduling}>
-          {(['FS', 'SS', 'FF', 'SF'] as const).map(type => (
-            <LegendChip key={type}
-                        onMouseEnter={hover(G.linkChip[type], G.help.scheduling[type])}
-                        onMouseLeave={unhover}>
-              <span className="mr-1 inline-block h-0.5 w-3 rounded-full"
-                    style={{ backgroundColor: SCHEDULING_COLOR[type] }} />
-              {G.linkChip[type]}
-            </LegendChip>
-          ))}
-          <LegendChip onMouseEnter={hover(G.toolbar.showRelated, "任務相關/需要/阻擋的上下虛線")}
-                      onMouseLeave={unhover}>
-            <span className="mr-1 inline-block h-0.5 w-3 rounded-full border-t border-dashed border-slate-400" />
-            相關虛線
-          </LegendChip>
-        </LegendRowStrip>
-
-        {/* 第三行：狀態與徽章圖示說明 */}
-        <LegendRowStrip label={G.legend.rowIcon}>
-          {ICON_HELP.map(h => (
-            <LegendChip key={h.label} className={h.className}
-                        onMouseEnter={hover(h.label, h.text)} onMouseLeave={unhover}>
-              {h.label}
-            </LegendChip>
-          ))}
-          {(['AWAITING', 'OVERDUE', 'PARTIAL', 'REPLIED'] as const).map(st => (
-            <LegendChip key={st}
-                        onMouseEnter={hover(INQUIRY_META[st].label, HELP.inquiry[st])}
-                        onMouseLeave={unhover}>
-              {INQUIRY_META[st].icon} {INQUIRY_META[st].label}
-            </LegendChip>
-          ))}
-        </LegendRowStrip>
-      </div>
     </div>
   )
 }

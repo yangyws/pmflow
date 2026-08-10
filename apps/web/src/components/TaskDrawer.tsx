@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type LinkType, type ProjectParam, type Task, type TaskDetail, type TaskStatus } from '../lib/api'
 import { LINK_LABEL, LINK_CHIP, SCHEDULING, SEMANTIC, linkSentence } from '../lib/linkText'
@@ -9,6 +9,7 @@ import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { useTheme } from '../lib/theme'
 import { T } from '../strings'
 import { typesAllowedFor } from '../lib/hierarchy'
+import { DEFAULT_TYPE_COLORS } from './EpicSidebar'
 
 /**
  * 任務詳情。
@@ -118,10 +119,15 @@ export function TaskDrawer({
   })
   const delLink = useMutation({ mutationFn: (id: string) => Api.deleteLink(id), onSuccess: invalidate })
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   /** 按下保存才送出。只送動過的那幾格 */
   const save = useMutation({
     mutationFn: (v: Record<string, unknown>) => Api.patchTask(taskId, v),
-    onSuccess: () => { setDraft({}); invalidate() },
+    onSuccess: () => { setDraft({}); setSaveError(null); invalidate() },
+    onError: (e: unknown) => {
+      setSaveError(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : '保存失敗')
+    },
   })
   const remove = useMutation({
     mutationFn: () => Api.deleteTask(taskId),
@@ -202,6 +208,16 @@ export function TaskDrawer({
   const form = { ...(data as TaskDetail | undefined), ...draft } as TaskDetail
   const dirty = !!data && (Object.keys(draft) as Array<keyof Draft>)
     .some(k => draft[k] !== data[k])
+
+  const isContainerBox = useMemo(() => {
+    if (!data) return false
+    if (data.children && data.children.length > 0) return true
+    try {
+      const saved = localStorage.getItem('pmflow_graph_container_boxes')
+      if (saved) return new Set<string>(JSON.parse(saved)).has(data.id)
+    } catch {}
+    return false
+  }, [data])
 
   const isDoneStatus = statuses.some(s => s.key === data?.statusKey && s.category === 'DONE')
   const isTaskLocked = isDoneStatus && !isManager
@@ -407,6 +423,14 @@ export function TaskDrawer({
                 * 那一格只有六分之一寬，一句話會被擠成三、四行，
                 * 把整排欄位撐開。
                 */}
+              {saveError && (
+                <p className="mb-2 rounded-md bg-rose-50 px-3 py-2 text-xs leading-relaxed
+                              text-rose-700 ring-1 ring-inset ring-rose-600/20
+                              dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-400/30">
+                  {saveError}
+                </p>
+              )}
+
               {canEdit && openInquiries > 0 && (
                 <p className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed
                               text-amber-700 ring-1 ring-inset ring-amber-600/20
@@ -426,11 +450,11 @@ export function TaskDrawer({
                      */
                     <Select value={form.type}
                             onChange={e => edit({ type: e.target.value as TaskDetail['type'] })}
-                            style={typeChoices.find(t => t.key === form.type)?.color ? { color: readableColor(typeChoices.find(t => t.key === form.type)?.color, dark) } : undefined}
-                            className="w-full font-medium">
+                            style={{ color: typeChoices.find(t => t.key === form.type)?.color || DEFAULT_TYPE_COLORS[form.type] || '#3178c6' }}
+                            className="w-full font-semibold">
                       {typeChoices.map(t => (
-                        <ColorOption key={t.key} value={t.key} color={t.color} dark={dark}>
-                          {t.name}
+                        <ColorOption key={t.key} value={t.key} color={t.color || DEFAULT_TYPE_COLORS[t.key] || '#3178c6'} dark={dark}>
+                          ● {t.name}
                         </ColorOption>
                       ))}
                     </Select>
@@ -518,11 +542,18 @@ export function TaskDrawer({
                 {/* 進度佔兩欄：拖拉條再窄就拖不準了 */}
                 <div className="sm:col-span-2">
                   <Field label={T.task.drawer.fieldProgress}>
-                    {canEdit ? (
+                    {canEdit && !isContainerBox ? (
                       <ProgressField value={form.progress}
                                      onCommit={v => edit({ progress: v })} />
                     ) : (
-                      <ReadOnlyValue>{T.task.drawer.progressValue(form.progress)}</ReadOnlyValue>
+                      <ReadOnlyValue>
+                        {T.task.drawer.progressValue(form.progress)}
+                        {isContainerBox ? (
+                          <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
+                            (收納盒：自動彙總子卡片進度)
+                          </span>
+                        ) : null}
+                      </ReadOnlyValue>
                     )}
                   </Field>
                 </div>

@@ -295,7 +295,7 @@ function Card({
         {task.progress > 0 && (
           <span className="ml-auto flex items-center gap-1">
             <span className="h-1 w-10 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-              <span className="block h-full bg-blue-500" style={{ width: `${task.progress}%` }} />
+              <span className={cx("block h-full", task.progress >= 100 ? "bg-emerald-500" : "bg-red-500")} style={{ width: `${task.progress}%` }} />
             </span>
             {task.progress}%
           </span>

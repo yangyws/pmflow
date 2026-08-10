@@ -171,6 +171,7 @@ export default function App() {
       onSettings={projectId && canManageProject
         ? () => { setAccount(null); setView('settings'); setOpenTask(null) }
         : undefined}
+      onSwitchProject={projectId ? () => setProjectId(null) : undefined}
       pendingJoins={pendingJoins}
     />
   )
@@ -571,54 +572,57 @@ function ProjectWorkspace({
           </header>
         ) : (
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex items-center gap-3 px-4 pt-3">
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-500
-                             dark:bg-slate-800 dark:text-slate-400">
+          {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，與左側邊欄頂頭線 100% 直線對齊 */}
+          <div className="flex h-12 items-center border-b border-slate-200 px-3 dark:border-slate-700">
+            <nav className="flex items-center gap-1">
+              {shownViews.map(v => (
+                <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
+                        className={cx(
+                          'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                          view === v.key
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-semibold'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                        )}>
+                  {v.label}
+                </button>
+              ))}
+              <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
+                        ordered={orderedViews} onReorder={reorderTab}
+                        onResetOrder={() => setTabOrder([])}
+                        view={view} setView={setView} />
+            </nav>
+            <div className="ml-auto flex items-center gap-2">{bell}{menu}</div>
+          </div>
+
+          {/* 第二層 (h-9)：目前的事件 (標題/麵包屑與警示) */}
+          <div className="flex h-9 items-center gap-3 px-4 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40">
+            <span className="rounded bg-slate-200/70 px-1.5 py-0.5 font-mono text-[11px] text-slate-600
+                             dark:bg-slate-700 dark:text-slate-300">
               {project?.key}
             </span>
             {epic ? (
               <>
                 <button onClick={() => setEpicId(null)}
-                        className="text-sm text-slate-400 hover:text-slate-600
-                                   dark:text-slate-400 dark:hover:text-slate-300">
-                  {project?.name}
+                        className="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60">
+                  {epic.ref ?? `${project?.key}-${epic.number}`}
                 </button>
-                <span className="text-slate-300 dark:text-slate-500">/</span>
-                <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                <span className="text-slate-300 dark:text-slate-600">/</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
                   {epic.title}
-                </h1>
+                </span>
               </>
             ) : (
-              <h1 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-                {project?.name ?? T.common.none}
-              </h1>
+              <span className="text-slate-500 dark:text-slate-400">
+                (當前檢視：{shownViews.find(v => v.key === view)?.label ?? T.common.none})
+              </span>
             )}
             {overdue > 0 && (
               <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700
-                               dark:bg-red-500/15 dark:text-red-300">
+                               dark:bg-red-500/15 dark:text-red-300 ml-auto">
                 ⚠️ {T.nav.overdueHere(overdue)}
               </span>
             )}
-            <div className="ml-auto flex items-center gap-2">{bell}{menu}</div>
           </div>
-          <nav className="flex items-center gap-1 px-3 pt-2">
-            {shownViews.map(v => (
-              <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
-                      className={cx(
-                        'flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm font-medium',
-                        'transition-colors',
-                        view === v.key
-                          ? 'border-b-2 border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                      )}>
-                {v.label}
-              </button>
-            ))}
-            <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
-                      ordered={orderedViews} onReorder={reorderTab}
-                      onResetOrder={() => setTabOrder([])}
-                      view={view} setView={setView} />
-          </nav>
         </header>
         )}
 

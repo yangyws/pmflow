@@ -26,7 +26,7 @@ const THEME_OPTIONS: Array<{ value: ThemeChoice; label: string; icon: string }> 
 ]
 
 export function UserMenu({
-  userName, isWorkspaceAdmin, onAccount, onAdmin, onLogout, onMembers, onSettings,
+  userName, isWorkspaceAdmin, onAccount, onAdmin, onLogout, onMembers, onSettings, onSwitchProject,
   pendingJoins = 0,
 }: {
   userName: string
@@ -34,18 +34,9 @@ export function UserMenu({
   onAccount: () => void
   onAdmin: () => void
   onLogout: () => void
-  /**
-   * 專案成員。**只有人在專案裡的時候才會傳進來** ——
-   * 成員講的是「這個專案的成員」，在專案選擇頁沒有專案可言，那時就不畫這一項。
-   */
   onMembers?: () => void
-  /**
-   * 這個專案的系統參數（狀態／優先度／類型）。跟成員同一區，也同一個規矩：
-   * 人在專案裡才傳進來，而且**只有專案的管理者才會拿到** ——
-   * 其他人看得到清單也改不了，畫一個按了會被拒絕的入口沒有意義。
-   */
   onSettings?: () => void
-  /** 待審的加入申請數。不是建立者的話後端一律回 0 */
+  onSwitchProject?: () => void
   pendingJoins?: number
 }) {
   const [open, setOpen] = useState(false)
@@ -122,7 +113,7 @@ export function UserMenu({
             成員與系統參數跟底下那些是不同性質的東西：這一區是「目前這個專案」的
             設定，下面講的是「我這個人」，所以中間隔一條線。
           */}
-          {(onMembers || onSettings) && (
+          {(onMembers || onSettings || onSwitchProject) && (
             <>
               {onMembers && (
                 <MenuItem onClick={go(onMembers)}>
@@ -139,6 +130,13 @@ export function UserMenu({
               )}
               {onSettings && (
                 <MenuItem onClick={go(onSettings)}>{T.settings.menuEntry}</MenuItem>
+              )}
+              {onSwitchProject && (
+                <MenuItem onClick={go(onSwitchProject)}>
+                  <span className="flex items-center gap-1.5">
+                    <span>⇄</span> {T.nav.sidebar.switchProject}
+                  </span>
+                </MenuItem>
               )}
               <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
             </>

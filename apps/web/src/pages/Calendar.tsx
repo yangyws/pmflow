@@ -20,6 +20,7 @@ import {
   shiftYmd, shortDate, todayYmd, toYmd, ymd,
 } from '../lib/date'
 import WeekView from './Week'
+import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 
 /**
  * Ref: CR-002 (行事曆月格與跨日長條 lane packing 設計緣由，詳見 CHANGELOG.md)
@@ -137,6 +138,8 @@ export default function CalendarView({
   })
   // Ref: CR-102 - 整合「週檢視」至行事曆頂部 [月視角 | 週視角] 切換
   const [calViewMode, setCalViewMode] = useRemembered<'month' | 'week'>('calendar.viewMode', 'month')
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null)
+  const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId),
@@ -465,7 +468,6 @@ export default function CalendarView({
         {/* ── 工具列 ── */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
                         dark:border-slate-700 dark:bg-slate-900">
-          {modeSwitcher}
 
           <Button variant="ghost" onClick={() => go(-1)} aria-label={C.prevMonth}>‹</Button>
           <div className="min-w-[7.5rem] text-center text-sm font-semibold text-slate-800
@@ -514,61 +516,105 @@ export default function CalendarView({
         )}
 
         {/* ── 星期列 ── */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50
-                        dark:border-slate-700 dark:bg-slate-900">
-          {WEEKDAY_LABELS.map((w, i) => (
-            <div key={w}
-                 className={cx(
-                   'py-1.5 text-center text-xs font-medium',
-                   i === 0 || i === 6
-                     ? 'text-slate-400 dark:text-slate-400'
-                     : 'text-slate-500 dark:text-slate-400'
-                 )}>
-              {w}
-            </div>
-          ))}
+        <div className="flex border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+          <div className="w-8 shrink-0 py-1.5 text-center text-[10px] font-semibold text-slate-400 border-r border-slate-200 dark:border-slate-700">
+            週
+          </div>
+          <div className="grid flex-1 grid-cols-7">
+            {WEEKDAY_LABELS.map((w, i) => (
+              <div key={w}
+                   className={cx(
+                     'py-1.5 text-center text-xs font-medium',
+                     i === 0 || i === 6
+                       ? 'text-slate-400 dark:text-slate-400'
+                       : 'text-slate-500 dark:text-slate-400'
+                   )}>
+                {w}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── 月格 ── */}
         <div className="min-h-0 flex-1 overflow-auto">
-          {weeks.map((week, w) => (
-            <div key={w} className="relative border-b border-slate-200 last:border-b-0 dark:border-slate-700"
-                 style={{ minHeight: DATE_ROW_H + week.laneCount * LANE_H + 10 }}>
-              {/* 底層：七個日格，負責邊框、日期數字與放置目標 */}
-              <div className="grid h-full grid-cols-7">
-                {week.days.map((d, i) => (
-                  <DayCell
-                    key={d}
-                    day={d}
-                    isToday={d === today}
-                    inMonth={parseYmd(d).getMonth() === cursor.month}
-                    isWeekend={i === 0 || i === 6}
-                    hidden={week.hiddenPerDay[i]}
-                  />
-                ))}
+          {weeks.map((week, w) => {
+            const isExpanded = expandedWeek === w
+            const firstDay = week.days[0]
+            const lastDay = week.days[6]
+            const weekTasks = visiblePieces.filter(p => {
+              const start = p.kind === 'task' || p.kind === 'leave' ? p.start : p.day
+              const end = p.kind === 'task' || p.kind === 'leave' ? p.end : p.day
+              return start <= lastDay && end >= firstDay
+            })
+
+            return (
+              <div key={w} className="border-b border-slate-200 last:border-b-0 dark:border-slate-700">
+                <div className="flex relative" style={{ minHeight: DATE_ROW_H + week.laneCount * LANE_H + 10 }}>
+                  {/* 最左側：週展開控制鈕 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isExpanded) {
+                        setExpandedWeek(null)
+                        setSelectedWeekDay(null)
+                      } else {
+                        setExpandedWeek(w)
+                        setSelectedWeekDay(null)
+                      }
+                    }}
+                    className={cx(
+                      'w-8 shrink-0 flex flex-col items-center justify-start pt-2 border-r border-slate-200 dark:border-slate-700 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold',
+                      isExpanded ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
+                    )}
+                    title={isExpanded ? '收折本週任務清單' : '展開本週任務與行程清單'}
+                  >
+                    <span>{isExpanded ? '▼' : '▶'}</span>
+                    <span className="mt-1 text-[10px] scale-90">{weekTasks.length}</span>
+                  </button>
+
+                  <div className="flex-1 relative">
+                    {/* 底層：七個日格 */}
+                    <div className="grid h-full grid-cols-7">
+                      {week.days.map((d, i) => (
+                        <DayCell
+                          key={d}
+                          day={d}
+                          isToday={d === today}
+                          inMonth={parseYmd(d).getMonth() === cursor.month}
+                          isWeekend={i === 0 || i === 6}
+                          hidden={week.hiddenPerDay[i]}
+                        />
+                      ))}
+                    </div>
+                    {/* 上層：跨日長條 */}
+                    <div className="pointer-events-none absolute inset-x-0" style={{ top: DATE_ROW_H }}>
+                      {week.segments.map(seg => seg.piece.kind === 'leave' ? (
+                        <LeaveBar key={`${seg.piece.key}:${w}`} seg={seg} leave={seg.piece.leave} onEdit={openLeave} />
+                      ) : (
+                        <SegmentBar key={`${seg.piece.key}:${w}`} seg={seg} onOpen={onOpen} onEdit={onEdit} focusedTaskId={focusedTaskId} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── 展開本週任務面板 (載入全功能週檢視模組) ── */}
+                {isExpanded && (
+                  <div className="bg-slate-50 p-2 border-t border-blue-200 dark:bg-slate-900 dark:border-blue-900 shadow-inner rounded-b-lg overflow-hidden">
+                    <WeekView
+                      projectId={projectId}
+                      tasks={tasks}
+                      statuses={statuses}
+                      types={project?.types ?? []}
+                      onOpen={onOpen}
+                      onEdit={onEdit}
+                      focusedTaskId={focusedTaskId}
+                      initialWeekStart={firstDay}
+                    />
+                  </div>
+                )}
               </div>
-              {/* 上層：跨日長條 */}
-              <div className="pointer-events-none absolute inset-x-0"
-                   style={{ top: DATE_ROW_H }}>
-                {week.segments.map(seg => seg.piece.kind === 'leave' ? (
-                  <LeaveBar
-                    key={`${seg.piece.key}:${w}`}
-                    seg={seg}
-                    leave={seg.piece.leave}
-                    onEdit={openLeave}
-                  />
-                ) : (
-                  <SegmentBar
-                    key={`${seg.piece.key}:${w}`}
-                    seg={seg}
-                    onOpen={onOpen}
-                    onEdit={onEdit}
-                    focusedTaskId={focusedTaskId}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {visiblePieces.length === 0 && (

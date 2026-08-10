@@ -9,6 +9,7 @@ import { useTheme } from '../lib/theme'
 import { rollup, isTaskOverdue } from '../lib/rollup'
 import { typesAllowedUnder } from '../lib/hierarchy'
 import { T } from '../strings'
+import { useRemembered } from '../lib/remember'
 
 /** 清單／樹狀視圖：依 parentId 展開階層（上下關聯） */
 export default function ListView({
@@ -39,11 +40,14 @@ export default function ListView({
   const { data: project } = useQuery({
     queryKey: ['project', projectId], queryFn: () => Api.project(projectId),
   })
+  const { data: graph } = useQuery({
+    queryKey: ['graph', projectId], queryFn: () => Api.graph(projectId),
+  })
 
   /** 類型的中文由專案自己定（0011_project_parameters.sql），查不到就不顯示徽章 */
   const typeOf = (key: string) => project?.types?.find(t => t.key === key)?.name ?? ''
   const typeColorOf = (key: string) =>
-    project?.types?.find(t => t.key === key)?.color ?? '#94a3b8'
+    project?.types?.find(t => t.key === key)?.color || DEFAULT_TYPE_COLORS[key] || '#94a3b8'
   /*
    * 我的角色要從成員名單裡撈自己那一列 —— GET /projects/:id 只回成員名單，
    * 沒有「我是什麼角色」這個欄位（回那個欄位的是專案清單 GET /projects）。
@@ -149,28 +153,90 @@ export default function ListView({
   /** 最下面那一列加的是「跟目前這一層同級」的：側欄選了大項目就是掛在它底下 */
   const topTypes = typesUnder(parent?.type ?? null)
 
-  // 依階層排序：父任務後面緊接自己的子樹
+  const [collapsedTaskIds, setCollapsedTaskIds] = useRemembered<string[]>(`pmflow.list.collapsed.${projectId}`, [])
+  const collapsedSet = useMemo(() => new Set(collapsedTaskIds), [collapsedTaskIds])
+
+  const toggleCollapse = (id: string) => {
+    setCollapsedTaskIds(collapsedTaskIds.includes(id)
+      ? collapsedTaskIds.filter(k => k !== id)
+      : [...collapsedTaskIds, id]
+    )
+  }
+
+  // 依 3 階層選單規則排序：1. 收納盒/大項目 (置頂) -> 2. 拓撲關聯卡片 -> 3. 獨立卡片
   const ordered = useMemo(() => {
+    if (!tasks.length) return []
+
+    const containerBoxSet = new Set<string>()
+    try {
+      const saved = localStorage.getItem('pmflow_graph_container_boxes')
+      if (saved) JSON.parse(saved).forEach((id: string) => containerBoxSet.add(id))
+    } catch {}
+
+    const hasKidsSet = new Set<string>()
+    for (const t of tasks) {
+      if (t.parentId) hasKidsSet.add(t.parentId)
+    }
+
+    const isBox = (t: Task) =>
+      containerBoxSet.has(t.id) || hasKidsSet.has(t.id) || t.type === 'EPIC' || (t.type as string) === 'BOX'
+
+    const edges = graph?.edges ?? []
+    const linkedIds = new Set<string>()
+    for (const e of edges) {
+      linkedIds.add(e.sourceId)
+      linkedIds.add(e.targetId)
+    }
+
+    const numRef = (t: Task) => t.number ?? 0
+
+    // 頂層卡片分組
+    const rawTop = tasks.filter(t => !t.parentId)
+
+    // Group 1: 收納盒 / 大項目 (100% 優先置頂排序)
+    const group1 = rawTop.filter(t => isBox(t)).sort((a, b) => numRef(a) - numRef(b))
+
+    // Group 2: 有關聯線的卡片
+    const nonBoxTop = rawTop.filter(t => !isBox(t))
+    const group2 = nonBoxTop.filter(t => linkedIds.has(t.id)).sort((a, b) => Number(a.rank) - Number(b.rank))
+
+    // Group 3: 無關聯線的獨立卡片
+    const group3 = nonBoxTop.filter(t => !linkedIds.has(t.id)).sort((a, b) => numRef(a) - numRef(b))
+
+    const sortedTop = [...group1, ...group2, ...group3]
+
     const byParent = new Map<string | null, Task[]>()
     for (const t of tasks) {
       const k = t.parentId ?? null
       byParent.set(k, [...(byParent.get(k) ?? []), t])
     }
-    for (const list of byParent.values()) list.sort((a, b) => Number(a.rank) - Number(b.rank))
 
-    const out: Array<Task & { depth: number }> = []
-    const walk = (parent: string | null, depth: number) => {
-      for (const t of byParent.get(parent) ?? []) {
-        out.push({ ...t, depth })
-        if (depth < 10) walk(t.id, depth + 1)
+    const out: Array<Task & { depth: number; hasKids: boolean }> = []
+    const walk = (t: Task, depth: number) => {
+      const kids = byParent.get(t.id) ?? []
+      const hasKids = kids.length > 0
+      out.push({ ...t, depth, hasKids })
+      if (hasKids && collapsedSet.has(t.id)) return
+      for (const k of kids) {
+        if (depth < 10) walk(k, depth + 1)
       }
     }
-    walk(null, 0)
-    // 父任務被過濾掉時，孤兒也要顯示，不然會憑空消失
-    const seen = new Set(out.map(t => t.id))
-    for (const t of tasks) if (!seen.has(t.id)) out.push({ ...t, depth: 0 })
+
+    const processed = new Set<string>()
+    for (const topT of sortedTop) {
+      if (!topT.parentId && !processed.has(topT.id)) {
+        processed.add(topT.id)
+        walk(topT, 0)
+      }
+    }
+    for (const t of tasks) {
+      if (!processed.has(t.id)) {
+        processed.add(t.id)
+        out.push({ ...t, depth: 0, hasKids: false })
+      }
+    }
     return out
-  }, [tasks])
+  }, [tasks, graph, collapsedSet])
 
   const newTop = () => {
     if (!topTitle.trim()) return
@@ -236,34 +302,67 @@ export default function ListView({
                     hasUnread && 'pmflow-flash'
                   )}>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-2" style={{ paddingLeft: t.depth * 20 }}>
-                    {t.depth > 0 && <span className="select-none text-slate-300 dark:text-slate-500">└</span>}
-                    {t.type === 'MILESTONE' && <span className="text-violet-500">◆</span>}
-                    {/*
-                      * 徽章的顏色是**那一種種類自己的顏色**（系統參數頁裡他挑的），
-                      * 不是寫死的紫色 —— 四種種類本來就各有顏色，寫死等於把它吃掉，
-                      * 畫面上就分不出任務與問題。
-                      *
-                      * 只拿來畫左邊那條細槓，不當底色也不當文字色：顏色是使用者挑的，
-                      * 深淺不受控，拿去當底色在深色模式下會有一半讀不到。
-                      */}
+                  <div className="flex items-center gap-1" style={{ paddingLeft: t.depth * 16 }}>
+                    {/* 折疊 / 展開 箭頭按鈕 */}
+                    {t.hasKids ? (
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          toggleCollapse(t.id)
+                        }}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200 rounded transition-colors select-none"
+                        title={collapsedSet.has(t.id) ? '展開子任務' : '收折子任務'}
+                      >
+                        {collapsedSet.has(t.id) ? '▸' : '▾'}
+                      </button>
+                    ) : (
+                      <span className="w-5 shrink-0 text-center select-none text-slate-300 dark:text-slate-600">
+                        {t.depth > 0 ? '└' : ''}
+                      </span>
+                    )}
+                    {/* 📦 收納盒 / 📇 卡片 圖示 */}
+                    <span className="shrink-0 text-xs select-none ml-0.5">
+                      {t.type === 'MILESTONE' ? '◆' : (t.type === 'EPIC' || (typeof window !== 'undefined' && (() => {
+                        try {
+                          const saved = localStorage.getItem('pmflow_graph_container_boxes')
+                          return saved ? new Set(JSON.parse(saved)).has(t.id) : false
+                        } catch { return false }
+                      })())) ? '📦' : '📇'}
+                    </span>
+                    {/* 種類色標 */}
                     {typeOf(t.type) && t.type !== 'MILESTONE' && (
                       <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded
                                        bg-slate-100 py-0.5 pr-1.5 pl-1 text-[10px] text-slate-600
                                        dark:bg-slate-800 dark:text-slate-300">
-                        <span className="h-2.5 w-0.5 rounded-full"
+                        <span className="h-2.5 w-1 rounded-full"
                               style={{ background: typeColorOf(t.type) }} />
                         {typeOf(t.type)}
                       </span>
                     )}
-                    <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-slate-400
+                    <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-bold text-slate-500
                                      dark:text-slate-400">{t.ref}</span>
-                    {/* 中文可以在任何一個字之間斷行，不擋住就會被旁邊的徽章與按鈕擠成一直條 */}
+                    {/* 任務名稱 */}
                     <span className={cx('min-w-0 truncate', t.type === 'EPIC'
-                      ? 'font-medium text-slate-900 dark:text-slate-100'
+                      ? 'font-bold text-slate-900 dark:text-slate-100'
                       : 'text-slate-800 dark:text-slate-200')}>
                       {t.title}
                     </span>
+                    {/* ✏️ 編輯筆按鈕：點擊觸發開啟編輯抽屜 */}
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          onEdit(t.id)
+                        }}
+                        title="編輯任務詳情"
+                        aria-label="編輯任務詳情"
+                        className="ml-1 shrink-0 rounded p-0.5 text-xs text-slate-400 hover:bg-slate-200 hover:text-blue-600 dark:hover:bg-slate-700 dark:hover:text-blue-400 transition-colors"
+                      >
+                        ✏️
+                      </button>
+                    )}
                     {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，
                         為它固定讓出一欄寬度，換來的是整張表每一列都變窄 */}
                     <ProblemBadge problem={t.problem} />
@@ -389,7 +488,7 @@ export default function ListView({
                           : undefined}>
                     <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
                                      dark:bg-slate-700">
-                      <span className={cx('block h-full', progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
+                      <span className={cx('block h-full', progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
                             style={{ width: `${progress}%` }} />
                     </span>
                     <span className="tabular-nums">{progress}%</span>

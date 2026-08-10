@@ -7,7 +7,8 @@ import { rollup } from '../lib/rollup'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { todayYmd } from '../lib/date'
 import { T } from '../strings'
-import { Button } from '../components/ui'
+import { Button, cx } from '../components/ui'
+import { useRemembered } from '../lib/remember'
 
 /**
  * 甘特圖：dhtmlx-gantt v10（v10.0.0 起才是 MIT，9.x 以前是 GPL-2.0，務必鎖 ^10）。
@@ -36,6 +37,27 @@ export default function GanttView({
   const hostRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<ReturnType<typeof DhtmlxGantt.getGanttInstance> | null>(null)
   const qc = useQueryClient()
+  const [hiddenCols, setHiddenCols] = useRemembered<string[]>(`gantt.hiddenCols.${projectId}`, [])
+
+  const toggleCol = (colKey: string) => {
+    const next = hiddenCols.includes(colKey)
+      ? hiddenCols.filter(k => k !== colKey)
+      : [...hiddenCols, colKey]
+    setHiddenCols(next)
+    const g = ganttRef.current
+    if (g) {
+      g.config.columns = [
+        { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
+        ...(!next.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
+        ...(!next.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
+        ...(!next.includes('inquiry') ? [{
+          name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
+          template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
+        }] : []),
+      ]
+      g.render()
+    }
+  }
 
   const { data: sched } = useQuery({
     queryKey: ['schedule', projectId],
@@ -68,14 +90,16 @@ export default function GanttView({
       { unit: 'month', step: 1, format: G.scale.month },
       { unit: 'day', step: 1, format: G.scale.day },
     ]
-    g.config.columns = [
+    const getCols = (hidden: string[]) => [
       { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
-      { name: 'start_date', label: G.col.start, align: 'center', width: 88 },
-      { name: 'duration', label: G.col.duration, align: 'center', width: 44 },
-      { name: 'inquiry', label: G.col.inquiry, align: 'center', width: 62,
-        template: (t: unknown) =>
-          INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? '' },
+      ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
+      ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
+      ...(!hidden.includes('inquiry') ? [{
+        name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
+        template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
+      }] : []),
     ]
+    g.config.columns = getCols(hiddenCols)
     // 中文化：一定要「取出內建 locale 再覆蓋」，
     // 直接丟一個只有部分欄位的物件進去，dhtmlx 會缺鍵並噴 "Invalid day index"。
     const base = g.i18n.getLocale('en')
@@ -200,6 +224,16 @@ export default function GanttView({
         type: TO_DHX[e.linkType]!, lag: e.lagDays,
       }))
 
+    g.config.columns = [
+      { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
+      ...(!hiddenCols.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
+      ...(!hiddenCols.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
+      ...(!hiddenCols.includes('inquiry') ? [{
+        name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
+        template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
+      }] : []),
+    ]
+
     g.clearAll()
     g.parse({ data, links })
 
@@ -207,7 +241,7 @@ export default function GanttView({
       g.selectTask(focusedTaskId)
       g.showTask(focusedTaskId)
     }
-  }, [tasks, sched, graph])
+  }, [tasks, sched, graph, hiddenCols])
 
   // 當外部 focusedTaskId 變更時自動定位與高亮
   useEffect(() => {
@@ -221,6 +255,69 @@ export default function GanttView({
 
   return (
     <div className="flex h-full flex-col">
+      {/* ── 欄位顯示開關工具列 ── */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900 text-xs">
+        <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
+          <span>📊 甘特圖視圖</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-slate-500 dark:text-slate-400 mr-1">顯示欄位:</span>
+          <button
+            type="button"
+            disabled
+            className="rounded bg-slate-100 px-2 py-1 text-slate-400 cursor-not-allowed dark:bg-slate-800"
+            title="任務欄位為固定顯示"
+          >
+            ✓ 任務欄 (固定)
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleCol('start_date')}
+            className={cx(
+              'rounded px-2 py-1 transition-colors cursor-pointer',
+              !hiddenCols.includes('start_date')
+                ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/30'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+            )}
+          >
+            {!hiddenCols.includes('start_date') ? '✓' : ''} 開始日期
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleCol('duration')}
+            className={cx(
+              'rounded px-2 py-1 transition-colors cursor-pointer',
+              !hiddenCols.includes('duration')
+                ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/30'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+            )}
+          >
+            {!hiddenCols.includes('duration') ? '✓' : ''} 工期
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleCol('inquiry')}
+            className={cx(
+              'rounded px-2 py-1 transition-colors cursor-pointer',
+              !hiddenCols.includes('inquiry')
+                ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/30'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+            )}
+          >
+            {!hiddenCols.includes('inquiry') ? '✓' : ''} 詢問狀態
+          </button>
+          <button
+            type="button"
+            disabled
+            className="rounded bg-slate-100 px-2 py-1 text-slate-400 cursor-not-allowed dark:bg-slate-800 ml-1"
+            title="進度條/時間軸為固定顯示"
+          >
+            ✓ 進度條/時間軸 (固定)
+          </button>
+        </div>
+      </div>
+
       {sched && (sched.conflicts.length > 0 || sched.cyclic) && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800
                         dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">

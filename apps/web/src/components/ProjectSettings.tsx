@@ -690,8 +690,10 @@ function AddRow({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-white px-4 py-3 ring-1
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-3 ring-1
                     ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+      {/* 預留拖移 Handle 手把相同寬度之隱形占位區，確保顏色與名稱輸入框跟上列 100% 垂直對齊 */}
+      <div className="w-5 shrink-0" aria-hidden="true" />
       <input
         type="color"
         aria-label={S.fields.color}

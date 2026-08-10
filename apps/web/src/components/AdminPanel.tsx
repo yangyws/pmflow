@@ -29,9 +29,9 @@ const A = T.account.admin
 const O = T.account.owner
 
 const STATUS_CLS: Record<AdminUser['status'], string> = {
-  ACTIVE: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  PENDING: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-  SUSPENDED: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  ACTIVE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/60 font-medium',
+  PENDING: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:border dark:border-slate-700 font-medium',
+  SUSPENDED: 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 dark:border dark:border-red-800/60 font-medium',
 }
 
 const errText = (e: unknown) =>
@@ -385,7 +385,7 @@ function OwnerPanel({ workspaceId }: { workspaceId: string }) {
   const admins = data.users.filter(u => u.isAdmin)
 
   return (
-    <div className="h-full overflow-auto bg-slate-50">
+    <div className="h-full overflow-auto bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div className="mb-2 flex items-center gap-3">
           <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{A.title}</h1>
