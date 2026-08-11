@@ -248,6 +248,7 @@ export interface SimpleGraphProps {
 export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
+  const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
 
   const handleToggleMode = useCallback((nodeId: string) => {
@@ -281,7 +282,28 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   )
 
   const onConnect = useCallback(
-    (connection: Connection) =>
+    (connection: Connection) => {
+      if (!connection.source || !connection.target || connection.source === connection.target) return
+
+      const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
+
+      const sourceParent = sourceNode?.parentId
+      const targetParent = targetNode?.parentId
+
+      // 收納盒內部的卡片無法與外部或其它收納盒直接建立關聯
+      if (
+        (sourceParent && sourceParent !== targetParent) ||
+        (targetParent && targetParent !== sourceParent)
+      ) {
+        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+        setAlertMsg(
+          `收納盒內部的卡片 (${srcRef} / ${tgtRef}) 無法與外部直接建立關聯。請將關聯連線接至收納盒本體！`
+        )
+        return
+      }
+
       setEdges((eds) =>
         addEdge(
           {
@@ -291,8 +313,9 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           },
           eds
         )
-      ),
-    []
+      )
+    },
+    [nodes]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
@@ -467,6 +490,32 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           <Controls />
         </ReactFlow>
       </div>
+
+      {/* 關聯限制提示 Modal */}
+      {alertMsg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
+              <span className="text-xl">⚠️</span>
+              <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
+                關聯建立受限
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              {alertMsg}
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setAlertMsg(null)}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
