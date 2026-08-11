@@ -342,19 +342,18 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         return
       }
 
-      // 限制：同一個卡片或收納盒最多只能有一條連結線
-      const sourceHasEdge = edges.some(
-        (e) => e.source === connection.source || e.target === connection.source
-      )
-      const targetHasEdge = edges.some(
-        (e) => e.source === connection.target || e.target === connection.target
+      // 限制：同一個卡片/收納盒與另一個卡片/收納盒之間無法建立多條重複連結線
+      const hasDuplicateEdge = edges.some(
+        (e) =>
+          (e.source === connection.source && e.target === connection.target) ||
+          (e.source === connection.target && e.target === connection.source)
       )
 
-      if (sourceHasEdge || targetHasEdge) {
-        const busyNode = sourceHasEdge ? sourceNode : targetNode
-        const busyRef = (busyNode?.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
+      if (hasDuplicateEdge) {
+        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
         setAlertMsg(
-          `【${busyRef}】已存在關聯線。每個卡片或收納盒最多只能有一條連結線！`
+          `【${srcRef}】與【${tgtRef}】之間已存在關聯線，無法重複建立！`
         )
         return
       }
