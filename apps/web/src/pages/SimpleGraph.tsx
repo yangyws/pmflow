@@ -342,6 +342,23 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         return
       }
 
+      // 限制：同一個卡片或收納盒最多只能有一條連結線
+      const sourceHasEdge = edges.some(
+        (e) => e.source === connection.source || e.target === connection.source
+      )
+      const targetHasEdge = edges.some(
+        (e) => e.source === connection.target || e.target === connection.target
+      )
+
+      if (sourceHasEdge || targetHasEdge) {
+        const busyNode = sourceHasEdge ? sourceNode : targetNode
+        const busyRef = (busyNode?.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
+        setAlertMsg(
+          `【${busyRef}】已存在關聯線。每個卡片或收納盒最多只能有一條連結線！`
+        )
+        return
+      }
+
       setEdges((eds) =>
         addEdge(
           {
@@ -353,7 +370,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         )
       )
     },
-    [nodes]
+    [nodes, edges]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
