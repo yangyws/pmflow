@@ -27,6 +27,7 @@
 | **行事曆** | `apps/web/src/pages/Calendar.tsx` | 月曆格與跨日長條、拖拉任務改期、登記與管理請假與代理人 |
 | **甘特圖** | `apps/web/src/pages/Gantt.tsx` | 時間軸甘特圖、排程依賴箭頭、顯示關鍵路徑與時間連動 |
 | **關聯圖** | `apps/web/src/pages/Graph.tsx` | 拓撲關聯圖、卡住源頭追蹤、直線平行向右連線與併欄 |
+| **靶心關聯表** | `apps/web/src/pages/SimpleGraph.tsx` | 新版靶心關聯圖、收納盒、四向雙向 Handles、90 度避讓折線、Viewport 焦點持久化與受限提示 Modal |
 | **對外詢問看板** | `apps/web/src/pages/InquiryBoard.tsx` | 追蹤專案內對外詢問單（待回覆、逾期統計與回覆紀錄） |
 | **儀表板** | `apps/web/src/pages/Dashboard.tsx` | 數據中心：手刻 SVG 燃盡圖 (Burndown) 與負載熱圖 (Workload) |
 | **專案側欄** | `apps/web/src/components/EpicSidebar.tsx` | 左側樹狀結構（大項目→任務→錯誤），可點擊 `＋` 建立合法子任務 |
