@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -35,7 +35,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
 
   if (isBox) {
     return (
-      <div className="relative w-full h-full min-w-[280px] min-h-[160px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+      <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
             <div className="flex items-center gap-1.5">
@@ -53,20 +53,20 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
             </div>
             <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
           </div>
-          <div className="mt-3 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+          <div className="mt-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
             {data.label || '收納盒'}
           </div>
         </div>
 
         <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-          (純拖曳收納盒 - 右下角可調整尺寸)
+          (拖曳卡片至此可自動收納)
         </div>
 
-        {/* 右下角縮放控制鈕 (透過 style 強制 transform: none 且右下各縮入 12px，100% 在框內) */}
+        {/* 右下角縮放控制鈕 (100% 內嵌在框內) */}
         <NodeResizeControl
           position="bottom-right"
-          minWidth={280}
-          minHeight={160}
+          minWidth={320}
+          minHeight={220}
           style={{
             position: 'absolute',
             right: '12px',
@@ -121,35 +121,37 @@ const nodeTypes = {
 
 const initialNodes: Node[] = [
   {
-    id: 'node-1',
+    id: 'box-1',
     type: 'simpleNode',
     position: { x: 50, y: 80 },
-    style: { width: 320, height: 192 },
+    style: { width: 340, height: 260 },
     data: { label: '專案核心組件收納盒', refText: 'MRG-1', mode: 'box' },
   },
   {
-    id: 'node-2',
+    id: 'box-2',
     type: 'simpleNode',
-    position: { x: 420, y: 80 },
-    style: { width: 320, height: 192 },
+    position: { x: 450, y: 80 },
+    style: { width: 340, height: 260 },
     data: { label: '後端服務收納盒', refText: 'MRG-2', mode: 'box' },
   },
   {
-    id: 'node-3',
+    id: 'card-1',
     type: 'simpleNode',
-    position: { x: 80, y: 320 },
+    parentId: 'box-1',
+    position: { x: 24, y: 50 },
     data: { label: '設計 Graph View 基礎 UI', refText: 'MRG-3', mode: 'card' },
   },
   {
-    id: 'node-4',
+    id: 'card-2',
     type: 'simpleNode',
-    position: { x: 360, y: 350 },
+    parentId: 'box-1',
+    position: { x: 24, y: 150 },
     data: { label: '實作純拖曳功能', refText: 'MRG-4', mode: 'card' },
   },
   {
-    id: 'node-5',
+    id: 'card-3',
     type: 'simpleNode',
-    position: { x: 650, y: 320 },
+    position: { x: 850, y: 120 },
     data: { label: '串接 API 與狀態管理', refText: 'MRG-5', mode: 'card' },
   },
 ]
@@ -162,6 +164,7 @@ export interface SimpleGraphProps {
 
 export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
+  const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
 
   const handleToggleMode = useCallback((nodeId: string) => {
     setNodes((prevNodes) =>
@@ -171,7 +174,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
           return {
             ...n,
-            style: nextMode === 'box' ? { width: 320, height: 192 } : undefined,
+            style: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
             data: {
               ...n.data,
               mode: nextMode,
@@ -188,6 +191,97 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     []
   )
 
+  const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    dragStartPosMap.current[node.id] = { ...node.position }
+  }, [])
+
+  // 處理卡片移入 / 移出收納盒判斷
+  const onNodeDragStop = useCallback((_: unknown, node: Node) => {
+    const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
+    if (isBoxNode) return
+
+    setNodes((currentNodes) => {
+      // 1. 計算絕對全畫布座標 (絕對位置)
+      const getAbsPos = (nId: string): { x: number; y: number } => {
+        const target = currentNodes.find((cn) => cn.id === nId)
+        if (!target) return { x: 0, y: 0 }
+        if (target.parentId) {
+          const parentAbs = getAbsPos(target.parentId)
+          return { x: parentAbs.x + target.position.x, y: parentAbs.y + target.position.y }
+        }
+        return { ...target.position }
+      }
+
+      const cardAbsPos = getAbsPos(node.id)
+      const cardWidth = 256
+      const cardHeight = 84
+      const cardCenterX = cardAbsPos.x + cardWidth / 2
+      const cardCenterY = cardAbsPos.y + cardHeight / 2
+
+      // 找出所有收納盒
+      const boxNodes = currentNodes.filter((cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box')
+
+      // 檢查卡片中心點落在哪個收納盒內部
+      let targetBox: Node | undefined = undefined
+      for (const b of boxNodes) {
+        const bAbsPos = getAbsPos(b.id)
+        const bW = Number(b.style?.width ?? 340)
+        const bH = Number(b.style?.height ?? 260)
+
+        if (
+          cardCenterX >= bAbsPos.x &&
+          cardCenterX <= bAbsPos.x + bW &&
+          cardCenterY >= bAbsPos.y &&
+          cardCenterY <= bAbsPos.y + bH
+        ) {
+          targetBox = b
+          break
+        }
+      }
+
+      const currentParentId = node.parentId
+
+      // 情況 A：移出原本收納盒 (落點不在任何收納盒內)
+      if (!targetBox && currentParentId) {
+        return currentNodes.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              parentId: undefined,
+              position: cardAbsPos, // 無縫停留在放開滑鼠的絕對畫布位置
+            }
+          }
+          return n
+        })
+      }
+
+      // 情況 B：移入新的收納盒 (或由無盒移入收納盒)
+      if (targetBox && targetBox.id !== currentParentId) {
+        const existingKids = currentNodes.filter((cn) => cn.parentId === targetBox.id)
+        const kidIndex = existingKids.length
+
+        // 收納盒內垂直優先對齊 (一欄最多 5 張：0~4 列，滿了推至右側 Column 1)
+        const cIdx = Math.floor(kidIndex / 5)
+        const rIdx = kidIndex % 5
+        const slotX = 24 + cIdx * 280
+        const slotY = 50 + rIdx * 100
+
+        return currentNodes.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              parentId: targetBox.id,
+              position: { x: slotX, y: slotY },
+            }
+          }
+          return n
+        })
+      }
+
+      return currentNodes
+    })
+  }, [])
+
   const nodesWithHandlers = nodes.map((node) => ({
     ...node,
     data: {
@@ -202,10 +296,10 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (純位移 + 切換 + 縮放)
+            靶心關聯表 (卡片收納 + 垂直優先對齊 + 拖曳進出)
           </span>
           <span className="text-xs text-slate-400">
-            點擊 MRG 後方按鈕可切換模式；收納盒右下角可拖曳縮放
+            把卡片拖進收納盒可自動對齊收納；拖出即自動脫離
           </span>
         </div>
       </div>
@@ -215,6 +309,8 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         <ReactFlow
           nodes={nodesWithHandlers}
           onNodesChange={onNodesChange}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
         >
