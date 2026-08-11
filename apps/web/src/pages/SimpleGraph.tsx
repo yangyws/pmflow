@@ -364,6 +364,24 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       }
 
       const currentParentId = node.parentId
+      const isMovingOut = currentParentId && (!targetBox || targetBox.id !== currentParentId)
+
+      // 檢查：若卡片在收納盒內且有關聯線，禁止移出收納盒
+      if (isMovingOut) {
+        const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
+        if (hasEdges) {
+          const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
+          setAlertMsg(
+            `卡片 (${cardRef}) 在收納盒內尚存在關聯線，無法移出收納盒。請先刪除關聯線後再移動！`
+          )
+          const startPos = dragStartPosMap.current[node.id]
+          return currentNodes.map((n) =>
+            n.id === node.id
+              ? { ...n, parentId: currentParentId, position: startPos || n.position }
+              : n
+          )
+        }
+      }
 
       if (!targetBox && currentParentId) {
         const oldBox = currentNodes.find((cn) => cn.id === currentParentId)
@@ -440,7 +458,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
 
       return currentNodes
     })
-  }, [])
+  }, [edges])
 
   const nodesWithHandlers = nodes.map((node) => ({
     ...node,
