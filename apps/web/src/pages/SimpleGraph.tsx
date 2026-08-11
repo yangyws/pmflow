@@ -62,12 +62,22 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           (純拖曳收納盒 - 右下角可調整尺寸)
         </div>
 
-        {/* 右下角縮放控制鈕 (消除預設 50% 外偏移，完全向左上縮入框內) */}
+        {/* 右下角縮放控制鈕 (透過 style 強制 transform: none 且右下各縮入 12px，100% 在框內) */}
         <NodeResizeControl
           position="bottom-right"
           minWidth={280}
           minHeight={160}
-          className="!w-5 !h-5 !bottom-2.5 !right-2.5 !border-0 !bg-transparent !translate-x-0 !translate-y-0"
+          style={{
+            position: 'absolute',
+            right: '12px',
+            bottom: '12px',
+            transform: 'none',
+            width: '20px',
+            height: '20px',
+            border: 'none',
+            background: 'transparent',
+            zIndex: 10,
+          }}
         >
           <div
             className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
