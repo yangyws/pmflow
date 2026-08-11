@@ -26,6 +26,7 @@ import ListView from './pages/List'
 const GanttView = lazy(() => import('./pages/Gantt'))
 // React Flow 同理，只有關聯圖用得到
 const GraphView = lazy(() => import('./pages/Graph'))
+const SimpleGraphView = lazy(() => import('./pages/SimpleGraph'))
 import CalendarView from './pages/Calendar'
 import InquiryBoard from './pages/InquiryBoard'
 import ProjectPicker from './pages/ProjectPicker'
@@ -38,7 +39,7 @@ import AdminPanel from './components/AdminPanel'
 // 跟甘特、關聯圖一樣延後載入
 const DashboardView = lazy(() => import('./pages/Dashboard'))
 
-type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'dashboard'
+type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'dashboard'
   | 'inquiry' | 'members' | 'memberAdmin' | 'settings'
 
 /**
@@ -54,6 +55,7 @@ const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'calendar', label: T.nav.views.calendar },
   { key: 'gantt', label: T.nav.views.gantt },
   { key: 'graph', label: T.nav.views.graph },
+  { key: 'simpleGraph', label: '新關聯表' },
   // 儀表板排在幾張「看任務」的圖後面：它看的是整個專案的走勢，
   // 不是同一批任務的另一種排法，翻它的時機也不一樣（回報進度的時候才看）
   { key: 'dashboard', label: T.nav.views.dashboard },
@@ -668,6 +670,11 @@ function ProjectWorkspace({
                   <GraphView projectId={projectId} tasks={visible}
                              statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={handleTaskEdit}
                              focusedTaskId={focusedTaskId} />
+                </Suspense>
+              )}
+              {view === 'simpleGraph' && (
+                <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
+                  <SimpleGraphView projectId={projectId} tasks={visible} onOpenTask={handleTaskEdit} />
                 </Suspense>
               )}
               {/*
