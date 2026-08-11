@@ -271,25 +271,55 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
 
   const handleToggleMode = useCallback((nodeId: string) => {
-    setNodes((prevNodes) =>
-      prevNodes.map((n) => {
+    setNodes((prevNodes) => {
+      const targetNode = prevNodes.find((n) => n.id === nodeId)
+      if (!targetNode) return prevNodes
+
+      const currentMode = (targetNode.data as SimpleGraphNodeData).mode
+      const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
+
+      const getAbsPos = (nId: string): { x: number; y: number } => {
+        const target = prevNodes.find((cn) => cn.id === nId)
+        if (!target) return { x: 0, y: 0 }
+        if (target.parentId) {
+          const parentAbs = getAbsPos(target.parentId)
+          return { x: parentAbs.x + target.position.x, y: parentAbs.y + target.position.y }
+        }
+        return { ...target.position }
+      }
+
+      const targetAbsPos = getAbsPos(nodeId)
+
+      return prevNodes.map((n) => {
         if (n.id === nodeId) {
-          const currentMode = (n.data as SimpleGraphNodeData).mode
-          const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
           return {
             ...n,
             style: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
             width: nextMode === 'box' ? 340 : undefined,
             height: nextMode === 'box' ? 260 : undefined,
+            measured: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
             data: {
               ...n.data,
               mode: nextMode,
             },
           }
         }
+
+        // 當收納盒變回卡片時，原收納盒內的子卡片全部釋放為獨立卡片
+        if (nextMode === 'card' && n.parentId === nodeId) {
+          return {
+            ...n,
+            parentId: undefined,
+            position: {
+              x: targetAbsPos.x + n.position.x,
+              y: targetAbsPos.y + n.position.y,
+            },
+          }
+        }
+
         return n
       })
-    )
+    })
   }, [])
 
   const onNodesChange = useCallback(
