@@ -25,7 +25,7 @@ export type SimpleGraphNodeData = {
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
-// 自由切換的節點 UI (包含右下角 ↘ 尺寸縮放按鈕)
+// 自由切換的節點 UI (縮放圖標向左上平移，不超出外框)
 function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
 
@@ -36,7 +36,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
 
   if (isBox) {
     return (
-      <div className="relative w-full h-full min-w-[280px] min-h-[160px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+      <div className="relative w-full h-full min-w-[280px] min-h-[160px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden">
         <div>
           <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
             <div className="flex items-center gap-1.5">
@@ -59,19 +59,19 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           </div>
         </div>
 
-        <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40">
+        <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
           (純拖曳收納盒 - 右下角可調整尺寸)
         </div>
 
-        {/* 右下角縮放控制紐 */}
+        {/* 右下角縮放控制紐 (向左上縮排，不超出框外) */}
         <NodeResizeControl
           position="bottom-right"
           minWidth={280}
           minHeight={160}
-          className="!w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
+          className="!w-4 !h-4 !bottom-2.5 !right-2.5 !border-0 !bg-transparent"
         >
           <div
-            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-indigo-200/80 dark:bg-indigo-800/80 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-700 dark:text-indigo-200 border border-indigo-300/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
+            className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
             title="按住拖曳調整收納盒尺寸"
           >
             ↘
@@ -218,10 +218,10 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (純位移 + 切換 + 縮放)
+            靶心關聯表 (純位移 + 切換 + 內嵌縮放鈕)
           </span>
           <span className="text-xs text-slate-400">
-            收納盒右下角 (↘) 可按住拖曳調整寬高
+            縮放按鈕內嵌於收納盒右下角
           </span>
         </div>
         <div className="flex items-center gap-2">
