@@ -143,6 +143,10 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
             </div>
           </div>
 
+          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
+            (移入卡片自動擴大容量)
+          </div>
+
           {/* 右下角縮放控制鈕 (往左上內移至 18px) */}
           <NodeResizeControl
             position="bottom-right"
