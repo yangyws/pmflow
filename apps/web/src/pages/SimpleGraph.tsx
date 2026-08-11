@@ -4,9 +4,16 @@ import {
   Background,
   Controls,
   applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  Handle,
+  Position,
   NodeResizeControl,
   type Node,
+  type Edge,
   type NodeChange,
+  type EdgeChange,
+  type Connection,
   type NodeProps,
   BackgroundVariant,
 } from '@xyflow/react'
@@ -24,7 +31,7 @@ export type SimpleGraphNodeData = {
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
-// 計算收納盒裝載 N 張卡片所需的最適尺寸 (垂直一欄最多 5 張)
+// 計算收納盒裝載 N 張卡片所需的最適尺寸
 function computeBoxSize(kidCount: number, currentW = 340, currentH = 260) {
   if (kidCount === 0) return { width: 340, height: 260 }
   const cols = Math.ceil(kidCount / 5)
@@ -37,7 +44,7 @@ function computeBoxSize(kidCount: number, currentW = 340, currentH = 260) {
   }
 }
 
-// 自由切換的節點 UI
+// 自由切換的節點 UI (包含四向 Handle 接點可供拉線連線)
 function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
 
@@ -46,84 +53,90 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
     data.onToggleMode?.(id)
   }
 
-  if (isBox) {
-    return (
-      <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
+  return (
+    <div className="relative w-full h-full">
+      {/* 接點 (Handles) - 左右排程與上下關聯線 */}
+      <Handle type="target" position={Position.Left} id="left" className="!w-2.5 !h-2.5 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900" />
+      <Handle type="source" position={Position.Right} id="right" className="!w-2.5 !h-2.5 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900" />
+      <Handle type="target" position={Position.Top} id="top" className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white dark:!border-slate-900" />
+      <Handle type="source" position={Position.Bottom} id="bottom" className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white dark:!border-slate-900" />
+
+      {isBox ? (
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
+              <div className="flex items-center gap-1.5">
+                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                  {data.refText || 'MRG-BOX'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggle}
+                  className="rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
+                  title="【點擊切換】為卡片"
+                >
+                  📦 收納盒
+                </button>
+              </div>
+              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
+            </div>
+            <div className="mt-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+              {data.label || '收納盒'}
+            </div>
+          </div>
+
+          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
+            (支援四向連線 + 卡片收納)
+          </div>
+
+          {/* 右下角縮放控制鈕 */}
+          <NodeResizeControl
+            position="bottom-right"
+            minWidth={320}
+            minHeight={220}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              bottom: '12px',
+              transform: 'none',
+              width: '20px',
+              height: '20px',
+              border: 'none',
+              background: 'transparent',
+              zIndex: 10,
+            }}
+          >
+            <div
+              className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
+              title="按住拖曳調整收納盒尺寸"
+            >
+              ↘
+            </div>
+          </NodeResizeControl>
+        </div>
+      ) : (
+        <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
             <div className="flex items-center gap-1.5">
-              <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
-                {data.refText || 'MRG-BOX'}
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                {data.refText || 'MRG-1'}
               </span>
               <button
                 type="button"
                 onClick={handleToggle}
-                className="rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
-                title="【點擊切換】為卡片"
+                className="rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
+                title="【點擊切換】為收納盒"
               >
-                📦 收納盒
+                📦 卡片
               </button>
             </div>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
+            <span className="text-xs text-slate-400 font-mono">Card</span>
           </div>
-          <div className="mt-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
-            {data.label || '收納盒'}
+          <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
+            {data.label || '無標題任務'}
           </div>
         </div>
-
-        <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-          (移入卡片自動擴大容量)
-        </div>
-
-        {/* 右下角縮放控制鈕 */}
-        <NodeResizeControl
-          position="bottom-right"
-          minWidth={320}
-          minHeight={220}
-          style={{
-            position: 'absolute',
-            right: '12px',
-            bottom: '12px',
-            transform: 'none',
-            width: '20px',
-            height: '20px',
-            border: 'none',
-            background: 'transparent',
-            zIndex: 10,
-          }}
-        >
-          <div
-            className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
-            title="按住拖曳調整收納盒尺寸"
-          >
-            ↘
-          </div>
-        </NodeResizeControl>
-      </div>
-    )
-  }
-
-  return (
-    <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none">
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
-        <div className="flex items-center gap-1.5">
-          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-            {data.refText || 'MRG-1'}
-          </span>
-          <button
-            type="button"
-            onClick={handleToggle}
-            className="rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
-            title="【點擊切換】為收納盒"
-          >
-            📦 卡片
-          </button>
-        </div>
-        <span className="text-xs text-slate-400 font-mono">Card</span>
-      </div>
-      <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
-        {data.label || '無標題任務'}
-      </div>
+      )}
     </div>
   )
 }
@@ -169,6 +182,10 @@ const initialNodes: Node[] = [
   },
 ]
 
+const initialEdges: Edge[] = [
+  { id: 'edge-box1-box2', source: 'box-1', sourceHandle: 'right', target: 'box-2', targetHandle: 'left', animated: true },
+]
+
 export interface SimpleGraphProps {
   projectId?: string
   tasks?: Task[]
@@ -177,6 +194,7 @@ export interface SimpleGraphProps {
 
 export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
+  const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
 
   const handleToggleMode = useCallback((nodeId: string) => {
@@ -204,6 +222,16 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     []
   )
 
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  )
+
+  const onConnect = useCallback(
+    (connection: Connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
+    []
+  )
+
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
@@ -214,7 +242,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     if (isBoxNode) return
 
     setNodes((currentNodes) => {
-      // 1. 計算絕對全畫布座標
       const getAbsPos = (nId: string): { x: number; y: number } => {
         const target = currentNodes.find((cn) => cn.id === nId)
         if (!target) return { x: 0, y: 0 }
@@ -231,10 +258,8 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       const cardCenterX = cardAbsPos.x + cardWidth / 2
       const cardCenterY = cardAbsPos.y + cardHeight / 2
 
-      // 找出所有收納盒
       const boxNodes = currentNodes.filter((cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box')
 
-      // 檢查卡片中心點落在哪個收納盒內部
       let targetBox: Node | undefined = undefined
       for (const b of boxNodes) {
         const bAbsPos = getAbsPos(b.id)
@@ -254,7 +279,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
 
       const currentParentId = node.parentId
 
-      // 情況 A：移出原本收納盒 (落點不在任何收納盒內)
       if (!targetBox && currentParentId) {
         const oldBox = currentNodes.find((cn) => cn.id === currentParentId)
         const remainingKids = currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
@@ -282,17 +306,14 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         })
       }
 
-      // 情況 B：移入新的收納盒 (或由無盒移入收納盒)
       if (targetBox && targetBox.id !== currentParentId) {
         const existingKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
         const newKidCount = existingKids.length + 1
 
-        // 計算新收納盒自動擴大尺寸
         const curW = Number(targetBox.style?.width ?? 340)
         const curH = Number(targetBox.style?.height ?? 260)
         const targetBoxNewSize = computeBoxSize(newKidCount, curW, curH)
 
-        // 舊收納盒若有變更也重新計算尺寸
         const oldBox = currentParentId ? currentNodes.find((cn) => cn.id === currentParentId) : undefined
         const oldBoxRemainingKids = currentParentId
           ? currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
@@ -301,7 +322,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           ? computeBoxSize(oldBoxRemainingKids.length, Number(oldBox.style?.width ?? 340), Number(oldBox.style?.height ?? 260))
           : undefined
 
-        // 垂直優先對齊位置 (一欄最多 5 張)
         const kidIndex = existingKids.length
         const cIdx = Math.floor(kidIndex / 5)
         const rIdx = kidIndex % 5
@@ -350,10 +370,10 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (卡片收納 + 收納盒自動擴展容量)
+            靶心關聯表 (收納盒與卡片四向接點連線)
           </span>
           <span className="text-xs text-slate-400">
-            卡片移入收納盒時，收納盒尺寸自動擴大以容納卡片
+            按住收納盒或卡片四向接點圓點，即可拉線建立關聯
           </span>
         </div>
       </div>
@@ -362,7 +382,10 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
+          edges={edges}
           onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
