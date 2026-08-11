@@ -24,7 +24,7 @@ export type SimpleGraphNodeData = {
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
-// 自由切換的節點 UI (支援 卡片 ↔ 收納盒 模式切換)
+// 自由切換的節點 UI (切換按鈕位於左側 MRG 標籤後面)
 function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
 
@@ -41,16 +41,16 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
             <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
               {data.refText || 'MRG-BOX'}
             </span>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">收納盒</span>
+            <button
+              type="button"
+              onClick={handleToggle}
+              className="rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
+              title="【點擊切換】為卡片"
+            >
+              📦 收納盒
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleToggle}
-            className="rounded bg-indigo-100 hover:bg-indigo-200 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
-            title="點擊切換為卡片模式"
-          >
-            📦 切換為卡片
-          </button>
+          <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
         </div>
         <div className="mt-3 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
           {data.label || '收納盒'}
@@ -69,16 +69,16 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
             {data.refText || 'MRG-1'}
           </span>
-          <span className="text-xs text-slate-400 font-mono">Card</span>
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
+            title="【點擊切換】為收納盒"
+          >
+            📦 卡片
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleToggle}
-          className="rounded bg-slate-100 hover:bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-300 dark:border-slate-600"
-          title="點擊切換為收納盒模式"
-        >
-          📦 切換為收納盒
-        </button>
+        <span className="text-xs text-slate-400 font-mono">Card</span>
       </div>
       <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
         {data.label || '無標題任務'}
@@ -157,7 +157,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     []
   )
 
-  // 注入 onToggleMode 回調至每個節點
   const nodesWithHandlers = nodes.map((node) => ({
     ...node,
     data: {
@@ -199,7 +198,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
             靶心關聯表 (純位移 + 切換功能)
           </span>
           <span className="text-xs text-slate-400">
-            點擊節點上的「📦 切換」按鈕可轉換 卡片 ↔ 收納盒
+            切換按鈕位於左側 MRG 標籤後
           </span>
         </div>
         <div className="flex items-center gap-2">
