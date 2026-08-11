@@ -16,10 +16,24 @@ import {
   type EdgeChange,
   type Connection,
   type NodeProps,
+  type Viewport,
   BackgroundVariant,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Task } from '../lib/api'
+
+const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
+
+// 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
+const savedViewport = (() => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VIEWPORT)
+    if (raw) return JSON.parse(raw) as Viewport
+  } catch {
+    // fallback
+  }
+  return undefined
+})()
 
 export type NodeMode = 'card' | 'box'
 
@@ -460,6 +474,14 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     })
   }, [edges])
 
+  const handleMoveEnd = useCallback((_: unknown, viewport: Viewport) => {
+    try {
+      localStorage.setItem(STORAGE_KEY_VIEWPORT, JSON.stringify(viewport))
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const nodesWithHandlers = nodes.map((node) => ({
     ...node,
     data: {
@@ -474,15 +496,15 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (90 度正交直角避讓連線)
+            靶心關聯表 (自動記憶畫面焦點與縮放)
           </span>
           <span className="hidden sm:inline-block text-xs text-slate-400">
-            連線採用 90 度正交直角折線，確保離框 16px 自動轉折不穿透卡片與收納盒
+            平移畫面或縮放檢視時，系統將自動記憶您最後的視覺焦點
           </span>
         </div>
       </div>
 
-      {/* ReactFlow 畫布 (預設 90 度 smoothstep 直角折線避讓) */}
+      {/* ReactFlow 畫布 (自動記憶與還原 Viewport 焦點) */}
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
@@ -492,6 +514,9 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           onConnect={onConnect}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
+          onMoveEnd={handleMoveEnd}
+          defaultViewport={savedViewport}
+          fitView={!savedViewport}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
           defaultEdgeOptions={{
@@ -502,7 +527,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           zoomOnPinch={true}
           panOnScroll={false}
           preventScrolling={true}
-          fitView
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
