@@ -69,7 +69,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div className={isBox ? 'relative w-full h-full' : 'relative w-64'}>
       {/* 接點 (Handles) - 上下左右 4 個方向皆為 Loose 雙向接點，z-index 提高確保拖曳無阻礙 */}
       <Handle
         type="target"
@@ -279,6 +279,8 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           return {
             ...n,
             style: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
+            width: nextMode === 'box' ? 340 : undefined,
+            height: nextMode === 'box' ? 260 : undefined,
             data: {
               ...n.data,
               mode: nextMode,
