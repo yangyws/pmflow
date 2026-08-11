@@ -128,9 +128,6 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
               <div className="flex items-center gap-1.5">
-                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
-                  {data.refText || 'MRG-BOX'}
-                </span>
                 <button
                   type="button"
                   onClick={handleToggle}
@@ -139,6 +136,9 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
                 >
                   📦 收納盒
                 </button>
+                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                  {data.refText || 'MRG-BOX'}
+                </span>
               </div>
             </div>
           </div>
@@ -176,9 +176,6 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
         <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
             <div className="flex items-center gap-1.5">
-              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-                {data.refText || 'MRG-1'}
-              </span>
               <button
                 type="button"
                 onClick={handleToggle}
@@ -187,6 +184,9 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
               >
                 📦 卡片
               </button>
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                {data.refText || 'MRG-1'}
+              </span>
             </div>
           </div>
           <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
