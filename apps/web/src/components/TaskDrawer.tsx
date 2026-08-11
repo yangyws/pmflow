@@ -280,7 +280,7 @@ export function TaskDrawer({
       <>
         {isLoading || !data ? <Spinner /> : (
           <>
-            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-4
+            <header className="flex items-start justify-between border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4
                                dark:border-slate-700">
               {/* flex-1 不能省：沒有它這一格只有內容寬，
                   標題就只用得到畫面的一小段，長標題會被擠成很窄的一直條 */}
@@ -388,7 +388,7 @@ export function TaskDrawer({
               </div>
             </header>
 
-            <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            <div className="flex-1 space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
               {/* 欄位都變成純文字之後，總要有一個地方講原因 */}
               {!canEdit && role && (
                 <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset
