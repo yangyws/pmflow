@@ -574,13 +574,13 @@ function ProjectWorkspace({
           </header>
         ) : (
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，與左側邊欄頂頭線 100% 直線對齊 */}
-          <div className="flex h-12 items-center border-b border-slate-200 px-3 dark:border-slate-700">
-            <nav className="flex items-center gap-1">
+          {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，支援行動端橫向滑動 */}
+          <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 overflow-x-auto min-w-0">
+            <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-2 scrollbar-none">
               {shownViews.map(v => (
                 <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
                         className={cx(
-                          'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                          'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors select-none',
                           view === v.key
                             ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-semibold'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -593,33 +593,33 @@ function ProjectWorkspace({
                         onResetOrder={() => setTabOrder([])}
                         view={view} setView={setView} />
             </nav>
-            <div className="ml-auto flex items-center gap-2">{bell}{menu}</div>
+            <div className="ml-auto shrink-0 flex items-center gap-1.5 sm:gap-2">{bell}{menu}</div>
           </div>
 
-          {/* 第二層 (h-9)：目前的事件 (標題/麵包屑與警示) */}
-          <div className="flex h-9 items-center gap-3 px-4 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40">
-            <span className="rounded bg-slate-200/70 px-1.5 py-0.5 font-mono text-[11px] text-slate-600
+          {/* 第二層 (min-h-9)：目前的事件 (標題/麵包屑與警示)，行動端靈活折行 */}
+          <div className="flex min-h-9 items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40 flex-wrap sm:flex-nowrap">
+            <span className="shrink-0 rounded bg-slate-200/70 px-1.5 py-0.5 font-mono text-[11px] text-slate-600
                              dark:bg-slate-700 dark:text-slate-300">
               {project?.key}
             </span>
             {epic ? (
               <>
                 <button onClick={() => setEpicId(null)}
-                        className="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60">
+                        className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60">
                   {epic.ref ?? `${project?.key}-${epic.number}`}
                 </button>
-                <span className="text-slate-300 dark:text-slate-600">/</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                <span className="shrink-0 text-slate-300 dark:text-slate-600">/</span>
+                <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
                   {epic.title}
                 </span>
               </>
             ) : (
-              <span className="text-slate-500 dark:text-slate-400">
+              <span className="truncate text-slate-500 dark:text-slate-400">
                 (當前檢視：{shownViews.find(v => v.key === view)?.label ?? T.common.none})
               </span>
             )}
             {overdue > 0 && (
-              <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700
+              <span className="shrink-0 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700
                                dark:bg-red-500/15 dark:text-red-300 ml-auto">
                 ⚠️ {T.nav.overdueHere(overdue)}
               </span>
