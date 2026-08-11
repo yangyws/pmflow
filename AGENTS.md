@@ -45,3 +45,9 @@ The menu sidebar follows a strict 3-tier group sorting hierarchy:
 2. **Group 2 (Middle)**: Linked Cards (with dependency lines), sorted by topological rank (upstream cards first, downstream cards immediately following).
 3. **Divider Line**: Placed immediately below the last linked card in Group 2.
 4. **Group 3 (Bottom)**: Unlinked Standalone Cards (without dependency lines), sorted numerically by MRG / Ref number (`MRG-1`, `MRG-2`...).
+
+---
+
+## 4. Change History & Code Index Pointer (AI 啟動必載入導引)
+- **Change Log & Code Index**: All feature modification logs, bug fixes, and exact file/line number indexes are documented in [CHANGELOG_INDEX.md](file:///D:/NewProject/pmflow-git/CHANGELOG_INDEX.md).
+- **AI Startup Requirement**: On every startup or when asked to locate/modify code, AI MUST consult [CHANGELOG_INDEX.md](file:///D:/NewProject/pmflow-git/CHANGELOG_INDEX.md) to quickly pinpoint affected modules and review historical implementation rules before making edits.
