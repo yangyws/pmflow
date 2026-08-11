@@ -366,19 +366,19 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
-      {/* 頂部說明列 */}
-      <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+      {/* 頂部說明列 (行動端彈性折行) */}
+      <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (收納盒與卡片四向接點連線)
+          <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
+            靶心關聯表 (收納盒與卡片四向連線)
           </span>
-          <span className="text-xs text-slate-400">
+          <span className="hidden sm:inline-block text-xs text-slate-400">
             按住收納盒或卡片四向接點圓點，即可拉線建立關聯
           </span>
         </div>
       </div>
 
-      {/* ReactFlow 畫布 */}
+      {/* ReactFlow 畫布 (支援雙指縮放與觸控拖曳) */}
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
@@ -389,6 +389,9 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
+          zoomOnPinch={true}
+          panOnScroll={false}
+          preventScrolling={true}
           fitView
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
