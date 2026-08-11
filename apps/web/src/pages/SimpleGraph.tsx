@@ -259,10 +259,17 @@ export interface SimpleGraphProps {
   onOpenTask?: (taskId: string) => void
 }
 
+type ConfirmDeleteEdgeState = {
+  edgeId: string
+  sourceRef: string
+  targetRef: string
+}
+
 export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
+  const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
 
   const handleToggleMode = useCallback((nodeId: string) => {
@@ -293,6 +300,23 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
     []
+  )
+
+  const onEdgeClick = useCallback(
+    (_: React.MouseEvent, edge: Edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source)
+      const targetNode = nodes.find((n) => n.id === edge.target)
+
+      const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+      const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+
+      setConfirmDeleteEdge({
+        edgeId: edge.id,
+        sourceRef,
+        targetRef,
+      })
+    },
+    [nodes]
   )
 
   const onConnect = useCallback(
@@ -512,6 +536,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onMoveEnd={handleMoveEnd}
@@ -532,6 +557,42 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           <Controls />
         </ReactFlow>
       </div>
+
+      {/* 刪除關聯線確認 Modal (遵循 AGENTS.md 規格：是否刪除 [上游卡片Ref] 與 [下游卡片Ref] 的關聯？) */}
+      {confirmDeleteEdge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
+              <span className="text-xl">🗑️</span>
+              <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
+                刪除關聯線
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              是否刪除 {confirmDeleteEdge.sourceRef} 與 {confirmDeleteEdge.targetRef} 的關聯？
+            </p>
+            <div className="mt-5 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteEdge(null)}
+                className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
+                  setConfirmDeleteEdge(null)
+                }}
+                className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
+              >
+                確定刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 關聯限制提示 Modal */}
       {alertMsg && (
