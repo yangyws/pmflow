@@ -134,7 +134,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           </div>
 
           <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-            (上下黃點 / 左右藍點皆可拉線連線)
+            (正交 90 度折線，自動避開穿透)
           </div>
 
           {/* 右下角縮放控制鈕 */}
@@ -231,7 +231,15 @@ const initialNodes: Node[] = [
 ]
 
 const initialEdges: Edge[] = [
-  { id: 'edge-box1-box2', source: 'box-1', sourceHandle: 'right-out', target: 'box-2', targetHandle: 'left-in', animated: true },
+  {
+    id: 'edge-box1-box2',
+    source: 'box-1',
+    sourceHandle: 'right-out',
+    target: 'box-2',
+    targetHandle: 'left-in',
+    type: 'smoothstep',
+    animated: true,
+  },
 ]
 
 export interface SimpleGraphProps {
@@ -276,7 +284,17 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
   )
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
+    (connection: Connection) =>
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            type: 'smoothstep',
+            animated: true,
+          },
+          eds
+        )
+      ),
     []
   )
 
@@ -418,15 +436,15 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (雙向自由拉線連線)
+            靶心關聯表 (90 度正交直角避讓連線)
           </span>
           <span className="hidden sm:inline-block text-xs text-slate-400">
-            按住收納盒或卡片任意方向圓點，即可拉線建立關聯
+            連線採用 90 度正交直角折線，確保離框 16px 自動轉折不穿透卡片與收納盒
           </span>
         </div>
       </div>
 
-      {/* ReactFlow 畫布 (使用 ConnectionMode.Loose 允許上下左右任意雙向連線) */}
+      {/* ReactFlow 畫布 (預設 90 度 smoothstep 直角折線避讓) */}
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
@@ -438,6 +456,11 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
+          defaultEdgeOptions={{
+            type: 'smoothstep',
+            animated: true,
+            style: { strokeWidth: 2, stroke: '#6366f1' },
+          }}
           zoomOnPinch={true}
           panOnScroll={false}
           preventScrolling={true}
