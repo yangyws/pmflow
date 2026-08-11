@@ -135,17 +135,12 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
                   type="button"
                   onClick={handleToggle}
                   className="rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
-                  title="【點擊切換】為卡片"
+                  title="切換模式"
                 >
                   📦 收納盒
                 </button>
               </div>
-              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
             </div>
-          </div>
-
-          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-            (移入卡片自動擴大容量)
           </div>
 
           {/* 右下角縮放控制鈕 (往左上內移至 18px) */}
@@ -167,7 +162,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           >
             <div
               className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
-              title="按住拖曳調整收納盒尺寸"
+              title="按住拖曳調整尺寸"
             >
               ↘
             </div>
@@ -184,12 +179,11 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
                 type="button"
                 onClick={handleToggle}
                 className="rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
-                title="【點擊切換】為收納盒"
+                title="切換模式"
               >
                 📦 卡片
               </button>
             </div>
-            <span className="text-xs text-slate-400 font-mono">Card</span>
           </div>
           <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
             {data.label || '無標題任務'}
