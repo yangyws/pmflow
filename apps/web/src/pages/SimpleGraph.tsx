@@ -24,6 +24,19 @@ export type SimpleGraphNodeData = {
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
+// 計算收納盒裝載 N 張卡片所需的最適尺寸 (垂直一欄最多 5 張)
+function computeBoxSize(kidCount: number, currentW = 340, currentH = 260) {
+  if (kidCount === 0) return { width: 340, height: 260 }
+  const cols = Math.ceil(kidCount / 5)
+  const rows = Math.min(kidCount, 5)
+  const reqW = 24 + cols * 280 + 24
+  const reqH = 50 + rows * 100 + 20
+  return {
+    width: Math.max(currentW, reqW),
+    height: Math.max(currentH, reqH),
+  }
+}
+
 // 自由切換的節點 UI
 function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
@@ -35,7 +48,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
 
   if (isBox) {
     return (
-      <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+      <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
             <div className="flex items-center gap-1.5">
@@ -59,10 +72,10 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
         </div>
 
         <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-          (拖曳卡片至此可自動收納)
+          (移入卡片自動擴大容量)
         </div>
 
-        {/* 右下角縮放控制鈕 (100% 內嵌在框內) */}
+        {/* 右下角縮放控制鈕 */}
         <NodeResizeControl
           position="bottom-right"
           minWidth={320}
@@ -195,13 +208,13 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
 
-  // 處理卡片移入 / 移出收納盒判斷
+  // 處理卡片移入 / 移出收納盒判斷與收納盒自動擴大尺寸
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
     const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
     if (isBoxNode) return
 
     setNodes((currentNodes) => {
-      // 1. 計算絕對全畫布座標 (絕對位置)
+      // 1. 計算絕對全畫布座標
       const getAbsPos = (nId: string): { x: number; y: number } => {
         const target = currentNodes.find((cn) => cn.id === nId)
         if (!target) return { x: 0, y: 0 }
@@ -243,12 +256,26 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
 
       // 情況 A：移出原本收納盒 (落點不在任何收納盒內)
       if (!targetBox && currentParentId) {
+        const oldBox = currentNodes.find((cn) => cn.id === currentParentId)
+        const remainingKids = currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
+        const oldBoxNewSize = computeBoxSize(
+          remainingKids.length,
+          Number(oldBox?.style?.width ?? 340),
+          Number(oldBox?.style?.height ?? 260)
+        )
+
         return currentNodes.map((n) => {
           if (n.id === node.id) {
             return {
               ...n,
               parentId: undefined,
-              position: cardAbsPos, // 無縫停留在放開滑鼠的絕對畫布位置
+              position: cardAbsPos,
+            }
+          }
+          if (n.id === currentParentId) {
+            return {
+              ...n,
+              style: oldBoxNewSize,
             }
           }
           return n
@@ -257,10 +284,25 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
 
       // 情況 B：移入新的收納盒 (或由無盒移入收納盒)
       if (targetBox && targetBox.id !== currentParentId) {
-        const existingKids = currentNodes.filter((cn) => cn.parentId === targetBox.id)
-        const kidIndex = existingKids.length
+        const existingKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
+        const newKidCount = existingKids.length + 1
 
-        // 收納盒內垂直優先對齊 (一欄最多 5 張：0~4 列，滿了推至右側 Column 1)
+        // 計算新收納盒自動擴大尺寸
+        const curW = Number(targetBox.style?.width ?? 340)
+        const curH = Number(targetBox.style?.height ?? 260)
+        const targetBoxNewSize = computeBoxSize(newKidCount, curW, curH)
+
+        // 舊收納盒若有變更也重新計算尺寸
+        const oldBox = currentParentId ? currentNodes.find((cn) => cn.id === currentParentId) : undefined
+        const oldBoxRemainingKids = currentParentId
+          ? currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
+          : []
+        const oldBoxNewSize = oldBox
+          ? computeBoxSize(oldBoxRemainingKids.length, Number(oldBox.style?.width ?? 340), Number(oldBox.style?.height ?? 260))
+          : undefined
+
+        // 垂直優先對齊位置 (一欄最多 5 張)
+        const kidIndex = existingKids.length
         const cIdx = Math.floor(kidIndex / 5)
         const rIdx = kidIndex % 5
         const slotX = 24 + cIdx * 280
@@ -270,8 +312,20 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           if (n.id === node.id) {
             return {
               ...n,
-              parentId: targetBox.id,
+              parentId: targetBox!.id,
               position: { x: slotX, y: slotY },
+            }
+          }
+          if (n.id === targetBox!.id) {
+            return {
+              ...n,
+              style: targetBoxNewSize,
+            }
+          }
+          if (currentParentId && n.id === currentParentId && oldBoxNewSize) {
+            return {
+              ...n,
+              style: oldBoxNewSize,
             }
           }
           return n
@@ -296,10 +350,10 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (卡片收納 + 垂直優先對齊 + 拖曳進出)
+            靶心關聯表 (卡片收納 + 收納盒自動擴展容量)
           </span>
           <span className="text-xs text-slate-400">
-            把卡片拖進收納盒可自動對齊收納；拖出即自動脫離
+            卡片移入收納盒時，收納盒尺寸自動擴大以容納卡片
           </span>
         </div>
       </div>
