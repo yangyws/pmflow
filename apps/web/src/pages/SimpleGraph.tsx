@@ -128,13 +128,6 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
               </div>
               <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Box</span>
             </div>
-            <div className="mt-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
-              {data.label || '收納盒'}
-            </div>
-          </div>
-
-          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-            (正交 90 度折線，自動避開穿透)
           </div>
 
           {/* 右下角縮放控制鈕 */}
