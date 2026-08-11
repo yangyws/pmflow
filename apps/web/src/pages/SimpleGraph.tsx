@@ -8,6 +8,7 @@ import {
   addEdge,
   Handle,
   Position,
+  ConnectionMode,
   NodeResizeControl,
   type Node,
   type Edge,
@@ -44,7 +45,7 @@ function computeBoxSize(kidCount: number, currentW = 340, currentH = 260) {
   }
 }
 
-// 自由切換的節點 UI (包含四向 Handle 接點可供拉線連線)
+// 自由切換的節點 UI (包含四向雙向 Handle 接點，允許上下左右任意拉線)
 function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
 
@@ -55,11 +56,58 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
 
   return (
     <div className="relative w-full h-full">
-      {/* 接點 (Handles) - 左右排程與上下關聯線 */}
-      <Handle type="target" position={Position.Left} id="left" className="!w-2.5 !h-2.5 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900" />
-      <Handle type="source" position={Position.Right} id="right" className="!w-2.5 !h-2.5 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900" />
-      <Handle type="target" position={Position.Top} id="top" className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white dark:!border-slate-900" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white dark:!border-slate-900" />
+      {/* 接點 (Handles) - 上下左右 4 個方向皆為 Loose 雙向接點，z-index 提高確保拖曳無阻礙 */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-in"
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-out"
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-in"
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-out"
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-in"
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top-out"
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-in"
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-out"
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+      />
 
       {isBox ? (
         <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
@@ -86,7 +134,7 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           </div>
 
           <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
-            (支援四向連線 + 卡片收納)
+            (上下黃點 / 左右藍點皆可拉線連線)
           </div>
 
           {/* 右下角縮放控制鈕 */}
@@ -183,7 +231,7 @@ const initialNodes: Node[] = [
 ]
 
 const initialEdges: Edge[] = [
-  { id: 'edge-box1-box2', source: 'box-1', sourceHandle: 'right', target: 'box-2', targetHandle: 'left', animated: true },
+  { id: 'edge-box1-box2', source: 'box-1', sourceHandle: 'right-out', target: 'box-2', targetHandle: 'left-in', animated: true },
 ]
 
 export interface SimpleGraphProps {
@@ -370,15 +418,15 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (收納盒與卡片四向連線)
+            靶心關聯表 (雙向自由拉線連線)
           </span>
           <span className="hidden sm:inline-block text-xs text-slate-400">
-            按住收納盒或卡片四向接點圓點，即可拉線建立關聯
+            按住收納盒或卡片任意方向圓點，即可拉線建立關聯
           </span>
         </div>
       </div>
 
-      {/* ReactFlow 畫布 (支援雙指縮放與觸控拖曳) */}
+      {/* ReactFlow 畫布 (使用 ConnectionMode.Loose 允許上下左右任意雙向連線) */}
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
@@ -389,6 +437,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
+          connectionMode={ConnectionMode.Loose}
           zoomOnPinch={true}
           panOnScroll={false}
           preventScrolling={true}
