@@ -958,3 +958,20 @@ backup                 每日 pg_dump cron（可選）
 4. 後端：驗權限 → 更新日期 → 拓撲排序下游子圖 → 對 `schedule_mode=AUTO` 的任務前向推算（`MANUAL` 的跳過，成為錨點）→ 重算關鍵路徑 → 同交易寫 `activity`
 5. 若推算後有 `MANUAL` 任務被違反 → 不 rollback，而是回傳衝突清單，前端在側欄列出「3 個排程衝突」讓人決定
 6. WebSocket 廣播 `/topic/project.{id}`，同事畫面上的長條自己動起來
+
+---
+
+## 13. 行動端與自適應 (RWD / PWA / Mobile) 規格
+
+### 13.1 響應式佈局 (Mobile RWD)
+- **手持裝置優化 (Width < 768px)**：
+  - 專案側欄改為底部/側邊抽屜式收合，清單視角轉為單欄卡片清單。
+  - 看板視角 (Board) 切換為單欄滑動，一次專注檢視單一狀態欄位。
+  - 任務詳情抽屜 (`TaskDrawer`) 切換為全螢幕頁面模式 (`100vw`)。
+  - 行事曆與甘特圖提供縮放與橫向平移手勢優化，關鍵說明改用彈窗/懸停圖示。
+
+### 13.2 行動平台支援與 PWA (Mobile Platform)
+- **PWA (Progressive Web App)**：
+  - 提供 `manifest.webmanifest` 與 Service Worker，支援「新增至主畫面」不安裝即用。
+- **跨平台行動框架相容 (Capacitor / Hybrid)**：
+  - 前端以標準 HTML5/React 建構，提供標準 Viewport 與 Touch Event 處理，未來可透過 Capacitor 封裝為 iOS / Android 原生 App。

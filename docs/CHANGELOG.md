@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-128` | 2026-08-11 | [規格補充：於 SPEC.md 新增第 13 章行動端自適應 (RWD) 與 Mobile/PWA 平台支援規格](#cr-128) | `SPEC.md` | 已驗證 |
 | `CR-127` | 2026-08-11 | [任務種類上下關係：全數解鎖放行，移除階層嵌套限制並同步更新 AGENTS.md 條文與 API 測試 (e2e.sh)](#cr-127) | `AGENTS.md`, `hierarchy.ts`, `e2e.sh` | 已驗證 |
 | `CR-126` | 2026-08-11 | [任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）](#cr-126) | `hierarchy.ts` | 已驗證 |
 | `CR-125` | 2026-08-11 | [清單視角：修復 List.tsx 缺失 DEFAULT_TYPE_COLORS 引用導致型別檢查失敗 Bug](#cr-125) | `List.tsx` | 已驗證 |
@@ -185,6 +186,11 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-128"></a>CR-128 (2026-08-11) — 規格補充：於 SPEC.md 新增第 13 章行動端自適應 (RWD) 與 Mobile/PWA 平台支援規格
+
+1. **規格補充**：應使用者詢問，確認現有規格未涵蓋行動端適應，於 `docs/SPEC.md` 補上第 13 章「行動端與自適應 (RWD / PWA / Mobile) 規格」。
+2. **條款內容**：包含手持裝置 (Width < 768px) 佈局（側欄/看板/抽屜 mobile 轉換）、PWA (manifest/service worker) 以及 Capacitor 封裝 iOS/Android 平台發展方向。
 
 ### <a id="cr-127"></a>CR-127 (2026-08-11) — 任務種類上下關係：全數解鎖放行，移除階層嵌套限制並同步更新 AGENTS.md 條文與 API 測試 (e2e.sh)
 
