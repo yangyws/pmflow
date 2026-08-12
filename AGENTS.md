@@ -9,6 +9,7 @@ This file documents the long-term memory, project guidelines, user preferences, 
 - **Phased Verification & Approval**: Divide major tasks into clear phases (Phase 1: Cards, Phase 2: Storage Boxes, Phase 3: Lines, Phase 4: Common/Menu). Wait for user approval before moving to the next phase.
 - **Multi-Input Problem Confirmation**: Before starting code modifications for bug fixes or feature requests, confirm problem details and symptoms through multi-turn user interaction to verify it is indeed the target issue.
 - **Git & Build Rules**: Perform only local git commits. Do not push to remote without explicit instructions. Always rebuild Docker dev containers (`docker compose -f docker-compose.dev.yml up --build -d web`) after changes.
+- **Strict Scope Rule**: Only modify code/features explicitly requested by the user. Do NOT make any unrequested changes or modifications.
 
 ---
 

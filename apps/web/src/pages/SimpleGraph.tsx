@@ -1,8 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   ReactFlow,
   Background,
   Controls,
+  ControlButton,
+  ReactFlowProvider,
+  useReactFlow,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -20,20 +23,43 @@ import {
   BackgroundVariant,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import type { Task } from '../lib/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { Api, type Task } from '../lib/api'
 
 const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
 
 // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
-const savedViewport = (() => {
+function loadSavedViewport(): Viewport | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_VIEWPORT)
-    if (raw) return JSON.parse(raw) as Viewport
+    if (raw) {
+      const parsed = JSON.parse(raw) as Viewport
+      if (parsed && typeof parsed.zoom === 'number' && parsed.zoom >= 0.1) {
+        return parsed
+      }
+    }
   } catch {
     // fallback
   }
   return undefined
-})()
+}
+
+const savedViewport = loadSavedViewport()
+
+// 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 Graph.tsx: React Flow 要求父節點排在子節點前面，否則子節點座標會對不上)
+function orderParentNodesFirst(nodes: Node[]): Node[] {
+  const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
+  const getDepth = (id: string) => {
+    let d = 0
+    let cur = parentMap.get(id)
+    while (cur && d < 20) {
+      d++
+      cur = parentMap.get(cur)
+    }
+    return d
+  }
+  return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
+}
 
 export type NodeMode = 'card' | 'box'
 
@@ -48,20 +74,24 @@ export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
 // 計算收納盒裝載 N 張卡片所需的最適尺寸
 function computeBoxSize(kidCount: number, currentW = 340, currentH = 260) {
-  if (kidCount === 0) return { width: 340, height: 260 }
+  const initW = Math.max(currentW, 340)
+  const initH = Math.max(currentH, 260)
+  if (kidCount === 0) return { width: initW, height: initH }
   const cols = Math.ceil(kidCount / 5)
   const rows = Math.min(kidCount, 5)
   const reqW = 24 + cols * 280 + 24
   const reqH = 50 + rows * 100 + 20
   return {
-    width: Math.max(currentW, reqW),
-    height: Math.max(currentH, reqH),
+    width: Math.max(initW, reqW),
+    height: Math.max(initH, reqH),
   }
 }
 
 // 自由切換的節點 UI (包含四向雙向 Handle 接點，允許上下左右任意拉線)
-function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
+function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
+  const boxW = width ?? 340
+  const boxH = height ?? 260
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -69,69 +99,80 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
   }
 
   return (
-    <div className={isBox ? 'relative w-full h-full' : 'relative w-64'}>
-      {/* 接點 (Handles) - 上下左右 4 個方向皆為 Loose 雙向接點，z-index 提高確保拖曳無阻礙 */}
+    <div
+      style={isBox ? { width: boxW, height: boxH } : { width: 256 }}
+      className="relative"
+    >
+      {/* 接點 (Handles) - 4 個方向精準定位，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ top: '35%' }}
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ top: '65%' }}
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Right}
         id="right-in"
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ top: '35%' }}
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ top: '65%' }}
+        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Top}
         id="top-in"
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ left: '35%' }}
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-out"
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ left: '65%' }}
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-in"
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ left: '35%' }}
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair"
+        style={{ left: '65%' }}
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing">
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={handleToggle}
-                  className="rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
+                  className="nodrag rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
                   title="切換模式"
                 >
                   📦 收納盒
@@ -147,11 +188,12 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
             (移入卡片自動擴大容量)
           </div>
 
-          {/* 右下角縮放控制鈕 (往左上內移至 18px) */}
+          {/* 右下角縮放控制鈕 */}
           <NodeResizeControl
             position="bottom-right"
             minWidth={320}
             minHeight={220}
+            className="nodrag"
             style={{
               position: 'absolute',
               right: '18px',
@@ -173,13 +215,13 @@ function SimpleNodeView({ id, data }: NodeProps<CustomSimpleNode>) {
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none">
+        <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleToggle}
-                className="rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
+                className="nodrag rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
                 title="切換模式"
               >
                 📦 卡片
@@ -202,55 +244,6 @@ const nodeTypes = {
   simpleNode: SimpleNodeView,
 }
 
-const initialNodes: Node[] = [
-  {
-    id: 'box-1',
-    type: 'simpleNode',
-    position: { x: 50, y: 80 },
-    style: { width: 340, height: 260 },
-    data: { label: '專案核心組件收納盒', refText: 'MRG-1', mode: 'box' },
-  },
-  {
-    id: 'box-2',
-    type: 'simpleNode',
-    position: { x: 450, y: 80 },
-    style: { width: 340, height: 260 },
-    data: { label: '後端服務收納盒', refText: 'MRG-2', mode: 'box' },
-  },
-  {
-    id: 'card-1',
-    type: 'simpleNode',
-    parentId: 'box-1',
-    position: { x: 24, y: 50 },
-    data: { label: '設計 Graph View 基礎 UI', refText: 'MRG-3', mode: 'card' },
-  },
-  {
-    id: 'card-2',
-    type: 'simpleNode',
-    parentId: 'box-1',
-    position: { x: 24, y: 150 },
-    data: { label: '實作純拖曳功能', refText: 'MRG-4', mode: 'card' },
-  },
-  {
-    id: 'card-3',
-    type: 'simpleNode',
-    position: { x: 850, y: 120 },
-    data: { label: '串接 API 與狀態管理', refText: 'MRG-5', mode: 'card' },
-  },
-]
-
-const initialEdges: Edge[] = [
-  {
-    id: 'edge-box1-box2',
-    source: 'box-1',
-    sourceHandle: 'right-out',
-    target: 'box-2',
-    targetHandle: 'left-in',
-    type: 'smoothstep',
-    animated: true,
-  },
-]
-
 export interface SimpleGraphProps {
   projectId?: string
   tasks?: Task[]
@@ -263,69 +256,391 @@ type ConfirmDeleteEdgeState = {
   targetRef: string
 }
 
-export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes)
-  const [edges, setEdges] = useState<Edge[]>(initialEdges)
+function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
+  const { fitView } = useReactFlow()
+  const queryClient = useQueryClient()
+  const [nodes, setNodes] = useState<Node[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
+  const [toggledModes, setToggledModes] = useState<Record<string, NodeMode>>({})
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
+  const hasFittedRef = useRef(false)
+  const isLoadedRef = useRef(false)
 
   const handleToggleMode = useCallback((nodeId: string) => {
-    setNodes((prevNodes) => {
-      const targetNode = prevNodes.find((n) => n.id === nodeId)
-      if (!targetNode) return prevNodes
-
-      const currentMode = (targetNode.data as SimpleGraphNodeData).mode
+    setToggledModes((prev) => {
+      const targetNode = nodes.find((n) => n.id === nodeId)
+      const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
       const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
-
-      const getAbsPos = (nId: string): { x: number; y: number } => {
-        const target = prevNodes.find((cn) => cn.id === nId)
-        if (!target) return { x: 0, y: 0 }
-        if (target.parentId) {
-          const parentAbs = getAbsPos(target.parentId)
-          return { x: parentAbs.x + target.position.x, y: parentAbs.y + target.position.y }
-        }
-        return { ...target.position }
+      return {
+        ...prev,
+        [nodeId]: nextMode,
       }
+    })
+  }, [nodes])
 
-      const targetAbsPos = getAbsPos(nodeId)
-
-      return prevNodes.map((n) => {
-        if (n.id === nodeId) {
-          return {
-            ...n,
-            style: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
-            width: nextMode === 'box' ? 340 : undefined,
-            height: nextMode === 'box' ? 260 : undefined,
-            measured: nextMode === 'box' ? { width: 340, height: 260 } : undefined,
-            data: {
-              ...n.data,
-              mode: nextMode,
-            },
+  /** 使用者拖過的節點位置。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
+  const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>(() => {
+    try {
+      const saved = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
+      if (!saved) return {}
+      const parsed = JSON.parse(saved)
+      const clean: Record<string, { x: number; y: number }> = {}
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v && typeof (v as any).x === 'number' && typeof (v as any).y === 'number') {
+          if ((v as any).x > 0 || (v as any).y > 0) {
+            clean[k] = v as any
           }
         }
+      }
+      return clean
+    } catch {
+      return {}
+    }
+  })
 
-        // 當收納盒變回卡片時，原收納盒內的子卡片全部釋放為獨立卡片
-        if (nextMode === 'card' && n.parentId === nodeId) {
-          return {
-            ...n,
-            parentId: undefined,
-            position: {
-              x: targetAbsPos.x + n.position.x,
-              y: targetAbsPos.y + n.position.y,
-            },
+  /** 使用者手動調整大小的框。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
+  const [resized, setResized] = useState<Record<string, { width: number; height: number }>>(() => {
+    try {
+      const saved = localStorage.getItem(`pmflow_simple_graph_resized_${projectId}`)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  // 切換專案時自動重置對焦狀態並載入該專案的持久化位置與尺寸
+  useEffect(() => {
+    hasFittedRef.current = false
+    isLoadedRef.current = false
+    try {
+      const savedD = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
+      if (savedD) {
+        const parsed = JSON.parse(savedD)
+        const clean: Record<string, { x: number; y: number }> = {}
+        for (const [k, v] of Object.entries(parsed)) {
+          if (v && typeof (v as any).x === 'number' && typeof (v as any).y === 'number') {
+            if ((v as any).x > 0 || (v as any).y > 0) {
+              clean[k] = v as any
+            }
           }
         }
+        setDragged(clean)
+      } else {
+        setDragged({})
+      }
+      const savedR = localStorage.getItem(`pmflow_simple_graph_resized_${projectId}`)
+      setResized(savedR ? JSON.parse(savedR) : {})
+    } catch {
+      setDragged({})
+      setResized({})
+    }
+    const timer = setTimeout(() => {
+      isLoadedRef.current = true
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [projectId])
 
-        return n
+  // 載入專案真實關聯線 (Edges)
+  useEffect(() => {
+    if (!projectId) return
+    Api.graph(projectId)
+      .then((res) => {
+        if (res.edges) {
+          const realEdges: Edge[] = res.edges.map((e) => ({
+            id: e.id,
+            source: e.sourceId,
+            target: e.targetId,
+            type: 'smoothstep',
+            animated: true,
+            style: { strokeWidth: 2, stroke: '#6366f1' },
+          }))
+          setEdges(realEdges)
+        }
       })
+      .catch((err) => console.error('Failed to fetch graph edges:', err))
+  }, [projectId])
+
+  // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView
+  useEffect(() => {
+    if (savedViewport) return // 已有儲存視角時，保留使用者上次的位置與縮放，不自動重置
+
+    if (nodes.length > 0 && !hasFittedRef.current) {
+      const allMeasured = nodes.every(
+        (n) => n.measured && typeof n.measured.width === 'number' && n.measured.width > 0
+      )
+      if (allMeasured) {
+        hasFittedRef.current = true
+        requestAnimationFrame(() => {
+          fitView({ padding: 0.2, duration: 250 })
+        })
+      } else {
+        const timer = setTimeout(() => {
+          if (!hasFittedRef.current) {
+            hasFittedRef.current = true
+            fitView({ padding: 0.2, duration: 250 })
+          }
+        }, 150)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [nodes, fitView])
+
+  // 每次拖曳移位自動寫入 localStorage 保存 (僅在載入完成後生效)
+  useEffect(() => {
+    if (!projectId || !isLoadedRef.current) return
+    try {
+      if (Object.keys(dragged).length > 0) {
+        localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(dragged))
+      } else {
+        localStorage.removeItem(`pmflow_simple_graph_dragged_${projectId}`)
+      }
+    } catch {
+      // ignore
+    }
+  }, [dragged, projectId])
+
+  // 每次調整大小自動寫入 localStorage 保存 (僅在載入完成後生效)
+  useEffect(() => {
+    if (!projectId || !isLoadedRef.current) return
+    try {
+      if (Object.keys(resized).length > 0) {
+        localStorage.setItem(`pmflow_simple_graph_resized_${projectId}`, JSON.stringify(resized))
+      } else {
+        localStorage.removeItem(`pmflow_simple_graph_resized_${projectId}`)
+      }
+    } catch {
+      // ignore
+    }
+  }, [resized, projectId])
+
+  // 當 props.tasks 變動時，自動將 Left Menu 任務動態轉換為關聯圖節點
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) {
+      setNodes([])
+      return
+    }
+
+    const parentIdSet = new Set<string>()
+    tasks.forEach((t) => {
+      if (t.parentId) parentIdSet.add(t.parentId)
+      if (t.type === 'EPIC') parentIdSet.add(t.id)
+    })
+
+    const childrenMap = new Map<string, Task[]>()
+    tasks.forEach((t) => {
+      if (t.parentId) {
+        const list = childrenMap.get(t.parentId) || []
+        list.push(t)
+        childrenMap.set(t.parentId, list)
+      }
+    })
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const rootTasks = tasks.filter((t) => !t.parentId || !taskMap.has(t.parentId))
+
+    const newNodes: Node[] = []
+    let rootIndex = 0
+    const processedTaskIds = new Set<string>()
+
+    const processTask = (t: Task, parentBoxId?: string, rootX = 50, rootY = 80) => {
+      if (processedTaskIds.has(t.id)) return
+      processedTaskIds.add(t.id)
+
+      const isDefaultBox = parentIdSet.has(t.id)
+      const mode = toggledModes[t.id] ?? (isDefaultBox ? 'box' : 'card')
+      const isBox = mode === 'box'
+      const kids = childrenMap.get(t.id) || []
+
+      if (isBox) {
+        const reqSize = computeBoxSize(kids.length)
+        const userSize = resized[t.id]
+        const boxDimensions = {
+          width: Math.max(reqSize.width, userSize?.width ?? 0, 340),
+          height: Math.max(reqSize.height, userSize?.height ?? 0, 260),
+        }
+        const boxPos = dragged[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+
+        newNodes.push({
+          id: t.id,
+          type: 'simpleNode',
+          parentId: parentBoxId,
+          position: boxPos,
+          zIndex: 1,
+          style: boxDimensions,
+          width: boxDimensions.width,
+          height: boxDimensions.height,
+          measured: boxDimensions,
+          data: { label: t.title, refText: t.ref, mode: 'box' },
+        })
+
+        kids.forEach((k, idx) => {
+          const cCol = Math.floor(idx / 5)
+          const cRow = idx % 5
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 50 + cRow * 100 }
+          const kDefaultBox = parentIdSet.has(k.id)
+          const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
+
+          if (kMode !== 'box') {
+            processedTaskIds.add(k.id)
+            const kPos = dragged[k.id] ?? defaultSlotPos
+            newNodes.push({
+              id: k.id,
+              type: 'simpleNode',
+              parentId: t.id,
+              position: kPos,
+              zIndex: 10,
+              data: { label: k.title, refText: k.ref, mode: 'card' },
+            })
+          } else {
+            processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
+          }
+        })
+      } else {
+        const cardPos = dragged[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+        newNodes.push({
+          id: t.id,
+          type: 'simpleNode',
+          parentId: parentBoxId,
+          position: cardPos,
+          zIndex: parentBoxId ? 10 : 2,
+          data: { label: t.title, refText: t.ref, mode: 'card' },
+        })
+      }
+    }
+
+    rootTasks.forEach((t) => {
+      const col = rootIndex % 3
+      const row = Math.floor(rootIndex / 3)
+      const rX = 50 + col * 380
+      const rY = 80 + row * 320
+      processTask(t, undefined, rX, rY)
+      rootIndex++
+    })
+
+    tasks.forEach((t) => {
+      if (!processedTaskIds.has(t.id)) {
+        const col = rootIndex % 3
+        const row = Math.floor(rootIndex / 3)
+        const rX = 50 + col * 380
+        const rY = 80 + row * 320
+        processTask(t, undefined, rX, rY)
+        rootIndex++
+      }
+    })
+
+    setNodes((prevNodes) => {
+      const prevMap = new Map(prevNodes.map((n) => [n.id, n]))
+      const merged = newNodes.map((newNode) => {
+        const existing = prevMap.get(newNode.id)
+        const savedPos = dragged[newNode.id]
+        const savedSize = resized[newNode.id]
+
+        if (newNode.parentId) {
+          const parentChanged = (existing?.parentId ?? null) !== (newNode.parentId ?? null)
+          if (!parentChanged && existing) {
+            const pos = existing.position
+            const isValidPos =
+              pos &&
+              typeof pos.x === 'number' &&
+              typeof pos.y === 'number' &&
+              pos.x >= 10 &&
+              pos.y >= 35 &&
+              pos.x <= 500 &&
+              pos.y <= 450
+            if (isValidPos) {
+              return {
+                ...newNode,
+                position: pos,
+                style: existing.style ?? newNode.style,
+                width: existing.width ?? newNode.width,
+                height: existing.height ?? newNode.height,
+                measured: existing.measured ?? newNode.measured,
+              }
+            }
+          }
+          return newNode
+        }
+
+        const parentChanged = (existing?.parentId ?? null) !== (newNode.parentId ?? null)
+        const modeChanged =
+          (existing?.data as SimpleGraphNodeData)?.mode !==
+          (newNode.data as SimpleGraphNodeData)?.mode
+
+        if (parentChanged || modeChanged) {
+          return newNode
+        }
+
+        const isBoxNode = (newNode.data as SimpleGraphNodeData)?.mode === 'box'
+        const defaultBoxW = 340
+        const defaultBoxH = 260
+
+        const targetPos = existing?.position || savedPos || newNode.position
+        const targetW = isBoxNode
+          ? Math.max(defaultBoxW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultBoxW)
+          : (existing?.width ?? savedSize?.width ?? newNode.width)
+
+        const targetH = isBoxNode
+          ? Math.max(defaultBoxH, existing?.height ?? savedSize?.height ?? newNode.height ?? defaultBoxH)
+          : (existing?.height ?? savedSize?.height ?? newNode.height)
+
+        const styleObj = isBoxNode
+          ? {
+              ...(existing?.style || newNode.style),
+              width: targetW,
+              height: targetH,
+            }
+          : {
+              ...(existing?.style || newNode.style),
+              ...(targetW ? { width: targetW } : {}),
+              ...(targetH ? { height: targetH } : {}),
+            }
+
+        const dimObj = isBoxNode
+          ? { width: targetW!, height: targetH! }
+          : (targetW && targetH ? { width: targetW, height: targetH } : undefined)
+
+        return {
+          ...newNode,
+          position: targetPos,
+          style: styleObj,
+          width: targetW,
+          height: targetH,
+          measured: dimObj,
+        }
+      })
+
+      return orderParentNodesFirst(merged)
+    })
+  }, [tasks, dragged, resized, toggledModes])
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodes((nds) => {
+      const next = applyNodeChanges(changes, nds)
+      // 當有尺寸調整 (NodeResizeControl) 時，自動將最新 width/height 寫入 resized 並持久化
+      const dimChanges = changes.filter((c) => c.type === 'dimensions')
+      if (dimChanges.length > 0) {
+        setTimeout(() => {
+          setResized((prev) => {
+            const nextResized = { ...prev }
+            dimChanges.forEach((dc) => {
+              const updatedNode = next.find((n) => n.id === dc.id)
+              if (updatedNode && (updatedNode.data as SimpleGraphNodeData)?.mode === 'box') {
+                const w = updatedNode.width ?? (updatedNode as any).style?.width
+                const h = updatedNode.height ?? (updatedNode as any).style?.height
+                if (w && h) {
+                  nextResized[dc.id] = { width: Number(w), height: Number(h) }
+                }
+              }
+            })
+            return nextResized
+          })
+        }, 0)
+      }
+      return next
     })
   }, [])
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  )
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
@@ -359,7 +674,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       const sourceParent = sourceNode?.parentId
       const targetParent = targetNode?.parentId
 
-      // 收納盒內部的卡片無法與外部或其它收納盒直接建立關聯
       if (
         (sourceParent && sourceParent !== targetParent) ||
         (targetParent && targetParent !== sourceParent)
@@ -372,7 +686,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         return
       }
 
-      // 限制：同一個卡片/收納盒與另一個卡片/收納盒之間無法建立多條重複連結線
       const hasDuplicateEdge = edges.some(
         (e) =>
           (e.source === connection.source && e.target === connection.target) ||
@@ -388,6 +701,20 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         return
       }
 
+      if (connection.source && connection.target) {
+        Api.addLink(connection.source, { targetId: connection.target, linkType: 'FS' })
+          .then(() => {
+            if (projectId) Api.graph(projectId).then((res) => {
+              if (res.edges) {
+                setEdges(res.edges.map((e) => ({
+                  id: e.id, source: e.sourceId, target: e.targetId, type: 'smoothstep', animated: true, style: { strokeWidth: 2, stroke: '#6366f1' }
+                })))
+              }
+            })
+          })
+          .catch((err) => console.error('Failed to add link in DB:', err))
+      }
+
       setEdges((eds) =>
         addEdge(
           {
@@ -399,27 +726,41 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         )
       )
     },
-    [nodes, edges]
+    [nodes, edges, projectId]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
 
-  // 處理卡片移入 / 移出收納盒判斷與收納盒自動擴大尺寸
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
+    // 當任意節點 (包含收納盒與獨立卡片) 拖曳停止時，一律將最新位置持久化
+    setTimeout(() => {
+      setDragged((prev) => ({
+        ...prev,
+        [node.id]: { x: node.position.x, y: node.position.y },
+      }))
+    }, 0)
+
     const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
     if (isBoxNode) return
 
     setNodes((currentNodes) => {
+      // 安全的非遞迴 getAbsPos 避免死迴圈與 TypeError
       const getAbsPos = (nId: string): { x: number; y: number } => {
-        const target = currentNodes.find((cn) => cn.id === nId)
-        if (!target) return { x: 0, y: 0 }
-        if (target.parentId) {
-          const parentAbs = getAbsPos(target.parentId)
-          return { x: parentAbs.x + target.position.x, y: parentAbs.y + target.position.y }
+        const visited = new Set<string>()
+        let curId: string | undefined = nId
+        let x = 0
+        let y = 0
+        while (curId && !visited.has(curId) && visited.size < 20) {
+          visited.add(curId)
+          const target = currentNodes.find((cn) => cn.id === curId)
+          if (!target || !target.position) break
+          x += target.position.x || 0
+          y += target.position.y || 0
+          curId = target.parentId
         }
-        return { ...target.position }
+        return { x, y }
       }
 
       const cardAbsPos = getAbsPos(node.id)
@@ -428,7 +769,9 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       const cardCenterX = cardAbsPos.x + cardWidth / 2
       const cardCenterY = cardAbsPos.y + cardHeight / 2
 
-      const boxNodes = currentNodes.filter((cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box')
+      const boxNodes = currentNodes.filter(
+        (cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box' && cn.id !== node.id
+      )
 
       let targetBox: Node | undefined = undefined
       for (const b of boxNodes) {
@@ -450,7 +793,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
       const currentParentId = node.parentId
       const isMovingOut = currentParentId && (!targetBox || targetBox.id !== currentParentId)
 
-      // 檢查：若卡片在收納盒內且有關聯線，禁止移出收納盒
       if (isMovingOut) {
         const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
         if (hasEdges) {
@@ -467,16 +809,24 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         }
       }
 
-      if (!targetBox && currentParentId) {
-        const oldBox = currentNodes.find((cn) => cn.id === currentParentId)
-        const remainingKids = currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
-        const oldBoxNewSize = computeBoxSize(
-          remainingKids.length,
-          Number(oldBox?.style?.width ?? 340),
-          Number(oldBox?.style?.height ?? 260)
-        )
+      let nextNodes = currentNodes
 
-        return currentNodes.map((n) => {
+      if (!targetBox && currentParentId) {
+        if (projectId) {
+          queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+            if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+            return {
+              ...oldData,
+              tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: null } : t)),
+            }
+          })
+
+          Api.moveTask(node.id, { parentId: null })
+            .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
+            .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+        }
+
+        nextNodes = currentNodes.map((n) => {
           if (n.id === node.id) {
             return {
               ...n,
@@ -484,85 +834,91 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
               position: cardAbsPos,
             }
           }
-          if (n.id === currentParentId) {
-            return {
-              ...n,
-              style: oldBoxNewSize,
-            }
-          }
           return n
         })
-      }
+      } else if (targetBox && targetBox.id !== currentParentId) {
+        if (projectId) {
+          queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+            if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+            return {
+              ...oldData,
+              tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: targetBox.id } : t)),
+            }
+          })
 
-      if (targetBox && targetBox.id !== currentParentId) {
-        const existingKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
-        const newKidCount = existingKids.length + 1
+          Api.moveTask(node.id, { parentId: targetBox.id })
+            .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
+            .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+        }
 
-        const curW = Number(targetBox.style?.width ?? 340)
-        const curH = Number(targetBox.style?.height ?? 260)
-        const targetBoxNewSize = computeBoxSize(newKidCount, curW, curH)
+        const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
+        const targetBoxNewSize = computeBoxSize(
+          targetKids.length + 1,
+          Number(targetBox.style?.width ?? 340),
+          Number(targetBox.style?.height ?? 260)
+        )
 
-        const oldBox = currentParentId ? currentNodes.find((cn) => cn.id === currentParentId) : undefined
-        const oldBoxRemainingKids = currentParentId
-          ? currentNodes.filter((cn) => cn.parentId === currentParentId && cn.id !== node.id)
-          : []
-        const oldBoxNewSize = oldBox
-          ? computeBoxSize(oldBoxRemainingKids.length, Number(oldBox.style?.width ?? 340), Number(oldBox.style?.height ?? 260))
-          : undefined
+        const targetSlotIndex = targetKids.length
+        const tCol = Math.floor(targetSlotIndex / 5)
+        const tRow = targetSlotIndex % 5
+        const targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
 
-        const kidIndex = existingKids.length
-        const cIdx = Math.floor(kidIndex / 5)
-        const rIdx = kidIndex % 5
-        const slotX = 24 + cIdx * 280
-        const slotY = 50 + rIdx * 100
-
-        return currentNodes.map((n) => {
+        nextNodes = currentNodes.map((n) => {
           if (n.id === node.id) {
             return {
               ...n,
               parentId: targetBox!.id,
-              position: { x: slotX, y: slotY },
+              position: targetSlotPos,
             }
           }
           if (n.id === targetBox!.id) {
             return {
               ...n,
               style: targetBoxNewSize,
-            }
-          }
-          if (currentParentId && n.id === currentParentId && oldBoxNewSize) {
-            return {
-              ...n,
-              style: oldBoxNewSize,
+              width: targetBoxNewSize.width,
+              height: targetBoxNewSize.height,
+              measured: targetBoxNewSize,
             }
           }
           return n
         })
+      } else {
+        nextNodes = currentNodes.map((n) =>
+          n.id === node.id ? { ...n, position: node.position } : n
+        )
       }
 
-      return currentNodes
+      return orderParentNodesFirst(nextNodes)
     })
-  }, [edges])
+  }, [edges, projectId, queryClient])
 
-  const handleMoveEnd = useCallback((_: unknown, viewport: Viewport) => {
-    try {
-      localStorage.setItem(STORAGE_KEY_VIEWPORT, JSON.stringify(viewport))
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  const nodesWithHandlers = nodes.map((node) => ({
-    ...node,
-    data: {
-      ...node.data,
-      onToggleMode: handleToggleMode,
+  const handleMoveEnd = useCallback(
+    (_: unknown, viewport: Viewport) => {
+      if (nodes.length === 0 || !viewport || typeof viewport.zoom !== 'number' || viewport.zoom < 0.1) {
+        return
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY_VIEWPORT, JSON.stringify(viewport))
+      } catch {
+        // ignore
+      }
     },
-  }))
+    [nodes.length]
+  )
+
+  const nodesWithHandlers = orderParentNodesFirst(
+    nodes.map((node) => ({
+      ...node,
+      extent: [[-100000, -100000], [100000, 100000]],
+      data: {
+        ...node.data,
+        onToggleMode: handleToggleMode,
+      },
+    }))
+  )
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
-      {/* 頂部說明列 (行動端彈性折行) */}
       <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -572,9 +928,17 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
             平移畫面或縮放檢視時，系統將自動記憶您最後的視覺焦點
           </span>
         </div>
+        <button
+          type="button"
+          onClick={() => fitView({ padding: 0.2, duration: 300 })}
+          className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+          title="縮放與平移畫布以顯示全部節點"
+        >
+          <span>🎯</span>
+          <span>顯示全部</span>
+        </button>
       </div>
 
-      {/* ReactFlow 畫布 (自動記憶與還原 Viewport 焦點) */}
       <div className="relative flex-1">
         <ReactFlow
           nodes={nodesWithHandlers}
@@ -590,6 +954,7 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           fitView={!savedViewport}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
+          proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{
             type: 'smoothstep',
             animated: true,
@@ -600,11 +965,17 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
           preventScrolling={true}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-          <Controls />
+          <Controls showFitView={true} showInteractive={true}>
+            <ControlButton
+              onClick={() => fitView({ padding: 0.2, duration: 300 })}
+              title="顯示全部 (Fit View)"
+            >
+              🎯
+            </ControlButton>
+          </Controls>
         </ReactFlow>
       </div>
 
-      {/* 刪除關聯線確認 Modal (遵循 AGENTS.md 規格：是否刪除 [上游卡片Ref] 與 [下游卡片Ref] 的關聯？) */}
       {confirmDeleteEdge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
@@ -628,7 +999,12 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
               <button
                 type="button"
                 onClick={() => {
-                  setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
+                  Api.deleteLink(confirmDeleteEdge.edgeId)
+                    .then(() => {
+                      setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
+                      if (projectId) queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+                    })
+                    .catch((err) => console.error('Failed to delete link:', err))
                   setConfirmDeleteEdge(null)
                 }}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
@@ -640,7 +1016,6 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         </div>
       )}
 
-      {/* 關聯限制提示 Modal */}
       {alertMsg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
@@ -666,5 +1041,13 @@ export default function SimpleGraph({ projectId, tasks }: SimpleGraphProps) {
         </div>
       )}
     </div>
+  )
+}
+
+export default function SimpleGraph(props: SimpleGraphProps) {
+  return (
+    <ReactFlowProvider>
+      <SimpleGraphInner {...props} />
+    </ReactFlowProvider>
   )
 }

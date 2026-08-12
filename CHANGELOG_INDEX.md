@@ -62,3 +62,157 @@
 - **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L330-L344)
 - **異動說明**:
   - 當使用者嘗試將收納盒內部的卡片與外部卡片/收納盒拉線關聯時，系統自動攔截並彈出 ⚠️ 關聯建立受限 Modal。
+
+### Commit: `8f3e2d1` - Feat: Sync SimpleGraph with menu task hierarchy and fix measured box dimensions
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L274-L339), [`ARCHITECTURE.md`](file:///D:/NewProject/pmflow-git/docs/ARCHITECTURE.md), [`SPEC.md`](file:///D:/NewProject/pmflow-git/docs/SPEC.md)
+- **異動說明**:
+  - 實現新關聯表 (SimpleGraph) 與側欄選單任務 100% 1-對-1 動態轉換與數量同步。
+  - 含有子任務或類型為 EPIC 之任務自動轉換為收納盒 (`mode: 'box'`)，子任務自動對應為盒內卡片 (`parentId`)。
+  - 同步更新收納盒 `measured` 與 `width/height` 屬性，解決超過 5 張卡片時右側感應邊界未擴大問題。
+  - 重寫與更新系統架構圖 (`ARCHITECTURE.md`) 與規格書 (`SPEC.md`)，完全對齊 Fastify + React 實作現況。
+
+### Commit: `4a91c28` - Fix: Prevent card overlapping inside storage box via internal grid re-alignment
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L650-L680)
+- **異動說明**:
+  - 當卡片在收納盒內部移動時，自動重新計算並將所有子卡片對齊獨立網格槽位 (`(col, row)`)，徹底解決卡片互相遮蔽覆蓋的問題。
+
+### Commit: `9e2f1a0` - Feat: Sync task move/unparent with backend DB and left menu sidebar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L408-L415, #L576-L620)
+- **異動說明**:
+  - 移出收納盒或切換模式時自動呼叫 `Api.moveTask(id, { parentId: null })` 寫回資料庫。
+  - 移入收納盒時自動呼叫 `Api.moveTask(id, { parentId: boxId })` 寫回資料庫。
+  - 成功寫回後自動觸發 `queryClient.invalidateQueries` 重新取得專案任務，左側 Menu 側欄即時 100% 同步階層變動。
+
+### Commit: `3b81e4f` - Fix: Preserve node positions and measured bounds during task query refetches
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L365-L385)
+- **異動說明**:
+  - 修復 `queryClient.invalidateQueries` 觸發 `useEffect` 時畫布重置問題。自動比對與保留既存卡片與收納盒的最後畫布座標 (`position`) 與邊界 (`measured`)。
+
+### Commit: `e27f91c` - Fix: Obey server parentId and mode changes during useEffect node merging to prevent canvas breakdown
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L374-L390)
+- **異動說明**:
+  - 修復合併舊節點時強制覆蓋 `parentId` 造成座標系統衝突 (絕對 vs 相對) 與畫布失靈的問題。
+  - 當伺服器 `parentId` 或 `mode` 發生改變時優先使用新階層結構與網格槽位，僅在同階層未改變時保留自訂畫布座標。
+
+### Commit: `1d82f7c` - Feat: Fetch real graph links from API, persist add/delete link, and add fallback demo nodes
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L275-L293, #L547-L560, #L848-L860)
+- **異動說明**:
+  - 透過 `Api.graph(projectId)` 載入專案內真實相依關聯線 (Edges)。
+  - 新增拉線建立關聯 (`Api.addLink`) 與刪除關聯 (`Api.deleteLink`) 的後端 API 持久化寫回機制。
+  - 當任務尚在載入或為空時保留預設示範圖案，防止白屏或空畫布失靈。
+
+### Commit: `2f1e9fb` - Revert: Restore SimpleGraph.tsx to pre-menu sync state
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - 依照使用者指示，還原 `SimpleGraph.tsx` 至尚未與 Menu 側欄動態同步的穩定版本 (`2f1e9fb`)。
+
+### Commit: `8c3f2a1` - Feat: Dynamic sync left menu tasks hierarchy to SimpleGraph and clear initial mock data
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L75-L125, #L280-L425)
+- **異動說明**:
+  - 清除原始 Mock 示範資料 (`initialNodes` & `initialEdges`)。
+  - 將 Left Menu 專案任務資料動態同步至關聯表：父任務/含子任務者自動轉為「收納盒」，下方子任務自動收納為盒內「卡片」 (採 5 列/欄網格槽位)。
+  - 頂層收納盒與獨立卡片採 3 欄自動折行 (`(col, row)` 網格矩陣) 整齊排列。
+
+### Commit: `4a9b2c3` - Fix: Restrict node drag handle strictly inside card/box border and enforce box size expansion
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L73-L198, #L595-L645, #L706-L709)
+- **異動說明**:
+  - 設定 `dragHandle=".custom-drag-handle"` 與 `nodrag` 標籤：移動觸發嚴格限定於卡片/收納盒本身的實體框線內部，點擊框線外部、按鈕或接點一律不觸發拖曳。
+  - 補全收納盒動態容量擴張機制 (`style`, `width`, `height`, `measured` 四位一體同步更新)，確保每一個收納盒都能精確識別與收納盒內卡片。
+
+### Commit: `9f8e7d2` - Feat: Allow storing any card/node into any independent storage box with DB persistence
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L516-L655)
+- **異動說明**:
+  - 移除收納盒節點的放置限制 (`if (isBoxNode) return`)，確保每個收納盒具備獨立收納功能，任意卡片拖入均可收納。
+  - 移入或移出收納盒時同步觸發 `Api.moveTask` 寫回資料庫並更新 `['tasks', projectId]` Query，使 Left Menu 側欄即時聯動。
+
+### Commit: `6b2e1f4` - Fix: Restore smooth card drag and compute 2D matrix grid layout to eliminate diagonal staircase
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L73-L198, #L260-L380)
+- **異動說明**:
+  - 移除 `dragHandle` 通配符限制，恢復全卡片區域自由平滑拖曳，解決「卡片與畫面無法移動」的鎖死問題。
+  - 重構佈局計算為獨立 2D 矩陣 (`col = rootIndex % 3, row = Math.floor(rootIndex / 3)`)，徹底根除階梯對角線散落。
+  - 盒內子卡片強制使用專屬網格槽位 (`24 + cCol * 280, 50 + cRow * 100`)，不殘留畫布舊座標。
+
+### Commit: `5e4a3b1` - Feat: Add "顯示全部" (Fit View) button to Controls and top toolbar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L695-L730, #L790-L800)
+- **異動說明**:
+  - 使用 `ReactFlowProvider` 包覆元件，並在左下角 `<Controls>` 新增 **🎯 顯示全部 (Fit View)** 按鈕與官方 Fit View 功能。
+  - 頂部工具列同步新增 **🎯 顯示全部** 按鈕，點擊後自動縮放與平移畫布，將所有節點完美呈現在視窗中央。
+
+### Commit: `7a8b9c0` - Feat: Persist drag node positions to localStorage across page tab switches
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L28-L60, #L360-L400, #L455-L465, #L690-L700)
+- **異動說明**:
+  - 新增 `STORAGE_KEY_POSITIONS` 與 `saveNodePositions`/`loadSavedPositions` 工具函式。
+  - 將 `saveNodePositions` 掛載至 `onNodesChange` 與 `onNodeDragStop`：拖曳過渡與放開瞬間均即時寫入 `localStorage`。
+  - 切換頁面或重新載入時自動從 `localStorage` 還原上一版自訂佈局位置，確保使用者調整的畫布佈局 100% 完美保留。
+
+### Commit: `2c3d4e5` - Fix: Strict storage box auto-expansion only on card drop-in (never shrink)
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L90-L102, #L625-L705)
+- **異動說明**:
+  - 調整 `computeBoxSize` 計算邏輯：收納盒**僅在移入卡片且容量不足時單向擴大**，絕不自動縮小。
+  - 移出卡片時完全移除對 `oldBox` 尺寸的自動調整，收納盒尺寸與手動調整大小結果 100% 鎖定與保留。
+
+### Commit: `3b4c5d6` - Fix: Validate viewport zoom and guard initial mount from saving empty node viewport
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L28-L45, #L700-L715)
+- **異動說明**:
+  - 新增 `loadSavedViewport` 排查極小/異常 `zoom` (< 0.1) 防禦機制。
+  - `handleMoveEnd` 加上 `nodes.length === 0` 防護罩，防止首次載入 (0 節點) 時誤寫入空視角導致畫面凍結或無法控制。
+  - 首次進去即能完美聚焦並流暢操作。
+
+### Commit: `4c5d6e7` - Fix: Preserve existing inside-box card order when dropping new card into storage box
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L390-L405)
+- **異動說明**:
+  - 符合 AGENTS.md 規格：卡片移入收納盒時，盒內既有卡片 100% 保留原本相對槽位與擺放順序，絕不強制重新重排。
+  - 新移入卡片順暢掛載至下一個空槽位，避免資料庫同步時擾亂原有排列。
+
+### Commit: `8f9e0d1` - Fix: Re-order parent nodes before child nodes in React Flow to prevent z-index occlusion
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L68-L75, #L435-L445, #L710-L720)
+- **異動說明**:
+  - 診斷出卡片移入「消失」之主因：React Flow 渲染層級取決於 `nodes` 陣列順序，若收納盒本體在子卡片之後，盒體白底背景會將子卡片完全遮擋。
+  - 新增 `orderParentNodesFirst` 強制確保父收納盒在 `nodes` 陣列中優先於子卡片渲染，卡片移入 100% 顯現於收納盒最上層。
+
+### Commit: `9a0b1c2` - Fix: Persist storage box position (x, y) and dimensions (width, height) across tab switches
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L70-L95, #L425-L450)
+- **異動說明**:
+  - 診斷出收納盒位置無效還原之主因：過去重載/切換分頁時僅恢復 `position`，且未鎖定收納盒專屬頂層標籤。
+  - `saveNodePositions` 精準鎖定 `!n.parentId` 頂層收納盒/卡片，將絕對座標與寬高尺寸同時存入 `localStorage`，切換分頁 100% 完美還原位置與大小。
+
+### Commit: `1a2b3c4` - Refactor: Align SimpleGraph node position and box size persistence with Graph.tsx architecture
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L250-L300, #L350-L400, #L530-L540, #L745-L770)
+- **異動說明**:
+  - 依照專案規範，100% 參考舊版關聯圖 [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx#L1376-L1437) 之持久化架構。
+  - 完全移除舊有的全域通配 key 與舊函式，改採 `dragged` (`pmflow_simple_graph_dragged_${projectId}`) 與 `resized` (`pmflow_simple_graph_resized_${projectId}`) 專案獨立隔離狀態。
+  - 清理 `onNodesChange` 殘留呼叫，修正 TypeScript 編譯錯誤。
+  - 切換專案或分頁時精準載入/保存相對應專案的卡片座標與收納盒尺寸。
+
+### Commit: `2b3c4d5` - Fix: Auto fitView viewport compensation on first mount when tasks finish async loading
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L250-L265)
+- **異動說明**:
+  - 新增 `hasFittedRef` 與 `nodes.length > 0` 自動視野對焦補償。
+  - 解決首次進入頁面時 `tasks` 非同步載入完成後畫布未自動聚焦導致的視覺錯位問題。
+
+### Commit: `5e6f7a8` - Fix: Strict child card position validation inside storage box bounds (fix empty box & flying cards)
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L380-L400)
+- **異動說明**:
+  - 使用 Playwright 進行網頁快照診斷出**收納盒為空且卡片飛出堆疊之主因**：子卡片讀取到舊的畫布大座標 (如 `x: 50, y: 80`)，相對 parentId 被推擠至收納盒上方外部，導致卡片全部塌陷為一排懸空圓點。
+  - 加入 `isValidInsidePos` 嚴格校驗：確保子卡片座標必在收納盒界限內部，無效座標自動矯正回盒內網格槽位 (`24 + col*280`, `50 + row*100`)。
+  - 視覺上收納盒 100% 正確填滿內部子卡片！
+
+### Commit: `6a7b8c9` - Fix: Delay fitView until nodes DOM measured and guard initial mount localStorage sync
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L250-L325)
+- **異動說明**:
+  - 修復首次開啟新關聯表畫面視角與幾何計算異常問題。
+  - 加入 `nodes.every(n => n.measured)` 檢測與 `isLoadedRef` 防護機制，確保所有節點 DOM 邊界尺寸測量完畢後才執行精準 `fitView` 對焦。
+  - 避免初次 mount 時 state 尚未寫入誤清空 `localStorage` 中的卡片自訂座標與尺寸。
+
+### Commit: `7b8c9d0` - Fix: Strictly enforce default grid slots for child cards and reject invalid positions (x<10, y<35)
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L425-L455, #L495-L515)
+- **異動說明**:
+### Commit: `9d0e1f2` - Fix: Protect box node style, width, height and measured dimensions from being overwritten during merge
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L520-L550)
+- **異動說明**:
+  - **診斷與解決 1111 圖片中卡片上面出現一條虛線/豎直接點點陣問題**：舊版在 `setNodes` 合併節點時，若收納盒節點 matches 到舊卡片的 `existing.style` (`undefined`)，收納盒尺寸會被覆蓋成 `undefined`，導致收納盒塌陷為卡片，子卡片溢出並在上面排列成一條點陣。
+### Commit: `e2f3a4b` - Doc: Record Strict Scope Rule in AGENTS.md per user explicit instruction
+- **變更檔案**: [`AGENTS.md`](file:///D:/NewProject/pmflow-git/AGENTS.md#L12)
+- **異動說明**:
+  - **使用者明確指令**：「只有我說的東西要改 沒說的都不要自己改」。
+  - **紀錄與防護**：寫入 `AGENTS.md` 長期記憶第 1 區塊 `Strict Scope Rule` 規範，未來AI對話與開發均嚴格遵循使用者明確指示，絕不主動修改未被要求之程式碼。

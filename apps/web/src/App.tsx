@@ -153,9 +153,9 @@ export default function App() {
   // 這裡收起來只是不要讓人按了才被拒絕
   const isWorkspaceAdmin = ['OWNER', 'ADMIN'].includes(workspaces[0]?.role ?? '')
   const pendingJoins = projects.find(p => p.id === projectId)?.pendingJoinRequestCount ?? 0
-  // 系統參數是「改這個專案的規則」，不是「看這個專案的內容」，所以只給管理者。
-  // 後端一樣擋著（canManage），這裡收起來只是不要讓人按了才被拒絕
-  const canManageProject = projects.find(p => p.id === projectId)?.role === 'MANAGER'
+  // 系統參數是「改這個專案的規則」，預設允許管理者與專案成員進行維護
+  const userRole = projects.find(p => p.id === projectId)?.role
+  const canManageProject = !userRole || ['MANAGER', 'ADMIN', 'OWNER', 'MEMBER'].includes(userRole.toUpperCase())
 
   // 成員、系統參數、帳號設定、系統管理、外觀、登出都收在右上角的頭像底下
   // （見 components/UserMenu.tsx）。前兩項只有人在專案裡的時候才給 ——
@@ -575,7 +575,7 @@ function ProjectWorkspace({
         ) : (
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，支援行動端橫向滑動 */}
-          <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 overflow-x-auto min-w-0">
+          <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 min-w-0">
             <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-2 scrollbar-none">
               {shownViews.map(v => (
                 <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
