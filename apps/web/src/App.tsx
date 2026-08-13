@@ -279,16 +279,15 @@ function SortableTabItem({
         isDragging ? 'shadow-md border-blue-400 dark:border-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
       )}
     >
-      <button
-        type="button"
+      <span
         {...attributes}
         {...listeners}
         title={P.dragHandleTip}
         aria-label={P.dragHandleTip}
-        className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 touch-none px-0.5"
+        className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 touch-none px-1 py-0.5 select-none font-bold text-base"
       >
         ≡
-      </button>
+      </span>
       <label title={stuck ? P.keepOne : undefined}
              className={cx('flex min-w-0 flex-1 items-center gap-2',
                stuck ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
@@ -328,7 +327,7 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
   const lastOne = shown.length <= 1
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 1 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -596,10 +595,6 @@ function ProjectWorkspace({
 
           {/* 第二層 (min-h-9)：目前的事件 (標題/麵包屑與警示)，行動端靈活折行 */}
           <div className="flex min-h-9 items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40 flex-wrap sm:flex-nowrap">
-            <span className="shrink-0 rounded bg-slate-200/70 px-1.5 py-0.5 font-mono text-[11px] text-slate-600
-                             dark:bg-slate-700 dark:text-slate-300">
-              {project?.key}
-            </span>
             {epic ? (
               <span className="truncate font-semibold text-slate-900 dark:text-slate-100">
                 {epic.title}
