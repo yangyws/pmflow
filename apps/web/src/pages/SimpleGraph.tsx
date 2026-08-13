@@ -186,7 +186,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto">
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-move active:cursor-grabbing pointer-events-auto">
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
               <div className="flex items-center gap-1.5">
@@ -198,14 +198,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 >
                   📦 收納盒
                 </button>
-                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white pointer-events-none select-none">
                   {data.refText || 'MRG-BOX'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none">
+          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none pointer-events-none">
             (移入卡片自動擴大容量)
           </div>
 
@@ -236,7 +236,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 h-full rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto">
+        <div className="w-64 min-h-[76px] rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
             <div className="flex items-center gap-1.5">
               <button
@@ -247,12 +247,12 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               >
                 📦 卡片
               </button>
-              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
             </div>
           </div>
-          <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200">
+          <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200 pointer-events-none select-none">
             {data.label || '無標題任務'}
           </div>
         </div>

@@ -268,6 +268,13 @@
 - **異動說明**:
   - **摧毀座標跳動死迴圈**：移除 `onNodesChange` 在拖曳過程中 (每秒 60 次) 寫入 `setDragged` 的邏輯，改為由 React Flow 本身流暢渲染 DOM。`setDragged` 僅在 `onNodeDragStop` 放開滑鼠時一次性寫入，徹底解決拖曳座標與盒內槽位座標之間的高速死迴圈跳動問題。
 
+### Commit: `b1c2d3e` - Style: Customize mouse cursor icons for card nodes and storage boxes for clear visual feedback
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **游標圖示分工**：收納盒懸停使用 `cursor-move` (四向移動十字箭頭 `✥`)，卡片懸停使用 `cursor-grab` (張手抓取 `✋`)；兩者拖曳中皆使用 `cursor-grabbing` (握拳 `✊`)。
+  - **文字點擊透傳**：標題與 MRG 標籤加上 `pointer-events-none select-none`，點擊卡片框內任意區域均可順暢觸發拖曳。
+
+
 
 
 
