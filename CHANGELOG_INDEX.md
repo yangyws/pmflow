@@ -285,6 +285,12 @@
 - **異動說明**:
   - **摧毀舊位置搶座標機制**：修正 `setNodes` 中 `targetPos` 與 `pos` 座標合併邏輯為 `savedPos ?? existing?.position ?? newNode.position`。賦予使用者最新拖曳座標 100% 最高優先權，徹底摧毀舊位置 (`existing.position`) 與最新座標搶奪彈跳之盲點。
 
+### Commit: `e4f5a6b` - Perf & Fix: Memoize nodesWithHandlers using useMemo to eliminate 60fps card DOM re-mounting & flickering
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **鎖定 DOM 引用消滅閃爍**：為 `nodesWithHandlers` 加上 `useMemo` 快取，鎖定 `node.data` 記憶體引用。防止拖曳過程中 (每秒 60 次 `onNodesChange`) 重新建立 `node.data` 物件所導致的 60fps 卡片組件頻繁銷毀與重繪 (Re-mount) 閃爍問題。
+
+
 
 
 

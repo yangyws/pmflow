@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -1131,19 +1131,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     [nodes.length]
   )
 
-  const nodesWithHandlers = orderParentNodesFirst(
-    nodes.map((node) => ({
-      ...node,
-      draggable: true,
-      selectable: true,
-      zIndex: node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
-      extent: [[-100000, -100000], [100000, 100000]],
-      data: {
-        ...node.data,
-        onToggleMode: handleToggleMode,
-      },
-    }))
-  )
+  const nodesWithHandlers = useMemo(() => {
+    return orderParentNodesFirst(
+      nodes.map((node) => ({
+        ...node,
+        draggable: true,
+        selectable: true,
+        zIndex: node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
+        extent: [[-100000, -100000], [100000, 100000]],
+        data: node.data.onToggleMode === handleToggleMode
+          ? node.data
+          : {
+              ...node.data,
+              onToggleMode: handleToggleMode,
+            },
+      }))
+    )
+  }, [nodes, handleToggleMode])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
