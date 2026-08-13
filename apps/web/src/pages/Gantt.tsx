@@ -46,15 +46,7 @@ export default function GanttView({
     setHiddenCols(next)
     const g = ganttRef.current
     if (g) {
-      g.config.columns = [
-        { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
-        ...(!next.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
-        ...(!next.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
-        ...(!next.includes('inquiry') ? [{
-          name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
-          template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
-        }] : []),
-      ]
+      g.config.columns = getCols(next)
       g.render()
     }
   }
@@ -69,6 +61,16 @@ export default function GanttView({
   })
 
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
+
+  const getCols = (hidden: string[]) => [
+    { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
+    ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
+    ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
+    ...(!hidden.includes('alerts') ? [{
+      name: 'alerts', label: '警示', align: 'center' as const, width: 140,
+      template: (t: unknown) => renderAlertCell(t)
+    }] : []),
+  ]
 
   // ── 掛載一次，之後只餵資料 ──
   useEffect(() => {
@@ -90,18 +92,8 @@ export default function GanttView({
       { unit: 'month', step: 1, format: G.scale.month },
       { unit: 'day', step: 1, format: G.scale.day },
     ]
-    const getCols = (hidden: string[]) => [
-      { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
-      ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
-      ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
-      ...(!hidden.includes('inquiry') ? [{
-        name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
-        template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
-      }] : []),
-    ]
     g.config.columns = getCols(hiddenCols)
-    // 中文化：一定要「取出內建 locale 再覆蓋」，
-    // 直接丟一個只有部分欄位的物件進去，dhtmlx 會缺鍵並噴 "Invalid day index"。
+
     const base = g.i18n.getLocale('en')
     g.i18n.addLocale('zh-TW', {
       ...base,
@@ -124,9 +116,11 @@ export default function GanttView({
     })
     g.i18n.setLocale('zh-TW')
 
-    // 關鍵路徑與對外詢問的狀態上色
-    g.templates.task_class = (_s: Date, _e: Date, t: { id?: string | number; critical?: boolean; inquiry?: string; type?: string; noDates?: boolean }) => {
+    // 關鍵路徑與對外詢問及收納盒/卡片區分上色
+    g.templates.task_class = (_s: Date, _e: Date, t: any) => {
       const cls: string[] = []
+      if (t.isBox) cls.push('gantt-bar-box')
+      else cls.push('gantt-bar-card')
       if (t.critical) cls.push('critical')
       if (t.inquiry === 'OVERDUE') cls.push('inq-overdue')
       else if (t.inquiry === 'AWAITING' || t.inquiry === 'PARTIAL') cls.push('inq-awaiting')
@@ -177,11 +171,68 @@ export default function GanttView({
     if (!g || !tasks.length) return
 
     const critical = new Set(sched?.criticalPath ?? [])
-    // 父任務進度與起迄日用彙總值 (rollup)，確保主事件與大項目能正確顯示於甘特圖中
     const rolled = rollup(tasks)
     const kidsSet = new Set(tasks.map(t => t.parentId).filter(Boolean))
+    const containerBoxSet = (() => {
+      try {
+        const saved = localStorage.getItem('pmflow_graph_container_boxes')
+        if (saved) return new Set<string>(JSON.parse(saved))
+      } catch {}
+      return new Set<string>()
+    })()
 
-    // 找出全專案中最早與最晚的有效日期作為未排期任務的基準
+    // 計算卡住 (blockedBy) 狀態
+    const blockedByMap = (() => {
+      const map = new Map<string, string[]>()
+      const edges = graph?.edges ?? []
+      if (!tasks.length || !edges.length) return map
+
+      const taskMap = new Map(tasks.map((t) => [t.id, t]))
+      const isDone = (t?: Task) => t ? (t.progress >= 100 || t.statusKey === 'DONE') : false
+
+      for (const e of edges) {
+        const sHandle = String((e as any).sourceHandle || '')
+        const tHandle = String((e as any).targetHandle || '')
+        const isTopOrBottom = sHandle.includes('top') || sHandle.includes('bottom') || tHandle.includes('top') || tHandle.includes('bottom')
+        if (isTopOrBottom) continue
+
+        const sId = String(e.sourceId || (e as any).source)
+        const tId = String(e.targetId || (e as any).target)
+        const srcTask = taskMap.get(sId)
+        const dstTask = taskMap.get(tId)
+
+        if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
+          const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+          const list = map.get(dstTask.id) || []
+          if (!list.includes(srcRef)) {
+            list.push(srcRef)
+          }
+          map.set(dstTask.id, list)
+        }
+      }
+      return map
+    })()
+
+    // 計算並行 (isParallel) 狀態
+    const parallelSet = (() => {
+      const set = new Set<string>()
+      const edges = graph?.edges ?? []
+      if (!edges.length || !tasks.length) return set
+      const targetMap = new Map<string, string[]>()
+      edges.forEach((e) => {
+        const tId = String(e.targetId || (e as any).target)
+        const list = targetMap.get(tId) || []
+        list.push(String(e.sourceId || (e as any).source))
+        targetMap.set(tId, list)
+      })
+      targetMap.forEach((sources) => {
+        if (sources.length >= 2) {
+          sources.forEach((sId) => set.add(sId))
+        }
+      })
+      return set
+    })()
+
     let defaultStart = todayYmd()
     const validDates = tasks.map(t => t.startDate || t.dueDate).filter((x): x is string => Boolean(x))
     if (validDates.length > 0) {
@@ -189,50 +240,43 @@ export default function GanttView({
       defaultStart = validDates[0]
     }
 
-    const data = tasks
-      .map(t => {
-        const r = rolled.get(t.id)
-        const rawStart = r?.startDate ?? t.startDate
-        const rawDue = r?.dueDate ?? t.dueDate
-        const noDates = !rawStart && !rawDue
-        const startDate = rawStart ?? rawDue ?? defaultStart
-        const dueDate = rawDue ?? rawStart ?? startDate
+    const data = tasks.map(t => {
+      const r = rolled.get(t.id)
+      const rawStart = r?.startDate ?? t.startDate
+      const rawDue = r?.dueDate ?? t.dueDate
+      const noDates = !rawStart && !rawDue
+      const startDate = rawStart ?? rawDue ?? defaultStart
+      const dueDate = rawDue ?? rawStart ?? startDate
 
-        const isParent = kidsSet.has(t.id) || t.type === 'EPIC'
-        return {
-          id: t.id,
-          text: `${t.ref} ${t.title}`,
-          start_date: startDate.slice(0, 10),
-          // dhtmlx 的 end_date 是「不含」的，我們的 dueDate 是含尾，所以要 +1 天
-          end_date: addDay(dueDate.slice(0, 10)),
-          progress: (r?.progress ?? t.progress ?? 0) / 100,
-          parent: t.parentId ?? 0,
-          type: t.type === 'MILESTONE' ? 'milestone' : isParent ? 'project' : undefined,
-          critical: critical.has(t.id),
-          inquiry: t.inquiryState,
-          noDates,
-          open: true,
-        }
-      })
+      const isBox = kidsSet.has(t.id) || t.type === 'EPIC' || containerBoxSet.has(t.id)
+      const blockedBy = blockedByMap.get(t.id) ?? []
+      const isParallel = parallelSet.has(t.id)
+      const isOverdue = Boolean(t.dueDate && t.dueDate < todayYmd() && t.progress < 100 && t.statusKey !== 'DONE')
 
-    // 只把排程類依賴畫成連線；語意類（RELATES / BLOCKS…）不影響日期，
-    // 畫在甘特上只會變成雜訊，改在任務詳情頁呈現。
-    const links = (graph?.edges ?? [])
-      .filter(e => TO_DHX[e.linkType])
-      .map(e => ({
-        id: e.id, source: e.sourceId, target: e.targetId,
-        type: TO_DHX[e.linkType]!, lag: e.lagDays,
-      }))
+      return {
+        id: t.id,
+        text: `${t.ref} ${t.title}`,
+        start_date: startDate.slice(0, 10),
+        end_date: addDay(dueDate.slice(0, 10)),
+        progress: (r?.progress ?? t.progress ?? 0) / 100,
+        parent: t.parentId ?? 0,
+        type: t.type === 'MILESTONE' ? 'milestone' : isBox ? 'project' : undefined,
+        isBox,
+        critical: critical.has(t.id),
+        inquiry: t.inquiryState,
+        problem: t.problem,
+        blockedBy,
+        isParallel,
+        isOverdue,
+        noDates,
+        open: true,
+      }
+    })
 
-    g.config.columns = [
-      { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
-      ...(!hiddenCols.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
-      ...(!hiddenCols.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
-      ...(!hiddenCols.includes('inquiry') ? [{
-        name: 'inquiry', label: G.col.inquiry, align: 'center' as const, width: 62,
-        template: (t: unknown) => INQ_CELL[(t as { inquiry?: string }).inquiry ?? 'NONE'] ?? ''
-      }] : []),
-    ]
+    // Ref: 依需求移除甘特圖上的關聯線 (links 設為空陣列)
+    const links: any[] = []
+
+    g.config.columns = getCols(hiddenCols)
 
     g.clearAll()
     g.parse({ data, links })
@@ -255,6 +299,22 @@ export default function GanttView({
 
   return (
     <div className="flex h-full flex-col">
+      <style>{`
+        .gantt_task_line.gantt-bar-box {
+          background-color: #6366f1 !important;
+          border-color: #4f46e5 !important;
+        }
+        .gantt_task_line.gantt-bar-box .gantt_task_progress {
+          background-color: #4338ca !important;
+        }
+        .gantt_task_line.gantt-bar-card {
+          background-color: #3b82f6 !important;
+          border-color: #2563eb !important;
+        }
+        .gantt_task_line.gantt-bar-card .gantt_task_progress {
+          background-color: #1d4ed8 !important;
+        }
+      `}</style>
       {/* ── 欄位顯示開關工具列 ── */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900 text-xs">
         <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
@@ -263,14 +323,6 @@ export default function GanttView({
 
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-slate-500 dark:text-slate-400 mr-1">顯示欄位:</span>
-          <button
-            type="button"
-            disabled
-            className="rounded bg-slate-100 px-2 py-1 text-slate-400 cursor-not-allowed dark:bg-slate-800"
-            title="任務欄位為固定顯示"
-          >
-            ✓ 任務欄 (固定)
-          </button>
           <button
             type="button"
             onClick={() => toggleCol('start_date')}
@@ -297,23 +349,15 @@ export default function GanttView({
           </button>
           <button
             type="button"
-            onClick={() => toggleCol('inquiry')}
+            onClick={() => toggleCol('alerts')}
             className={cx(
               'rounded px-2 py-1 transition-colors cursor-pointer',
-              !hiddenCols.includes('inquiry')
+              !hiddenCols.includes('alerts')
                 ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/30'
                 : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
             )}
           >
-            {!hiddenCols.includes('inquiry') ? '✓' : ''} 詢問狀態
-          </button>
-          <button
-            type="button"
-            disabled
-            className="rounded bg-slate-100 px-2 py-1 text-slate-400 cursor-not-allowed dark:bg-slate-800 ml-1"
-            title="進度條/時間軸為固定顯示"
-          >
-            ✓ 進度條/時間軸 (固定)
+            {!hiddenCols.includes('alerts') ? '✓' : ''} 警示徽章
           </button>
         </div>
       </div>
@@ -336,12 +380,25 @@ export default function GanttView({
   )
 }
 
-const INQ_CELL: Record<string, string> = {
-  NONE: '',
-  AWAITING: `<span title="${G.inquiryCell.AWAITING}">⏳</span>`,
-  OVERDUE: `<span title="${G.inquiryCell.OVERDUE}">⚠️</span>`,
-  PARTIAL: `<span title="${G.inquiryCell.PARTIAL}">◐</span>`,
-  REPLIED: `<span title="${G.inquiryCell.REPLIED}">✓</span>`,
+const renderAlertCell = (t: any) => {
+  const badges: string[] = []
+  if (t.problem) {
+    badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#dc2626;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚑問題</span>`)
+  }
+  if (t.blockedBy && t.blockedBy.length > 0) {
+    badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fee2e2;color:#dc2626;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔卡住</span>`)
+  }
+  if (t.isParallel) {
+    badges.push(`<span title="並行" style="background:#fef3c7;color:#d97706;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
+  }
+  if (t.isOverdue) {
+    badges.push(`<span title="逾期" style="background:#ffe4e6;color:#e11d48;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰逾期</span>`)
+  }
+  if (t.inquiry === 'AWAITING' || t.inquiry === 'PARTIAL' || t.inquiry === 'OVERDUE') {
+    badges.push(`<span title="待回覆" style="background:#e0f2fe;color:#0284c7;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">❓待回覆</span>`)
+  }
+  if (!badges.length) return ''
+  return `<div style="display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
 }
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10)

@@ -576,6 +576,14 @@
 - **異動說明**:
   - **⛔卡住徽章全視圖同步**：將依賴關係產生的「⛔卡住」警示徽章同步渲染至左側 Menu 側欄 (`EpicSidebar.tsx`)、清單檢視 (`List.tsx`) 以及看板檢視 (`Board.tsx`)，使所有主要工作檢視皆能即時查看到被上游未完成任務卡住的警示。
 
+### Commit: `e2f3a4b` - Feat: Enhance Gantt view with distinct bar colors for box vs card, remove dependency lines, update alert badges, and remove fixed toolbar buttons
+- **變更檔案**: [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx#L50-L380)
+- **異動說明**:
+  1. **收納盒與卡片色彩區隔**：甘特圖進度條依據 `isBox`（收納盒）與一般卡片套用不同 Theme 色彩（收納盒紫色 `#6366f1` / 一般卡片藍色 `#3b82f6`）。
+  2. **移除甘特關聯線**：依據需求將甘特圖畫布上的 `links` 關聯線全面隱藏移除，保持圖表乾淨清晰。
+  3. **詢問欄改為警示徽章欄**：將原先「詢問」欄位重構為「警示」欄位，下方完整渲染包含 `⚑問題`、`⛔卡住`、`⚡並行`、`⏰逾期`、`❓待回覆` 之警示徽章組合。
+  4. **顯示欄位工具列優化**：移除顯示欄位選單中不可切換的「✓ 任務欄 (固定)」與「✓ 進度條/時間軸 (固定)」兩項固定按鈕。
+
 
 
 
