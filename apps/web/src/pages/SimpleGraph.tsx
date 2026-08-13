@@ -538,7 +538,16 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
           const defaultSlotPos = { x: 24 + cCol * 280, y: 50 + cRow * 100 }
-          const kPos = dragged[k.id] ?? defaultSlotPos
+          const rawPos = dragged[k.id]
+          const isValidChildPos =
+            rawPos &&
+            typeof rawPos.x === 'number' &&
+            typeof rawPos.y === 'number' &&
+            rawPos.x >= 10 &&
+            rawPos.x <= 500 &&
+            rawPos.y >= 35 &&
+            rawPos.y <= 450
+          const kPos = isValidChildPos ? rawPos : defaultSlotPos
           return {
             id: k.id,
             type: 'simpleNode',
@@ -580,7 +589,16 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
           if (kMode !== 'box') {
             processedTaskIds.add(k.id)
-            const kPos = dragged[k.id] ?? defaultSlotPos
+            const rawPos = dragged[k.id]
+            const isValidChildPos =
+              rawPos &&
+              typeof rawPos.x === 'number' &&
+              typeof rawPos.y === 'number' &&
+              rawPos.x >= 10 &&
+              rawPos.x <= dims.width - 60 &&
+              rawPos.y >= 35 &&
+              rawPos.y <= dims.height - 30
+            const kPos = isValidChildPos ? rawPos : defaultSlotPos
             newNodes.push({
               id: k.id,
               type: 'simpleNode',
