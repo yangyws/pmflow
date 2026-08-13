@@ -236,6 +236,34 @@ export default function ListView({
     return out
   }, [tasks, graph, collapsedSet])
 
+  const parallelMap = useMemo(() => {
+    const map = new Map<string, { isParallel: boolean; peers: string[] }>()
+    const edges = graph?.edges ?? []
+    if (!edges.length || !tasks.length) return map
+
+    const targetMap = new Map<string, Array<{ id: string; ref: string }>>()
+    edges.forEach((e) => {
+      const sId = String(e.sourceId)
+      const tId = String(e.targetId)
+      const sTask = tasks.find((t) => t.id === sId)
+      if (!sTask) return
+      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : '任務')
+      const list = targetMap.get(tId) || []
+      list.push({ id: sTask.id, ref: sRef })
+      targetMap.set(tId, list)
+    })
+
+    targetMap.forEach((sources) => {
+      if (sources.length >= 2) {
+        sources.forEach((src) => {
+          const peers = sources.filter((s) => s.id !== src.id).map((s) => s.ref)
+          map.set(src.id, { isParallel: true, peers })
+        })
+      }
+    })
+    return map
+  }, [graph, tasks])
+
   const newTop = () => {
     if (!topTitle.trim()) return
     create.mutate({ parentId: parentForNew ?? null, title: topTitle.trim(),
@@ -359,6 +387,39 @@ export default function ListView({
                     {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，
                         為它固定讓出一欄寬度，換來的是整張表每一列都變窄 */}
                     <ProblemBadge problem={t.problem} />
+                    {/* 收納盒子項數量徽章 */}
+                    {t.isBox && tasks.filter(k => k.parentId === t.id).length > 0 && (
+                      <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                        內含 {tasks.filter(k => k.parentId === t.id).length} 張
+                      </span>
+                    )}
+                    {/* 並行徽章 */}
+                    {parallelMap.get(t.id)?.isParallel && (
+                      <span
+                        title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
+                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      >
+                        ⚡並行
+                      </span>
+                    )}
+                    {/* 逾期徽章 */}
+                    {overdue && (
+                      <span
+                        title={`預計完成日: ${dueDate}`}
+                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                      >
+                        ⏰ 逾期
+                      </span>
+                    )}
+                    {/* 待對外詢問徽章 */}
+                    {hasOpenInquiry(t) && (
+                      <span
+                        title={`對外詢問狀態: ${t.inquiryState}`}
+                        className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                      >
+                        ❓ 待回覆
+                      </span>
+                    )}
                     {/* 滑過時才顯示。
                         沒有建立任務的權限就整顆不畫 */}
                     {canCreate && (

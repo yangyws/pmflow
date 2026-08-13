@@ -21,6 +21,7 @@ import {
 } from '../lib/date'
 import WeekView from './Week'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
+import { isTaskOverdue } from '../lib/rollup'
 
 /**
  * Ref: CR-002 (行事曆月格與跨日長條 lane packing 設計緣由，詳見 CHANGELOG.md)
@@ -583,6 +584,9 @@ export default function CalendarView({
                           inMonth={parseYmd(d).getMonth() === cursor.month}
                           isWeekend={i === 0 || i === 6}
                           hidden={week.hiddenPerDay[i]}
+                          tasks={tasks}
+                          inquiries={inquiries}
+                          leaves={leaves}
                         />
                       ))}
                     </div>
@@ -658,21 +662,45 @@ export default function CalendarView({
 
 // ── 日格（放置目標）─────────────────────────────────────
 function DayCell({
-  day, isToday, inMonth, isWeekend, hidden,
+  day, isToday, inMonth, isWeekend, hidden, tasks = [], inquiries = [], leaves = []
 }: {
   day: string
   isToday: boolean
   inMonth: boolean
   isWeekend: boolean
   hidden: number
+  tasks?: Task[]
+  inquiries?: Inquiry[]
+  leaves?: Leave[]
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day:${day}` })
   const n = parseYmd(day).getDate()
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  // 該日期的所有事件種類與詳情
+  const dayEvents = useMemo(() => {
+    const tList = tasks.filter(t => {
+      const s = t.startDate || t.dueDate
+      const e = t.dueDate || t.startDate
+      if (!s && !e) return false
+      const start = s ? toYmd(s) : (e ? toYmd(e) : '')
+      const end = e ? toYmd(e) : (s ? toYmd(s) : '')
+      return !!(start && end && start <= day && day <= end)
+    })
+    const iList = inquiries.filter(i => toYmd(i.dueDate) === day)
+    const lList = leaves.filter(l => l.startDate <= day && day <= l.endDate)
+    return { tasks: tList, inquiries: iList, leaves: lList }
+  }, [day, tasks, inquiries, leaves])
+
+  const totalEventCount = dayEvents.tasks.length + dayEvents.inquiries.length + dayEvents.leaves.length
+
   return (
     <div
       ref={setNodeRef}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
       className={cx(
-        'relative border-r border-slate-100 last:border-r-0 transition-colors',
+        'relative border-r border-slate-100 last:border-r-0 transition-colors group/cell',
         'dark:border-slate-800',
         // 不在當月、假日都是「往下壓一階」，深色下要壓得比卡片更暗才看得出來
         !inMonth && 'bg-slate-50/60 dark:bg-slate-950/60',
@@ -682,18 +710,73 @@ function DayCell({
     >
       <div className="flex items-center justify-between px-1.5 pt-1"
            style={{ height: DATE_ROW_H }}>
-        <span className={cx(
-          'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs tabular-nums',
-          isToday ? 'bg-red-600 font-bold text-white shadow-sm dark:bg-red-500'
-                  : inMonth ? 'text-slate-600 dark:text-slate-300'
-                            : 'text-slate-300 dark:text-slate-500'
-        )} title={isToday ? C.today : undefined}>{n}</span>
+        <div className="flex items-center gap-1">
+          <span className={cx(
+            'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs tabular-nums',
+            isToday ? 'bg-red-600 font-bold text-white shadow-sm dark:bg-red-500'
+                    : inMonth ? 'text-slate-600 dark:text-slate-300'
+                              : 'text-slate-300 dark:text-slate-500'
+          )} title={isToday ? C.today : undefined}>{n}</span>
+
+          {/* 方案 C：微型彩色圓點 Indicator (避免雜亂，滑鼠懸停顯示詳情) */}
+          {totalEventCount > 0 && (
+            <div className="flex items-center gap-0.5 ml-0.5 select-none">
+              {dayEvents.tasks.some(t => isTaskOverdue(t.dueDate, t.progress) || !!t.problem) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-white dark:ring-slate-900" title="有逾期/問題任務" />
+              )}
+              {dayEvents.tasks.some(t => t.progress < 100) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 ring-1 ring-white dark:ring-slate-900" title="有進行中任務" />
+              )}
+              {dayEvents.tasks.some(t => t.progress >= 100) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-white dark:ring-slate-900" title="有已完成任務" />
+              )}
+              {dayEvents.inquiries.length > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 ring-1 ring-white dark:ring-slate-900" title="有對外詢問" />
+              )}
+              {dayEvents.leaves.length > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-white dark:ring-slate-900" title="有成員請假" />
+              )}
+            </div>
+          )}
+        </div>
+
         {hidden > 0 && (
           <span className="text-[10px] text-slate-400 dark:text-slate-400">
             {C.hiddenCount(hidden)}
           </span>
         )}
       </div>
+
+      {/* 方案 C：Hover Tooltip 簡潔快顯視窗 */}
+      {showTooltip && totalEventCount > 0 && (
+        <div className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 z-50 w-56 rounded-lg bg-slate-900/95 p-2 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700">
+          <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1 mb-1.5 flex justify-between items-center text-[11px]">
+            <span>📅 {day}</span>
+            <span className="text-[10px] font-normal text-slate-400">共 {totalEventCount} 項事件</span>
+          </div>
+          <div className="space-y-1 max-h-36 overflow-y-auto text-[11px]">
+            {dayEvents.tasks.map(t => (
+              <div key={t.id} className="truncate flex items-center gap-1 text-slate-200">
+                <span className="shrink-0 font-mono text-[10px] font-bold text-blue-400">{t.ref || 'MRG'}</span>
+                <span className="truncate">{t.title}</span>
+                <span className="ml-auto shrink-0 text-[10px] text-slate-400">{t.progress}%</span>
+              </div>
+            ))}
+            {dayEvents.inquiries.map(i => (
+              <div key={i.id} className="truncate flex items-center gap-1 text-amber-300">
+                <span className="shrink-0 text-[10px]">❓</span>
+                <span className="truncate">【{i.askedToUnit}】{(i as any).taskTitle || i.question || '詢問單'}</span>
+              </div>
+            ))}
+            {dayEvents.leaves.map(l => (
+              <div key={l.id} className="truncate flex items-center gap-1 text-purple-300">
+                <span className="shrink-0 text-[10px]">🌴</span>
+                <span className="truncate">{l.userName} ({l.leaveType})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

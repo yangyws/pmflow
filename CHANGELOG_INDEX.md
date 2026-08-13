@@ -555,6 +555,13 @@
 - **異動說明**:
   - **收納盒擴大邏輯修復**：修正 `onNodeDragStop` 在盒內自由拖曳卡片時未觸發父收納盒尺寸重新計算的問題。現在無論是初次移入、移出、或盒內自由移動卡片/子收納盒，皆會自動沿 `parentId` 向上遞迴計算 `computeBoxDimensions` 並動態擴展收納盒寬高。
 
+### Commit: `c3d4e5f` - Feat: Synchronize badges in List View and implement Option C event indicators in Calendar
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L236-L265, #L385-L425), [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L580-L590, #L660-L775)
+- **異動說明**:
+  - **清單視圖狀態徽章同步 (`List.tsx`)**：於清單項目的標題旁同步呈現 `⚡並行`、`⏰ 逾期`、`❓ 待回覆`、`內含 N 張` 等圖示徽章。
+  - **行事曆視圖方案 C 實作 (`Calendar.tsx`)**：在月曆日期格數字旁顯示微型彩色小圓點 Indicator (藍/紅/綠/黃/紫)，代表當天進行中/逾期/已完成/詢問/請假行程；並支援滑鼠懸停 (Hover) 彈出簡潔整齊的事件詳細資訊視窗。
+
+
 
 
 
