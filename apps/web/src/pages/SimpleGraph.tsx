@@ -521,12 +521,16 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     let rootIndex = 0
     const processedTaskIds = new Set<string>()
 
+    const prevNodesMap = new Map(nodesRef.current.map((n) => [n.id, n]))
+
     const processTask = (t: Task, parentBoxId?: string, rootX = 50, rootY = 80) => {
       if (processedTaskIds.has(t.id)) return
       processedTaskIds.add(t.id)
 
+      const existingNode = prevNodesMap.get(t.id)
+      const existingMode = (existingNode?.data as SimpleGraphNodeData)?.mode
       const isDefaultBox = parentIdSet.has(t.id)
-      const mode = toggledModes[t.id] ?? (isDefaultBox ? 'box' : 'card')
+      const mode = toggledModes[t.id] ?? (existingMode === 'box' ? 'box' : isDefaultBox ? 'box' : 'card')
       const isBox = mode === 'box'
       const kids = childrenMap.get(t.id) || []
 
@@ -757,7 +761,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
                 typeof updatedNode.position.x === 'number' &&
                 typeof updatedNode.position.y === 'number'
               ) {
-                nextDragged[(pc as any).id] = { x: updatedNode.position.x, y: updatedNode.position.y }
+                if (updatedNode.parentId) {
+                  const parentNode = next.find((pn) => pn.id === updatedNode.parentId)
+                  const absX = (parentNode?.position?.x ?? 0) + updatedNode.position.x
+                  const absY = (parentNode?.position?.y ?? 0) + updatedNode.position.y
+                  nextDragged[(pc as any).id] = { x: absX, y: absY }
+                } else {
+                  nextDragged[(pc as any).id] = { x: updatedNode.position.x, y: updatedNode.position.y }
+                }
               }
             })
             return nextDragged

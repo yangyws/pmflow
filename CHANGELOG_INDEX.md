@@ -235,5 +235,12 @@
   - **移出座標跳躍修復**：`getAbsPos` 優先使用 `node.position` 最新落點座標進行大座標換算，移出時精準落在滑鼠放開點。
   - **盒內範圍邊界校驗與殘留座標校正**：`processTask` 與 `setNodes` 雙重驗證並清洗 `dragged` 殘留大座標，凡子卡片座標大於盒體尺寸者一律矯正至 `(24 + cCol*280, 50 + cRow*100)` 標準槽位，確保移入卡片 100% 留在盒體內。
 
+### Commit: `5b6c7d8` - Fix: Preserve empty box mode on last child move-out, and calculate absolute canvas position in onNodesChange
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **空收納盒模式保護**：`processTask` 檢查 `prevNodesMap.get(t.id)?.data?.mode`，當收納盒內最後一張卡片移出時，收納盒 100% 維持空盒狀態，絕不上縮塌陷或連動消失。
+  - **移出精準落點競態消除**：`onNodesChange` 寫入 `dragged` 時，若節點含有 `parentId`，自動加上父盒座標 `(parentX + posX, parentY + posY)` 換算為畫布絕對座標，確保移出卡片 100% 停留在滑鼠放開位置。
+
+
 
 
