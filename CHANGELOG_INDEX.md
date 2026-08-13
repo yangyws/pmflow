@@ -394,6 +394,13 @@
   - **進度條移民移植**：由經典關聯圖 [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx#L337-L363) 搬移並實作 `NodeProgressBar` 組件至卡片。
   - **任務進度狀態**：支援動態呈現 0% (未開始)、完成度比例條以及 100% 綠色完成勾選徽章，任務進度與後端資料庫 (`t.progress`) 100% 動態連動。
 
+### Commit: `6a7b8c9` - Feat: Real-time sync mode toggle (Box/Card) to Left Menu sidebar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L363-L385)
+- **異動說明**:
+  - **左側選單動態連動**：在 `handleToggleMode` 中同步更新全域 `pmflow_graph_container_boxes` (`localStorage`) 並觸發 `pmflow_container_boxes_changed` 事件。
+  - **即時分組切換**：點擊卡片/收納盒模式切換按鈕時，左側 Menu 側欄即時重新運算 Group 1 (收納盒區塊) 與 Group 2/3 (卡片區塊) 之階層歸屬，達到 100% 即時雙向連動。
+
+
 
 
 

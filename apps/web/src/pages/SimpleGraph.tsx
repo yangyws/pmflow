@@ -369,6 +369,21 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
         const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
         addLog('toggle', `${refText} 模式切換為 [${nextMode === 'box' ? '收納盒' : '卡片'}]`)
+
+        try {
+          const savedBoxesStr = localStorage.getItem('pmflow_graph_container_boxes')
+          const boxSet = new Set<string>(savedBoxesStr ? JSON.parse(savedBoxesStr) : [])
+          if (nextMode === 'box') {
+            boxSet.add(nodeId)
+          } else {
+            boxSet.delete(nodeId)
+          }
+          localStorage.setItem('pmflow_graph_container_boxes', JSON.stringify(Array.from(boxSet)))
+          window.dispatchEvent(new Event('pmflow_container_boxes_changed'))
+        } catch (e) {
+          console.error('Failed to sync container box to localStorage:', e)
+        }
+
         return {
           ...prev,
           [nodeId]: nextMode,
