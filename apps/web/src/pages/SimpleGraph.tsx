@@ -31,13 +31,14 @@ import { cx, ProblemBadge } from '../components/ui'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
-  const isLeftRight = sourceHandle?.includes('left') || sourceHandle?.includes('right')
+  const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
   const strokeColor = isLeftRight ? '#ef4444' : '#8b5cf6'
   return {
+    animated: false,
     style: {
       strokeWidth: 2,
       stroke: strokeColor,
-      strokeDasharray: isLeftRight ? undefined : '5 5',
+      strokeDasharray: isLeftRight ? 'none' : '5 5',
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
@@ -1632,14 +1633,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       const isConnected = activeSelectedId
         ? (relatedSet ? relatedSet.has(sId) && relatedSet.has(tId) : false)
         : true
+      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
       return {
         ...e,
-        animated: activeSelectedId ? isConnected : true,
+        ...edgeStyleAndMarker,
+        animated: false,
         style: {
+          ...edgeStyleAndMarker.style,
           ...e.style,
+          stroke: edgeStyleAndMarker.style.stroke,
+          strokeDasharray: edgeStyleAndMarker.style.strokeDasharray,
           strokeWidth: isConnected ? 3 : 1.5,
           opacity: activeSelectedId ? (isConnected ? 1 : 0.12) : 1,
         },
+        markerEnd: edgeStyleAndMarker.markerEnd,
       }
     })
   }, [edges, activeSelectedId, relatedSet])
@@ -1670,8 +1677,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             proOptions={{ hideAttribution: true }}
             defaultEdgeOptions={{
               type: 'smoothstep',
-              animated: true,
-              style: { strokeWidth: 2, stroke: '#6366f1' },
+              animated: false,
+              style: { strokeWidth: 2, stroke: '#ef4444' },
             }}
             zoomOnPinch={true}
             panOnScroll={false}

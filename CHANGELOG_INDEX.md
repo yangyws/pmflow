@@ -514,6 +514,12 @@
 - **異動說明**:
   - **搬移舊關聯圖卡住規則**：從舊關聯圖 (`Graph.tsx`) 完整搬移依賴連線阻擋判斷 logic。當上遊卡片未完成時，下游未完成卡片/收納盒會顯示 `⛔ 卡住` 徽章，並浮動提示 `卡住：要等 MRG-X`。
 
+### Commit: `b8c9d0e` - Style: Guarantee solid red lines (strokeDasharray: none, animated: false) for Left/Right handles
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L32-L48, #L1630-L1675)
+- **異動說明**:
+  - **左右實心紅色連線強制化**：設定 `animated: false` 並將 `strokeDasharray` 強制改為 `'none'`，徹底消除 React Flow 預設動畫與虛線效果，確保左右接點關聯線呈 100% 滿版實心紅線。
+
+
 
 
 
