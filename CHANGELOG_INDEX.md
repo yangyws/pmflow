@@ -280,6 +280,12 @@
   - **收納盒半透明化**：為收納盒外框容器加入 `opacity-50` (不透明度 50%)。
   - **雙重座標對齊 Log**：Log 視窗移入與盒內移動改為同時印出「盒內相對槽位」與「畫布真實大座標」，使 Log 紀錄與畫面視覺位置 100% 完美對齊。
 
+### Commit: `d3e4f5a` - Fix: Prioritize savedPos over existing.position in setNodes to prevent original position snapping
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **摧毀舊位置搶座標機制**：修正 `setNodes` 中 `targetPos` 與 `pos` 座標合併邏輯為 `savedPos ?? existing?.position ?? newNode.position`。賦予使用者最新拖曳座標 100% 最高優先權，徹底摧毀舊位置 (`existing.position`) 與最新座標搶奪彈跳之盲點。
+
+
 
 
 

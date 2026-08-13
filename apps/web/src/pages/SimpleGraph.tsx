@@ -713,7 +713,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             const parentW = Number(parentNode?.style?.width ?? parentNode?.width ?? 340)
             const parentH = Number(parentNode?.style?.height ?? parentNode?.height ?? 260)
 
-            const pos = existing.position
+            const pos = savedPos || existing.position
             const isValidPos =
               pos &&
               typeof pos.x === 'number' &&
@@ -750,7 +750,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         const defaultBoxW = 340
         const defaultBoxH = 260
 
-        const targetPos = existing?.position || savedPos || newNode.position
+        const targetPos = savedPos ?? existing?.position ?? newNode.position
         const targetW = isBoxNode
           ? Math.max(defaultBoxW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultBoxW)
           : (existing?.width ?? savedSize?.width ?? newNode.width)
