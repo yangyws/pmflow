@@ -506,6 +506,9 @@ function ProjectWorkspace({
   }, [tasks, epicId])
 
   const epic = epicId ? tasks.find(t => t.id === epicId) : undefined
+  const selectedTask = (focusedTaskId ? tasks.find(t => t.id === focusedTaskId) : undefined) ?? epic
+  const selectedRef = selectedTask ? (selectedTask.ref || (selectedTask.number ? `MRG-${selectedTask.number}` : '')) : ''
+  const selectedLabel = selectedTask ? `${selectedRef ? `${selectedRef} ` : ''}${selectedTask.title}` : undefined
   const overdue = visible.filter(t => t.inquiryState === 'OVERDUE').length
 
   const handleTaskSelect = (id: string) => {
@@ -565,7 +568,12 @@ function ProjectWorkspace({
             })()}
             <span className="text-slate-300 dark:text-slate-500">/</span>
             <span className="font-medium text-slate-700 dark:text-slate-300">
-              {tasks.find(x => x.id === openTask)?.title ?? T.nav.fallbackTaskTitle}
+              {(() => {
+                const current = tasks.find(x => x.id === openTask)
+                if (!current) return T.nav.fallbackTaskTitle
+                const ref = current.ref || (current.number ? `MRG-${current.number}` : '')
+                return `${ref ? `${ref} ` : ''}${current.title}`
+              })()}
             </span>
             <div className="ml-auto flex items-center gap-2">{bell}{menu}</div>
           </header>
@@ -593,15 +601,27 @@ function ProjectWorkspace({
             <div className="ml-auto shrink-0 flex items-center gap-1.5 sm:gap-2">{bell}{menu}</div>
           </div>
 
-          {/* 第二層 (min-h-9)：目前的事件 (標題/麵包屑與警示)，行動端靈活折行 */}
+          {/* 第二層 (min-h-9)：當前顯示事件 (MRG編號+標題/麵包屑與警示) */}
           <div className="flex min-h-9 items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40 flex-wrap sm:flex-nowrap">
-            {epic ? (
-              <span className="truncate font-semibold text-slate-900 dark:text-slate-100">
-                {epic.title}
-              </span>
+            {selectedLabel ? (
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="shrink-0 text-slate-400 dark:text-slate-400 font-normal">當前顯示：</span>
+                <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
+                  {selectedLabel}
+                </span>
+                {(epicId || focusedTaskId) && (
+                  <button
+                    onClick={() => { setEpicId(null); setFocusedTaskId(null) }}
+                    className="shrink-0 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline ml-1 cursor-pointer"
+                    title="清除點選，顯示全部"
+                  >
+                    顯示全部
+                  </button>
+                )}
+              </div>
             ) : (
               <span className="truncate text-slate-500 dark:text-slate-400">
-                (當前檢視：{shownViews.find(v => v.key === view)?.label ?? T.common.none})
+                (當前顯示：全專案事件 - {shownViews.find(v => v.key === view)?.label ?? T.common.none})
               </span>
             )}
             {overdue > 0 && (
