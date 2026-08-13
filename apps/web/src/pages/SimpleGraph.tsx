@@ -1666,10 +1666,37 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             return n
           })
         } else if (targetBox && targetBox.id !== currentParentId) {
+          // 移入收納盒：禁止帶有任何連線
+          const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
+          const visitedSubtree = new Set<string>()
+          const collectSubtreeIds = (nId: string) => {
+            if (visitedSubtree.has(nId)) return
+            visitedSubtree.add(nId)
+            currentNodes.filter((cn) => cn.parentId === nId).forEach((cn) => collectSubtreeIds(cn.id))
+          }
+          collectSubtreeIds(node.id)
+
+          const hasEdgesInSubtree = edges.some(
+            (e) => visitedSubtree.has(String(e.source)) || visitedSubtree.has(String(e.target))
+          )
+
+          if (hasEdgesInSubtree) {
+            setAlertMsg(
+              `${nodeTypeStr} (${cardRef}) 尚存在關聯線，無法移入收納盒 (${targetBoxRef})。請先刪除關聯線後再移入！`
+            )
+            addLog('move_in', `${nodeTypeStr} (${cardRef}) 移入 (${targetBoxRef}) 失敗：尚存在關聯線`)
+            const startPos = dragStartPosMap.current[node.id]
+            return currentNodes.map((n) =>
+              n.id === node.id
+                ? { ...n, parentId: currentParentId, position: startPos || n.position }
+                : n
+            )
+          }
+
           // 移入收納盒：進入巢狀結構
           const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
           const occupiedSlots = new Set(
-            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 70) / 110)}`)
+            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 85) / 110)}`)
           )
 
           let targetSlotPos = { x: 24, y: 70 }
@@ -1690,9 +1717,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               if (!occupiedSlots.has(`${tCol},${tRow}`)) break
               slotIdx++
             }
-            targetSlotPos = { x: 24 + tCol * 280, y: 70 + tRow * 110 }
+            targetSlotPos = { x: 24 + tCol * 280, y: 85 + tRow * 110 }
           }
-          const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
           const realAbsX = Math.round(targetBoxAbsPos.x + targetSlotPos.x)
           const realAbsY = Math.round(targetBoxAbsPos.y + targetSlotPos.y)

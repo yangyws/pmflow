@@ -540,6 +540,12 @@
   - **逾期警告徽章 (`⏰ 逾期`)**：卡片或收納盒逾期未完成時顯示 `⏰ 逾期` 警告徽章與到期日提示。
   - **對外詢問徽章 (`❓ 待回覆`)**：有待回覆對外詢問時顯示 `❓ 待回覆` 詢問徽章。
 
+### Commit: `f2a3b4c` - Feat: Prohibit moving into storage box if card or box has active dependency lines
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L1668-L1696)
+- **異動說明**:
+  - **移入收納盒關聯線禁止與彈窗提示**：當卡片或收納盒（及其子節點）尚有任何活性關聯連線時，禁止將其移入收納盒內部，並彈出警告視窗提示 `尚存在關聯線，無法移入收納盒。請先刪除關聯線後再移入！`，自動還原移動前位置。
+
+
 
 
 
