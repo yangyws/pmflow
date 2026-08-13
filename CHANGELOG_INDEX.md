@@ -589,6 +589,11 @@
 - **異動說明**:
   - **看板警示徽章靠右置放**：將看板卡片 (`Card`) 的警示徽章區域移至卡片頂點 Header 列右側 (`ml-auto`)，使包含對外詢問、問題及卡住等警示徽章對齊於卡片右上方。
 
+### Commit: `a1b2c3d` - Layout: Left align alert badges column in Gantt view
+- **變更檔案**: [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx#L70, #L400)
+- **異動說明**:
+  - **甘特圖警示欄靠左對齊**：將甘特圖清單中的「警示」欄位對齊方式改為靠左對齊 (`align: 'left'`)，使內含之警示徽章組合自然由左至右對齊呈現。
+
 
 
 

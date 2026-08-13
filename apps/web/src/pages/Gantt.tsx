@@ -67,7 +67,7 @@ export default function GanttView({
     ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
     ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
     ...(!hidden.includes('alerts') ? [{
-      name: 'alerts', label: '警示', align: 'center' as const, width: 140,
+      name: 'alerts', label: '警示', align: 'left' as const, width: 140,
       template: (t: unknown) => renderAlertCell(t)
     }] : []),
   ]
@@ -398,7 +398,7 @@ const renderAlertCell = (t: any) => {
     badges.push(`<span title="待回覆" style="background:#e0f2fe;color:#0284c7;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">❓待回覆</span>`)
   }
   if (!badges.length) return ''
-  return `<div style="display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
+  return `<div style="display:flex;align-items:center;justify-content:flex-start;gap:3px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
 }
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10)
