@@ -498,6 +498,13 @@
   - **清單巢狀樹狀同步**：在 `List.tsx` 中引進並共用 `divideAndSortLinked` 排序演算法，確保清單頁面的頂層與盒內卡片階層排序與 Menu 側欄 100% 同步。
   - **接點圓點顏色強制生效**：在 `SimpleGraph.tsx` 的 `<Handle>` 組件中，將 `backgroundColor: '#ef4444'`（左右紅色）與 `backgroundColor: '#8b5cf6'`（上下紫色）直接寫入 `style` 行內屬性，克服 React Flow 預設樣式覆蓋問題。
 
+### Commit: `e5f6a7b` - Style: Relocate card & box titles above progress bar and position warning badge next to MRG ref
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L305-L400)
+- **異動說明**:
+  - **標題位置移至進度條上方**：將收納盒與卡片的任務標題獨立移至進度條 (`NodeProgressBar`) 的正上方整行呈現。
+  - **既有位置改置警示圖示**：頂層 MRG 編號右側原本擺放標題的位置，改為優先顯示 `⚑問題` 警示圖示徽章。
+
+
 
 
 

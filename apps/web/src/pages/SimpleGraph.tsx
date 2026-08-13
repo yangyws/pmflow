@@ -305,7 +305,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               className="h-1 rounded-t-lg shrink-0"
               style={{ backgroundColor: data.typeColor || '#6366f1' }}
             />
-            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start">
+            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start gap-1">
               <div className="flex items-center justify-between gap-1.5 w-full">
                 <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
                   <button
@@ -319,9 +319,6 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                     {data.refText || 'MRG-BOX'}
                   </span>
-                  <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
-                    {data.label || '無標題收納盒'}
-                  </span>
                   {data.problem && (
                     <span
                       title={`問題：${data.problem}`}
@@ -334,6 +331,9 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   (移入卡片自動擴大容量)
                 </span>
+              </div>
+              <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate w-full" title={data.label}>
+                {data.label || '無標題收納盒'}
               </div>
               <NodeProgressBar progress={data.progress ?? 0} />
             </div>
@@ -371,7 +371,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
             className="h-1 rounded-t-lg shrink-0"
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
           />
-          <div className="p-2.5 flex flex-col justify-start flex-1">
+          <div className="p-2.5 flex flex-col justify-start flex-1 gap-1">
             <div className="flex items-center gap-1.5 overflow-hidden w-full">
               <button
                 type="button"
@@ -384,9 +384,6 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
-              <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
-                {data.label || '無標題任務'}
-              </span>
               {data.problem && (
                 <span
                   title={`問題：${data.problem}`}
@@ -395,6 +392,9 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span aria-hidden>⚑</span>問題
                 </span>
               )}
+            </div>
+            <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate w-full" title={data.label}>
+              {data.label || '無標題任務'}
             </div>
             <NodeProgressBar progress={data.progress ?? 0} />
           </div>
