@@ -227,3 +227,12 @@
   - **DOM 層級與拖曳遮擋**：`onNodesChange` 強制套用 `orderParentNodesFirst`，解決移入後拖曳卡片觸發底層畫布平移 (Pan) 的問題。
   - **盒內既有卡片保護**：移入新卡片時自動避開既有卡片槽位，絕不強制重排或移動既有卡片。
 
+### Commit: `4a5b6c7` - Fix: Instant 1-click mode toggle, full card draggable surface, accurate move-out abs position calculation, and strict child inside-box bounds validation
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **1 次點擊切換模式**：按鈕事件加上 `e.preventDefault()` 防止事件冒泡觸發選取，並在 `handleToggleMode` 中使用 `nodesRef.current` 消除陳舊閉包。
+  - **全卡片自由拖曳**：外層與內層 DOM 容器補全 `w-full h-full cursor-grab select-none pointer-events-auto`，整張卡片全區均可拖曳移動。
+  - **移出座標跳躍修復**：`getAbsPos` 優先使用 `node.position` 最新落點座標進行大座標換算，移出時精準落在滑鼠放開點。
+  - **盒內範圍邊界校驗**：`setNodes` 嚴格校驗子卡片座標必須在 `(10 ~ parentWidth-60, 35 ~ parentHeight-30)` 內部，超出即自動校正回標準網格槽位。
+
+

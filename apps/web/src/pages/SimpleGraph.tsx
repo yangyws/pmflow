@@ -115,13 +115,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
+    e.preventDefault()
     data.onToggleMode?.(id)
   }
 
   return (
     <div
-      style={isBox ? { width: boxW, height: boxH } : { width: 256 }}
-      className="relative"
+      style={isBox ? { width: boxW, height: boxH } : { width: 256, height: 72 }}
+      className="relative w-full h-full cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
       {/* 接點 (Handles) - 4 個方向精準定位，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
       <Handle
@@ -185,7 +186,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing">
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto">
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
               <div className="flex items-center gap-1.5">
@@ -235,7 +236,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing">
+        <div className="w-64 h-full rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
             <div className="flex items-center gap-1.5">
               <button
@@ -301,7 +302,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
   const handleToggleMode = useCallback((nodeId: string) => {
     setToggledModes((prev) => {
-      const targetNode = nodes.find((n) => n.id === nodeId)
+      const currentNodes = nodesRef.current
+      const targetNode = currentNodes.find((n) => n.id === nodeId)
       const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
       const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
       return {
@@ -309,7 +311,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         [nodeId]: nextMode,
       }
     })
-  }, [nodes])
+  }, [])
 
   /** 使用者拖過的節點位置。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>(() => {
@@ -633,7 +635,17 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
         if (newNode.parentId) {
           const parentChanged = (existing?.parentId ?? null) !== (newNode.parentId ?? null)
-          if (!parentChanged && existing) {
+          const modeChanged =
+            (existing?.data as SimpleGraphNodeData)?.mode !==
+            (newNode.data as SimpleGraphNodeData)?.mode
+
+          if (!parentChanged && !modeChanged && existing) {
+            const parentNode =
+              newNodes.find((pn) => pn.id === newNode.parentId) ||
+              prevNodes.find((pn) => pn.id === newNode.parentId)
+            const parentW = Number(parentNode?.style?.width ?? parentNode?.width ?? 340)
+            const parentH = Number(parentNode?.style?.height ?? parentNode?.height ?? 260)
+
             const pos = existing.position
             const isValidPos =
               pos &&
@@ -641,8 +653,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               typeof pos.y === 'number' &&
               pos.x >= 10 &&
               pos.y >= 35 &&
-              pos.x <= 500 &&
-              pos.y <= 450
+              pos.x <= Math.max(10, parentW - 60) &&
+              pos.y <= Math.max(35, parentH - 30)
+
             if (isValidPos) {
               return {
                 ...newNode,
@@ -872,7 +885,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         let y = 0
         while (curId && !visited.has(curId) && visited.size < 20) {
           visited.add(curId)
-          const target = currentNodes.find((cn) => cn.id === curId)
+          const target: Node | undefined = curId === node.id ? node : currentNodes.find((cn) => cn.id === curId)
           if (!target || !target.position) break
           x += target.position.x || 0
           y += target.position.y || 0
