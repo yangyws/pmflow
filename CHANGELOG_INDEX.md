@@ -454,6 +454,13 @@
   - **動態類型配色**：卡片與收納盒頂部 Accent 條動態匹配專案設定的事件類型顏色 (`data.typeColor`)。
   - **Menu 選項顏色**：側欄選單 (`EpicSidebar.tsx`) 新增事件時，類型下拉與圓點一律讀取 `readableColor` 與 `project.types` 的自訂配色。
 
+### Commit: `6e7f8a9` - Style: Remove duplicate ControlButton and enhance Controls toolbar contrast
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L1536-L1545)
+- **異動說明**:
+  - **移除重複按鈕**：移除關聯線畫布左下角 `Controls` 控制列中多餘的新增 `ControlButton`，還原乾淨的標準控制列。
+  - **提升對比度**：將 `Controls` 工具列邊框與圖示按鈕改為高對比度底色與深色圖示（`text-slate-800` / `bg-white`），擺脫灰白色模糊質感，極致清晰。
+
+
 
 
 

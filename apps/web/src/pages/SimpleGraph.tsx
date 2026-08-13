@@ -1536,14 +1536,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             preventScrolling={true}
           >
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls showFitView={true} showInteractive={true}>
-              <ControlButton
-                onClick={() => fitView({ padding: 0.2, duration: 300 })}
-                title="顯示全部 (Fit View)"
-              >
-                🎯
-              </ControlButton>
-            </Controls>
+            <Controls
+              showFitView={true}
+              showInteractive={true}
+              className="!bg-white dark:!bg-slate-800 !border !border-slate-300 dark:!border-slate-600 !shadow-md !rounded-lg overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-800 dark:[&_button]:!text-slate-100 [&_button]:!border-b [&_button]:!border-slate-200 dark:[&_button]:!border-slate-700 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700 [&_button_svg]:!fill-slate-800 dark:[&_button_svg]:!fill-slate-100"
+            />
           </ReactFlow>
         </div>
 
