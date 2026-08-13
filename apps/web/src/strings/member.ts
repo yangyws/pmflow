@@ -1,6 +1,6 @@
 /** 成員頁：誰在這個專案、他手上有什麼、以前經手過什麼。寫法見 strings/index.ts */
 export const member = {
-  title: '成員',
+  title: '事件歸屬',
   /** 左邊那份名單 */
   listTitle: '這個專案的成員',
   listHint: '點一個人，右邊看他手上與經手過的任務',

@@ -642,6 +642,11 @@
 - **異動說明**:
   - **頁籤頂列「當前顯示」標示優化**：於頂部導覽列第二層的「當前顯示」區域完整呈現當前點選事件之 `MRG 編號 + 任務標題`（如 `當前顯示： MRG-5 系統資安架構升級`），並附帶快速清除篩選按鈕，使使用者能清晰掌握當前頁面焦點。
 
+### Commit: `e1f2a3b` - Refactor: Rename Members view tab label to 事件歸屬
+- **變更檔案**: [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts#L40), [`member.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/member.ts#L3)
+- **異動說明**:
+  - **視圖頁籤名稱更新**：將原「成員」視圖頁籤名稱全數改為「事件歸屬」，更加符合該視圖分析與呈現各成員事件分派與經手狀態之用途。
+
 
 
 
