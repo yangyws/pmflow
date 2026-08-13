@@ -383,6 +383,12 @@
 - **異動說明**:
   - **提示文字置頂保護**：將 `(移入卡片自動擴大容量)` 提示文字收納至收納盒頂部 Header 欄位右側，由於盒內卡片與子收納盒擺放座標從 `y: 50` 開始，徹底封鎖卡片堆疊覆蓋提示文字的問題。
 
+### Commit: `4e5f6a7` - Style: Set node handles to a single centered point per side
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L140-L200)
+- **異動說明**:
+  - **單一邊界接點**：將卡片與收納盒的四向接點 (`left`, `right`, `top`, `bottom`) 位置統一調整至正中央 `50%`。每個邊僅呈現一顆極簡精準接點，支援雙向進出拉線。
+
+
 
 
 

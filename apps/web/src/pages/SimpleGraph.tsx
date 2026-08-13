@@ -138,19 +138,19 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       style={isBox ? { width: boxW, height: boxH } : { width: 256, height: 72 }}
       className="relative w-full h-full cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
-      {/* 接點 (Handles) - 4 個方向精準定位，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
+      {/* 接點 (Handles) - 4 個邊各保留 1 個中央精準接點，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
-        style={{ top: '35%' }}
+        style={{ top: '50%' }}
         className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
-        style={{ top: '65%' }}
+        style={{ top: '50%' }}
         className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
@@ -158,14 +158,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         type="target"
         position={Position.Right}
         id="right-in"
-        style={{ top: '35%' }}
+        style={{ top: '50%' }}
         className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
-        style={{ top: '65%' }}
+        style={{ top: '50%' }}
         className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
@@ -173,14 +173,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         type="target"
         position={Position.Top}
         id="top-in"
-        style={{ left: '35%' }}
+        style={{ left: '50%' }}
         className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-out"
-        style={{ left: '65%' }}
+        style={{ left: '50%' }}
         className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
@@ -188,14 +188,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         type="target"
         position={Position.Bottom}
         id="bottom-in"
-        style={{ left: '35%' }}
+        style={{ left: '50%' }}
         className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
-        style={{ left: '65%' }}
+        style={{ left: '50%' }}
         className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
