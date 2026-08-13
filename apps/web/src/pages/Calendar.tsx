@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
@@ -676,7 +676,6 @@ export default function CalendarView({
 // ── 日格（放置目標）─────────────────────────────────────
 function DayCell({
   day, isToday, inMonth, isWeekend, hidden, tasks = [], inquiries = [], leaves = [],
-  weekIndex = 0, dayOfWeek = 0,
 }: {
   day: string
   isToday: boolean
@@ -691,7 +690,8 @@ function DayCell({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day:${day}` })
   const n = parseYmd(day).getDate()
-  const [showTooltip, setShowTooltip] = useState(false)
+  const cellRef = useRef<HTMLDivElement>(null)
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; placement: 'top' | 'bottom' } | null>(null)
 
   // 該日期的所有事件種類與詳情
   const dayEvents = useMemo(() => {
@@ -709,15 +709,28 @@ function DayCell({
   }, [day, tasks, inquiries, leaves])
 
   const totalEventCount = dayEvents.tasks.length + dayEvents.inquiries.length + dayEvents.leaves.length
-  const isTopRows = weekIndex <= 1
-  const verticalCls = isTopRows ? 'top-full mt-1' : 'bottom-full mb-1'
-  const horizontalCls = dayOfWeek <= 1 ? 'left-0' : dayOfWeek >= 5 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+
+  const handleMouseEnter = () => {
+    if (!cellRef.current || totalEventCount === 0) return
+    const rect = cellRef.current.getBoundingClientRect()
+    const isNearTop = rect.top < 240
+    const top = isNearTop ? rect.bottom + 6 : rect.top - 6
+    const left = Math.max(12, Math.min(window.innerWidth - 268, rect.left + rect.width / 2 - 128))
+    setTooltipPos({ top, left, placement: isNearTop ? 'bottom' : 'top' })
+  }
+
+  const handleMouseLeave = () => {
+    setTooltipPos(null)
+  }
 
   return (
     <div
-      ref={setNodeRef}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+      ref={(node) => {
+        setNodeRef(node)
+        ;(cellRef as any).current = node
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cx(
         'relative border-r border-slate-100 last:border-r-0 transition-colors group/cell',
         'dark:border-slate-800',
@@ -760,18 +773,22 @@ function DayCell({
         )}
       </div>
 
-      {/* 方案 C：Hover Tooltip 簡潔快顯視窗 */}
-      {showTooltip && totalEventCount > 0 && (
-        <div className={cx(
-          'absolute z-50 w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700',
-          verticalCls,
-          horizontalCls
-        )}>
+      {/* 方案 C：Portal 懸浮視窗，固定於 document.body 避免任何父容器裁切 */}
+      {tooltipPos && totalEventCount > 0 && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: tooltipPos.top,
+            left: tooltipPos.left,
+            transform: tooltipPos.placement === 'top' ? 'translateY(-100%)' : undefined,
+          }}
+          className="z-[9999] w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-2xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700"
+        >
           <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1.5 mb-1.5 flex justify-between items-center text-[11px] gap-2">
             <span className="shrink-0 whitespace-nowrap font-medium text-slate-200">📅 {day}</span>
             <span className="text-[10px] font-normal text-slate-400 shrink-0">共 {totalEventCount} 項事件</span>
           </div>
-          <div className="space-y-1 max-h-36 overflow-y-auto text-[11px]">
+          <div className="space-y-1 max-h-48 overflow-y-auto text-[11px]">
             {dayEvents.tasks.map(t => (
               <div key={t.id} className="truncate flex items-center gap-1 text-slate-200">
                 <span className="shrink-0 font-mono text-[10px] font-bold text-blue-400">{t.ref || 'MRG'}</span>
@@ -792,7 +809,8 @@ function DayCell({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

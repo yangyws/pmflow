@@ -615,6 +615,11 @@
 - **異動說明**:
   - **行事曆浮動視窗智慧定位**：將 `Calendar.tsx` 日期格 Hover 懸浮視窗加入 `weekIndex` 與 `dayOfWeek` 邊界感應，頂層日期格自動向下彈出 (`top-full mt-1`)，邊角日期格自動向內對齊，徹底防止快顯清單超越頂部或左右邊界遭截斷。
 
+### Commit: `f6a7b8c` - Fix: Refactor Calendar hover popover using createPortal to document.body for zero-clipping fixed positioning
+- **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L1-L2, #L690-L790)
+- **異動說明**:
+  - **createPortal 快顯懸浮視窗全平臺防裁切**：將行事曆 Hover 懸浮視窗改為使用 React `createPortal` 直接掛載至 `document.body`，搭配 `getBoundingClientRect()` 計算 `fixed` 座標與視埠邊界全動態限制，完全不受任何父層 DOM 容器 `overflow` 邊界限制，徹底排除所有裁切與截斷問題。
+
 
 
 
