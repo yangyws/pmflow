@@ -632,6 +632,11 @@
   2. **列表 Hover/選取反白配色優化**：覆寫 dhtmlx 預設黃灰色，改為與系統一致之柔軟 slate 高亮配色 (`#f1f5f9` / `#e2e8f0`)。
   3. **粗紅外框 (紅框) 完全移除**：移除原本由 dhtmlx 自動為關鍵路徑 (`critical`) 及詢問逾期掛載的粗紅外框邊線 (`outline: none` / `border-color`)，使甘特圖條形維持乾淨統一。
 
+### Commit: `c9d0e1f` - Layout: Move Kanban card alert badges to dedicated line underneath title
+- **變更檔案**: [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx#L342-L360)
+- **異動說明**:
+  - **看板警示徽章移至標題下方獨立行**：將看板卡片 (`Card`) 的警示徽章（包含詢問、問題、⛔卡住）自標題右側行內獨立分離，全數放置於任務標題正下方獨立第二行呈現。
+
 
 
 

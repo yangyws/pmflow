@@ -339,24 +339,25 @@ function Card({
           </span>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 text-sm leading-snug text-slate-800 dark:text-slate-200">
-        <span>{task.title}</span>
-        {/* 警示徽章緊接在任務標題右側 */}
-        {(task.inquiryState !== 'NONE' || task.problem || (blockedBy && blockedBy.length > 0)) && (
-          <span className="inline-flex items-center gap-1">
-            <InquiryBadge state={task.inquiryState} />
-            <ProblemBadge problem={task.problem} />
-            {blockedBy && blockedBy.length > 0 && (
-              <span
-                title={`卡住：要等 ${blockedBy.join('、')}`}
-                className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none"
-              >
-                ⛔ 卡住
-              </span>
-            )}
-          </span>
-        )}
+      <div className="text-sm leading-snug text-slate-800 dark:text-slate-200">
+        {task.title}
       </div>
+
+      {/* 警示徽章放置於標題下方獨立一行 */}
+      {(task.inquiryState !== 'NONE' || task.problem || (blockedBy && blockedBy.length > 0)) && (
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          <InquiryBadge state={task.inquiryState} />
+          <ProblemBadge problem={task.problem} />
+          {blockedBy && blockedBy.length > 0 && (
+            <span
+              title={`卡住：要等 ${blockedBy.join('、')}`}
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none"
+            >
+              ⛔ 卡住
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-400">
         {task.dueDate && <span>📅 {task.dueDate.slice(5, 10).replace('-', '/')}</span>}
