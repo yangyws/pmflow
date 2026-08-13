@@ -186,8 +186,12 @@ export default function ListView({
 
     const edges = graph?.edges ?? []
 
+    // 建立現有任務集合，若任務的 parentId 不在現有集合中，亦視為當前畫面的頂層根節點
+    const taskIds = new Set(tasks.map(t => t.id))
+    const isRoot = (t: Task) => !t.parentId || !taskIds.has(t.parentId)
+
     // 頂層卡片分組
-    const rawEpics = tasks.filter(t => !t.parentId)
+    const rawEpics = tasks.filter(t => isRoot(t))
     const boxesGroup = rawEpics.filter(t => isBox(t)).sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
     const nonBoxEpics = rawEpics.filter(t => !isBox(t))
     const { linkedTasks, unlinkedTasks } = divideAndSortLinked(nonBoxEpics, edges, tasks)
@@ -196,7 +200,7 @@ export default function ListView({
 
     const rawKidsMap = new Map<string, Task[]>()
     for (const t of tasks) {
-      if (t.parentId) {
+      if (t.parentId && taskIds.has(t.parentId)) {
         const list = rawKidsMap.get(t.parentId) || []
         list.push(t)
         rawKidsMap.set(t.parentId, list)
@@ -210,7 +214,12 @@ export default function ListView({
     }
 
     const out: Array<Task & { depth: number; hasKids: boolean; isBox: boolean }> = []
+    const processed = new Set<string>()
+
     const walk = (t: Task, depth: number) => {
+      if (processed.has(t.id)) return
+      processed.add(t.id)
+
       const kids = byParentMap.get(t.id) ?? []
       const hasKids = kids.length > 0
       out.push({ ...t, depth, hasKids, isBox: isBox(t) })
@@ -220,10 +229,8 @@ export default function ListView({
       }
     }
 
-    const processed = new Set<string>()
     for (const topT of sortedTop) {
-      if (!topT.parentId && !processed.has(topT.id)) {
-        processed.add(topT.id)
+      if (!processed.has(topT.id)) {
         walk(topT, 0)
       }
     }

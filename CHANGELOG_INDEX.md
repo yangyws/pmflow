@@ -655,6 +655,11 @@
     - **第二行**：任務標題 (`task.title`)。
     - **第三行**：進度條 (% 數據及視覺化進度條)。
 
+### Commit: `a3b4c5d` - Fix: Improve hierarchy root detection and recursive tree walking in List view
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L186-L230)
+- **異動說明**:
+  - **清單階層樹狀規則修正**：將根節點判斷改為 `!t.parentId || !taskIds.has(t.parentId)`，並於 `walk` 中加上 `processed` 集合防止重複與迴圈，確保當從側欄選取子收納盒或大項目進行篩選檢視時，子任務仍能正確保持縮排與層級展開關係。
+
 
 
 
