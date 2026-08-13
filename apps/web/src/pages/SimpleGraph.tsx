@@ -680,6 +680,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     }
 
     for (const e of edges) {
+      const sHandle = String(e.sourceHandle || '')
+      const tHandle = String(e.targetHandle || '')
+      // 只有左右出發/到達的接點會造成卡住；上下出發/到達的接點不會造成卡住
+      const isTopOrBottom = sHandle.includes('top') || sHandle.includes('bottom') || tHandle.includes('top') || tHandle.includes('bottom')
+      if (isTopOrBottom) continue
+
       const sId = String(e.source)
       const tId = String(e.target)
       const srcTask = taskMap.get(sId)
