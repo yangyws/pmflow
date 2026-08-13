@@ -754,10 +754,10 @@ function DayCell({
 
       {/* 方案 C：Hover Tooltip 簡潔快顯視窗 */}
       {showTooltip && totalEventCount > 0 && (
-        <div className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 z-50 w-56 rounded-lg bg-slate-900/95 p-2 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700">
-          <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1 mb-1.5 flex justify-between items-center text-[11px]">
-            <span>📅 {day}</span>
-            <span className="text-[10px] font-normal text-slate-400">共 {totalEventCount} 項事件</span>
+        <div className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 z-50 w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700">
+          <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1.5 mb-1.5 flex justify-between items-center text-[11px] gap-2">
+            <span className="shrink-0 whitespace-nowrap font-medium text-slate-200">📅 {day}</span>
+            <span className="text-[10px] font-normal text-slate-400 shrink-0">共 {totalEventCount} 項事件</span>
           </div>
           <div className="space-y-1 max-h-36 overflow-y-auto text-[11px]">
             {dayEvents.tasks.map(t => (

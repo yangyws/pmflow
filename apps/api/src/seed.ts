@@ -117,11 +117,11 @@ export async function seedDemo(): Promise<boolean> {
           hist: [[-9, 'todo', 'doing']] },
         // 大項目二
         { n: 5, title: '採購與施工',     type: 'EPIC',      st: 'todo',  s: 5,  d: 30, parent: null, prog: 0, c: -28 },
-        { n: 6, title: '採購與到貨',     type: 'TASK',      st: 'todo',  s: 5,  d: 20, parent: 5,    prog: 0, c: -28, mine: true },
+        { n: 6, title: '採購與到貨',     type: 'TASK',      st: 'todo',  s: 5,  d: 20, parent: 5,    prog: 0, c: -28, mine: true, problem: '零組件缺貨，預計延遲交貨' },
         { n: 7, title: '機櫃配置施工',   type: 'TASK',      st: 'todo',  s: 21, d: 30, parent: 5,    prog: 0, c: -28, problem: '機櫃空間不足，等待廠商擴充' },
         // 大項目三
         { n: 8, title: '遷移與切換',     type: 'EPIC',      st: 'todo',  s: 21, d: 38, parent: null, prog: 0, c: -28 },
-        { n: 9, title: '系統遷移測試',   type: 'TASK',      st: 'todo',  s: 21, d: 34, parent: 8,    prog: 0, c: -28 },
+        { n: 9, title: '系統遷移測試',   type: 'TASK',      st: 'todo',  s: 21, d: 34, parent: 8,    prog: 0, c: -28, problem: '資料庫相容性測試異常，等待修補程式' },
         { n: 10, title: '正式切換',      type: 'MILESTONE', st: 'todo',  s: 38, d: 38, parent: 8,    prog: 0, c: -28 },
         /*
          * 「同時完成」那個匯合點的下游。
@@ -250,4 +250,24 @@ export async function seedDemo(): Promise<boolean> {
   })
 
   return true
+}
+
+export async function seedProblemsIfEmpty(): Promise<number> {
+  const sampleProblems: Record<number, string> = {
+    2: '設備規格需要重新對齊廠商',
+    4: '線路頻寬限制，等待電信商升級',
+    6: '零組件缺貨，預計延遲交貨',
+    7: '機櫃空間不足，等待廠商擴充',
+    9: '資料庫相容性測試異常，等待修補程式',
+    20: '資安規範更新，需重新審查證照',
+  }
+  let count = 0
+  for (const [numStr, prob] of Object.entries(sampleProblems)) {
+    const num = Number(numStr)
+    const result = await sql`
+      UPDATE task SET problem = ${prob} WHERE number = ${num} AND problem IS NULL
+    `
+    if ((result as any).count > 0) count += (result as any).count
+  }
+  return count
 }

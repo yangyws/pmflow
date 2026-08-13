@@ -599,6 +599,12 @@
 - **異動說明**:
   - **看板警示徽章緊接標題右側**：將看板卡片 (`Card`) 的警示徽章區塊改為緊接在任務標題 (`task.title`) 文字正右側，維持行內對齊自然緊湊。
 
+### Commit: `c3d4e5f` - Feat: Add problem test cases and fix Calendar hover popover date truncation
+- **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L755-L760), [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts#L120-L130, #L255-L270), [`index.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/index.ts#L20-L65)
+- **異動說明**:
+  1. **行事曆懸停 Popover 日期截斷修正**：為 `Calendar.tsx` 日期格浮動視窗頂部標題加上 `shrink-0 whitespace-nowrap` 與寬度調整，防止日期文字遭截斷。
+  2. **問題測試案例補充**：於 `seed.ts` 擴充測試用任務問題說明資料（包含零組件缺貨、資料庫相容性等），並提供 `seedProblemsIfEmpty` 自動為既有環境回填問題測試資料。
+
 
 
 
