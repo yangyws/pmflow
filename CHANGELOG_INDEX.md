@@ -423,6 +423,13 @@
   - **清單圖示同步**：將清單檢視 (`List.tsx`) 中的卡片圖示由 `📇` 統一同步替換為與左側 Menu 與關聯圖一致的 `📄` (卡片圖示)。
   - **Hover 懸停顯示**：將清單每列中的編輯筆 (`✏️`) 與新增子任務 (`+`) 按鈕調整為預設 `opacity-0`，僅在滑鼠懸停於該列 (`group-hover:opacity-100`) 時才顯示，畫面更加乾淨。
 
+### Commit: `1f2a3b4` - Fix: Bind and persist sourceHandle & targetHandle for precise point-to-point connections
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L490-L510, #L955-L1010)
+- **異動說明**:
+  - **精確接點對齊**：在建立關聯線 (`onConnect`) 與載入關聯線 (`Api.graph`) 時，完整保存並綁定 `sourceHandle` 與 `targetHandle`（如 `top-out` 到 `bottom-in`）。
+  - **避免預設偏離**：連線將精確由使用者拉線時所選擇的特定接點點對點連接至目標接點，不再被 React Flow 預設退回左側預設點。
+
+
 
 
 

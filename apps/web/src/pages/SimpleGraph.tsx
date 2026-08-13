@@ -490,20 +490,32 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     }
   }, [projectId])
 
-  // 載入專案真實關聯線 (Edges)
+  // 載入專案真實關聯線 (Edges) 並帶入正確使用者選取的接點 (sourceHandle & targetHandle)
   useEffect(() => {
     if (!projectId) return
     Api.graph(projectId)
       .then((res) => {
         if (res.edges) {
-          const realEdges: Edge[] = res.edges.map((e) => ({
-            id: e.id,
-            source: e.sourceId,
-            target: e.targetId,
-            type: 'smoothstep',
-            animated: true,
-            style: { strokeWidth: 2, stroke: '#6366f1' },
-          }))
+          let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
+          try {
+            const savedStr = localStorage.getItem(`pmflow_simple_graph_edge_handles_${projectId}`)
+            if (savedStr) savedMap = JSON.parse(savedStr)
+          } catch {}
+
+          const realEdges: Edge[] = res.edges.map((e) => {
+            const edgeKey = `${e.sourceId}_${e.targetId}`
+            const hData = savedMap[edgeKey] || savedMap[e.id]
+            return {
+              id: e.id,
+              source: e.sourceId,
+              target: e.targetId,
+              sourceHandle: hData?.sourceHandle,
+              targetHandle: hData?.targetHandle,
+              type: 'smoothstep',
+              animated: true,
+              style: { strokeWidth: 2, stroke: '#6366f1' },
+            }
+          })
           setEdges(realEdges)
         }
       })
@@ -944,13 +956,44 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       }
 
       if (connection.source && connection.target) {
+        const sHandle = connection.sourceHandle ?? undefined
+        const tHandle = connection.targetHandle ?? undefined
+
+        try {
+          const key = `pmflow_simple_graph_edge_handles_${projectId}`
+          const savedStr = localStorage.getItem(key)
+          const handleMap = savedStr ? JSON.parse(savedStr) : {}
+          const edgeKey = `${connection.source}_${connection.target}`
+          handleMap[edgeKey] = { sourceHandle: sHandle, targetHandle: tHandle }
+          localStorage.setItem(key, JSON.stringify(handleMap))
+        } catch (e) {
+          console.error(e)
+        }
+
         Api.addLink(connection.source, { targetId: connection.target, linkType: 'FS' })
           .then(() => {
             if (projectId) Api.graph(projectId).then((res) => {
               if (res.edges) {
-                setEdges(res.edges.map((e) => ({
-                  id: e.id, source: e.sourceId, target: e.targetId, type: 'smoothstep', animated: true, style: { strokeWidth: 2, stroke: '#6366f1' }
-                })))
+                let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
+                try {
+                  const savedStr = localStorage.getItem(`pmflow_simple_graph_edge_handles_${projectId}`)
+                  if (savedStr) savedMap = JSON.parse(savedStr)
+                } catch {}
+
+                setEdges(res.edges.map((e) => {
+                  const edgeKey = `${e.sourceId}_${e.targetId}`
+                  const hData = savedMap[edgeKey] || savedMap[e.id]
+                  return {
+                    id: e.id,
+                    source: e.sourceId,
+                    target: e.targetId,
+                    sourceHandle: hData?.sourceHandle,
+                    targetHandle: hData?.targetHandle,
+                    type: 'smoothstep',
+                    animated: true,
+                    style: { strokeWidth: 2, stroke: '#6366f1' },
+                  }
+                }))
               }
             })
           })
