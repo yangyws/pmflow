@@ -263,6 +263,12 @@
 - **異動說明**:
   - **消除拖曳後 API 競態刷網**：移除 `Api.moveTask` 成功後呼叫 `queryClient.invalidateQueries` 重新向 API 下載 tasks 的行為，改為單純使用 `setQueryData` 樂觀維護記憶體階層。防止舊 GET 請求先完成並覆蓋最新拖曳座標，達成 0 閃爍、0 跳躍與 0 消失。
 
+### Commit: `a0b1c2d` - Fix: Remove setDragged inside onNodesChange during active drag to eliminate coordinate flickering loop
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **摧毀座標跳動死迴圈**：移除 `onNodesChange` 在拖曳過程中 (每秒 60 次) 寫入 `setDragged` 的邏輯，改為由 React Flow 本身流暢渲染 DOM。`setDragged` 僅在 `onNodeDragStop` 放開滑鼠時一次性寫入，徹底解決拖曳座標與盒內槽位座標之間的高速死迴圈跳動問題。
+
+
 
 
 

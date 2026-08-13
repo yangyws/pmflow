@@ -793,34 +793,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     setNodes((nds) => {
       const next = applyNodeChanges(changes, nds)
 
-      // 當有卡片拖曳位置變動時，即時寫入 dragged 狀態，防止切換頁籤或刷頁丟失
-      const posChanges = changes.filter((c) => c.type === 'position' && (c as any).position)
-      if (posChanges.length > 0) {
-        setTimeout(() => {
-          setDragged((prev) => {
-            const nextDragged = { ...prev }
-            posChanges.forEach((pc) => {
-              const updatedNode = next.find((n) => n.id === (pc as any).id)
-              if (
-                updatedNode?.position &&
-                typeof updatedNode.position.x === 'number' &&
-                typeof updatedNode.position.y === 'number'
-              ) {
-                if (updatedNode.parentId) {
-                  const parentNode = next.find((pn) => pn.id === updatedNode.parentId)
-                  const absX = (parentNode?.position?.x ?? 0) + updatedNode.position.x
-                  const absY = (parentNode?.position?.y ?? 0) + updatedNode.position.y
-                  nextDragged[(pc as any).id] = { x: absX, y: absY }
-                } else {
-                  nextDragged[(pc as any).id] = { x: updatedNode.position.x, y: updatedNode.position.y }
-                }
-              }
-            })
-            return nextDragged
-          })
-        }, 0)
-      }
-
       // 當有尺寸調整 (NodeResizeControl) 時，自動校驗 minWidth/minHeight 並寫入 resized 持久化
       const dimChanges = changes.filter((c) => c.type === 'dimensions')
       if (dimChanges.length > 0) {
