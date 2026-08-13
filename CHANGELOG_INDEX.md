@@ -584,6 +584,11 @@
   3. **詢問欄改為警示徽章欄**：將原先「詢問」欄位重構為「警示」欄位，下方完整渲染包含 `⚑問題`、`⛔卡住`、`⚡並行`、`⏰逾期`、`❓待回覆` 之警示徽章組合。
   4. **顯示欄位工具列優化**：移除顯示欄位選單中不可切換的「✓ 任務欄 (固定)」與「✓ 進度條/時間軸 (固定)」兩項固定按鈕。
 
+### Commit: `f3a4b5c` - Layout: Move alert badges to the right side of Kanban card header
+- **變更檔案**: [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx#L315-L360)
+- **異動說明**:
+  - **看板警示徽章靠右置放**：將看板卡片 (`Card`) 的警示徽章區域移至卡片頂點 Header 列右側 (`ml-auto`)，使包含對外詢問、問題及卡住等警示徽章對齊於卡片右上方。
+
 
 
 
