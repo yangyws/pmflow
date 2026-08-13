@@ -200,29 +200,30 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/50 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/50 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto">
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
           <div>
-            <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
+            <div className="h-1 rounded-t-lg shrink-0 bg-indigo-500 dark:bg-indigo-600" />
+            <div className="px-2.5 py-2 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70">
               <div className="flex items-center gap-1.5 overflow-hidden flex-1">
                 <button
                   type="button"
                   onClick={handleToggle}
-                  className="nodrag rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700 shrink-0"
-                  title="切換模式"
+                  className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500"
+                  title="【收納盒】點擊轉換回卡片"
                 >
                   📦 收納盒
                 </button>
-                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white pointer-events-none select-none shrink-0">
+                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                   {data.refText || 'MRG-BOX'}
                 </span>
-                <span className="font-semibold text-indigo-950 text-xs dark:text-indigo-200 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
+                <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
                   {data.label || '無標題收納盒'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mb-2 text-center text-xs text-indigo-400/70 dark:text-indigo-400/40 select-none pointer-events-none">
+          <div className="mb-2 text-center text-xs text-slate-400/80 dark:text-slate-500/80 select-none pointer-events-none">
             (移入卡片自動擴大容量)
           </div>
 
@@ -231,44 +232,36 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
             position="bottom-right"
             minWidth={data.minWidth ?? 340}
             minHeight={data.minHeight ?? 260}
-            className="nodrag"
-            style={{
-              position: 'absolute',
-              right: '18px',
-              bottom: '18px',
-              transform: 'none',
-              width: '20px',
-              height: '20px',
-              border: 'none',
-              background: 'transparent',
-              zIndex: 10,
-            }}
+            className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
           >
             <div
-              className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded bg-indigo-200/90 dark:bg-indigo-800/90 hover:bg-indigo-300 dark:hover:bg-indigo-700 text-indigo-800 dark:text-indigo-200 border border-indigo-400/80 dark:border-indigo-600/80 cursor-se-resize shadow-xs select-none"
-              title="按住拖曳調整尺寸"
+              className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
+              title="按住拖曳調整收納盒尺寸"
             >
               ↘
             </div>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 min-h-[72px] rounded-lg border border-slate-300 bg-white p-2.5 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 overflow-hidden w-full">
-            <button
-              type="button"
-              onClick={handleToggle}
-              className="nodrag rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shrink-0"
-              title="切換模式"
-            >
-              📄 卡片
-            </button>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 pointer-events-none select-none shrink-0">
-              {data.refText || 'MRG-1'}
-            </span>
-            <span className="font-medium text-slate-800 text-xs dark:text-slate-200 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
-              {data.label || '無標題任務'}
-            </span>
+        <div className="w-64 min-h-[72px] rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden">
+          <div className="h-1 rounded-t-lg shrink-0 bg-blue-500 dark:bg-blue-600" />
+          <div className="p-2.5 flex flex-col justify-start flex-1">
+            <div className="flex items-center gap-1.5 overflow-hidden w-full">
+              <button
+                type="button"
+                onClick={handleToggle}
+                className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                title="【卡片】點擊轉換為收納盒"
+              >
+                📄 卡片
+              </button>
+              <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
+                {data.refText || 'MRG-1'}
+              </span>
+              <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
+                {data.label || '無標題任務'}
+              </span>
+            </div>
           </div>
         </div>
       )}

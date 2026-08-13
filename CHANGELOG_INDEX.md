@@ -372,6 +372,13 @@
   - **上游收納盒自動擴大**：補全 `onNodeDragStop` 移入目標盒時 `movedNode` 的 `parentId: targetBox.id` 屬性，確保 `computeBoxDimensions` 計算時不漏掉下游收納盒。
   - **祖先盒遞迴聯動**：實作 `while (curBoxId)` 向上追溯機制，當下游收納盒移入導致尺寸擴大時，會向上自動觸發所有層級之祖先收納盒按需橫向與縱向擴張。
 
+### Commit: `2c3d4e5` - Style: Restore card and storage box UI styles to match classic Graph.tsx design system
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L200-L275)
+- **異動說明**:
+  - **經典關聯圖 UI 還原**：將卡片與收納盒的外觀樣式 100% 恢復為經典關聯圖 [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) 的設計系統。
+  - **卡片與收納盒細節**：恢復頂部 4px 類型主題色線條 (`h-1 rounded-t-lg`)、`bg-white/bg-slate-900` 乾淨白/深色底框、`w-[58px]` 模式切換按鈕、`font-mono` 灰色 Ref 標籤，以及底層內襯 `bg-slate-50/40` 與圓角縮放控制鈕。
+
+
 
 
 
