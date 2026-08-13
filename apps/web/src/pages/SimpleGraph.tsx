@@ -628,7 +628,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     collectSubtreeIfBox(activeSelectedId)
     collectAncestors(activeSelectedId)
 
+    const taskMap = new Map((tasks ?? []).map((t) => [t.id, t]))
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+    const isDone = (id: string) => {
+      const t = taskMap.get(id)
+      if (!t) return false
+      if (t.progress >= 100) return true
+      const cat = statusCatMap.get(t.statusKey)
+      return cat === 'DONE' || t.statusKey === 'DONE'
+    }
+
     // 2. 沿依賴連線 (edges) 遞迴搜尋關聯網絡
+    // - 下游 (sId 已在高亮中)：持續向下游傳播
+    // - 上游 (tId 已在高亮中)：僅當上游任務未完成 (!isDone(sId)) 造成卡住時才高亮
     let changed = true
     while (changed) {
       changed = false
@@ -641,15 +653,17 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
           changed = true
         }
         if (result.has(tId) && !result.has(sId)) {
-          collectSubtreeIfBox(sId)
-          collectAncestors(sId)
-          changed = true
+          if (!isDone(sId)) {
+            collectSubtreeIfBox(sId)
+            collectAncestors(sId)
+            changed = true
+          }
         }
       }
     }
 
     return result
-  }, [activeSelectedId, edges, nodes])
+  }, [activeSelectedId, edges, nodes, tasks, project?.statuses])
 
   const blockedByMap = useMemo(() => {
     const map = new Map<string, string[]>()

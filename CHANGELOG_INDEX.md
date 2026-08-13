@@ -571,11 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-### Commit: `b2c3d4e` - Fix: Replace drag handle button with span and remove MRG badge from header bar
-- **變更檔案**: [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L280-L295, #L595-L605)
+### Commit: `c3d4e5f` - Refactor: Only highlight unfinished blocking upstream nodes in Graph and Sidebar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L630-L650), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L400-L425)
 - **異動說明**:
-  1. **頁籤拖曳手把完全修復 (`App.tsx`)**：確定將拖曳手把替換為專屬 `<span>` 元素，解決 `<button>` 攔截 DOM pointer/drag 事件導致無法拖曳問題。
-  2. **頂部列 MRG 徽章移除 (`App.tsx`)**：移除「當前檢視」列左側的 `MRG` 專案 Key 標籤，讓當前事件標題或檢視名稱乾淨顯示。
+  - **上游高亮規則重構**：點擊卡片時，沿關聯連線反向搜尋上游卡片，僅當上游卡片「未完成 (!isDone，即進度 < 100% 且狀態非 DONE)」造成阻塞卡住時才進行高亮呈現；已完成的上游卡片不再標高亮。
+
 
 
 

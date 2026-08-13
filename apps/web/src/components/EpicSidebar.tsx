@@ -398,6 +398,12 @@ export function EpicSidebar({
     collectSubtreeIfBox(activeId)
     collectAncestors(activeId)
 
+    const isDone = (id: string) => {
+      const t = taskMap.get(id)
+      if (!t) return false
+      return t.progress >= 100 || t.statusKey === 'DONE'
+    }
+
     const edges = graphData?.edges ?? []
     let changed = true
     while (changed) {
@@ -411,9 +417,11 @@ export function EpicSidebar({
           changed = true
         }
         if (result.has(tId) && !result.has(sId)) {
-          collectSubtreeIfBox(sId)
-          collectAncestors(sId)
-          changed = true
+          if (!isDone(sId)) {
+            collectSubtreeIfBox(sId)
+            collectAncestors(sId)
+            changed = true
+          }
         }
       }
     }
