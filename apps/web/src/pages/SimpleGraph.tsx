@@ -27,6 +27,7 @@ import '@xyflow/react/dist/style.css'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
+import { cx } from '../components/ui'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為藍紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -108,6 +109,9 @@ export type SimpleGraphNodeData = {
   progress?: number
   typeColor?: string
   problem?: string | null
+  isSelected?: boolean
+  isRelated?: boolean
+  hasSelectionActive?: boolean
   minWidth?: number
   minHeight?: number
   onToggleMode?: (id: string) => void
@@ -271,7 +275,18 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
+        <div
+          className={cx(
+            'relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden',
+            data.isSelected
+              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl opacity-100'
+              : data.isRelated
+                ? data.hasSelectionActive
+                  ? 'border-indigo-400 dark:border-indigo-500 ring-1 ring-indigo-400/60 shadow-md opacity-100'
+                  : 'border-slate-300 dark:border-slate-700 opacity-100'
+                : 'border-slate-200 dark:border-slate-800 opacity-25'
+          )}
+        >
           <div>
             <div
               className="h-1 rounded-t-lg shrink-0"
@@ -327,7 +342,18 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 min-h-[90px] rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden">
+        <div
+          className={cx(
+            'w-64 min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden',
+            data.isSelected
+              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl opacity-100'
+              : data.isRelated
+                ? data.hasSelectionActive
+                  ? 'border-indigo-400 dark:border-indigo-500 ring-1 ring-indigo-400/60 shadow-md opacity-100'
+                  : 'border-slate-200 dark:border-slate-800 opacity-100'
+                : 'border-slate-200 dark:border-slate-800 opacity-25'
+          )}
+        >
           <div
             className="h-1 rounded-t-lg shrink-0"
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
@@ -373,6 +399,8 @@ export interface SimpleGraphProps {
   projectId?: string
   tasks?: Task[]
   onOpenTask?: (taskId: string) => void
+  focusedTaskId?: string | null
+  onSelectTask?: (taskId: string) => void
 }
 
 type ConfirmDeleteEdgeState = {
@@ -388,7 +416,7 @@ type LogItem = {
   message: string
 }
 
-function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
+function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelectTask }: SimpleGraphProps) {
   const { fitView } = useReactFlow()
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
@@ -405,6 +433,38 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const activeSelectedId = selectedNodeId || focusedTaskId
+
+  const relatedSet = useMemo(() => {
+    if (!activeSelectedId) return null
+    const set = new Set<string>([activeSelectedId])
+    for (const e of edges) {
+      const sId = String(e.source)
+      const tId = String(e.target)
+      if (sId === activeSelectedId) set.add(tId)
+      if (tId === activeSelectedId) set.add(sId)
+    }
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+    const activeNode = nodeMap.get(activeSelectedId)
+    if (activeNode?.parentId) set.add(activeNode.parentId)
+    nodes.filter((n) => n.parentId === activeSelectedId).forEach((n) => set.add(n.id))
+    return set
+  }, [activeSelectedId, edges, nodes])
+
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setSelectedNodeId(node.id)
+      onSelectTask?.(node.id)
+    },
+    [onSelectTask]
+  )
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeId(null)
+    onSelectTask?.('')
+  }, [onSelectTask])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
   const [logs, setLogs] = useState<LogItem[]>([])
@@ -1453,21 +1513,43 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
   const nodesWithHandlers = useMemo(() => {
     return orderParentNodesFirst(
-      nodes.map((node) => ({
-        ...node,
-        draggable: true,
-        selectable: true,
-        zIndex: node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
-        extent: [[-100000, -100000], [100000, 100000]],
-        data: node.data.onToggleMode === handleToggleMode
-          ? node.data
-          : {
-              ...node.data,
-              onToggleMode: handleToggleMode,
-            },
-      }))
+      nodes.map((node) => {
+        const isSelected = activeSelectedId === node.id
+        const isRelated = relatedSet ? relatedSet.has(node.id) : true
+        return {
+          ...node,
+          draggable: true,
+          selectable: true,
+          zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
+          extent: [[-100000, -100000], [100000, 100000]],
+          data: {
+            ...node.data,
+            isSelected,
+            isRelated,
+            hasSelectionActive: !!relatedSet,
+            onToggleMode: handleToggleMode,
+          },
+        }
+      })
     )
-  }, [nodes, handleToggleMode])
+  }, [nodes, activeSelectedId, relatedSet, handleToggleMode])
+
+  const styledEdges = useMemo(() => {
+    return edges.map((e) => {
+      const isConnected = activeSelectedId
+        ? String(e.source) === activeSelectedId || String(e.target) === activeSelectedId
+        : true
+      return {
+        ...e,
+        animated: activeSelectedId ? isConnected : true,
+        style: {
+          ...e.style,
+          strokeWidth: isConnected ? 3 : 1.5,
+          opacity: activeSelectedId ? (isConnected ? 1 : 0.12) : 1,
+        },
+      }
+    })
+  }, [edges, activeSelectedId])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -1510,11 +1592,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         <div className="relative flex-1 cursor-move">
           <ReactFlow
             nodes={nodesWithHandlers}
-            edges={edges}
+            edges={styledEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onEdgeClick={onEdgeClick}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}
             onMoveEnd={handleMoveEnd}

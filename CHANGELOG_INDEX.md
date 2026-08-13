@@ -460,6 +460,12 @@
   - **移除重複按鈕**：移除關聯線畫布左下角 `Controls` 控制列中多餘的新增 `ControlButton`，還原乾淨的標準控制列。
   - **提升對比度**：將 `Controls` 工具列邊框與圖示按鈕改為高對比度底色與深色圖示（`text-slate-800` / `bg-white`），擺脫灰白色模糊質感，極致清晰。
 
+### Commit: `7f8a9b0` - Feat: Synchronized selection and connected item highlighting across Menu sidebar and Graph canvas
+- **變更檔案**: [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L674-L684), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L360-L375, #L740-L755), [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L275-L350, #L430-L460, #L1510-L1580)
+- **異動說明**:
+  - **雙向連動高亮**：點擊左側 Menu 事件選單或畫布上的卡片/收納盒時，系統僅保留選中節點及其具備相依關聯（包含連線與父子關係）的相關卡片、收納盒與 Menu 項目維持高亮，其餘無關項目淡化透明度（25%～30%），點擊空白處自動還原。
+
+
 
 
 

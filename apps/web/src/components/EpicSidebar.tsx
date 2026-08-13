@@ -359,6 +359,21 @@ export function EpicSidebar({
     return { epics, lastContainerBoxId, stat, looseCount, childrenOf: kids, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet }
   }, [tasks, graphData, containerBoxTick])
 
+  const relatedTaskIds = useMemo(() => {
+    const activeId = selectedTaskId || selectedEpicId
+    if (!activeId) return null
+    const set = new Set<string>([activeId])
+    const edges = graphData?.edges ?? []
+    for (const e of edges) {
+      if (e.sourceId === activeId) set.add(e.targetId)
+      if (e.targetId === activeId) set.add(e.sourceId)
+    }
+    const activeTask = tasks.find(t => t.id === activeId)
+    if (activeTask?.parentId) set.add(activeTask.parentId)
+    tasks.filter(t => t.parentId === activeId).forEach(t => set.add(t.id))
+    return set
+  }, [selectedTaskId, selectedEpicId, tasks, graphData])
+
   /** 一列任務的問題數：底下的，加上自己（如果它本身就是一張問題） */
   const bugCount = (t: Task) => bugsUnder(t.id) + (t.type === 'BUG' ? 1 : 0)
 
@@ -524,6 +539,7 @@ export function EpicSidebar({
               expand={expand}
               selectedEpicId={selectedEpicId}
               selectedTaskId={selectedTaskId}
+              relatedTaskIds={relatedTaskIds}
               dividerAfterTaskIdSet={dividerAfterTaskIdSet}
               onSelectEpic={onSelectEpic}
               onOpenTask={onOpenTask}
@@ -621,7 +637,7 @@ export function EpicSidebar({
  */
 function TreeNode({
   task, depth, projectId, childrenOf, stat, bugsUnder, overdueIn, inquiriesIn, types,
-  expanded, toggle, expand, selectedEpicId, selectedTaskId, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
+  expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
   depth: number
@@ -640,6 +656,7 @@ function TreeNode({
   expand: (id: string) => void
   selectedEpicId: string | null
   selectedTaskId: string | null
+  relatedTaskIds?: Set<string> | null
   dividerAfterTaskIdSet?: Set<string>
   onSelectEpic: (id: string) => void
   onOpenTask: (id: string) => void
@@ -725,11 +742,19 @@ function TreeNode({
 
   function cancelAdd() { setAddingChild(false); setChildTitle('') }
 
+  const isRelated = relatedTaskIds ? relatedTaskIds.has(task.id) : true
+
   return (
     <div className={isRoot ? 'mb-0.5' : undefined}>
-      <div className={cx('group/row flex items-center rounded-md transition-colors',
-        active ? 'bg-blue-100/80 dark:bg-blue-900/60 ring-1 ring-blue-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800',
-        hasUnread && 'pmflow-flash')}>
+      <div className={cx(
+        'group/row flex items-center rounded-md transition-all duration-150',
+        active
+          ? 'bg-blue-100/90 dark:bg-blue-900/70 ring-1 ring-blue-500/50 opacity-100 font-semibold shadow-xs'
+          : isRelated
+            ? (relatedTaskIds ? 'bg-indigo-50/70 dark:bg-indigo-950/40 ring-1 ring-indigo-400/40 opacity-100' : 'hover:bg-slate-50 dark:hover:bg-slate-800')
+            : 'opacity-30 hover:opacity-75',
+        hasUnread && 'pmflow-flash'
+      )}>
 
         {/* 沒有子項的列一樣佔一格箭頭的寬度，不然同一層的文字會左右參差 */}
         <button
@@ -917,6 +942,7 @@ function TreeNode({
           expand={expand}
           selectedEpicId={selectedEpicId}
           selectedTaskId={selectedTaskId}
+          relatedTaskIds={relatedTaskIds}
           dividerAfterTaskIdSet={dividerAfterTaskIdSet}
           onSelectEpic={onSelectEpic}
           onOpenTask={onOpenTask}

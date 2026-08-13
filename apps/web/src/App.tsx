@@ -674,7 +674,13 @@ function ProjectWorkspace({
               )}
               {view === 'simpleGraph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <SimpleGraphView projectId={projectId} tasks={visible} onOpenTask={handleTaskEdit} />
+                  <SimpleGraphView
+                    projectId={projectId}
+                    tasks={visible}
+                    onOpenTask={handleTaskEdit}
+                    focusedTaskId={focusedTaskId ?? epicId}
+                    onSelectTask={(id) => setFocusedTaskId(id)}
+                  />
                 </Suspense>
               )}
               {/*
