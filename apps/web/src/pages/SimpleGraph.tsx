@@ -245,7 +245,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 className="nodrag rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
                 title="切換模式"
               >
-                📦 卡片
+                📄 卡片
               </button>
               <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}

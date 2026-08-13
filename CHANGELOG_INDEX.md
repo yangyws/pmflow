@@ -302,6 +302,12 @@
   - **按需重繪收納盒**：在 `onNodeDragStop` 加入 `needsExpand` 邊界尺寸比對。僅當移入卡片或盒內移動導致寬度或高度需擴大時才更新收納盒 `style` 與 `measured`；尺寸未擴大時保持收納盒物件參考 100% 靜態不重繪。
   - **巢狀 Menu 連動驗證**：確認收納盒移入收納盒 (Box in Box) 樂觀寫入 `parentId` 機制，實時同步左側 Menu 多層級樹狀縮排。
 
+### Commit: `b7c8d9e` - Style: Update Card node header badge icon from box to document icon for clear visual distinction
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **卡片圖示更新**：將卡片標題左上角按鈕圖示由 `📦 卡片` 更新為 `📄 卡片`，以清晰區分卡片 (Task Card) 與收納盒 (Storage Box)。
+
+
 
 
 
