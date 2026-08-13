@@ -21,10 +21,47 @@ import {
   type NodeProps,
   type Viewport,
   BackgroundVariant,
+  MarkerType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useQueryClient } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
+
+// 依據出發接點（左右出發為紅色實線、上下出發為藍紫色虛線）與標頭箭頭方向產生邊樣式
+function getEdgeStyleAndMarker(sourceHandle?: string | null) {
+  const isLeftRight = sourceHandle?.includes('left') || sourceHandle?.includes('right')
+  const strokeColor = isLeftRight ? '#ef4444' : '#6366f1'
+  return {
+    style: {
+      strokeWidth: 2,
+      stroke: strokeColor,
+      strokeDasharray: isLeftRight ? undefined : '5 5',
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: strokeColor,
+      width: 14,
+      height: 14,
+    },
+  }
+}
+
+// 安全計算畫布大座標 (非遞迴，累加所有父節點 relative offset)
+function getNodeAbsPos(nId: string, allNodes: Node[]): { x: number; y: number } {
+  const nodeMap = new Map(allNodes.map((n) => [n.id, n]))
+  let cur = nodeMap.get(nId)
+  let totalX = 0
+  let totalY = 0
+  const visited = new Set<string>()
+
+  while (cur && !visited.has(cur.id)) {
+    visited.add(cur.id)
+    totalX += cur.position?.x ?? 0
+    totalY += cur.position?.y ?? 0
+    cur = cur.parentId ? nodeMap.get(cur.parentId) : undefined
+  }
+  return { x: totalX, y: totalY }
+}
 
 const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
 
@@ -505,15 +542,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           const realEdges: Edge[] = res.edges.map((e) => {
             const edgeKey = `${e.sourceId}_${e.targetId}`
             const hData = savedMap[edgeKey] || savedMap[e.id]
+            const sHandle = hData?.sourceHandle
+            const tHandle = hData?.targetHandle
+            const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
             return {
               id: e.id,
               source: e.sourceId,
               target: e.targetId,
-              sourceHandle: hData?.sourceHandle,
-              targetHandle: hData?.targetHandle,
+              sourceHandle: sHandle,
+              targetHandle: tHandle,
               type: 'smoothstep',
               animated: true,
-              style: { strokeWidth: 2, stroke: '#6366f1' },
+              style,
+              markerEnd,
             }
           })
           setEdges(realEdges)
@@ -958,6 +999,87 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         return
       }
 
+      // 檢查關聯線是否會穿透其他卡片或收納盒
+      const srcAbs = getNodeAbsPos(connection.source, nodes)
+      const tgtAbs = getNodeAbsPos(connection.target, nodes)
+
+      const isSrcBox = (sourceNode?.data as SimpleGraphNodeData)?.mode === 'box'
+      const isTgtBox = (targetNode?.data as SimpleGraphNodeData)?.mode === 'box'
+      const srcW = Number(sourceNode?.style?.width ?? sourceNode?.width ?? (isSrcBox ? 340 : 256))
+      const srcH = Number(sourceNode?.style?.height ?? sourceNode?.height ?? (isSrcBox ? 280 : 90))
+      const tgtW = Number(targetNode?.style?.width ?? targetNode?.width ?? (isTgtBox ? 340 : 256))
+      const tgtH = Number(targetNode?.style?.height ?? targetNode?.height ?? (isTgtBox ? 280 : 90))
+
+      const sHandleStr = connection.sourceHandle ?? ''
+      const tHandleStr = connection.targetHandle ?? ''
+
+      const getPoint = (abs: { x: number; y: number }, w: number, h: number, handleId: string) => {
+        if (handleId.includes('top')) return { x: abs.x + w / 2, y: abs.y }
+        if (handleId.includes('bottom')) return { x: abs.x + w / 2, y: abs.y + h }
+        if (handleId.includes('left')) return { x: abs.x, y: abs.y + h / 2 }
+        if (handleId.includes('right')) return { x: abs.x + w, y: abs.y + h / 2 }
+        return { x: abs.x + w / 2, y: abs.y + h / 2 }
+      }
+
+      const p1 = getPoint(srcAbs, srcW, srcH, sHandleStr)
+      const p2 = getPoint(tgtAbs, tgtW, tgtH, tHandleStr)
+
+      const midX = (p1.x + p2.x) / 2
+      const midY = (p1.y + p2.y) / 2
+
+      const segments = [
+        { x1: p1.x, y1: p1.y, x2: midX, y2: p1.y },
+        { x1: midX, y1: p1.y, x2: midX, y2: p2.y },
+        { x1: midX, y1: p2.y, x2: p2.x, y2: p2.y },
+        { x1: p1.x, y1: p1.y, x2: p1.x, y2: midY },
+        { x1: p1.x, y1: midY, x2: p2.x, y2: midY },
+        { x1: p2.x, y1: midY, x2: p2.x, y2: p2.y },
+      ]
+
+      for (const n of nodes) {
+        if (n.id === connection.source || n.id === connection.target) continue
+        if (n.id === sourceParent || n.id === targetParent) continue
+
+        const nAbs = getNodeAbsPos(n.id, nodes)
+        const isNBox = (n.data as SimpleGraphNodeData)?.mode === 'box'
+        const nW = Number(n.style?.width ?? n.width ?? (isNBox ? 340 : 256))
+        const nH = Number(n.style?.height ?? n.height ?? (isNBox ? 280 : 90))
+
+        const rLeft = nAbs.x + 8
+        const rTop = nAbs.y + 8
+        const rRight = nAbs.x + nW - 8
+        const rBottom = nAbs.y + nH - 8
+
+        for (const seg of segments) {
+          const isHoriz = Math.abs(seg.y1 - seg.y2) < 0.1
+          const isVert = Math.abs(seg.x1 - seg.x2) < 0.1
+
+          if (isHoriz) {
+            const y = seg.y1
+            const minX = Math.min(seg.x1, seg.x2)
+            const maxX = Math.max(seg.x1, seg.x2)
+            if (y > rTop && y < rBottom && maxX > rLeft && minX < rRight) {
+              const cRef = (n.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
+              const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+              const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+              setAlertMsg(`【${srcRef}】與【${tgtRef}】之間的關聯線會穿透【${cRef}】，無法建立關聯！請調整卡片位置。`)
+              return
+            }
+          } else if (isVert) {
+            const x = seg.x1
+            const minY = Math.min(seg.y1, seg.y2)
+            const maxY = Math.max(seg.y1, seg.y2)
+            if (x > rLeft && x < rRight && maxY > rTop && minY < rBottom) {
+              const cRef = (n.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
+              const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+              const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+              setAlertMsg(`【${srcRef}】與【${tgtRef}】之間的關聯線會穿透【${cRef}】，無法建立關聯！請調整卡片位置。`)
+              return
+            }
+          }
+        }
+      }
+
       if (connection.source && connection.target) {
         const sHandle = connection.sourceHandle ?? undefined
         const tHandle = connection.targetHandle ?? undefined
@@ -986,15 +1108,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
                 setEdges(res.edges.map((e) => {
                   const edgeKey = `${e.sourceId}_${e.targetId}`
                   const hData = savedMap[edgeKey] || savedMap[e.id]
+                  const sH = hData?.sourceHandle
+                  const tH = hData?.targetHandle
+                  const { style, markerEnd } = getEdgeStyleAndMarker(sH)
                   return {
                     id: e.id,
                     source: e.sourceId,
                     target: e.targetId,
-                    sourceHandle: hData?.sourceHandle,
-                    targetHandle: hData?.targetHandle,
+                    sourceHandle: sH,
+                    targetHandle: tH,
                     type: 'smoothstep',
                     animated: true,
-                    style: { strokeWidth: 2, stroke: '#6366f1' },
+                    style,
+                    markerEnd,
                   }
                 }))
               }
@@ -1003,12 +1129,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           .catch((err) => console.error('Failed to add link in DB:', err))
       }
 
+      const { style, markerEnd } = getEdgeStyleAndMarker(connection.sourceHandle)
       setEdges((eds) =>
         addEdge(
           {
             ...connection,
             type: 'smoothstep',
             animated: true,
+            style,
+            markerEnd,
           },
           eds
         )

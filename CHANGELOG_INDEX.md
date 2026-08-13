@@ -440,6 +440,14 @@
 - **異動說明**:
   - **跨接點重複連線封鎖**：當節點 A 與節點 B 之間已經存在任何關聯線時，嚴格禁止透過任何第二個接點（如 Top/Bottom/Left/Right）重複拉線連接，並即時彈出警示提示框：「【MRG-X】與【MRG-Y】之間已存在關聯線，任何第二個接點皆不可重複相連！」。
 
+### Commit: `4c5d6e7` - Feat: Add handle-directional line styling (Red/Dashed), arrowhead markers, and obstacle penetration check
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L30-L65, #L515-L540, #L980-L1060)
+- **異動說明**:
+  - **方向專屬線條樣式**：從左/右接點 (`left-out` / `right-out`) 出發的關聯線採用**紅色實線** (`#ef4444`)；從上/下接點 (`top-out` / `bottom-out`) 出發的關聯線採用**虛線** (`strokeDasharray: '5 5'`)。
+  - **指向目標箭頭**：關聯線末端一律加上 `MarkerType.ArrowClosed` 閉合箭頭，明確指明相依性方向。
+  - **防穿透撞擊偵測**：拉線時自動計算路徑，若關聯線會穿透無關的中間卡片或收納盒，即時封鎖建立並彈出警示框：「【MRG-X】與【MRG-Y】之間的關聯線會穿透【MRG-Z】，無法建立關聯！請調整卡片位置。」。
+
+
 
 
 
