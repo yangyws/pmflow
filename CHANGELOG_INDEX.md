@@ -411,6 +411,13 @@
 - **異動說明**:
   - **選單圖示對齊**：將左側 Menu 側欄項目的卡片圖示由 `📇` 統一替換為與關聯圖全一致的 `📄` (卡片圖示)，使選單與畫布的視覺語言 100% 保持一致。
 
+### Commit: `9d0e1f2` - Style: Increase top padding & slot offset for inside-box cards and sub-boxes
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L125-L150, #L635-L730, #L1100-L1125)
+- **異動說明**:
+  - **盒內舒適間距**：將收納盒內部子卡片與子收納盒的起始縱向座標 (`y`) 由 `50` 統一推移調整至 `70` (槽位高度基數調整為 `110`)。
+  - **避開進度條**：使第一排子卡片與標頭內的 `NodeProgressBar` 進度條之間保留 18px 舒適呼吸邊距，徹底摧毀遮擋問題。
+
+
 
 
 

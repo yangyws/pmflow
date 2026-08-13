@@ -120,14 +120,14 @@ function computeBoxDimensions(
 
   const kids = childNodes.filter((cn) => cn.parentId === boxId)
   let maxRight = 340
-  let maxBottom = 260
+  let maxBottom = 280
 
   kids.forEach((k) => {
     const isKBox = (k.data as SimpleGraphNodeData)?.mode === 'box'
     const kX = k.position?.x ?? 24
-    const kY = k.position?.y ?? 50
+    const kY = k.position?.y ?? 70
     let kW = Number(k.style?.width ?? k.width ?? (k as any).measured?.width ?? (isKBox ? 340 : 256))
-    let kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 260 : 72))
+    let kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 280 : 90))
 
     if (isKBox) {
       const subDims = computeBoxDimensions(k.id, childNodes, undefined, undefined, new Set(visited))
@@ -142,7 +142,7 @@ function computeBoxDimensions(
   })
 
   const reqW = Math.max(340, Math.ceil(maxRight))
-  const reqH = Math.max(260, Math.ceil(maxBottom))
+  const reqH = Math.max(280, Math.ceil(maxBottom))
 
   return {
     minWidth: reqW,
@@ -231,7 +231,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
+        <div className="relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
           <div>
             <div className="h-1 rounded-t-lg shrink-0 bg-indigo-500 dark:bg-indigo-600" />
             <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start">
@@ -264,7 +264,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           <NodeResizeControl
             position="bottom-right"
             minWidth={data.minWidth ?? 340}
-            minHeight={data.minHeight ?? 260}
+            minHeight={data.minHeight ?? 280}
             className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
           >
             <div
@@ -635,28 +635,28 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           rawBoxPos.x >= 10 &&
           rawBoxPos.y >= 35
         const boxPos = parentBoxId
-          ? (isValidChildBoxPos ? rawBoxPos : { x: 312, y: 50 })
+          ? (isValidChildBoxPos ? rawBoxPos : { x: 312, y: 70 })
           : (rawBoxPos ?? { x: rootX, y: rootY })
 
         // 預估目前盒內所有子卡片與子收納盒
         const childNodesList: Node[] = kids.map((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 50 + cRow * 100 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 70 + cRow * 110 }
           const rawPos = draggedMap[k.id]
           const isValidChildPos =
             rawPos &&
             typeof rawPos.x === 'number' &&
             typeof rawPos.y === 'number' &&
             rawPos.x >= 10 &&
-            rawPos.y >= 35
+            rawPos.y >= 55
           const kPos = isValidChildPos ? rawPos : defaultSlotPos
 
           const kDefaultBox = parentIdSet.has(k.id)
           const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
           const isKBox = kMode === 'box'
           const kW = isKBox ? Math.max(340, resizedMap[k.id]?.width ?? 340) : 256
-          const kH = isKBox ? Math.max(260, resizedMap[k.id]?.height ?? 260) : 72
+          const kH = isKBox ? Math.max(280, resizedMap[k.id]?.height ?? 280) : 90
 
           return {
             id: k.id,
@@ -695,7 +695,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         kids.forEach((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 50 + cRow * 100 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 70 + cRow * 110 }
           const kDefaultBox = parentIdSet.has(k.id)
           const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
 
@@ -708,7 +708,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               typeof rawPos.y === 'number' &&
               rawPos.x >= 10 &&
               rawPos.x <= dims.width - 60 &&
-              rawPos.y >= 35 &&
+              rawPos.y >= 55 &&
               rawPos.y <= dims.height - 30
             const kPos = isValidChildPos ? rawPos : defaultSlotPos
             newNodes.push({
@@ -724,7 +724,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           }
         })
       } else {
-        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 70 })
         newNodes.push({
           id: t.id,
           type: 'simpleNode',
@@ -1098,17 +1098,17 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           // 移入收納盒：進入巢狀結構
           const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
           const occupiedSlots = new Set(
-            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 50) / 100)}`)
+            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 70) / 110)}`)
           )
 
-          let targetSlotPos = { x: 24, y: 50 }
+          let targetSlotPos = { x: 24, y: 70 }
           if (isBoxNode) {
             let maxRightX = 0
             targetKids.forEach((k) => {
               const rightX = (k.position?.x ?? 24) + Number(k.width ?? (k as any).measured?.width ?? 256)
               if (rightX > maxRightX) maxRightX = rightX
             })
-            targetSlotPos = { x: Math.max(312, maxRightX + 24), y: 50 }
+            targetSlotPos = { x: Math.max(312, maxRightX + 24), y: 70 }
           } else {
             let slotIdx = 0
             let tCol = 0
@@ -1119,7 +1119,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               if (!occupiedSlots.has(`${tCol},${tRow}`)) break
               slotIdx++
             }
-            targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
+            targetSlotPos = { x: 24 + tCol * 280, y: 70 + tRow * 110 }
           }
           const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
