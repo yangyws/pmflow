@@ -330,6 +330,13 @@
   - **解鎖收納盒巢狀偵測**：移除 `onNodeDragStop` 開頭對 `isBoxNode` 的提前 return 中斷，使收納盒與卡片一樣皆可完整通過目標盒碰撞與 `move_out` / `move_in` 巢狀判斷。
   - **Log 與巢狀完美對齊**：收納盒移出父收納盒時成功觸發 `move_out` 並定格大座標，Log 視窗精準輸出 `[移出] 收納盒 (MRG-BOX) 移出收納盒，離開巢狀結構`。
 
+### Commit: `a2b3c4d` - Fix: Auto-clean old canvas coordinates on move-in and position nested storage box on the right side of card columns
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **舊畫布大座標自動清洗**：收納盒移入父收納盒當下與 `processTask` 載入時自動將舊的大座標 (`x > 1200`) 覆蓋清洗為相對槽位座標，徹底解決跑出超大偏移量與卡片重疊之問題。
+  - **卡片區右側精準分派**：自動計算父收納盒內卡片之最大 `rightX` 邊界，將子收納盒放置於卡片區右側全新獨立欄 (`x: Math.max(312, maxRightX + 24), y: 50`)，使父收納盒自動橫向擴展寬度。
+
+
 
 
 

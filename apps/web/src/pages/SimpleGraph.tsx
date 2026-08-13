@@ -589,7 +589,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       const kids = childrenMap.get(t.id) || []
 
       if (isBox) {
-        const boxPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+        const rawBoxPos = draggedMap[t.id]
+        const isValidChildBoxPos =
+          parentBoxId &&
+          rawBoxPos &&
+          typeof rawBoxPos.x === 'number' &&
+          typeof rawBoxPos.y === 'number' &&
+          rawBoxPos.x >= 10 &&
+          rawBoxPos.x <= 1200 &&
+          rawBoxPos.y >= 35 &&
+          rawBoxPos.y <= 600
+        const boxPos = parentBoxId
+          ? (isValidChildBoxPos ? rawBoxPos : { x: 312, y: 50 })
+          : (rawBoxPos ?? { x: rootX, y: rootY })
 
         // 預估目前盒內所有子卡片
         const childNodesList: Node[] = kids.map((k, idx) => {
@@ -1033,18 +1045,26 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 50) / 100)}`)
           )
 
-          let slotIdx = 0
-          let tCol = 0
-          let tRow = 0
-          while (slotIdx < 100) {
-            tCol = Math.floor(slotIdx / 5)
-            tRow = slotIdx % 5
-            if (!occupiedSlots.has(`${tCol},${tRow}`)) break
-            slotIdx++
+          let targetSlotPos = { x: 24, y: 50 }
+          if (isBoxNode) {
+            let maxRightX = 0
+            targetKids.forEach((k) => {
+              const rightX = (k.position?.x ?? 24) + Number(k.width ?? (k as any).measured?.width ?? 256)
+              if (rightX > maxRightX) maxRightX = rightX
+            })
+            targetSlotPos = { x: Math.max(312, maxRightX + 24), y: 50 }
+          } else {
+            let slotIdx = 0
+            let tCol = 0
+            let tRow = 0
+            while (slotIdx < 100) {
+              tCol = Math.floor(slotIdx / 5)
+              tRow = slotIdx % 5
+              if (!occupiedSlots.has(`${tCol},${tRow}`)) break
+              slotIdx++
+            }
+            targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
           }
-          const targetSlotPos = isBoxNode
-            ? { x: 24 + tCol * 360, y: 50 + tRow * 280 }
-            : { x: 24 + tCol * 280, y: 50 + tRow * 100 }
           const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
           const realAbsX = Math.round(targetBoxAbsPos.x + targetSlotPos.x)
