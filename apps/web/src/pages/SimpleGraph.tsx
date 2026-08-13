@@ -521,6 +521,25 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     let rootIndex = 0
     const processedTaskIds = new Set<string>()
 
+    // 全自動雙向殘留座標清洗器 (Auto-Purge Residual Coordinates)
+    tasks.forEach((t) => {
+      if (t.parentId) {
+        const saved = dragged[t.id]
+        if (saved && (saved.x > 500 || saved.y > 450)) {
+          setDragged((prev) => {
+            const next = { ...prev }
+            delete next[t.id]
+            try {
+              localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(next))
+            } catch {
+              // ignore
+            }
+            return next
+          })
+        }
+      }
+    })
+
     const prevNodesMap = new Map(nodesRef.current.map((n) => [n.id, n]))
 
     const processTask = (t: Task, parentBoxId?: string, rootX = 50, rootY = 80) => {

@@ -247,6 +247,12 @@
   - **畫布誤觸拖曳修復**：`<ReactFlow>` 顯式賦予 `nodesDraggable={true}`、`nodesConnectable={true}` 與 `elementsSelectable={true}`。
   - **DOM zIndex 權重聲明**：`nodesWithHandlers` 為所有節點顯式傳遞 `draggable: true`, `selectable: true` 並依據角色設定 `zIndex` (子卡片 `10` > 獨立卡片 `5` > 收納盒 `1`)，確保拖曳卡片時 100% 拖移動態卡片，絕不誤觸畫布平移。
 
+### Commit: `7d8e9f0` - Fix: Implement Auto-Purge for residual canvas coordinates of child cards in localStorage and memory state
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **全自動座標淨化器 (Auto-Purge)**：在 `processTask` 與 `useEffect([tasks])` 中，當 `tasks` 載入時自動校驗後端 `parentId`，若子卡片在 `dragged` 快取中殘留舊畫布大座標 (x > 500 / y > 450)，全自動進行 delete 剔除與 `localStorage` 淨化，防止舊殘留座標造成卡片位移誤彈。
+
+
 
 
 
