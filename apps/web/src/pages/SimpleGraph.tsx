@@ -468,7 +468,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
   const [logs, setLogs] = useState<LogItem[]>([])
-  const [showLogPanel, setShowLogPanel] = useState<boolean>(true)
+  const [showLogPanel, setShowLogPanel] = useState<boolean>(false)
+  const [showHelpTooltip, setShowHelpTooltip] = useState<boolean>(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
 
   const addLog = useCallback((type: LogItem['type'], message: string) => {
@@ -1553,41 +1554,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
-      <div className="z-10 flex items-center justify-between border-b border-slate-200 bg-white/80 px-3 sm:px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 flex-wrap sm:flex-nowrap gap-1 sm:gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
-            靶心關聯表 (自動記憶畫面焦點與縮放)
-          </span>
-          <span className="hidden sm:inline-block text-xs text-slate-400">
-            平移畫面或縮放檢視時，系統將自動記憶您最後的視覺焦點
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => fitView({ padding: 0.2, duration: 300 })}
-            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
-            title="縮放與平移畫布以顯示全部節點"
-          >
-            <span>🎯</span>
-            <span>顯示全部</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowLogPanel((prev) => !prev)}
-            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer shadow-xs flex items-center gap-1.5 border ${
-              showLogPanel
-                ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
-            }`}
-            title="顯示/隱藏即時 Log 視窗"
-          >
-            <span>📋</span>
-            <span>即時 Log ({logs.length})</span>
-          </button>
-        </div>
-      </div>
-
       <div className="relative flex-1 flex flex-row overflow-hidden">
         <div className="relative flex-1 cursor-move">
           <ReactFlow
@@ -1624,8 +1590,63 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               showFitView={true}
               showInteractive={true}
               className="!bg-white dark:!bg-slate-800 !border !border-slate-300 dark:!border-slate-600 !shadow-md !rounded-lg overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-800 dark:[&_button]:!text-slate-100 [&_button]:!border-b [&_button]:!border-slate-200 dark:[&_button]:!border-slate-700 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700 [&_button_svg]:!fill-slate-800 dark:[&_button_svg]:!fill-slate-100"
-            />
+            >
+              <ControlButton
+                onClick={() => setShowHelpTooltip((prev) => !prev)}
+                onMouseEnter={() => setShowHelpTooltip(true)}
+                onMouseLeave={() => setShowHelpTooltip(false)}
+                title="圖示說明 (警示圖示)"
+                className="!text-amber-500 font-bold"
+              >
+                ℹ️
+              </ControlButton>
+            </Controls>
           </ReactFlow>
+
+          {/* 左下角工具列說明懸浮視窗 */}
+          {showHelpTooltip && (
+            <div
+              onMouseEnter={() => setShowHelpTooltip(true)}
+              onMouseLeave={() => setShowHelpTooltip(false)}
+              className="absolute left-14 bottom-3 z-30 w-72 rounded-xl border border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-auto"
+            >
+              <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 mb-2">
+                <span className="text-base">⚑</span>
+                <span>警示與線條圖示說明</span>
+              </div>
+              <div className="space-y-1.5 leading-relaxed text-slate-600 dark:text-slate-300">
+                <p>
+                  <span className="font-semibold text-fuchsia-600 dark:text-fuchsia-400">⚑ 問題標記：</span>
+                  當事件/任務包含尚未解決的「問題說明」時，會在 MRG 與標題右側顯示粉紫色的 ⚑ 問題警示徽章。
+                </p>
+                <p>
+                  <span className="font-semibold text-red-500">🔴 紅色實線：</span>
+                  由卡片或收納盒的左右接點出發的關聯線。
+                </p>
+                <p>
+                  <span className="font-semibold text-indigo-500">🔵 虛線：</span>
+                  由卡片或收納盒的上下接點出發的關聯線。
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 右下角 即時 Log 開關按鈕 */}
+          <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2 pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setShowLogPanel((prev) => !prev)}
+              className={cx(
+                'w-9 h-9 rounded-lg flex items-center justify-center text-base transition-all duration-150 cursor-pointer shadow-lg border select-none',
+                showLogPanel
+                  ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+              )}
+              title="即時 Log 視窗開關"
+            >
+              📋
+            </button>
+          </div>
         </div>
 
         {showLogPanel && (

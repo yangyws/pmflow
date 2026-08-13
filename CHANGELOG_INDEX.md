@@ -465,6 +465,14 @@
 - **異動說明**:
   - **雙向連動高亮**：點擊左側 Menu 事件選單或畫布上的卡片/收納盒時，系統僅保留選中節點及其具備相依關聯（包含連線與父子關係）的相關卡片、收納盒與 Menu 項目維持高亮，其餘無關項目淡化透明度（25%～30%），點擊空白處自動還原。
 
+### Commit: `8a9b0c1` - Style & Refactor: Remove graph top header bar, move Log toggle to bottom-right, and add info tooltip button to Controls toolbar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L1555-L1680)
+- **異動說明**:
+  - **移除頂部標題列與顯示全部**：完全移除畫布頂部「靶心關聯表...」標題列與右上角「顯示全部」按鈕，釋放全幅畫布視覺空間。
+  - **Log 按鈕移至右下角**：將即時 Log 視窗開關改為右下角浮動圖示按鈕 (`📋`)。
+  - **左下角說明懸浮視窗**：在左下角 `Controls` 工具列第一位新增 `ℹ️` 說明按鈕，滑鼠懸浮或點擊時彈出懸浮視窗，詳細說明 `⚑` 問題警示標記、🔴 紅色實線與 🔵 虛線之意義。
+
+
 
 
 
