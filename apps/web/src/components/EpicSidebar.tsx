@@ -373,11 +373,15 @@ export function EpicSidebar({
       }
     })
 
-    const collectSubtree = (id: string) => {
+    const collectSubtreeIfBox = (id: string) => {
       if (result.has(id)) return
       result.add(id)
-      const kids = childrenMap.get(id) || []
-      kids.forEach((kId) => collectSubtree(kId))
+      const t = taskMap.get(id)
+      const isBox = t?.type === 'EPIC' || childrenMap.has(id)
+      if (isBox) {
+        const kids = childrenMap.get(id) || []
+        kids.forEach((kId) => collectSubtreeIfBox(kId))
+      }
     }
 
     const collectAncestors = (id: string) => {
@@ -390,7 +394,7 @@ export function EpicSidebar({
       }
     }
 
-    collectSubtree(activeId)
+    collectSubtreeIfBox(activeId)
     collectAncestors(activeId)
 
     const edges = graphData?.edges ?? []
@@ -401,12 +405,12 @@ export function EpicSidebar({
         const sId = String(e.sourceId)
         const tId = String(e.targetId)
         if (result.has(sId) && !result.has(tId)) {
-          collectSubtree(tId)
+          collectSubtreeIfBox(tId)
           collectAncestors(tId)
           changed = true
         }
         if (result.has(tId) && !result.has(sId)) {
-          collectSubtree(sId)
+          collectSubtreeIfBox(sId)
           collectAncestors(sId)
           changed = true
         }

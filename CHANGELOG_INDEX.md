@@ -545,6 +545,12 @@
 - **異動說明**:
   - **移入收納盒關聯線禁止與彈窗提示**：當卡片或收納盒（及其子節點）尚有任何活性關聯連線時，禁止將其移入收納盒內部，並彈出警告視窗提示 `尚存在關聯線，無法移入收納盒。請先刪除關聯線後再移入！`，自動還原移動前位置。
 
+### Commit: `a1b2c3d` - Style: Refine selection highlighting to strictly include connected nodes and box structure only
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L600-L645), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L370-L415)
+- **異動說明**:
+  - **高亮規則嚴格化**：更新 `relatedSet` 與 `relatedTaskIds` 遍歷 logic。點選卡片或收納盒時，僅高亮直接/間接有依賴連線對接的節點、以及自身與連線節點的直屬巢狀收納盒（`collectSubtreeIfBox` & `collectAncestors`），同盒內部無關聯線的獨立卡片不再被無故高亮。
+
+
 
 
 

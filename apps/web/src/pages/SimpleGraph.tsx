@@ -603,11 +603,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       }
     })
 
-    const collectSubtree = (id: string) => {
+    const collectSubtreeIfBox = (id: string) => {
       if (result.has(id)) return
       result.add(id)
-      const kids = childrenMap.get(id) || []
-      kids.forEach((kId) => collectSubtree(kId))
+      const n = nodeMap.get(id)
+      const isBox = (n?.data as SimpleGraphNodeData)?.mode === 'box'
+      if (isBox) {
+        const kids = childrenMap.get(id) || []
+        kids.forEach((kId) => collectSubtreeIfBox(kId))
+      }
     }
 
     const collectAncestors = (id: string) => {
@@ -620,9 +624,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       }
     }
 
-    collectSubtree(activeSelectedId)
+    // 1. 收集點選節點本身、其祖先收納盒，若為收納盒亦收集其內部所有子節點
+    collectSubtreeIfBox(activeSelectedId)
     collectAncestors(activeSelectedId)
 
+    // 2. 沿依賴連線 (edges) 遞迴搜尋關聯網絡
     let changed = true
     while (changed) {
       changed = false
@@ -630,12 +636,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
         const sId = String(e.source)
         const tId = String(e.target)
         if (result.has(sId) && !result.has(tId)) {
-          collectSubtree(tId)
+          collectSubtreeIfBox(tId)
           collectAncestors(tId)
           changed = true
         }
         if (result.has(tId) && !result.has(sId)) {
-          collectSubtree(sId)
+          collectSubtreeIfBox(sId)
           collectAncestors(sId)
           changed = true
         }
