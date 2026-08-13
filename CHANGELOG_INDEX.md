@@ -296,6 +296,13 @@
   - **嚴格封鎖二次座標重算**：將 `dragged` 與 `resized` 改為 useRef 參考 (`draggedRef` / `resizedRef`)，並將 `useEffect` 監聽陣列縮減為 `[tasks, toggledModes]`。
   - **單一動作定格**：畫布上拖曳與縮放由 React Flow 與 `onNodeDragStop` 於單一動作放下時一次性定格；`useEffect` 僅在切換頁面或左側 Menu 異動時才會觸發全圖重算，徹底禁止每秒讀取座標重繪與搶座標現象。
 
+### Commit: `a6b7c8d` - Perf & Feat: Add on-demand box expansion condition and verify box-in-box Left Menu synchronization
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **按需重繪收納盒**：在 `onNodeDragStop` 加入 `needsExpand` 邊界尺寸比對。僅當移入卡片或盒內移動導致寬度或高度需擴大時才更新收納盒 `style` 與 `measured`；尺寸未擴大時保持收納盒物件參考 100% 靜態不重繪。
+  - **巢狀 Menu 連動驗證**：確認收納盒移入收納盒 (Box in Box) 樂觀寫入 `parentId` 機制，實時同步左側 Menu 多層級樹狀縮排。
+
+
 
 
 

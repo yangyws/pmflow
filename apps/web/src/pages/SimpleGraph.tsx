@@ -1090,17 +1090,22 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             }
           }
           if (n.id === targetBox!.id) {
-            return {
-              ...n,
-              style: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
-              width: targetBoxNewDims.width,
-              height: targetBoxNewDims.height,
-              measured: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
-              data: {
-                ...n.data,
-                minWidth: targetBoxNewDims.minWidth,
-                minHeight: targetBoxNewDims.minHeight,
-              },
+            const oldW = Number(n.style?.width ?? n.width ?? 340)
+            const oldH = Number(n.style?.height ?? n.height ?? 260)
+            const needsExpand = targetBoxNewDims.width > oldW || targetBoxNewDims.height > oldH
+            if (needsExpand) {
+              return {
+                ...n,
+                style: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
+                width: targetBoxNewDims.width,
+                height: targetBoxNewDims.height,
+                measured: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
+                data: {
+                  ...n.data,
+                  minWidth: targetBoxNewDims.minWidth,
+                  minHeight: targetBoxNewDims.minHeight,
+                },
+              }
             }
           }
           return n
