@@ -18,7 +18,7 @@ import inquiryRoutes from './routes/inquiries.js'
 import notificationRoutes from './routes/notifications.js'
 import leaveRoutes from './routes/leaves.js'
 import dashboardRoutes from './routes/dashboard.js'
-import { seedDemo, seedProblemsIfEmpty } from './seed.js'
+import { seedDemo, seedProblemsIfEmpty, seedBugsIfEmpty } from './seed.js'
 
 const app = Fastify({
   logger: env.isProd
@@ -63,6 +63,7 @@ if (env.seedDemo) {
   if (created) app.log.info('已建立示範資料：demo@pmflow.local / demo1234')
 }
 await seedProblemsIfEmpty().catch(() => {})
+await seedBugsIfEmpty().catch(() => {})
 
 // 每日逾期掃描。用簡單的 setInterval 就好 ——
 // 單機自架不需要為了一天跑一次的工作引入排程框架。

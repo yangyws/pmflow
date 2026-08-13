@@ -137,6 +137,8 @@ export async function seedDemo(): Promise<boolean> {
         { n: 20, title: '資安架構複審', type: 'TASK',      st: 'doing', s: 5,  d: 20, parent: 19,   prog: 50, c: -28, mine: true, problem: '資安規範更新，需重新審查證照' },
         { n: 21, title: '防火牆規則套用', type: 'TASK',    st: 'todo',  s: 15, d: 25, parent: 19,   prog: 0, c: -28 },
         { n: 22, title: '資安合規稽核', type: 'MILESTONE', st: 'todo',  s: 34, d: 34, parent: 19,   prog: 0, c: -28 },
+        { n: 23, title: 'UPS 備援電池自我檢測異常', type: 'BUG', st: 'doing', s: -5, d: 5, parent: 19, prog: 30, c: -5, mine: true, problem: '電池電壓低於標準值，需辦理保固更換' },
+        { n: 24, title: '光纖模組訊號衰減過大', type: 'BUG', st: 'todo', s: 1, d: 10, parent: 19, prog: 0, c: -2, problem: '接頭清潔後改善有限，待原廠換修' },
       ]
 
       const ids = new Map<number, string>()
@@ -270,4 +272,21 @@ export async function seedProblemsIfEmpty(): Promise<number> {
     if ((result as any).count > 0) count += (result as any).count
   }
   return count
+}
+
+export async function seedBugsIfEmpty(): Promise<number> {
+  const [{ count }] = await sql<{ count: string }[]>`SELECT count(*) FROM task WHERE type = 'BUG'`
+  if (Number(count) === 0) {
+    const tasks = await sql<{ id: string; number: number }[]>`SELECT id, number FROM task WHERE type = 'TASK' ORDER BY number ASC LIMIT 3`
+    const bugProblems = [
+      'UPS 備援電池自我檢測異常',
+      '光纖模組訊號衰減過大問題',
+      '冷氣空調冰水主機控制面板故障',
+    ]
+    for (let i = 0; i < tasks.length; i++) {
+      await sql`UPDATE task SET type = 'BUG', problem = ${bugProblems[i]} WHERE id = ${tasks[i].id}`
+    }
+    return tasks.length
+  }
+  return 0
 }

@@ -605,6 +605,11 @@
   1. **行事曆懸停 Popover 日期截斷修正**：為 `Calendar.tsx` 日期格浮動視窗頂部標題加上 `shrink-0 whitespace-nowrap` 與寬度調整，防止日期文字遭截斷。
   2. **問題測試案例補充**：於 `seed.ts` 擴充測試用任務問題說明資料（包含零組件缺貨、資料庫相容性等），並提供 `seedProblemsIfEmpty` 自動為既有環境回填問題測試資料。
 
+### Commit: `d4e5f6a` - Feat: Add BUG type test case tasks to seed data and seedBugsIfEmpty migration
+- **變更檔案**: [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts#L137-L142, #L270-L288), [`index.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/index.ts#L20-L66)
+- **異動說明**:
+  - **問題類型 (BUG) 測試任務新增**：於 `seed.ts` 中新增「UPS 備援電池自我檢測異常」與「光纖模組訊號衰減過大」等 `type: 'BUG'` 問題類型任務案例，並撰寫 `seedBugsIfEmpty` 自動為現有資料庫回填問題類型測試任務。
+
 
 
 
