@@ -772,7 +772,7 @@ function TreeNode({
                   const saved = localStorage.getItem('pmflow_graph_container_boxes')
                   return saved ? new Set(JSON.parse(saved)).has(task.id) : false
                 } catch { return false }
-              })()) ? '📦' : '📇'}
+              })()) ? '📦' : '📄'}
             </span>
             <span className={cx('min-w-0 flex-1 truncate',
               isRoot ? 'text-sm' : 'text-[13px]',

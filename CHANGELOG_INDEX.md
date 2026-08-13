@@ -406,6 +406,12 @@
   - **收納盒進度條**：在收納盒頂部標頭列（Header）內加入 `NodeProgressBar` 進度條組件，並動態綁定 `t.progress`。
   - **完全不遮擋**：進度條嵌入標頭內部，盒內卡片與子收納盒擺放或移動時完全不會覆蓋收納盒的進度狀態。
 
+### Commit: `8c9d0e1` - Style: Align EpicSidebar menu card icon with SimpleGraph card icon (📄)
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L775)
+- **異動說明**:
+  - **選單圖示對齊**：將左側 Menu 側欄項目的卡片圖示由 `📇` 統一替換為與關聯圖全一致的 `📄` (卡片圖示)，使選單與畫布的視覺語言 100% 保持一致。
+
+
 
 
 
