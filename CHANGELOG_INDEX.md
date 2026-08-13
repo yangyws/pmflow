@@ -571,10 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-### Commit: `c0d1e2f` - Fix: Exclude top/bottom handle connections from causing downstream blockage in SimpleGraph
-- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L645-L660)
+### Commit: `d1e2f3a` - Feat: Synchronize blockedBy (⛔卡住) badge to Sidebar menu, List view, and Kanban Board view
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L225-L255, #L925-L932), [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L265-L295, #L370-L380), [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx#L50-L90, #L290-L305)
 - **異動說明**:
-  - **上下接點排除卡住傳播**：於 `relatedSet` 計算中同樣排除 `top-in`/`top-out`/`bottom-in`/`bottom-out` 之上下連線，確保上下接點僅作為純視覺結構標記，絕不會造成下游卡住或高亮傳播。
+  - **⛔卡住徽章全視圖同步**：將依賴關係產生的「⛔卡住」警示徽章同步渲染至左側 Menu 側欄 (`EpicSidebar.tsx`)、清單檢視 (`List.tsx`) 以及看板檢視 (`Board.tsx`)，使所有主要工作檢視皆能即時查看到被上游未完成任務卡住的警示。
+
 
 
 

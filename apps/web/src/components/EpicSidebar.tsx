@@ -224,6 +224,40 @@ export function EpicSidebar({
     enabled: !!project?.id,
   })
 
+  const blockedByMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    const edges = graphData?.edges ?? []
+    if (!tasks || !tasks.length || !edges || !edges.length) return map
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const isDone = (t?: Task) => {
+      if (!t) return false
+      return t.progress >= 100 || t.statusKey === 'DONE'
+    }
+
+    for (const e of edges) {
+      const sHandle = String((e as any).sourceHandle || '')
+      const tHandle = String((e as any).targetHandle || '')
+      const isTopOrBottom = sHandle.includes('top') || sHandle.includes('bottom') || tHandle.includes('top') || tHandle.includes('bottom')
+      if (isTopOrBottom) continue
+
+      const sId = String(e.sourceId || (e as any).source)
+      const tId = String(e.targetId || (e as any).target)
+      const srcTask = taskMap.get(sId)
+      const dstTask = taskMap.get(tId)
+
+      if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
+        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+        const list = map.get(dstTask.id) || []
+        if (!list.includes(srcRef)) {
+          list.push(srcRef)
+        }
+        map.set(dstTask.id, list)
+      }
+    }
+    return map
+  }, [tasks, graphData])
+
   const { epics, lastContainerBoxId, stat, looseCount, childrenOf, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet } = useMemo(() => {
     const edges = graphData?.edges ?? []
     const ids = new Set(tasks.map(t => t.id))
@@ -596,6 +630,7 @@ export function EpicSidebar({
               childrenOf={childrenOf}
               stat={stat.get(epic.id)}
               statMap={stat}
+              blockedByMap={blockedByMap}
               bugsUnder={bugsUnder}
               overdueIn={overdueIn}
               inquiriesIn={inquiriesIn}
@@ -702,7 +737,7 @@ export function EpicSidebar({
  * 底下每一層都是同一種緊湊的樣子，再深也不會多出新花樣。
  */
 function TreeNode({
-  task, depth, projectId, childrenOf, stat, statMap, bugsUnder, overdueIn, inquiriesIn, types,
+  task, depth, projectId, childrenOf, stat, statMap, blockedByMap, bugsUnder, overdueIn, inquiriesIn, types,
   expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
@@ -713,6 +748,7 @@ function TreeNode({
   childrenOf: Map<string, Task[]>
   stat?: { progress: number; done: number; total: number; hasChildren: boolean }
   statMap?: Map<string, { progress: number; done: number; total: number; hasChildren: boolean }>
+  blockedByMap?: Map<string, string[]>
   bugsUnder: (id: string) => number
   overdueIn: (id: string) => number
   inquiriesIn: (id: string) => number
@@ -890,6 +926,13 @@ function TreeNode({
                                dark:text-emerald-400">✓</span>
             )}
 
+            {blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
+              <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
+                    className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
+                ⛔卡住
+              </span>
+            )}
+
             {/* 錯誤排在逾期前面：一個是「這裡有多少事情壞了」，
                 一個是「有多少事情在等外面回」，兩件事分開標 */}
             {bugs > 0 && (
@@ -1001,6 +1044,7 @@ function TreeNode({
           childrenOf={childrenOf}
           stat={statMap?.get(kid.id)}
           statMap={statMap}
+          blockedByMap={blockedByMap}
           bugsUnder={bugsUnder}
           overdueIn={overdueIn}
           inquiriesIn={inquiriesIn}

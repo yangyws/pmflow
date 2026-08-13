@@ -46,6 +46,50 @@ export default function Board({
   const { data: project } = useQuery({
     queryKey: ['project', projectId], queryFn: () => Api.project(projectId),
   })
+
+  const { data: graph } = useQuery({
+    queryKey: ['graph', projectId],
+    queryFn: () => Api.graph(projectId),
+    enabled: !!projectId,
+  })
+
+  const blockedByMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    const edges = graph?.edges ?? []
+    if (!tasks.length || !edges.length) return map
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+
+    const isDone = (t?: Task) => {
+      if (!t) return false
+      if (t.progress >= 100) return true
+      const cat = statusCatMap.get(t.statusKey)
+      return cat === 'DONE' || t.statusKey === 'DONE'
+    }
+
+    for (const e of edges) {
+      const sHandle = String((e as any).sourceHandle || '')
+      const tHandle = String((e as any).targetHandle || '')
+      const isTopOrBottom = sHandle.includes('top') || sHandle.includes('bottom') || tHandle.includes('top') || tHandle.includes('bottom')
+      if (isTopOrBottom) continue
+
+      const sId = String(e.sourceId || (e as any).source)
+      const tId = String(e.targetId || (e as any).target)
+      const srcTask = taskMap.get(sId)
+      const dstTask = taskMap.get(tId)
+
+      if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
+        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+        const list = map.get(dstTask.id) || []
+        if (!list.includes(srcRef)) {
+          list.push(srcRef)
+        }
+        map.set(dstTask.id, list)
+      }
+    }
+    return map
+  }, [graph, tasks, project?.statuses])
   /*
    * 我的角色要從成員名單裡撈自己那一列 —— GET /projects/:id 只回成員名單，
    * 沒有「我是什麼角色」這個欄位（回那個欄位的是專案清單 GET /projects）。
@@ -145,7 +189,7 @@ export default function Board({
         <div className="flex flex-1 gap-3 overflow-x-auto p-4">
           {columns.map(col => (
             <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
-                    topPriority={topPriority} focusedTaskId={focusedTaskId} />
+                    topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap} />
           ))}
         </div>
         <DragOverlay>
@@ -158,7 +202,7 @@ export default function Board({
 }
 
 function Column({
-  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId,
+  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedByMap,
 }: {
   column: TaskStatus & { tasks: Task[] }
   onOpen: (id: string) => void
@@ -167,6 +211,7 @@ function Column({
   /** 這張卡片這個人能不能拖 —— 拖曳等於改狀態，權限跟改任務同一條 */
   canDrag: (t: Task) => boolean
   focusedTaskId?: string | null
+  blockedByMap?: Map<string, string[]>
 }) {
   const { setNodeRef, isOver } = useSortable({ id: column.key, data: { type: 'column' } })
   const overdue = column.tasks.filter(t => t.inquiryState === 'OVERDUE').length
@@ -192,9 +237,9 @@ function Column({
       </div>
       <SortableContext items={column.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-3">
-          {column.tasks.map(t => (
-            <SortableCard key={t.id} task={t} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag(t)}
-                          topPriority={topPriority} focusedTaskId={focusedTaskId} />
+          {column.tasks.map(task => (
+            <SortableCard key={task.id} task={task} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag(task)}
+                          topPriority={topPriority} focusedTaskId={focusedTaskId} blockedBy={blockedByMap?.get(task.id)} />
           ))}
           {column.tasks.length === 0 && (
             <div className="rounded-md border-2 border-dashed border-slate-200 py-6 text-center text-xs
@@ -208,10 +253,11 @@ function Column({
   )
 }
 
-function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId }: {
+function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedBy }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; canDrag: boolean
   topPriority?: { key: string; name: string; color: string }
   focusedTaskId?: string | null
+  blockedBy?: string[]
 }) {
   // disabled 讓 dnd-kit 連感應器都不掛上去，滑鼠與鍵盤兩條路徑一起擋掉
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -228,19 +274,20 @@ function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskI
          {...attributes} {...listeners}
          style={{ transform: CSS.Transform.toString(transform), transition }}
          className={isDragging ? 'opacity-30' : ''}>
-      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} />
+      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} blockedBy={blockedBy} />
     </div>
   )
 }
 
 function Card({
-  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused,
+  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused, blockedBy,
 }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; overlay?: boolean
   /** 拖不動的卡片不要長成「可以拖」的樣子 —— 手形游標本身就是一種承諾 */
   draggable?: boolean
   topPriority?: { key: string; name: string; color: string }
   isFocused?: boolean
+  blockedBy?: string[]
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
@@ -296,10 +343,18 @@ function Card({
 
       {/* 兩種徽章放同一排：卡片本來就窄，各自佔一行會把卡片撐高，
           一欄能看到的卡片數就少了 */}
-      {(task.inquiryState !== 'NONE' || task.problem) && (
+      {(task.inquiryState !== 'NONE' || task.problem || (blockedBy && blockedBy.length > 0)) && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
           <InquiryBadge state={task.inquiryState} />
           <ProblemBadge problem={task.problem} />
+          {blockedBy && blockedBy.length > 0 && (
+            <span
+              title={`卡住：要等 ${blockedBy.join('、')}`}
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none"
+            >
+              ⛔ 卡住
+            </span>
+          )}
         </div>
       )}
 

@@ -264,6 +264,44 @@ export default function ListView({
     return map
   }, [graph, tasks])
 
+  const blockedByMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    const edges = graph?.edges ?? []
+    if (!tasks.length || !edges.length) return map
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+
+    const isDone = (t?: Task) => {
+      if (!t) return false
+      if (t.progress >= 100) return true
+      const cat = statusCatMap.get(t.statusKey)
+      return cat === 'DONE' || t.statusKey === 'DONE'
+    }
+
+    for (const e of edges) {
+      const sHandle = String((e as any).sourceHandle || '')
+      const tHandle = String((e as any).targetHandle || '')
+      const isTopOrBottom = sHandle.includes('top') || sHandle.includes('bottom') || tHandle.includes('top') || tHandle.includes('bottom')
+      if (isTopOrBottom) continue
+
+      const sId = String(e.sourceId || (e as any).source)
+      const tId = String(e.targetId || (e as any).target)
+      const srcTask = taskMap.get(sId)
+      const dstTask = taskMap.get(tId)
+
+      if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
+        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+        const list = map.get(dstTask.id) || []
+        if (!list.includes(srcRef)) {
+          list.push(srcRef)
+        }
+        map.set(dstTask.id, list)
+      }
+    }
+    return map
+  }, [graph, tasks, project?.statuses])
+
   const newTop = () => {
     if (!topTitle.trim()) return
     create.mutate({ parentId: parentForNew ?? null, title: topTitle.trim(),
@@ -372,6 +410,15 @@ export default function ListView({
                     {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，
                         為它固定讓出一欄寬度，換來的是整張表每一列都變窄 */}
                     <ProblemBadge problem={t.problem} />
+                    {/* 卡住徽章 */}
+                    {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
+                      <span
+                        title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
+                        className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                      >
+                        ⛔ 卡住
+                      </span>
+                    )}
                     {/* 收納盒子項數量徽章 */}
                     {t.isBox && tasks.filter(k => k.parentId === t.id).length > 0 && (
                       <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
