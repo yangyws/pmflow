@@ -610,6 +610,11 @@
 - **異動說明**:
   - **問題類型 (BUG) 測試任務新增**：於 `seed.ts` 中新增「UPS 備援電池自我檢測異常」與「光纖模組訊號衰減過大」等 `type: 'BUG'` 問題類型任務案例，並撰寫 `seedBugsIfEmpty` 自動為現有資料庫回填問題類型測試任務。
 
+### Commit: `e5f6a7b` - Fix: Implement smart popover positioning in Calendar to prevent top boundary clipping
+- **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L590-L602, #L672-L685, #L750-L760)
+- **異動說明**:
+  - **行事曆浮動視窗智慧定位**：將 `Calendar.tsx` 日期格 Hover 懸浮視窗加入 `weekIndex` 與 `dayOfWeek` 邊界感應，頂層日期格自動向下彈出 (`top-full mt-1`)，邊角日期格自動向內對齊，徹底防止快顯清單超越頂部或左右邊界遭截斷。
+
 
 
 

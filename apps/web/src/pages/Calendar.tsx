@@ -598,6 +598,8 @@ export default function CalendarView({
                           tasks={tasks}
                           inquiries={inquiries}
                           leaves={leaves}
+                          weekIndex={w}
+                          dayOfWeek={i}
                         />
                       ))}
                     </div>
@@ -673,7 +675,8 @@ export default function CalendarView({
 
 // ── 日格（放置目標）─────────────────────────────────────
 function DayCell({
-  day, isToday, inMonth, isWeekend, hidden, tasks = [], inquiries = [], leaves = []
+  day, isToday, inMonth, isWeekend, hidden, tasks = [], inquiries = [], leaves = [],
+  weekIndex = 0, dayOfWeek = 0,
 }: {
   day: string
   isToday: boolean
@@ -683,6 +686,8 @@ function DayCell({
   tasks?: Task[]
   inquiries?: Inquiry[]
   leaves?: Leave[]
+  weekIndex?: number
+  dayOfWeek?: number
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day:${day}` })
   const n = parseYmd(day).getDate()
@@ -704,6 +709,9 @@ function DayCell({
   }, [day, tasks, inquiries, leaves])
 
   const totalEventCount = dayEvents.tasks.length + dayEvents.inquiries.length + dayEvents.leaves.length
+  const isTopRows = weekIndex <= 1
+  const verticalCls = isTopRows ? 'top-full mt-1' : 'bottom-full mb-1'
+  const horizontalCls = dayOfWeek <= 1 ? 'left-0' : dayOfWeek >= 5 ? 'right-0' : 'left-1/2 -translate-x-1/2'
 
   return (
     <div
@@ -754,7 +762,11 @@ function DayCell({
 
       {/* 方案 C：Hover Tooltip 簡潔快顯視窗 */}
       {showTooltip && totalEventCount > 0 && (
-        <div className="absolute left-1/2 bottom-full mb-1 -translate-x-1/2 z-50 w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700">
+        <div className={cx(
+          'absolute z-50 w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700',
+          verticalCls,
+          horizontalCls
+        )}>
           <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1.5 mb-1.5 flex justify-between items-center text-[11px] gap-2">
             <span className="shrink-0 whitespace-nowrap font-medium text-slate-200">📅 {day}</span>
             <span className="text-[10px] font-normal text-slate-400 shrink-0">共 {totalEventCount} 項事件</span>
