@@ -67,12 +67,43 @@ export type SimpleGraphNodeData = {
   label: string
   refText?: string
   mode: NodeMode
+  progress?: number
   minWidth?: number
   minHeight?: number
   onToggleMode?: (id: string) => void
 }
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
+
+function NodeProgressBar({ progress }: { progress: number }) {
+  const barColor = progress >= 100 ? '#10b981' : '#ef4444'
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 w-full select-none pointer-events-none">
+      <div className="h-1 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+        <div
+          className={`h-1 rounded transition-all duration-300 ${progress === 0 ? 'opacity-40' : ''}`}
+          style={{
+            width: `${Math.min(100, Math.max(progress, progress === 0 ? 100 : progress))}%`,
+            backgroundColor: barColor,
+          }}
+        />
+      </div>
+      {progress >= 100 ? (
+        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title="已完成">
+          ✓
+        </span>
+      ) : progress === 0 ? (
+        <span className="text-[10px] tabular-nums font-normal text-slate-400 dark:text-slate-500" title="未開始 (0%)">
+          未開始 (0%)
+        </span>
+      ) : (
+        <span className="text-[10px] tabular-nums font-medium text-slate-600 dark:text-slate-300">
+          {progress}%
+        </span>
+      )}
+    </div>
+  )
+}
 
 // 計算收納盒邊界與最小尺寸 (依據盒內所有卡片與子收納盒的最大座標與邊界 (x+width, y+height))
 function computeBoxDimensions(
@@ -242,7 +273,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 min-h-[72px] rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden">
+        <div className="w-64 min-h-[90px] rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden">
           <div className="h-1 rounded-t-lg shrink-0 bg-blue-500 dark:bg-blue-600" />
           <div className="p-2.5 flex flex-col justify-start flex-1">
             <div className="flex items-center gap-1.5 overflow-hidden w-full">
@@ -261,6 +292,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 {data.label || '無標題任務'}
               </span>
             </div>
+            <NodeProgressBar progress={data.progress ?? 0} />
           </div>
         </div>
       )}
@@ -666,7 +698,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               parentId: t.id,
               position: kPos,
               zIndex: 10,
-              data: { label: k.title, refText: k.ref, mode: 'card' },
+              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0 },
             })
           } else {
             processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
@@ -680,7 +712,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
-          data: { label: t.title, refText: t.ref, mode: 'card' },
+          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0 },
         })
       }
     }

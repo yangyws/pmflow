@@ -388,6 +388,13 @@
 - **異動說明**:
   - **單一邊界接點**：將卡片與收納盒的四向接點 (`left`, `right`, `top`, `bottom`) 位置統一調整至正中央 `50%`。每個邊僅呈現一顆極簡精準接點，支援雙向進出拉線。
 
+### Commit: `5f6a7b8` - Feat: Migrate NodeProgressBar from classic Graph.tsx to SimpleGraph cards
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L75-L105, #L275-L295)
+- **異動說明**:
+  - **進度條移民移植**：由經典關聯圖 [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx#L337-L363) 搬移並實作 `NodeProgressBar` 組件至卡片。
+  - **任務進度狀態**：支援動態呈現 0% (未開始)、完成度比例條以及 100% 綠色完成勾選徽章，任務進度與後端資料庫 (`t.progress`) 100% 動態連動。
+
+
 
 
 
