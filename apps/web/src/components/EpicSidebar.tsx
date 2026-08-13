@@ -884,7 +884,7 @@ function TreeNode({
           aria-current={!isRoot && active ? 'true' : undefined}
           className={cx('block min-w-0 flex-1 rounded-md pr-2.5 text-left',
                         isRoot ? 'py-2' : 'py-1.5')}>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
             {/*
               * 每一列前面一條種類色的細槓（顏色是他在系統參數頁自己挑的）。
               * 沒有它的話，最上層的大項目跟最上層的任務長得一模一樣，
@@ -926,37 +926,37 @@ function TreeNode({
                                dark:text-emerald-400">✓</span>
             )}
 
-            {blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
-              <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
-                    className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
-                ⛔卡住
-              </span>
-            )}
-
-            {/* 錯誤排在逾期前面：一個是「這裡有多少事情壞了」，
-                一個是「有多少事情在等外面回」，兩件事分開標 */}
-            {bugs > 0 && (
-              <span title={T.nav.sidebar.bugsUnder(bugs)}
-                    className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700
-                               dark:bg-rose-500/15 dark:text-rose-300">
-                {T.nav.sidebar.bugBadge(bugs)}
-              </span>
-            )}
-            {/* 「外」排在「逾」前面，而且已經扣掉逾期的那幾件 ——
-                兩個數字加起來才是這一支發出去的對外詢問總數，不會重複算 */}
-            {asked > 0 && (
-              <span title={T.nav.sidebar.askedUnder(asked)}
-                    className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700
-                               dark:bg-blue-500/15 dark:text-blue-300">
-                {T.nav.sidebar.askedBadge(asked)}
-              </span>
-            )}
-            {overdue > 0 && (
-              <span title={T.nav.sidebar.overdueUnder(overdue)}
-                    className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700
-                               dark:bg-red-500/15 dark:text-red-300">
-                {T.nav.sidebar.overdueBadge(overdue)}
-              </span>
+            {/* 警示徽章區域：若警示太多無法在第一行顯示，則該事件警示自動移至第二行 */}
+            {(Boolean(blockedByMap?.get(task.id)?.length) || bugs > 0 || asked > 0 || overdue > 0) && (
+              <div className="flex flex-wrap items-center gap-1 shrink-0 ml-auto">
+                {blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
+                  <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
+                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
+                    ⛔卡住
+                  </span>
+                )}
+                {bugs > 0 && (
+                  <span title={T.nav.sidebar.bugsUnder(bugs)}
+                        className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700
+                                   dark:bg-rose-500/15 dark:text-rose-300">
+                    {T.nav.sidebar.bugBadge(bugs)}
+                  </span>
+                )}
+                {asked > 0 && (
+                  <span title={T.nav.sidebar.askedUnder(asked)}
+                        className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700
+                                   dark:bg-blue-500/15 dark:text-blue-300">
+                    {T.nav.sidebar.askedBadge(asked)}
+                  </span>
+                )}
+                {overdue > 0 && (
+                  <span title={T.nav.sidebar.overdueUnder(overdue)}
+                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700
+                                   dark:bg-red-500/15 dark:text-red-300">
+                    {T.nav.sidebar.overdueBadge(overdue)}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

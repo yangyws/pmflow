@@ -620,6 +620,11 @@
 - **異動說明**:
   - **createPortal 快顯懸浮視窗全平臺防裁切**：將行事曆 Hover 懸浮視窗改為使用 React `createPortal` 直接掛載至 `document.body`，搭配 `getBoundingClientRect()` 計算 `fixed` 座標與視埠邊界全動態限制，完全不受任何父層 DOM 容器 `overflow` 邊界限制，徹底排除所有裁切與截斷問題。
 
+### Commit: `a7b8c9d` - Layout: Wrap sidebar alert badges to second line when task item space is constrained
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L884-L960)
+- **異動說明**:
+  - **左側選單警示徽章超量自動折行**：為左側 Menu 樹狀項目加入 `flex-wrap`，當單一任務項目的警示徽章過多或寬度不足時，僅該任務項目的警示徽章全數自動折行整理至第二行顯示。
+
 
 
 
