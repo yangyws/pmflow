@@ -482,6 +482,12 @@
 - **異動說明**:
   - **包覆收納盒穿透排除**：新增 `isAncestorNode` 遞迴判斷，當關聯線起點或終點位於某個收納盒內部時，該包覆收納盒不會被錯誤判定為「線條穿透障礙物」，解決盒內卡片拉線誤報問題。
 
+### Commit: `b2c3d4e` - Style: Match Handle point dot colors with connection lines (Red / Purple)
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L230-L288)
+- **異動說明**:
+  - **接點圓點配色同步**：將卡片與收納盒的左右接點圓點顏色更換為**紅色** (`!bg-red-500`)，上下接點圓點顏色更換為**紫色** (`!bg-purple-500`)，使圓點與出發的關聯線顏色 100% 視覺一致。
+
+
 
 
 

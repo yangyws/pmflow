@@ -232,14 +232,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Left}
         id="left-in"
         style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
         style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
@@ -247,14 +247,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Right}
         id="right-in"
         style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
         style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-indigo-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
@@ -262,14 +262,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Top}
         id="top-in"
         style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-out"
         style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
@@ -277,14 +277,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Bottom}
         id="bottom-in"
         style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       {isBox ? (
