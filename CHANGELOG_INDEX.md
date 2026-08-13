@@ -346,6 +346,12 @@
 - **異動說明**:
   - **全收納盒通用按需擴大**：將按需擴大機制推廣至所有收納盒。當卡片或子收納盒放入時，經由 `curBoxId = bNode.parentId` 向上遞迴觸發所有祖先收納盒重算 `computeBoxDimensions`。所有收納盒僅在實際寬度/高度需求超出現有尺寸時才進行自動擴展與重繪。
 
+### Commit: `d5e6f7a` - Feat: Remove size limits and max slot caps for unlimited storage box capacity
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **解除收納盒大小限制**：移除 `processTask` 中子節點座標驗證的上界限制 (`x <= 1200`, `y <= 600`, `x <= 500`, `y <= 450`)，將 `onNodeDragStop` 中的槽位搜尋上限提升至 10,000。所有收納盒可無限容納子卡片與巢狀收納盒，並支援無限橫向與縱向擴展。
+
+
 
 
 

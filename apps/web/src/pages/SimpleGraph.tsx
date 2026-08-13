@@ -596,9 +596,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           typeof rawBoxPos.x === 'number' &&
           typeof rawBoxPos.y === 'number' &&
           rawBoxPos.x >= 10 &&
-          rawBoxPos.x <= 1200 &&
-          rawBoxPos.y >= 35 &&
-          rawBoxPos.y <= 600
+          rawBoxPos.y >= 35
         const boxPos = parentBoxId
           ? (isValidChildBoxPos ? rawBoxPos : { x: 312, y: 50 })
           : (rawBoxPos ?? { x: rootX, y: rootY })
@@ -614,9 +612,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             typeof rawPos.x === 'number' &&
             typeof rawPos.y === 'number' &&
             rawPos.x >= 10 &&
-            rawPos.x <= 500 &&
-            rawPos.y >= 35 &&
-            rawPos.y <= 450
+            rawPos.y >= 35
           const kPos = isValidChildPos ? rawPos : defaultSlotPos
           return {
             id: k.id,
@@ -1071,7 +1067,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             let slotIdx = 0
             let tCol = 0
             let tRow = 0
-            while (slotIdx < 100) {
+            while (slotIdx < 10000) {
               tCol = Math.floor(slotIdx / 5)
               tRow = slotIdx % 5
               if (!occupiedSlots.has(`${tCol},${tRow}`)) break
