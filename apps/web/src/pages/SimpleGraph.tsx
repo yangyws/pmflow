@@ -1101,6 +1101,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
   const nodesWithHandlers = orderParentNodesFirst(
     nodes.map((node) => ({
       ...node,
+      draggable: true,
+      selectable: true,
+      zIndex: node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
       extent: [[-100000, -100000], [100000, 100000]],
       data: {
         ...node.data,
@@ -1142,6 +1145,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onMoveEnd={handleMoveEnd}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          elementsSelectable={true}
           defaultViewport={savedViewport}
           fitView={!savedViewport}
           nodeTypes={nodeTypes}

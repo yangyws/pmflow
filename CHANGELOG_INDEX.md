@@ -241,6 +241,13 @@
   - **空收納盒模式保護**：`processTask` 檢查 `prevNodesMap.get(t.id)?.data?.mode`，當收納盒內最後一張卡片移出時，收納盒 100% 維持空盒狀態，絕不上縮塌陷或連動消失。
   - **移出精準落點競態消除**：`onNodesChange` 寫入 `dragged` 時，若節點含有 `parentId`，自動加上父盒座標 `(parentX + posX, parentY + posY)` 換算為畫布絕對座標，確保移出卡片 100% 停留在滑鼠放開位置。
 
+### Commit: `6c7d8e9` - Fix: Prevent card drag from triggering canvas panning by setting nodesDraggable and explicit node zIndex
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **畫布誤觸拖曳修復**：`<ReactFlow>` 顯式賦予 `nodesDraggable={true}`、`nodesConnectable={true}` 與 `elementsSelectable={true}`。
+  - **DOM zIndex 權重聲明**：`nodesWithHandlers` 為所有節點顯式傳遞 `draggable: true`, `selectable: true` 並依據角色設定 `zIndex` (子卡片 `10` > 獨立卡片 `5` > 收納盒 `1`)，確保拖曳卡片時 100% 拖移動態卡片，絕不誤觸畫布平移。
+
+
 
 
 
