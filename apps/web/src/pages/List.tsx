@@ -210,14 +210,19 @@ export default function ListView({
     const byParent = new Map<string | null, Task[]>()
     for (const t of tasks) {
       const k = t.parentId ?? null
-      byParent.set(k, [...(byParent.get(k) ?? []), t])
+      const list = byParent.get(k) ?? []
+      list.push(t)
+      byParent.set(k, list)
+    }
+    for (const [k, list] of byParent.entries()) {
+      if (k !== null) list.sort((a, b) => numRef(a) - numRef(b))
     }
 
-    const out: Array<Task & { depth: number; hasKids: boolean }> = []
+    const out: Array<Task & { depth: number; hasKids: boolean; isBox: boolean }> = []
     const walk = (t: Task, depth: number) => {
       const kids = byParent.get(t.id) ?? []
       const hasKids = kids.length > 0
-      out.push({ ...t, depth, hasKids })
+      out.push({ ...t, depth, hasKids, isBox: isBox(t) })
       if (hasKids && collapsedSet.has(t.id)) return
       for (const k of kids) {
         if (depth < 10) walk(k, depth + 1)
@@ -234,7 +239,7 @@ export default function ListView({
     for (const t of tasks) {
       if (!processed.has(t.id)) {
         processed.add(t.id)
-        out.push({ ...t, depth: 0, hasKids: false })
+        out.push({ ...t, depth: 0, hasKids: false, isBox: isBox(t) })
       }
     }
     return out
@@ -323,14 +328,9 @@ export default function ListView({
                         {t.depth > 0 ? '└' : ''}
                       </span>
                     )}
-                    {/* 📦 收納盒 / 📄 卡片 圖示 */}
+                    {/* 📦 收納盒 / 📄 卡片 圖示 (與左側 Menu [EpicSidebar.tsx] 100% 保持一致) */}
                     <span className="shrink-0 text-xs select-none ml-0.5">
-                      {t.type === 'MILESTONE' ? '◆' : (t.type === 'EPIC' || (typeof window !== 'undefined' && (() => {
-                        try {
-                          const saved = localStorage.getItem('pmflow_graph_container_boxes')
-                          return saved ? new Set(JSON.parse(saved)).has(t.id) : false
-                        } catch { return false }
-                      })())) ? '📦' : '📄'}
+                      {t.type === 'MILESTONE' ? '◆' : t.isBox ? '📦' : '📄'}
                     </span>
                     {/* 種類色標 */}
                     {typeOf(t.type) && t.type !== 'MILESTONE' && (

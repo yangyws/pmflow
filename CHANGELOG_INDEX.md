@@ -429,6 +429,13 @@
   - **精確接點對齊**：在建立關聯線 (`onConnect`) 與載入關聯線 (`Api.graph`) 時，完整保存並綁定 `sourceHandle` 與 `targetHandle`（如 `top-out` 到 `bottom-in`）。
   - **避免預設偏離**：連線將精確由使用者拉線時所選擇的特定接點點對點連接至目標接點，不再被 React Flow 預設退回左側預設點。
 
+### Commit: `2a3b4c5` - Style: Align List.tsx storage box/card icons & nested hierarchy with Menu (EpicSidebar.tsx)
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L210-L220, #L325-L335)
+- **異動說明**:
+  - **圖示判定同步**：清單中對應收納盒（含子任務、切換收納盒模式或大項目）一律呈現 `📦`，獨立卡片呈現 `📄`，100% 與左側 Menu 的圖示邏輯完全一致。
+  - **階層順序同步**：將清單中收納盒內部的子卡片依 MRG / Ref 數字進行次序排序，階層構造與 Menu 保持零時差對齊。
+
+
 
 
 
