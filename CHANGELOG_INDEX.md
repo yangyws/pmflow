@@ -252,6 +252,13 @@
 - **異動說明**:
   - **全自動座標淨化器 (Auto-Purge)**：在 `processTask` 與 `useEffect([tasks])` 中，當 `tasks` 載入時自動校驗後端 `parentId`，若子卡片在 `dragged` 快取中殘留舊畫布大座標 (x > 500 / y > 450)，全自動進行 delete 剔除與 `localStorage` 淨化，防止舊殘留座標造成卡片位移誤彈。
 
+### Commit: `8e9f0a1` - Feat: Add real-time event & coordinate Log Panel overlay on SimpleGraph.tsx
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **即時動作與座標 Log 視窗**：在 `SimpleGraph.tsx` 右側建立可折疊即時 Log 面板，頂部提供 `📋 即時 Log` 展開/收合按鈕與`一鍵清空`。
+  - **完整追蹤紀錄**：即時紀錄並顯示移動 (Move)、移入收納盒 (Move In)、移出收納盒 (Move Out)、模式切換 (Toggle Mode) 與尺寸縮放 (Resize) 之節點 ID、時間與最新座標。
+
+
 
 
 

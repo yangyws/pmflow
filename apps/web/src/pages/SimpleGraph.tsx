@@ -277,6 +277,13 @@ type ConfirmDeleteEdgeState = {
   targetRef: string
 }
 
+type LogItem = {
+  id: string
+  time: string
+  type: 'move' | 'move_in' | 'move_out' | 'toggle' | 'resize'
+  message: string
+}
+
 function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
   const { fitView } = useReactFlow()
   const queryClient = useQueryClient()
@@ -284,6 +291,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
   const [edges, setEdges] = useState<Edge[]>([])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
+  const [logs, setLogs] = useState<LogItem[]>([])
+  const [showLogPanel, setShowLogPanel] = useState<boolean>(true)
+  const logContainerRef = useRef<HTMLDivElement>(null)
+
+  const addLog = useCallback((type: LogItem['type'], message: string) => {
+    const time = new Date().toLocaleTimeString('zh-TW', { hour12: false })
+    setLogs((prev) => [...prev.slice(-99), { id: Math.random().toString(), time, type, message }])
+  }, [])
+
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+    }
+  }, [logs])
   /** 使用者手動切換的模式 (box / card)。按專案 projectId 持久化於 localStorage */
   const [toggledModes, setToggledModes] = useState<Record<string, NodeMode>>(() => {
     try {
@@ -300,18 +321,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
 
-  const handleToggleMode = useCallback((nodeId: string) => {
-    setToggledModes((prev) => {
-      const currentNodes = nodesRef.current
-      const targetNode = currentNodes.find((n) => n.id === nodeId)
-      const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
-      const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
-      return {
-        ...prev,
-        [nodeId]: nextMode,
-      }
-    })
-  }, [])
+  const handleToggleMode = useCallback(
+    (nodeId: string) => {
+      setToggledModes((prev) => {
+        const currentNodes = nodesRef.current
+        const targetNode = currentNodes.find((n) => n.id === nodeId)
+        const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
+        const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
+        const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+        addLog('toggle', `${refText} 模式切換為 [${nextMode === 'box' ? '收納盒' : '卡片'}]`)
+        return {
+          ...prev,
+          [nodeId]: nextMode,
+        }
+      })
+    },
+    [addLog]
+  )
 
   /** 使用者拖過的節點位置。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>(() => {
@@ -914,135 +940,142 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
 
-  const onNodeDragStop = useCallback((_: unknown, node: Node) => {
-    const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
-    if (isBoxNode) {
-      setDragged((prev) => ({
-        ...prev,
-        [node.id]: { x: node.position.x, y: node.position.y },
-      }))
-      return
-    }
+  const onNodeDragStop = useCallback(
+    (_: unknown, node: Node) => {
+      const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
+      const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
 
-    setNodes((currentNodes) => {
-      // 安全的非遞迴 getAbsPos 避免死迴圈與 TypeError
-      const getAbsPos = (nId: string): { x: number; y: number } => {
-        const visited = new Set<string>()
-        let curId: string | undefined = nId
-        let x = 0
-        let y = 0
-        while (curId && !visited.has(curId) && visited.size < 20) {
-          visited.add(curId)
-          const target: Node | undefined = curId === node.id ? node : currentNodes.find((cn) => cn.id === curId)
-          if (!target || !target.position) break
-          x += target.position.x || 0
-          y += target.position.y || 0
-          curId = target.parentId
-        }
-        return { x, y }
-      }
-
-      const cardAbsPos = getAbsPos(node.id)
-      const cardWidth = 256
-      const cardHeight = 84
-      const cardCenterX = cardAbsPos.x + cardWidth / 2
-      const cardCenterY = cardAbsPos.y + cardHeight / 2
-
-      const boxNodes = currentNodes.filter(
-        (cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box' && cn.id !== node.id
-      )
-
-      let targetBox: Node | undefined = undefined
-      for (const b of boxNodes) {
-        const bAbsPos = getAbsPos(b.id)
-        const bW = Number(b.style?.width ?? 340)
-        const bH = Number(b.style?.height ?? 260)
-
-        if (
-          cardCenterX >= bAbsPos.x &&
-          cardCenterX <= bAbsPos.x + bW &&
-          cardCenterY >= bAbsPos.y &&
-          cardCenterY <= bAbsPos.y + bH
-        ) {
-          targetBox = b
-          break
-        }
-      }
-
-      const currentParentId = node.parentId
-      const isMovingOut = currentParentId && (!targetBox || targetBox.id !== currentParentId)
-
-      if (isMovingOut) {
-        const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
-        if (hasEdges) {
-          const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
-          setAlertMsg(
-            `卡片 (${cardRef}) 在收納盒內尚存在關聯線，無法移出收納盒。請先刪除關聯線後再移動！`
-          )
-          const startPos = dragStartPosMap.current[node.id]
-          return currentNodes.map((n) =>
-            n.id === node.id
-              ? { ...n, parentId: currentParentId, position: startPos || n.position }
-              : n
-          )
-        }
-      }
-
-      let nextNodes = currentNodes
-
-      if (!targetBox && currentParentId) {
-        // 移出收納盒：更新大座標至 dragged
+      if (isBoxNode) {
+        addLog('move', `收納盒 (${cardRef}) 移動至 (x: ${Math.round(node.position.x)}, y: ${Math.round(node.position.y)})`)
         setDragged((prev) => ({
           ...prev,
-          [node.id]: cardAbsPos,
+          [node.id]: { x: node.position.x, y: node.position.y },
         }))
+        return
+      }
 
-        if (projectId) {
-          queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
-            if (!oldData || !Array.isArray(oldData.tasks)) return oldData
-            return {
-              ...oldData,
-              tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: null } : t)),
-            }
-          })
-
-          Api.moveTask(node.id, { parentId: null })
-            .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
-            .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+      setNodes((currentNodes) => {
+        // 安全的非遞迴 getAbsPos 避免死迴圈與 TypeError
+        const getAbsPos = (nId: string): { x: number; y: number } => {
+          const visited = new Set<string>()
+          let curId: string | undefined = nId
+          let x = 0
+          let y = 0
+          while (curId && !visited.has(curId) && visited.size < 20) {
+            visited.add(curId)
+            const target: Node | undefined = curId === node.id ? node : currentNodes.find((cn) => cn.id === curId)
+            if (!target || !target.position) break
+            x += target.position.x || 0
+            y += target.position.y || 0
+            curId = target.parentId
+          }
+          return { x, y }
         }
 
-        nextNodes = currentNodes.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              parentId: undefined,
-              position: cardAbsPos,
-            }
-          }
-          return n
-        })
-      } else if (targetBox && targetBox.id !== currentParentId) {
-        // 移入收納盒：找下一個不與既有卡片衝突的空槽位
-        const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
-        const occupiedSlots = new Set(
-          targetKids.map((k) => `${Math.round((k.position.x - 24) / 280)},${Math.round((k.position.y - 50) / 100)}`)
+        const cardAbsPos = getAbsPos(node.id)
+        const cardWidth = 256
+        const cardHeight = 84
+        const cardCenterX = cardAbsPos.x + cardWidth / 2
+        const cardCenterY = cardAbsPos.y + cardHeight / 2
+
+        const boxNodes = currentNodes.filter(
+          (cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box' && cn.id !== node.id
         )
 
-        let slotIdx = 0
-        let tCol = 0
-        let tRow = 0
-        while (slotIdx < 100) {
-          tCol = Math.floor(slotIdx / 5)
-          tRow = slotIdx % 5
-          if (!occupiedSlots.has(`${tCol},${tRow}`)) break
-          slotIdx++
-        }
-        const targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
+        let targetBox: Node | undefined = undefined
+        for (const b of boxNodes) {
+          const bAbsPos = getAbsPos(b.id)
+          const bW = Number(b.style?.width ?? 340)
+          const bH = Number(b.style?.height ?? 260)
 
-        setDragged((prev) => ({
-          ...prev,
-          [node.id]: targetSlotPos,
-        }))
+          if (
+            cardCenterX >= bAbsPos.x &&
+            cardCenterX <= bAbsPos.x + bW &&
+            cardCenterY >= bAbsPos.y &&
+            cardCenterY <= bAbsPos.y + bH
+          ) {
+            targetBox = b
+            break
+          }
+        }
+
+        const currentParentId = node.parentId
+        const isMovingOut = currentParentId && (!targetBox || targetBox.id !== currentParentId)
+
+        if (isMovingOut) {
+          const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
+          if (hasEdges) {
+            setAlertMsg(
+              `卡片 (${cardRef}) 在收納盒內尚存在關聯線，無法移出收納盒。請先刪除關聯線後再移動！`
+            )
+            addLog('move_out', `卡片 (${cardRef}) 移出失敗：尚存在關聯線`)
+            const startPos = dragStartPosMap.current[node.id]
+            return currentNodes.map((n) =>
+              n.id === node.id
+                ? { ...n, parentId: currentParentId, position: startPos || n.position }
+                : n
+            )
+          }
+        }
+
+        let nextNodes = currentNodes
+
+        if (!targetBox && currentParentId) {
+          // 移出收納盒：更新大座標至 dragged
+          addLog('move_out', `卡片 (${cardRef}) 移出收納盒，定格大座標 (x: ${Math.round(cardAbsPos.x)}, y: ${Math.round(cardAbsPos.y)})`)
+          setDragged((prev) => ({
+            ...prev,
+            [node.id]: cardAbsPos,
+          }))
+
+          if (projectId) {
+            queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+              if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+              return {
+                ...oldData,
+                tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: null } : t)),
+              }
+            })
+
+            Api.moveTask(node.id, { parentId: null })
+              .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
+              .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+          }
+
+          nextNodes = currentNodes.map((n) => {
+            if (n.id === node.id) {
+              return {
+                ...n,
+                parentId: undefined,
+                position: cardAbsPos,
+              }
+            }
+            return n
+          })
+        } else if (targetBox && targetBox.id !== currentParentId) {
+          // 移入收納盒：找下一個不與既有卡片衝突的空槽位
+          const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
+          const occupiedSlots = new Set(
+            targetKids.map((k) => `${Math.round((k.position.x - 24) / 280)},${Math.round((k.position.y - 50) / 100)}`)
+          )
+
+          let slotIdx = 0
+          let tCol = 0
+          let tRow = 0
+          while (slotIdx < 100) {
+            tCol = Math.floor(slotIdx / 5)
+            tRow = slotIdx % 5
+            if (!occupiedSlots.has(`${tCol},${tRow}`)) break
+            slotIdx++
+          }
+          const targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
+          const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
+          addLog('move_in', `卡片 (${cardRef}) 移入 (${targetBoxRef})，分派槽位 (x: ${targetSlotPos.x}, y: ${targetSlotPos.y})`)
+
+          setDragged((prev) => ({
+            ...prev,
+            [node.id]: targetSlotPos,
+          }))
 
         if (projectId) {
           queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
@@ -1090,6 +1123,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           return n
         })
       } else {
+        const isChild = !!node.parentId
+        addLog('move', `${isChild ? '盒內卡片' : '節點'} (${cardRef}) 移動至 (x: ${Math.round(node.position.x)}, y: ${Math.round(node.position.y)})`)
         setDragged((prev) => ({
           ...prev,
           [node.id]: { x: node.position.x, y: node.position.y },
@@ -1101,7 +1136,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
       return orderParentNodesFirst(nextNodes)
     })
-  }, [edges, projectId, queryClient, resized])
+  }, [edges, projectId, queryClient, resized, addLog])
 
   const handleMoveEnd = useCallback(
     (_: unknown, viewport: Viewport) => {
@@ -1142,55 +1177,133 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             平移畫面或縮放檢視時，系統將自動記憶您最後的視覺焦點
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => fitView({ padding: 0.2, duration: 300 })}
-          className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
-          title="縮放與平移畫布以顯示全部節點"
-        >
-          <span>🎯</span>
-          <span>顯示全部</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fitView({ padding: 0.2, duration: 300 })}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+            title="縮放與平移畫布以顯示全部節點"
+          >
+            <span>🎯</span>
+            <span>顯示全部</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowLogPanel((prev) => !prev)}
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer shadow-xs flex items-center gap-1.5 border ${
+              showLogPanel
+                ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+            }`}
+            title="顯示/隱藏即時 Log 視窗"
+          >
+            <span>📋</span>
+            <span>即時 Log ({logs.length})</span>
+          </button>
+        </div>
       </div>
 
-      <div className="relative flex-1">
-        <ReactFlow
-          nodes={nodesWithHandlers}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onEdgeClick={onEdgeClick}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDragStop={onNodeDragStop}
-          onMoveEnd={handleMoveEnd}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          elementsSelectable={true}
-          defaultViewport={savedViewport}
-          fitView={!savedViewport}
-          nodeTypes={nodeTypes}
-          connectionMode={ConnectionMode.Loose}
-          proOptions={{ hideAttribution: true }}
-          defaultEdgeOptions={{
-            type: 'smoothstep',
-            animated: true,
-            style: { strokeWidth: 2, stroke: '#6366f1' },
-          }}
-          zoomOnPinch={true}
-          panOnScroll={false}
-          preventScrolling={true}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-          <Controls showFitView={true} showInteractive={true}>
-            <ControlButton
-              onClick={() => fitView({ padding: 0.2, duration: 300 })}
-              title="顯示全部 (Fit View)"
-            >
-              🎯
-            </ControlButton>
-          </Controls>
-        </ReactFlow>
+      <div className="relative flex-1 flex flex-row overflow-hidden">
+        <div className="relative flex-1">
+          <ReactFlow
+            nodes={nodesWithHandlers}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onEdgeClick={onEdgeClick}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDragStop={onNodeDragStop}
+            onMoveEnd={handleMoveEnd}
+            nodesDraggable={true}
+            nodesConnectable={true}
+            elementsSelectable={true}
+            defaultViewport={savedViewport}
+            fitView={!savedViewport}
+            nodeTypes={nodeTypes}
+            connectionMode={ConnectionMode.Loose}
+            proOptions={{ hideAttribution: true }}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              animated: true,
+              style: { strokeWidth: 2, stroke: '#6366f1' },
+            }}
+            zoomOnPinch={true}
+            panOnScroll={false}
+            preventScrolling={true}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+            <Controls showFitView={true} showInteractive={true}>
+              <ControlButton
+                onClick={() => fitView({ padding: 0.2, duration: 300 })}
+                title="顯示全部 (Fit View)"
+              >
+                🎯
+              </ControlButton>
+            </Controls>
+          </ReactFlow>
+        </div>
+
+        {showLogPanel && (
+          <div className="w-80 border-l border-slate-200 bg-slate-900 text-slate-100 flex flex-col z-20 dark:border-slate-800 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 bg-slate-950/80">
+              <div className="flex items-center gap-1.5 font-medium text-xs text-indigo-400">
+                <span>📋</span>
+                <span>動作與座標 Log 視窗</span>
+                <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.2 text-[10px] text-indigo-300 border border-indigo-500/30">
+                  {logs.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLogs([])}
+                  className="rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="清空 Log 紀錄"
+                >
+                  清空
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogPanel(false)}
+                  className="rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="關閉視窗"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2 font-mono text-[11px] leading-relaxed select-text" ref={logContainerRef}>
+              {logs.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  尚未有移動或切換紀錄<br />在畫布上拖曳卡片時將在此即時顯示
+                </div>
+              ) : (
+                logs.map((log) => (
+                  <div key={log.id} className="rounded border border-slate-800 bg-slate-950/60 p-2 space-y-0.5 hover:border-slate-700 transition-colors">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className={`font-bold px-1 py-0.2 rounded ${
+                        log.type === 'move_in' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' :
+                        log.type === 'move_out' ? 'bg-amber-950 text-amber-400 border border-amber-800/50' :
+                        log.type === 'toggle' ? 'bg-purple-950 text-purple-400 border border-purple-800/50' :
+                        log.type === 'resize' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                        'bg-indigo-950 text-indigo-400 border border-indigo-800/50'
+                      }`}>
+                        {log.type === 'move_in' ? '📥 移入' :
+                         log.type === 'move_out' ? '📤 移出' :
+                         log.type === 'toggle' ? '📦 模式' :
+                         log.type === 'resize' ? '📐 縮放' : '📍 移動'}
+                      </span>
+                      <span className="text-slate-500 text-[10px]">{log.time}</span>
+                    </div>
+                    <div className="text-slate-200 break-all pt-0.5">{log.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {confirmDeleteEdge && (
