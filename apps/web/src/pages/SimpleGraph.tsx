@@ -203,8 +203,8 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
           <div>
             <div className="h-1 rounded-t-lg shrink-0 bg-indigo-500 dark:bg-indigo-600" />
-            <div className="px-2.5 py-2 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70">
-              <div className="flex items-center gap-1.5 overflow-hidden flex-1">
+            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
                 <button
                   type="button"
                   onClick={handleToggle}
@@ -220,11 +220,10 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   {data.label || '無標題收納盒'}
                 </span>
               </div>
+              <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
+                (移入卡片自動擴大容量)
+              </span>
             </div>
-          </div>
-
-          <div className="mb-2 text-center text-xs text-slate-400/80 dark:text-slate-500/80 select-none pointer-events-none">
-            (移入卡片自動擴大容量)
           </div>
 
           {/* 右下角縮放控制鈕 */}

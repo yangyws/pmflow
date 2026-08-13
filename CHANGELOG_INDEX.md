@@ -378,6 +378,12 @@
   - **經典關聯圖 UI 還原**：將卡片與收納盒的外觀樣式 100% 恢復為經典關聯圖 [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) 的設計系統。
   - **卡片與收納盒細節**：恢復頂部 4px 類型主題色線條 (`h-1 rounded-t-lg`)、`bg-white/bg-slate-900` 乾淨白/深色底框、`w-[58px]` 模式切換按鈕、`font-mono` 灰色 Ref 標籤，以及底層內襯 `bg-slate-50/40` 與圓角縮放控制鈕。
 
+### Commit: `3d4e5f6` - Style: Relocate box auto-expansion text to storage box header to prevent card occlusion
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L205-L225)
+- **異動說明**:
+  - **提示文字置頂保護**：將 `(移入卡片自動擴大容量)` 提示文字收納至收納盒頂部 Header 欄位右側，由於盒內卡片與子收納盒擺放座標從 `y: 50` 開始，徹底封鎖卡片堆疊覆蓋提示文字的問題。
+
+
 
 
 
