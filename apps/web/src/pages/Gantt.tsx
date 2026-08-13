@@ -314,6 +314,35 @@ export default function GanttView({
         .gantt_task_line.gantt-bar-card .gantt_task_progress {
           background-color: #1d4ed8 !important;
         }
+        /* 移除 dhtmlx 預設關鍵路徑/逾期之粗紅外框 (紅框) */
+        .gantt_task_line.critical,
+        .gantt_task_line.inq-overdue {
+          border-color: #2563eb !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        .gantt_task_line.gantt-bar-box.critical,
+        .gantt_task_line.gantt-bar-box.inq-overdue {
+          border-color: #4f46e5 !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        /* 列表列 hover 與選取反白配色優化 */
+        .gantt_row:hover, .gantt_task_row:hover {
+          background-color: #f1f5f9 !important;
+        }
+        .gantt_row.gantt_selected, .gantt_task_row.gantt_selected {
+          background-color: #e2e8f0 !important;
+        }
+        .gantt_row.gantt_selected .gantt_cell, .gantt_row:hover .gantt_cell {
+          background-color: transparent !important;
+        }
+        .dark .gantt_row:hover, .dark .gantt_task_row:hover {
+          background-color: #1e293b !important;
+        }
+        .dark .gantt_row.gantt_selected, .dark .gantt_task_row.gantt_selected {
+          background-color: #334155 !important;
+        }
       `}</style>
       {/* ── 欄位顯示開關工具列 ── */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900 text-xs">
@@ -383,19 +412,19 @@ export default function GanttView({
 const renderAlertCell = (t: any) => {
   const badges: string[] = []
   if (t.problem) {
-    badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#dc2626;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚑問題</span>`)
+    badges.push(`<span title="${t.problem}" style="background:#fdf4ff;color:#a21caf;border:1px solid #f5d0fe;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚑有問題</span>`)
   }
   if (t.blockedBy && t.blockedBy.length > 0) {
-    badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fee2e2;color:#dc2626;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔卡住</span>`)
+    badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔卡住</span>`)
   }
   if (t.isParallel) {
-    badges.push(`<span title="並行" style="background:#fef3c7;color:#d97706;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
+    badges.push(`<span title="並行" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
   }
   if (t.isOverdue) {
-    badges.push(`<span title="逾期" style="background:#ffe4e6;color:#e11d48;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰逾期</span>`)
+    badges.push(`<span title="逾期" style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰逾期</span>`)
   }
   if (t.inquiry === 'AWAITING' || t.inquiry === 'PARTIAL' || t.inquiry === 'OVERDUE') {
-    badges.push(`<span title="待回覆" style="background:#e0f2fe;color:#0284c7;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">❓待回覆</span>`)
+    badges.push(`<span title="待回覆" style="background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">❓待回覆</span>`)
   }
   if (!badges.length) return ''
   return `<div style="display:flex;align-items:center;justify-content:flex-start;gap:3px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`

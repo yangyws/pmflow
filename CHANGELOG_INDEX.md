@@ -625,6 +625,13 @@
 - **異動說明**:
   - **左側選單警示徽章超量自動折行**：為左側 Menu 樹狀項目加入 `flex-wrap`，當單一任務項目的警示徽章過多或寬度不足時，僅該任務項目的警示徽章全數自動折行整理至第二行顯示。
 
+### Commit: `b8c9d0e` - Fix: Sync Gantt alert badges, fix row hover highlight color, and remove red border outline
+- **變更檔案**: [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx#L314-L340, #L382-L400)
+- **異動說明**:
+  1. **警示徽章樣式與圖示全系統同步**：將甘特圖的 `ProblemBadge` 改為全系統一致之紫粉色 `⚑有問題` (`#fdf4ff` / `#a21caf`)，並統一卡住、並行、逾期、待回覆徽章樣式與文字。
+  2. **列表 Hover/選取反白配色優化**：覆寫 dhtmlx 預設黃灰色，改為與系統一致之柔軟 slate 高亮配色 (`#f1f5f9` / `#e2e8f0`)。
+  3. **粗紅外框 (紅框) 完全移除**：移除原本由 dhtmlx 自動為關鍵路徑 (`critical`) 及詢問逾期掛載的粗紅外框邊線 (`outline: none` / `border-color`)，使甘特圖條形維持乾淨統一。
+
 
 
 
