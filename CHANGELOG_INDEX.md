@@ -400,6 +400,13 @@
   - **左側選單動態連動**：在 `handleToggleMode` 中同步更新全域 `pmflow_graph_container_boxes` (`localStorage`) 並觸發 `pmflow_container_boxes_changed` 事件。
   - **即時分組切換**：點擊卡片/收納盒模式切換按鈕時，左側 Menu 側欄即時重新運算 Group 1 (收納盒區塊) 與 Group 2/3 (卡片區塊) 之階層歸屬，達到 100% 即時雙向連動。
 
+### Commit: `7b8c9d0` - Feat: Render NodeProgressBar inside storage box header bar
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L235-L260, #L685-L690)
+- **異動說明**:
+  - **收納盒進度條**：在收納盒頂部標頭列（Header）內加入 `NodeProgressBar` 進度條組件，並動態綁定 `t.progress`。
+  - **完全不遮擋**：進度條嵌入標頭內部，盒內卡片與子收納盒擺放或移動時完全不會覆蓋收納盒的進度狀態。
+
+
 
 
 

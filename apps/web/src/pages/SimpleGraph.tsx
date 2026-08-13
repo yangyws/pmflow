@@ -234,26 +234,29 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
           <div>
             <div className="h-1 rounded-t-lg shrink-0 bg-indigo-500 dark:bg-indigo-600" />
-            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={handleToggle}
-                  className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500"
-                  title="【收納盒】點擊轉換回卡片"
-                >
-                  📦 收納盒
-                </button>
-                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
-                  {data.refText || 'MRG-BOX'}
-                </span>
-                <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
-                  {data.label || '無標題收納盒'}
+            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start">
+              <div className="flex items-center justify-between gap-1.5 w-full">
+                <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500"
+                    title="【收納盒】點擊轉換回卡片"
+                  >
+                    📦 收納盒
+                  </button>
+                  <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
+                    {data.refText || 'MRG-BOX'}
+                  </span>
+                  <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
+                    {data.label || '無標題收納盒'}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
+                  (移入卡片自動擴大容量)
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
-                (移入卡片自動擴大容量)
-              </span>
+              <NodeProgressBar progress={data.progress ?? 0} />
             </div>
           </div>
 
@@ -683,6 +686,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             label: t.title,
             refText: t.ref,
             mode: 'box',
+            progress: t.progress ?? 0,
             minWidth: dims.minWidth,
             minHeight: dims.minHeight,
           },
