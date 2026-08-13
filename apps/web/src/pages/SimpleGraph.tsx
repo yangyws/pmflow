@@ -962,9 +962,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         const cardCenterX = cardAbsPos.x + cardWidth / 2
         const cardCenterY = cardAbsPos.y + cardHeight / 2
 
-        const boxNodes = currentNodes.filter(
-          (cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box' && cn.id !== node.id
-        )
+        const getBoxDepth = (bId: string): number => {
+          let depth = 0
+          let cur: string | undefined = bId
+          const visited = new Set<string>()
+          while (cur && !visited.has(cur)) {
+            visited.add(cur)
+            const n = currentNodes.find((cn) => cn.id === cur)
+            if (!n || !n.parentId) break
+            depth++
+            cur = n.parentId
+          }
+          return depth
+        }
+
+        const boxNodes = currentNodes
+          .filter((cn) => (cn.data as SimpleGraphNodeData)?.mode === 'box' && cn.id !== node.id)
+          .sort((a, b) => getBoxDepth(b.id) - getBoxDepth(a.id))
 
         let targetBox: Node | undefined = undefined
         for (const b of boxNodes) {

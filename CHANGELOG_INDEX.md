@@ -336,6 +336,12 @@
   - **舊畫布大座標自動清洗**：收納盒移入父收納盒當下與 `processTask` 載入時自動將舊的大座標 (`x > 1200`) 覆蓋清洗為相對槽位座標，徹底解決跑出超大偏移量與卡片重疊之問題。
   - **卡片區右側精準分派**：自動計算父收納盒內卡片之最大 `rightX` 邊界，將子收納盒放置於卡片區右側全新獨立欄 (`x: Math.max(312, maxRightX + 24), y: 50`)，使父收納盒自動橫向擴展寬度。
 
+### Commit: `b3c4d5e` - Fix: Prioritize deepest nested child box during collision detection to prevent parent box hijacking
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **巢狀深度優先判定**：新增 `getBoxDepth` 遞迴層級計算，並將 `boxNodes` 依巢狀深度降冪排序 (`b.depth - a.depth`)。當卡片或子收納盒拖曳至巢狀區域時，100% 優先判定命中最內層的子收納盒，徹底解決外層上游父收納盒搶走放鬆點之問題。
+
+
 
 
 
