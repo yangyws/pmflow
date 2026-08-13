@@ -28,6 +28,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx, ProblemBadge } from '../components/ui'
+import { rollup } from '../lib/rollup'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -480,6 +481,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     }
     return custom || DEFAULT_MAP[typeKey] || typeKey
   }, [project])
+
+  const rolledMap = useMemo(() => rollup(tasks ?? []), [tasks])
 
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
@@ -959,7 +962,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             label: t.title,
             refText: t.ref,
             mode: 'box',
-            progress: t.progress ?? 0,
+            progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0,
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             problem: t.problem,
@@ -993,7 +996,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               parentId: t.id,
               position: kPos,
               zIndex: 10,
-              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0, typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
+              data: { label: k.title, refText: k.ref, mode: 'card', progress: rolledMap.get(k.id)?.progress ?? k.progress ?? 0, typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
             })
           } else {
             processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
@@ -1007,7 +1010,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
-          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0, typeColor: typeColorOf(t.type), typeName: typeNameOf(t.type), problem: t.problem },
+          data: { label: t.title, refText: t.ref, mode: 'card', progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0, typeColor: typeColorOf(t.type), typeName: typeNameOf(t.type), problem: t.problem },
         })
       }
     }

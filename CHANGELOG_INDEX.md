@@ -524,6 +524,13 @@
 - **異動說明**:
   - **類型徽章對齊舊關聯圖**：完全參考舊關聯圖 (`Graph.tsx`) 配置，將事件類型徽章（如：`大項目` / `任務` / `問題` / `里程碑`）擺放於卡片與收納盒頂層 `MRG` 編號正右側，並搭配類型專屬色系 background & border。
 
+### Commit: `d0e1f2a` - Feat: Rollup storage box progress and prohibit manual progress edit in TaskDrawer
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L31, #L485, #L960-L1015), [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx#L212-L225, #L550-L566)
+- **異動說明**:
+  - **收納盒進度自動彙總**：在 `SimpleGraph.tsx` 引進 `rollup(tasks)`，收納盒與父級任務進度條自動依子卡片進度彙總計算。
+  - **事件詳細抽屜禁止修改進度與備註說明**：當事件擁有子事件或為收納盒時，`TaskDrawer.tsx` 禁用進度拉條，並顯示備註文字 `(目前由子事件進度總和為主)`。
+
+
 
 
 

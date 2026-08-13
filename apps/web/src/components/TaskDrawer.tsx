@@ -212,12 +212,21 @@ export function TaskDrawer({
   const isContainerBox = useMemo(() => {
     if (!data) return false
     if (data.children && data.children.length > 0) return true
+    if (data.type === 'EPIC') return true
     try {
       const saved = localStorage.getItem('pmflow_graph_container_boxes')
       if (saved) return new Set<string>(JSON.parse(saved)).has(data.id)
     } catch {}
     return false
   }, [data])
+
+  const displayProgress = useMemo(() => {
+    if (data?.children && data.children.length > 0) {
+      const sum = data.children.reduce((acc, c) => acc + (c.progress ?? 0), 0)
+      return Math.round(sum / data.children.length)
+    }
+    return form.progress
+  }, [data?.children, form.progress])
 
   const isDoneStatus = statuses.some(s => s.key === data?.statusKey && s.category === 'DONE')
   const isTaskLocked = isDoneStatus && !isManager
@@ -543,14 +552,14 @@ export function TaskDrawer({
                 <div className="sm:col-span-2">
                   <Field label={T.task.drawer.fieldProgress}>
                     {canEdit && !isContainerBox ? (
-                      <ProgressField value={form.progress}
+                      <ProgressField value={displayProgress}
                                      onCommit={v => edit({ progress: v })} />
                     ) : (
                       <ReadOnlyValue>
-                        {T.task.drawer.progressValue(form.progress)}
+                        {T.task.drawer.progressValue(displayProgress)}
                         {isContainerBox ? (
                           <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
-                            (收納盒：自動彙總子卡片進度)
+                            (目前由子事件進度總和為主)
                           </span>
                         ) : null}
                       </ReadOnlyValue>
