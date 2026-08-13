@@ -122,6 +122,7 @@ export type SimpleGraphNodeData = {
   progress?: number
   typeColor?: string
   problem?: string | null
+  blockedBy?: string[]
   isSelected?: boolean
   isRelated?: boolean
   hasSelectionActive?: boolean
@@ -320,6 +321,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                     {data.refText || 'MRG-BOX'}
                   </span>
                   <ProblemBadge problem={data.problem} />
+                  {data.blockedBy && data.blockedBy.length > 0 && (
+                    <span
+                      title={`卡住：要等 ${data.blockedBy.join('、')}`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
+                    >
+                      <span aria-hidden>⛔</span>卡住
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   (移入卡片自動擴大容量)
@@ -378,6 +387,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 {data.refText || 'MRG-1'}
               </span>
               <ProblemBadge problem={data.problem} />
+              {data.blockedBy && data.blockedBy.length > 0 && (
+                <span
+                  title={`卡住：要等 ${data.blockedBy.join('、')}`}
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
+                >
+                  <span aria-hidden>⛔</span>卡住
+                </span>
+              )}
             </div>
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate w-full" title={data.label}>
               {data.label || '無標題任務'}
@@ -490,6 +507,39 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
     return result
   }, [activeSelectedId, edges, nodes])
+
+  const blockedByMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    if (!tasks || !tasks.length || !edges || !edges.length) return map
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+
+    const isDone = (t?: Task) => {
+      if (!t) return false
+      if (t.progress >= 100) return true
+      const cat = statusCatMap.get(t.statusKey)
+      return cat === 'DONE' || t.statusKey === 'DONE'
+    }
+
+    for (const e of edges) {
+      const sId = String(e.source)
+      const tId = String(e.target)
+      const srcTask = taskMap.get(sId)
+      const dstTask = taskMap.get(tId)
+
+      if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
+        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+        const list = map.get(dstTask.id) || []
+        if (!list.includes(srcRef)) {
+          list.push(srcRef)
+        }
+        map.set(dstTask.id, list)
+      }
+    }
+
+    return map
+  }, [tasks, edges, project?.statuses])
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -1567,12 +1617,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             isSelected,
             isRelated,
             hasSelectionActive: !!relatedSet,
+            blockedBy: blockedByMap.get(node.id),
             onToggleMode: handleToggleMode,
           },
         }
       })
     )
-  }, [nodes, activeSelectedId, relatedSet, handleToggleMode])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode])
 
   const styledEdges = useMemo(() => {
     return edges.map((e) => {

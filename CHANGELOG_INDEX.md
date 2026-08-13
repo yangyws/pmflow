@@ -509,6 +509,12 @@
 - **異動說明**:
   - **搬移舊關聯圖警示圖示**：從 `ui.tsx` 引進舊關聯圖 (`Graph.tsx`) 官方標準之 `<ProblemBadge />` 組件，擺放於 `MRG` 編號右側，確保樣式與浮動提示語 100% 統一。
 
+### Commit: `a7b8c9d` - Feat: Migrate blockedBy incomplete upstream rule and badge from old graph
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L124, #L320-L390, #L510-L540, #L1620)
+- **異動說明**:
+  - **搬移舊關聯圖卡住規則**：從舊關聯圖 (`Graph.tsx`) 完整搬移依賴連線阻擋判斷 logic。當上遊卡片未完成時，下游未完成卡片/收納盒會顯示 `⛔ 卡住` 徽章，並浮動提示 `卡住：要等 MRG-X`。
+
+
 
 
 
