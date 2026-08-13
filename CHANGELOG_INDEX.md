@@ -550,6 +550,12 @@
 - **異動說明**:
   - **高亮規則嚴格化**：更新 `relatedSet` 與 `relatedTaskIds` 遍歷 logic。點選卡片或收納盒時，僅高亮直接/間接有依賴連線對接的節點、以及自身與連線節點的直屬巢狀收納盒（`collectSubtreeIfBox` & `collectAncestors`），同盒內部無關聯線的獨立卡片不再被無故高亮。
 
+### Commit: `b2c3d4e` - Fix: Ensure parent storage box auto-expansion loop runs for all drag operations including internal drags
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L1810-L1860)
+- **異動說明**:
+  - **收納盒擴大邏輯修復**：修正 `onNodeDragStop` 在盒內自由拖曳卡片時未觸發父收納盒尺寸重新計算的問題。現在無論是初次移入、移出、或盒內自由移動卡片/子收納盒，皆會自動沿 `parentId` 向上遞迴計算 `computeBoxDimensions` 並動態擴展收納盒寬高。
+
+
 
 
 

@@ -1736,19 +1736,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             [targetBox!.id]: prev[targetBox!.id] ?? targetBox!.position,
           }))
 
-        if (projectId) {
-          queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
-            if (!oldData || !Array.isArray(oldData.tasks)) return oldData
-            return {
-              ...oldData,
-              tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: targetBox.id } : t)),
-            }
-          })
+          if (projectId) {
+            queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+              if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+              return {
+                ...oldData,
+                tasks: oldData.tasks.map((t) => (t.id === node.id ? { ...t, parentId: targetBox!.id } : t)),
+              }
+            })
 
-          Api.moveTask(node.id, { parentId: targetBox.id }).catch((err: unknown) =>
-            console.error('Failed to moveTask in DB:', err)
-          )
-        }
+            Api.moveTask(node.id, { parentId: targetBox!.id }).catch((err: unknown) =>
+              console.error('Failed to moveTask in DB:', err)
+            )
+          }
 
           const nodeBoxDims = isBoxNode ? computeBoxDimensions(node.id, currentNodes, resized[node.id]?.width, resized[node.id]?.height) : undefined
           const nodeBoxW = nodeBoxDims ? nodeBoxDims.width : Number(node.style?.width ?? node.width ?? (isBoxNode ? 340 : 256))
@@ -1822,6 +1822,47 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
         )
       }
 
+      // 自動遞迴檢查所有上層收納盒，若盒內卡片/子收納盒超出範圍即自動擴大收納盒尺寸
+      const updatedMap = new Map(nextNodes.map((n) => [n.id, n]))
+      let curBoxId: string | undefined = targetBox?.id || node.parentId
+      const visitedBoxes = new Set<string>()
+
+      while (curBoxId && !visitedBoxes.has(curBoxId)) {
+        visitedBoxes.add(curBoxId)
+        const bNode = updatedMap.get(curBoxId)
+        if (!bNode) break
+
+        const allNodesList = Array.from(updatedMap.values())
+        const bNewDims = computeBoxDimensions(
+          curBoxId,
+          allNodesList,
+          resized[curBoxId]?.width,
+          resized[curBoxId]?.height
+        )
+
+        const oldW = Number(bNode.style?.width ?? bNode.width ?? 340)
+        const oldH = Number(bNode.style?.height ?? bNode.height ?? 260)
+        const newW = Math.max(oldW, bNewDims.width)
+        const newH = Math.max(oldH, bNewDims.height)
+
+        if (newW > oldW || newH > oldH || bNewDims.minWidth !== (bNode.data as SimpleGraphNodeData)?.minWidth || bNewDims.minHeight !== (bNode.data as SimpleGraphNodeData)?.minHeight) {
+          updatedMap.set(curBoxId, {
+            ...bNode,
+            style: { width: newW, height: newH },
+            width: newW,
+            height: newH,
+            measured: { width: newW, height: newH },
+            data: {
+              ...bNode.data,
+              minWidth: bNewDims.minWidth,
+              minHeight: bNewDims.minHeight,
+            },
+          })
+        }
+        curBoxId = bNode.parentId
+      }
+
+      nextNodes = Array.from(updatedMap.values())
       return orderParentNodesFirst(nextNodes)
     })
   }, [edges, projectId, queryClient, resized, addLog])
