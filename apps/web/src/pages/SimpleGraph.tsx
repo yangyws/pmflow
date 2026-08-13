@@ -926,15 +926,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
       const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
 
-      if (isBoxNode) {
-        addLog('move', `收納盒 (${cardRef}) 移動至 (x: ${Math.round(node.position.x)}, y: ${Math.round(node.position.y)})`)
-        setDragged((prev) => ({
-          ...prev,
-          [node.id]: { x: node.position.x, y: node.position.y },
-        }))
-        return
-      }
-
       setNodes((currentNodes) => {
         // 安全的非遞迴 getAbsPos 避免死迴圈與 TypeError
         const getAbsPos = (nId: string): { x: number; y: number } => {

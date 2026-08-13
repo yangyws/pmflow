@@ -324,6 +324,13 @@
 - **異動說明**:
   - **標題橫向緊貼對齊**：將卡片與收納盒的 Menu 任務名稱 (`data.label`) 移至標頭內部、緊貼於 MRG 數字標籤 (`data.refText`) 右側。採用單一 flex 列呈現，支援文字過長自動截斷 (`truncate`) 與原生 `title` 懸停提示。
 
+### Commit: `f1a2b3c` - Fix: Remove early return for isBoxNode in onNodeDragStop to enable nested storage box move-out detection
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **解鎖收納盒巢狀偵測**：移除 `onNodeDragStop` 開頭對 `isBoxNode` 的提前 return 中斷，使收納盒與卡片一樣皆可完整通過目標盒碰撞與 `move_out` / `move_in` 巢狀判斷。
+  - **Log 與巢狀完美對齊**：收納盒移出父收納盒時成功觸發 `move_out` 並定格大座標，Log 視窗精準輸出 `[移出] 收納盒 (MRG-BOX) 移出收納盒，離開巢狀結構`。
+
+
 
 
 
