@@ -501,20 +501,30 @@ export function EpicSidebar({
    */
   if (collapsed) {
     return (
-      <aside className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-slate-200
-                        bg-white py-2 dark:border-slate-700 dark:bg-slate-900">
+      <aside className="flex w-11 shrink-0 flex-col items-center gap-2 border-r border-slate-200
+                        bg-white py-3 dark:border-slate-700 dark:bg-slate-900 select-none">
         <button onClick={() => setCollapse(false)}
                 title={T.nav.sidebar.expandSidebar}
                 aria-label={T.nav.sidebar.expandSidebar}
-                className="rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-100
+                className="rounded-md p-1.5 text-sm text-slate-400 hover:bg-slate-100
                            hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800
-                           dark:hover:text-slate-300">
+                           dark:hover:text-slate-300 cursor-pointer">
           »
         </button>
 
-        <span className="my-1 h-2.5 w-2.5 shrink-0 rounded-full"
-              title={project?.name ?? T.common.none}
-              style={{ background: project?.color ?? '#94a3b8' }} />
+        <div className="flex flex-col items-center gap-2.5 mt-2">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
+                title={project?.name ?? T.common.none}
+                style={{ background: project?.color ?? '#94a3b8' }} />
+          {project?.name && (
+            <div
+              className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300 tracking-wider whitespace-nowrap"
+              style={{ writingMode: 'vertical-lr' }}
+            >
+              {project.name}
+            </div>
+          )}
+        </div>
       </aside>
     )
   }

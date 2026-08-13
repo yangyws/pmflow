@@ -571,10 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-### Commit: `c3d4e5f` - Refactor: Only highlight unfinished blocking upstream nodes in Graph and Sidebar
-- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L630-L650), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L400-L425)
+### Commit: `d4e5f6a` - Feat: Display project name vertically when sidebar menu is collapsed
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L500-L525)
 - **異動說明**:
-  - **上游高亮規則重構**：點擊卡片時，沿關聯連線反向搜尋上游卡片，僅當上游卡片「未完成 (!isDone，即進度 < 100% 且狀態非 DONE)」造成阻塞卡住時才進行高亮呈現；已完成的上游卡片不再標高亮。
+  - **收納選單直書專案名稱**：當左側選單 `EpicSidebar.tsx` 收合為窄條（w-11）時，專案名稱自動以直書 CSS (`writingMode: vertical-lr`) 呈現，視覺美觀且空間利用最佳化。
+
 
 
 
