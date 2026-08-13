@@ -362,16 +362,58 @@ export function EpicSidebar({
   const relatedTaskIds = useMemo(() => {
     const activeId = selectedTaskId || selectedEpicId
     if (!activeId) return null
-    const set = new Set<string>([activeId])
-    const edges = graphData?.edges ?? []
-    for (const e of edges) {
-      if (e.sourceId === activeId) set.add(e.targetId)
-      if (e.targetId === activeId) set.add(e.sourceId)
+    const result = new Set<string>()
+    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const childrenMap = new Map<string, string[]>()
+    tasks.forEach((t) => {
+      if (t.parentId) {
+        const list = childrenMap.get(t.parentId) || []
+        list.push(t.id)
+        childrenMap.set(t.parentId, list)
+      }
+    })
+
+    const collectSubtree = (id: string) => {
+      if (result.has(id)) return
+      result.add(id)
+      const kids = childrenMap.get(id) || []
+      kids.forEach((kId) => collectSubtree(kId))
     }
-    const activeTask = tasks.find(t => t.id === activeId)
-    if (activeTask?.parentId) set.add(activeTask.parentId)
-    tasks.filter(t => t.parentId === activeId).forEach(t => set.add(t.id))
-    return set
+
+    const collectAncestors = (id: string) => {
+      let cur = taskMap.get(id)
+      const visited = new Set<string>()
+      while (cur?.parentId && !visited.has(cur.id)) {
+        visited.add(cur.id)
+        result.add(cur.parentId)
+        cur = taskMap.get(cur.parentId)
+      }
+    }
+
+    collectSubtree(activeId)
+    collectAncestors(activeId)
+
+    const edges = graphData?.edges ?? []
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const e of edges) {
+        const sId = String(e.sourceId)
+        const tId = String(e.targetId)
+        if (result.has(sId) && !result.has(tId)) {
+          collectSubtree(tId)
+          collectAncestors(tId)
+          changed = true
+        }
+        if (result.has(tId) && !result.has(sId)) {
+          collectSubtree(sId)
+          collectAncestors(sId)
+          changed = true
+        }
+      }
+    }
+
+    return result
   }, [selectedTaskId, selectedEpicId, tasks, graphData])
 
   /** 一列任務的問題數：底下的，加上自己（如果它本身就是一張問題） */

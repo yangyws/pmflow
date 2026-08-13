@@ -452,18 +452,57 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
   const relatedSet = useMemo(() => {
     if (!activeSelectedId) return null
-    const set = new Set<string>([activeSelectedId])
-    for (const e of edges) {
-      const sId = String(e.source)
-      const tId = String(e.target)
-      if (sId === activeSelectedId) set.add(tId)
-      if (tId === activeSelectedId) set.add(sId)
-    }
+    const result = new Set<string>()
     const nodeMap = new Map(nodes.map((n) => [n.id, n]))
-    const activeNode = nodeMap.get(activeSelectedId)
-    if (activeNode?.parentId) set.add(activeNode.parentId)
-    nodes.filter((n) => n.parentId === activeSelectedId).forEach((n) => set.add(n.id))
-    return set
+    const childrenMap = new Map<string, string[]>()
+    nodes.forEach((n) => {
+      if (n.parentId) {
+        const list = childrenMap.get(n.parentId) || []
+        list.push(n.id)
+        childrenMap.set(n.parentId, list)
+      }
+    })
+
+    const collectSubtree = (id: string) => {
+      if (result.has(id)) return
+      result.add(id)
+      const kids = childrenMap.get(id) || []
+      kids.forEach((kId) => collectSubtree(kId))
+    }
+
+    const collectAncestors = (id: string) => {
+      let cur = nodeMap.get(id)
+      const visited = new Set<string>()
+      while (cur?.parentId && !visited.has(cur.id)) {
+        visited.add(cur.id)
+        result.add(cur.parentId)
+        cur = nodeMap.get(cur.parentId)
+      }
+    }
+
+    collectSubtree(activeSelectedId)
+    collectAncestors(activeSelectedId)
+
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const e of edges) {
+        const sId = String(e.source)
+        const tId = String(e.target)
+        if (result.has(sId) && !result.has(tId)) {
+          collectSubtree(tId)
+          collectAncestors(tId)
+          changed = true
+        }
+        if (result.has(tId) && !result.has(sId)) {
+          collectSubtree(sId)
+          collectAncestors(sId)
+          changed = true
+        }
+      }
+    }
+
+    return result
   }, [activeSelectedId, edges, nodes])
 
   const onNodeClick = useCallback(
@@ -1551,8 +1590,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
   const styledEdges = useMemo(() => {
     return edges.map((e) => {
+      const sId = String(e.source)
+      const tId = String(e.target)
       const isConnected = activeSelectedId
-        ? String(e.source) === activeSelectedId || String(e.target) === activeSelectedId
+        ? (relatedSet ? relatedSet.has(sId) && relatedSet.has(tId) : false)
         : true
       return {
         ...e,
@@ -1564,7 +1605,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
         },
       }
     })
-  }, [edges, activeSelectedId])
+  }, [edges, activeSelectedId, relatedSet])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">

@@ -487,6 +487,12 @@
 - **異動說明**:
   - **接點圓點配色同步**：將卡片與收納盒的左右接點圓點顏色更換為**紅色** (`!bg-red-500`)，上下接點圓點顏色更換為**紫色** (`!bg-purple-500`)，使圓點與出發的關聯線顏色 100% 視覺一致。
 
+### Commit: `c3d4e5f` - Feat: Include all nested subtree descendants & ancestors in selection highlight
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L450-L510, #L1590-L1610), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L360-L420)
+- **異動說明**:
+  - **巢狀全樹高亮**：點擊收納盒或卡片時，高亮範圍升級為遞迴包含該點的整棵巢狀子樹（所有子卡片、子收納盒及多層孫節點）、祖先收納盒，以及透過關聯線連接之全部相關節點與邊線。
+
+
 
 
 
