@@ -27,7 +27,7 @@ import '@xyflow/react/dist/style.css'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
-import { cx } from '../components/ui'
+import { cx, ProblemBadge } from '../components/ui'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -319,14 +319,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                     {data.refText || 'MRG-BOX'}
                   </span>
-                  {data.problem && (
-                    <span
-                      title={`問題：${data.problem}`}
-                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-fuchsia-700 bg-fuchsia-50 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 pointer-events-none select-none"
-                    >
-                      <span aria-hidden>⚑</span>問題
-                    </span>
-                  )}
+                  <ProblemBadge problem={data.problem} />
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   (移入卡片自動擴大容量)
@@ -384,14 +377,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
-              {data.problem && (
-                <span
-                  title={`問題：${data.problem}`}
-                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-fuchsia-700 bg-fuchsia-50 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 pointer-events-none select-none"
-                >
-                  <span aria-hidden>⚑</span>問題
-                </span>
-              )}
+              <ProblemBadge problem={data.problem} />
             </div>
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate w-full" title={data.label}>
               {data.label || '無標題任務'}

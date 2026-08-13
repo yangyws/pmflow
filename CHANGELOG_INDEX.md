@@ -504,6 +504,12 @@
   - **標題位置移至進度條上方**：將收納盒與卡片的任務標題獨立移至進度條 (`NodeProgressBar`) 的正上方整行呈現。
   - **既有位置改置警示圖示**：頂層 MRG 編號右側原本擺放標題的位置，改為優先顯示 `⚑問題` 警示圖示徽章。
 
+### Commit: `f6a7b8c` - Refactor: Migrate official ProblemBadge component from old graph to SimpleGraph
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L30, #L320-L390)
+- **異動說明**:
+  - **搬移舊關聯圖警示圖示**：從 `ui.tsx` 引進舊關聯圖 (`Graph.tsx`) 官方標準之 `<ProblemBadge />` 組件，擺放於 `MRG` 編號右側，確保樣式與浮動提示語 100% 統一。
+
+
 
 
 
