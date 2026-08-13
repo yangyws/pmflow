@@ -122,6 +122,7 @@ export type SimpleGraphNodeData = {
   mode: NodeMode
   progress?: number
   typeColor?: string
+  typeName?: string
   problem?: string | null
   blockedBy?: string[]
   isSelected?: boolean
@@ -321,6 +322,16 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                     {data.refText || 'MRG-BOX'}
                   </span>
+                  <span
+                    className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] border pointer-events-none select-none font-medium"
+                    style={{
+                      backgroundColor: `${data.typeColor || '#3178c6'}18`,
+                      color: data.typeColor || '#3178c6',
+                      borderColor: `${data.typeColor || '#3178c6'}40`,
+                    }}
+                  >
+                    {data.typeName || '任務'}
+                  </span>
                   <ProblemBadge problem={data.problem} />
                   {data.blockedBy && data.blockedBy.length > 0 && (
                     <span
@@ -387,6 +398,16 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
+              <span
+                className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] border pointer-events-none select-none font-medium"
+                style={{
+                  backgroundColor: `${data.typeColor || '#3178c6'}18`,
+                  color: data.typeColor || '#3178c6',
+                  borderColor: `${data.typeColor || '#3178c6'}40`,
+                }}
+              >
+                {data.typeName || '任務'}
+              </span>
               <ProblemBadge problem={data.problem} />
               {data.blockedBy && data.blockedBy.length > 0 && (
                 <span
@@ -446,6 +467,18 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     if (!typeKey) return '#3178c6'
     const custom = project?.types?.find((p) => p.key === typeKey)?.color
     return custom || DEFAULT_TYPE_COLORS[typeKey] || '#3178c6'
+  }, [project])
+
+  const typeNameOf = useCallback((typeKey?: string) => {
+    if (!typeKey) return '任務'
+    const custom = project?.types?.find((p) => p.key === typeKey)?.name
+    const DEFAULT_MAP: Record<string, string> = {
+      EPIC: '大項目',
+      TASK: '任務',
+      BUG: '問題',
+      MILESTONE: '里程碑',
+    }
+    return custom || DEFAULT_MAP[typeKey] || typeKey
   }, [project])
 
   const [nodes, setNodes] = useState<Node[]>([])
@@ -906,7 +939,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             width: kW,
             height: kH,
             style: { width: kW, height: kH },
-            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card', typeColor: typeColorOf(k.type), problem: k.problem },
+            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card', typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
           }
         })
 
@@ -928,6 +961,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             mode: 'box',
             progress: t.progress ?? 0,
             typeColor: typeColorOf(t.type),
+            typeName: typeNameOf(t.type),
             problem: t.problem,
             minWidth: dims.minWidth,
             minHeight: dims.minHeight,
@@ -959,7 +993,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               parentId: t.id,
               position: kPos,
               zIndex: 10,
-              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0, typeColor: typeColorOf(k.type), problem: k.problem },
+              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0, typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
             })
           } else {
             processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
@@ -973,7 +1007,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
-          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0, typeColor: typeColorOf(t.type), problem: t.problem },
+          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0, typeColor: typeColorOf(t.type), typeName: typeNameOf(t.type), problem: t.problem },
         })
       }
     }

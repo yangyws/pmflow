@@ -519,6 +519,12 @@
 - **異動說明**:
   - **左右實心紅色連線強制化**：設定 `animated: false` 並將 `strokeDasharray` 強制改為 `'none'`，徹底消除 React Flow 預設動畫與虛線效果，確保左右接點關聯線呈 100% 滿版實心紅線。
 
+### Commit: `c9d0e1f` - Style: Render event type badge directly to the right of MRG ref text like old graph
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L125, #L320-L395, #L470, #L940-L1010)
+- **異動說明**:
+  - **類型徽章對齊舊關聯圖**：完全參考舊關聯圖 (`Graph.tsx`) 配置，將事件類型徽章（如：`大項目` / `任務` / `問題` / `里程碑`）擺放於卡片與收納盒頂層 `MRG` 編號正右側，並搭配類型專屬色系 background & border。
+
+
 
 
 
