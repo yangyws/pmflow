@@ -571,10 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-### Commit: `a8b9c0d` - Fix: Only left/right handle connections trigger blockage (blockedBy) in SimpleGraph
-- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L680-L695)
+### Commit: `b9c0d1e` - Feat: Make node card width adaptively expand horizontally for warning badges
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L320-L480)
 - **異動說明**:
-  - **卡住判定僅限左右接點**：更新 `blockedByMap` 邏輯，過濾掉上下出發/到達（`top-in` / `top-out` / `bottom-in` / `bottom-out`）的層級連線，只有左右出發／到達的真正的依賴關係連線才會算入「⛔卡住」狀態。
+  - **徽章寬度自適應**：將警示徽章欄改回單行不換行 (`whitespace-nowrap`)，將卡片容器寬度設為 `min-w-[256px] w-max max-w-[480px]` 寬度自適應，使包含多個警示徽章的卡片自動向右擴大寬度，而非向上拉高高度。
+
 
 
 
