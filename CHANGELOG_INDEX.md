@@ -435,6 +435,12 @@
   - **圖示判定同步**：清單中對應收納盒（含子任務、切換收納盒模式或大項目）一律呈現 `📦`，獨立卡片呈現 `📄`，100% 與左側 Menu 的圖示邏輯完全一致。
   - **階層順序同步**：將清單中收納盒內部的子卡片依 MRG / Ref 數字進行次序排序，階層構造與 Menu 保持零時差對齊。
 
+### Commit: `3b4c5d6` - Fix: Strict single link check per node pair across any handle points
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L940-L956)
+- **異動說明**:
+  - **跨接點重複連線封鎖**：當節點 A 與節點 B 之間已經存在任何關聯線時，嚴格禁止透過任何第二個接點（如 Top/Bottom/Left/Right）重複拉線連接，並即時彈出警示提示框：「【MRG-X】與【MRG-Y】之間已存在關聯線，任何第二個接點皆不可重複相連！」。
+
+
 
 
 

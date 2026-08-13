@@ -940,17 +940,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         return
       }
 
+      const sId = String(connection.source)
+      const tId = String(connection.target)
+
       const hasDuplicateEdge = edges.some(
         (e) =>
-          (e.source === connection.source && e.target === connection.target) ||
-          (e.source === connection.target && e.target === connection.source)
+          (String(e.source) === sId && String(e.target) === tId) ||
+          (String(e.source) === tId && String(e.target) === sId)
       )
 
       if (hasDuplicateEdge) {
         const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
         const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
         setAlertMsg(
-          `【${srcRef}】與【${tgtRef}】之間已存在關聯線，無法重複建立！`
+          `【${srcRef}】與【${tgtRef}】之間已存在關聯線，任何第二個接點皆不可重複相連！`
         )
         return
       }
