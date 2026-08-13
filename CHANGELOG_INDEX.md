@@ -594,6 +594,11 @@
 - **異動說明**:
   - **甘特圖警示欄靠左對齊**：將甘特圖清單中的「警示」欄位對齊方式改為靠左對齊 (`align: 'left'`)，使內含之警示徽章組合自然由左至右對齊呈現。
 
+### Commit: `b2c3d4e` - Layout: Position Kanban alert badges inline directly after task title
+- **變更檔案**: [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx#L345-L360)
+- **異動說明**:
+  - **看板警示徽章緊接標題右側**：將看板卡片 (`Card`) 的警示徽章區塊改為緊接在任務標題 (`task.title`) 文字正右側，維持行內對齊自然緊湊。
+
 
 
 
