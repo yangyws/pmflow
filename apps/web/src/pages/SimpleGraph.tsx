@@ -86,10 +86,11 @@ function computeBoxDimensions(
   let maxBottom = 260
 
   kids.forEach((k) => {
+    const isKBox = (k.data as SimpleGraphNodeData)?.mode === 'box'
     const kX = k.position?.x ?? 24
     const kY = k.position?.y ?? 50
-    const kW = k.width ?? (k as any).measured?.width ?? 256
-    const kH = k.height ?? (k as any).measured?.height ?? 72
+    const kW = Number(k.style?.width ?? k.width ?? (k as any).measured?.width ?? (isKBox ? 340 : 256))
+    const kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 260 : 72))
     const right = kX + kW + 24
     const bottom = kY + kH + 20
     if (right > maxRight) maxRight = right

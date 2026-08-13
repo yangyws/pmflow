@@ -356,6 +356,12 @@
 - **異動說明**:
   - **精準隔離重繪作用域**：卡片移入收納盒時，100% 僅對當下移入的目標收納盒 (`targetBox`) 進行按需擴大與重繪。完全不觸發任何子收納盒 (`child boxes`) 的座標重算，且保持所有非目標收納盒原封不動。
 
+### Commit: `f7a8b9c` - Fix: Expand upstream parent storage box when downstream child storage box is moved in
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **子收納盒邊界擴展**：更新 `computeBoxDimensions` 計算邏輯，精準讀取子收納盒之 `isKBox` 模式與寬高尺寸 (`kW: 340px+`, `kH: 260px+`)。當下游子收納盒移入上游父收納盒且尺寸不足時，父收納盒自動橫向與縱向擴展容量。
+
+
 
 
 
