@@ -341,6 +341,12 @@
 - **異動說明**:
   - **巢狀深度優先判定**：新增 `getBoxDepth` 遞迴層級計算，並將 `boxNodes` 依巢狀深度降冪排序 (`b.depth - a.depth`)。當卡片或子收納盒拖曳至巢狀區域時，100% 優先判定命中最內層的子收納盒，徹底解決外層上游父收納盒搶走放鬆點之問題。
 
+### Commit: `c4d5e6f` - Feat: Apply universal on-demand box expansion chain to all top-level and nested storage boxes
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **全收納盒通用按需擴大**：將按需擴大機制推廣至所有收納盒。當卡片或子收納盒放入時，經由 `curBoxId = bNode.parentId` 向上遞迴觸發所有祖先收納盒重算 `computeBoxDimensions`。所有收納盒僅在實際寬度/高度需求超出現有尺寸時才進行自動擴展與重繪。
+
+
 
 
 
