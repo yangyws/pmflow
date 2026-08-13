@@ -492,6 +492,13 @@
 - **異動說明**:
   - **巢狀全樹高亮**：點擊收納盒或卡片時，高亮範圍升級為遞迴包含該點的整棵巢狀子樹（所有子卡片、子收納盒及多層孫節點）、祖先收納盒，以及透過關聯線連接之全部相關節點與邊線。
 
+### Commit: `d4e5f6a` - Fix: Synchronize List view tree ordering with EpicSidebar and force Handle inline colors
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L13, #L170-L245), [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L230-L289)
+- **異動說明**:
+  - **清單巢狀樹狀同步**：在 `List.tsx` 中引進並共用 `divideAndSortLinked` 排序演算法，確保清單頁面的頂層與盒內卡片階層排序與 Menu 側欄 100% 同步。
+  - **接點圓點顏色強制生效**：在 `SimpleGraph.tsx` 的 `<Handle>` 組件中，將 `backgroundColor: '#ef4444'`（左右紅色）與 `backgroundColor: '#8b5cf6'`（上下紫色）直接寫入 `style` 行內屬性，克服 React Flow 預設樣式覆蓋問題。
+
+
 
 
 

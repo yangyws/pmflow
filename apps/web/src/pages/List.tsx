@@ -10,7 +10,8 @@ import { rollup, isTaskOverdue } from '../lib/rollup'
 import { typesAllowedUnder } from '../lib/hierarchy'
 import { T } from '../strings'
 import { useRemembered } from '../lib/remember'
-import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar' // Ref: CR-125
+import { DEFAULT_TYPE_COLORS, divideAndSortLinked } from '../components/EpicSidebar' // Ref: CR-125
+
 
 
 /** 清單／樹狀視圖：依 parentId 展開階層（上下關聯） */
@@ -184,43 +185,33 @@ export default function ListView({
       containerBoxSet.has(t.id) || hasKidsSet.has(t.id) || t.type === 'EPIC' || (t.type as string) === 'BOX'
 
     const edges = graph?.edges ?? []
-    const linkedIds = new Set<string>()
-    for (const e of edges) {
-      linkedIds.add(e.sourceId)
-      linkedIds.add(e.targetId)
-    }
-
-    const numRef = (t: Task) => t.number ?? 0
 
     // 頂層卡片分組
-    const rawTop = tasks.filter(t => !t.parentId)
+    const rawEpics = tasks.filter(t => !t.parentId)
+    const boxesGroup = rawEpics.filter(t => isBox(t)).sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+    const nonBoxEpics = rawEpics.filter(t => !isBox(t))
+    const { linkedTasks, unlinkedTasks } = divideAndSortLinked(nonBoxEpics, edges, tasks)
 
-    // Group 1: 收納盒 / 大項目 (100% 優先置頂排序)
-    const group1 = rawTop.filter(t => isBox(t)).sort((a, b) => numRef(a) - numRef(b))
+    const sortedTop = [...boxesGroup, ...linkedTasks, ...unlinkedTasks]
 
-    // Group 2: 有關聯線的卡片
-    const nonBoxTop = rawTop.filter(t => !isBox(t))
-    const group2 = nonBoxTop.filter(t => linkedIds.has(t.id)).sort((a, b) => Number(a.rank) - Number(b.rank))
-
-    // Group 3: 無關聯線的獨立卡片
-    const group3 = nonBoxTop.filter(t => !linkedIds.has(t.id)).sort((a, b) => numRef(a) - numRef(b))
-
-    const sortedTop = [...group1, ...group2, ...group3]
-
-    const byParent = new Map<string | null, Task[]>()
+    const rawKidsMap = new Map<string, Task[]>()
     for (const t of tasks) {
-      const k = t.parentId ?? null
-      const list = byParent.get(k) ?? []
-      list.push(t)
-      byParent.set(k, list)
+      if (t.parentId) {
+        const list = rawKidsMap.get(t.parentId) || []
+        list.push(t)
+        rawKidsMap.set(t.parentId, list)
+      }
     }
-    for (const [k, list] of byParent.entries()) {
-      if (k !== null) list.sort((a, b) => numRef(a) - numRef(b))
+
+    const byParentMap = new Map<string, Task[]>()
+    for (const [pId, list] of rawKidsMap.entries()) {
+      const { linkedTasks: kLinked, unlinkedTasks: kUnlinked } = divideAndSortLinked(list, edges, tasks)
+      byParentMap.set(pId, [...kLinked, ...kUnlinked])
     }
 
     const out: Array<Task & { depth: number; hasKids: boolean; isBox: boolean }> = []
     const walk = (t: Task, depth: number) => {
-      const kids = byParent.get(t.id) ?? []
+      const kids = byParentMap.get(t.id) ?? []
       const hasKids = kids.length > 0
       out.push({ ...t, depth, hasKids, isBox: isBox(t) })
       if (hasKids && collapsedSet.has(t.id)) return

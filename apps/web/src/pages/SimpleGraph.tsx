@@ -231,60 +231,60 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         type="target"
         position={Position.Left}
         id="left-in"
-        style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
-        style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Right}
         id="right-in"
-        style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
-        style={{ top: '50%' }}
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Top}
         id="top-in"
-        style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-out"
-        style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-in"
-        style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
-        style={{ left: '50%' }}
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
       />
 
       {isBox ? (

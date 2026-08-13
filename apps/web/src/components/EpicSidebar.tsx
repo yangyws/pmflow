@@ -25,7 +25,7 @@ export const DEFAULT_TYPE_COLORS: Record<string, string> = {
  * 「側欄要不要收起來」是看螢幕決定的 —— 在筆電上為了甘特圖寬一點而收起來的人，
  * 換到大螢幕未必想收。存進帳號會讓兩台裝置互相蓋掉，跟深色模式同一個道理。
  */
-function divideAndSortLinked(
+export function divideAndSortLinked(
   taskList: Task[],
   edges: Array<{ sourceId: string; targetId: string; linkType?: string }>,
   allTasks?: Task[]
