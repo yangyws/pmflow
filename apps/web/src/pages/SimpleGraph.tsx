@@ -369,6 +369,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     }
   })
 
+  const draggedRef = useRef(dragged)
+  draggedRef.current = dragged
+  const resizedRef = useRef(resized)
+  resizedRef.current = resized
+
   // 切換專案時自動重置對焦狀態並載入該專案的持久化位置、尺寸與模式
   useEffect(() => {
     hasFittedRef.current = false
@@ -525,6 +530,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       return
     }
 
+    const draggedMap = draggedRef.current
+    const resizedMap = resizedRef.current
+
     const parentIdSet = new Set<string>()
     tasks.forEach((t) => {
       if (t.parentId) parentIdSet.add(t.parentId)
@@ -550,7 +558,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     // 全自動雙向殘留座標清洗器 (Auto-Purge Residual Coordinates)
     tasks.forEach((t) => {
       if (t.parentId) {
-        const saved = dragged[t.id]
+        const saved = draggedMap[t.id]
         if (saved && (saved.x > 500 || saved.y > 450)) {
           setDragged((prev) => {
             const next = { ...prev }
@@ -580,14 +588,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       const kids = childrenMap.get(t.id) || []
 
       if (isBox) {
-        const boxPos = dragged[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+        const boxPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
 
         // 預估目前盒內所有子卡片
         const childNodesList: Node[] = kids.map((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
           const defaultSlotPos = { x: 24 + cCol * 280, y: 50 + cRow * 100 }
-          const rawPos = dragged[k.id]
+          const rawPos = draggedMap[k.id]
           const isValidChildPos =
             rawPos &&
             typeof rawPos.x === 'number' &&
@@ -608,7 +616,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           }
         })
 
-        const dims = computeBoxDimensions(t.id, childNodesList, resized[t.id]?.width, resized[t.id]?.height)
+        const dims = computeBoxDimensions(t.id, childNodesList, resizedMap[t.id]?.width, resizedMap[t.id]?.height)
 
         newNodes.push({
           id: t.id,
@@ -638,7 +646,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
           if (kMode !== 'box') {
             processedTaskIds.add(k.id)
-            const rawPos = dragged[k.id]
+            const rawPos = draggedMap[k.id]
             const isValidChildPos =
               rawPos &&
               typeof rawPos.x === 'number' &&
@@ -661,7 +669,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           }
         })
       } else {
-        const cardPos = dragged[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
+        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 50 })
         newNodes.push({
           id: t.id,
           type: 'simpleNode',
@@ -697,8 +705,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
       const prevMap = new Map(prevNodes.map((n) => [n.id, n]))
       const merged = newNodes.map((newNode) => {
         const existing = prevMap.get(newNode.id)
-        const savedPos = dragged[newNode.id]
-        const savedSize = resized[newNode.id]
+        const savedPos = draggedMap[newNode.id]
+        const savedSize = resizedMap[newNode.id]
 
         if (newNode.parentId) {
           const parentChanged = (existing?.parentId ?? null) !== (newNode.parentId ?? null)
@@ -787,7 +795,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
 
       return orderParentNodesFirst(merged)
     })
-  }, [tasks, dragged, resized, toggledModes])
+  }, [tasks, toggledModes])
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {

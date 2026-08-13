@@ -290,6 +290,13 @@
 - **異動說明**:
   - **鎖定 DOM 引用消滅閃爍**：為 `nodesWithHandlers` 加上 `useMemo` 快取，鎖定 `node.data` 記憶體引用。防止拖曳過程中 (每秒 60 次 `onNodesChange`) 重新建立 `node.data` 物件所導致的 60fps 卡片組件頻繁銷毀與重繪 (Re-mount) 閃爍問題。
 
+### Commit: `f5a6b7c` - Refactor: Remove dragged and resized from useEffect dependencies to strictly forbid per-second re-rendering
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **嚴格封鎖二次座標重算**：將 `dragged` 與 `resized` 改為 useRef 參考 (`draggedRef` / `resizedRef`)，並將 `useEffect` 監聽陣列縮減為 `[tasks, toggledModes]`。
+  - **單一動作定格**：畫布上拖曳與縮放由 React Flow 與 `onNodeDragStop` 於單一動作放下時一次性定格；`useEffect` 僅在切換頁面或左側 Menu 異動時才會觸發全圖重算，徹底禁止每秒讀取座標重繪與搶座標現象。
+
+
 
 
 
