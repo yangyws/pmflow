@@ -319,6 +319,12 @@
   - **巢狀進出動態切換**：收納盒移入收納盒時自動分配專屬寬度槽位並進入巢狀結構 (`parentId: targetBox.id`)；移出至空白畫布時自動脫離巢狀 (`parentId: null`) 並鎖定於放開大座標。
   - **Log 與 Menu 雙向連動**：Log 明確輸出「進入巢狀結構」與「離開巢狀結構」動態，並實時連動左側 Menu 樹狀多層級縮排。
 
+### Commit: `e0f1a2b` - Layout: Align Menu task title right next to MRG badge in single horizontal row
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **標題橫向緊貼對齊**：將卡片與收納盒的 Menu 任務名稱 (`data.label`) 移至標頭內部、緊貼於 MRG 數字標籤 (`data.refText`) 右側。採用單一 flex 列呈現，支援文字過長自動截斷 (`truncate`) 與原生 `title` 懸停提示。
+
+
 
 
 

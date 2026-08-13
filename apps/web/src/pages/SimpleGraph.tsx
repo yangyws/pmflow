@@ -189,17 +189,20 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/50 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/50 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto">
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 overflow-hidden flex-1">
                 <button
                   type="button"
                   onClick={handleToggle}
-                  className="nodrag rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700"
+                  className="nodrag rounded bg-indigo-100 hover:bg-indigo-200 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors cursor-pointer border border-indigo-300 dark:border-indigo-700 shrink-0"
                   title="切換模式"
                 >
                   📦 收納盒
                 </button>
-                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white pointer-events-none select-none">
+                <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white pointer-events-none select-none shrink-0">
                   {data.refText || 'MRG-BOX'}
+                </span>
+                <span className="font-semibold text-indigo-950 text-xs dark:text-indigo-200 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
+                  {data.label || '無標題收納盒'}
                 </span>
               </div>
             </div>
@@ -236,24 +239,22 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           </NodeResizeControl>
         </div>
       ) : (
-        <div className="w-64 min-h-[76px] rounded-lg border border-slate-300 bg-white p-3 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700/60">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="nodrag rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
-                title="切換模式"
-              >
-                📄 卡片
-              </button>
-              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 pointer-events-none select-none">
-                {data.refText || 'MRG-1'}
-              </span>
-            </div>
-          </div>
-          <div className="mt-2 font-medium text-slate-800 text-sm dark:text-slate-200 pointer-events-none select-none">
-            {data.label || '無標題任務'}
+        <div className="w-64 min-h-[72px] rounded-lg border border-slate-300 bg-white p-2.5 shadow-sm hover:shadow-md transition-shadow dark:border-slate-700 dark:bg-slate-800 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-center">
+          <div className="flex items-center gap-1.5 overflow-hidden w-full">
+            <button
+              type="button"
+              onClick={handleToggle}
+              className="nodrag rounded bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shrink-0"
+              title="切換模式"
+            >
+              📄 卡片
+            </button>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 pointer-events-none select-none shrink-0">
+              {data.refText || 'MRG-1'}
+            </span>
+            <span className="font-medium text-slate-800 text-xs dark:text-slate-200 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
+              {data.label || '無標題任務'}
+            </span>
           </div>
         </div>
       )}
