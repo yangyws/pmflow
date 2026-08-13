@@ -22,6 +22,33 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
+### Commit: `b7e2c2f` - Fix: e2e test script and seed parameter auto-population
+- **變更檔案**: 
+  - [`e2e.sh`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.sh)
+  - [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts)
+  - [`index.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/index.ts)
+- **異動說明**:
+  - 修正 `e2e.sh` 的 `apic` 輔助函式，增加 `--data-raw` 及 `charset=utf-8` header，徹底避免 Windows curl 傳送中文字元造成的 fastify byte-length parsing 錯誤與轉義問題。
+  - 將 24~27 區節錯誤的 `"type":"EPIC"` 修改為合法枚舉 `"type":"TASK"`。
+  - 為 `NEWMAIL` 加上時間戳防碰撞 (`jack-$(date +%s)-$RANDOM@example.com`)。
+  - 優化步驟 14 (環狀關聯攔截) 與步驟 17 (甘特連動推算) 測試的自動復原與依賴鏈鋪設邏輯，並支援 `RESET_DB=true` 強制重置資料庫。
+  - 在 API 啟動與 `seedDemo()` 時加入 `seedProjectTypesIfMissing()`，自動為缺少的專案補齊任務類型與優先度參數。
+  - **測試結果**: 107 項 E2E 端對端測試達到 **107 PASS / 0 FAIL (100% 通過)**。
+
+### Commit: `ce06cef` - Fix: List view hierarchy calculation and loop recursion prevention
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L186-L230)
+- **異動說明**:
+  - 更新根節點判斷邏輯 `isRoot = (t: Task) => !t.parentId || !taskIds.has(t.parentId)`，修正當篩選 Epic / 收納盒時卡片無法正確呈現樹狀層級結構的問題。
+  - 在 `walk()` 遞迴遍歷中加入 `processed` Set 守衛，杜絕潛在的循環父子關係造成的無窮迴圈。
+
+### Commit: `5dbc4f7` - Refactor: Menu sidebar item layout to strict 3-line hierarchy and 100% checkmark rule
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L884-L980)
+- **異動說明**:
+  - 調整左側選單欄位版型為三行結構：
+    - Line 1: 圖示 / Ref 號碼 / 警示徽章 (極限緊湊) / 僅於進度等於 `100%` 時顯示勾選圖示。
+    - Line 2: 完整任務標題。
+    - Line 3: 進度條與百分比。
+
 ### Commit: `2f1e9fb` - Fix: Reset measured bounds and unnest child cards when toggling box back to card
 - **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L273-L293)
 - **異動說明**:
