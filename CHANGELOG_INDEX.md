@@ -313,6 +313,13 @@
   - **收納盒座標永久鎖定**：在 `onNodeDragStop` 卡片移入當下自動鎖定 `[targetBox.id]: targetBox.position`。無論移入多張卡片，收納盒於畫布上 100% 保持原位靜止不動，徹底封鎖跑位問題。
   - **底色透明度獨立化**：移除外框容器 `opacity-50` 類別，精準設定底色為 `bg-indigo-50/50 dark:bg-indigo-950/50`，使內文字與按鈕維持 100% 清晰度。
 
+### Commit: `d9e0f1a` - Feat: Support nested storage box enter and exit nesting structure with real-time Left Menu sync
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **巢狀進出動態切換**：收納盒移入收納盒時自動分配專屬寬度槽位並進入巢狀結構 (`parentId: targetBox.id`)；移出至空白畫布時自動脫離巢狀 (`parentId: null`) 並鎖定於放開大座標。
+  - **Log 與 Menu 雙向連動**：Log 明確輸出「進入巢狀結構」與「離開巢狀結構」動態，並實時連動左側 Menu 樹狀多層級縮排。
+
+
 
 
 

@@ -998,11 +998,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           }
         }
 
+        const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
+        const nodeTypeStr = isBoxNode ? '收納盒' : '卡片'
         let nextNodes = currentNodes
 
         if (!targetBox && currentParentId) {
-          // 移出收納盒：更新大座標至 dragged
-          addLog('move_out', `卡片 (${cardRef}) 移出收納盒，定格大座標 (x: ${Math.round(cardAbsPos.x)}, y: ${Math.round(cardAbsPos.y)})`)
+          // 移出收納盒：離開巢狀結構
+          addLog('move_out', `${nodeTypeStr} (${cardRef}) 移出收納盒，離開巢狀結構 | 畫布大座標 (x: ${Math.round(cardAbsPos.x)}, y: ${Math.round(cardAbsPos.y)})`)
           setDragged((prev) => ({
             ...prev,
             [node.id]: cardAbsPos,
@@ -1033,10 +1035,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             return n
           })
         } else if (targetBox && targetBox.id !== currentParentId) {
-          // 移入收納盒：找下一個不與既有卡片衝突的空槽位
+          // 移入收納盒：進入巢狀結構
           const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
           const occupiedSlots = new Set(
-            targetKids.map((k) => `${Math.round((k.position.x - 24) / 280)},${Math.round((k.position.y - 50) / 100)}`)
+            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 50) / 100)}`)
           )
 
           let slotIdx = 0
@@ -1048,12 +1050,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             if (!occupiedSlots.has(`${tCol},${tRow}`)) break
             slotIdx++
           }
-          const targetSlotPos = { x: 24 + tCol * 280, y: 50 + tRow * 100 }
+          const targetSlotPos = isBoxNode
+            ? { x: 24 + tCol * 360, y: 50 + tRow * 280 }
+            : { x: 24 + tCol * 280, y: 50 + tRow * 100 }
           const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
           const realAbsX = Math.round(targetBoxAbsPos.x + targetSlotPos.x)
           const realAbsY = Math.round(targetBoxAbsPos.y + targetSlotPos.y)
-          addLog('move_in', `卡片 (${cardRef}) 移入 (${targetBoxRef})，槽位 (x: ${targetSlotPos.x}, y: ${targetSlotPos.y}) | 畫布大座標 (x: ${realAbsX}, y: ${realAbsY})`)
+          addLog('move_in', `${nodeTypeStr} (${cardRef}) 移入 (${targetBoxRef})，進入巢狀結構 | 畫布大座標 (x: ${realAbsX}, y: ${realAbsY})`)
 
           setDragged((prev) => ({
             ...prev,
