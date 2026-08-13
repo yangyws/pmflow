@@ -341,12 +341,13 @@ export function EpicSidebar({
       return n
     }
 
-    const stat = new Map(epics.map(e => {
+    const stat = new Map(tasks.map(e => {
       const r = rolled.get(e.id)
+      const prog = r?.progress ?? e.progress
       return [e.id, {
-        progress: r?.progress ?? e.progress,
+        progress: prog,
         // 葉節點的 totalCount 是 1（自己），對大項目沒有意義，一律以子任務數為準
-        done: r?.derived ? r.doneCount : (e.progress >= 100 ? 1 : 0),
+        done: r?.derived ? r.doneCount : (prog >= 100 ? 1 : 0),
         total: r?.derived ? r.totalCount : 1,
         hasChildren: !!r?.derived,
         overdue: overdueIn(e.id),
@@ -576,6 +577,7 @@ export function EpicSidebar({
               projectId={project?.id}
               childrenOf={childrenOf}
               stat={stat.get(epic.id)}
+              statMap={stat}
               bugsUnder={bugsUnder}
               overdueIn={overdueIn}
               inquiriesIn={inquiriesIn}
@@ -682,7 +684,7 @@ export function EpicSidebar({
  * 底下每一層都是同一種緊湊的樣子，再深也不會多出新花樣。
  */
 function TreeNode({
-  task, depth, projectId, childrenOf, stat, bugsUnder, overdueIn, inquiriesIn, types,
+  task, depth, projectId, childrenOf, stat, statMap, bugsUnder, overdueIn, inquiriesIn, types,
   expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
@@ -691,8 +693,8 @@ function TreeNode({
   projectId?: string
   types: ProjectParam[]
   childrenOf: Map<string, Task[]>
-  /** 只有最上層那一列有：進度與 x/y 個已完成 */
   stat?: { progress: number; done: number; total: number; hasChildren: boolean }
+  statMap?: Map<string, { progress: number; done: number; total: number; hasChildren: boolean }>
   bugsUnder: (id: string) => number
   overdueIn: (id: string) => number
   inquiriesIn: (id: string) => number
@@ -897,11 +899,11 @@ function TreeNode({
             )}
           </div>
 
-          {/* 進度條只有最上層那一列有 —— 每一層都畫的話，側欄會變成一片條 */}
-          {isRoot && stat && (
+          {/* 進度條同步呈現（為選單每個項目與收納盒同步呈現進度條） */}
+          {stat && (
             <div className="mt-1.5 flex items-center gap-2">
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <span className={cx('block h-full',
+                <span className={cx('block h-full transition-all duration-300',
                         stat.progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
                       style={{ width: `${stat.progress}%` }} />
               </span>
@@ -979,6 +981,8 @@ function TreeNode({
           depth={depth + 1}
           projectId={projectId}
           childrenOf={childrenOf}
+          stat={statMap?.get(kid.id)}
+          statMap={statMap}
           bugsUnder={bugsUnder}
           overdueIn={overdueIn}
           inquiriesIn={inquiriesIn}

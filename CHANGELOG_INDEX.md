@@ -561,6 +561,12 @@
   - **清單視圖狀態徽章同步 (`List.tsx`)**：於清單項目的標題旁同步呈現 `⚡並行`、`⏰ 逾期`、`❓ 待回覆`、`內含 N 張` 等圖示徽章。
   - **行事曆視圖方案 C 實作 (`Calendar.tsx`)**：在月曆日期格數字旁顯示微型彩色小圓點 Indicator (藍/紅/綠/黃/紫)，代表當天進行中/逾期/已完成/詢問/請假行程；並支援滑鼠懸停 (Hover) 彈出簡潔整齊的事件詳細資訊視窗。
 
+### Commit: `d4e5f6a` - Feat: Synchronize visual progress bar for all items in left sidebar menu
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L340-L355, #L685-L710, #L900-L915, #L980-L990)
+- **異動說明**:
+  - **左側 Menu 進度條全同步**：更新 `stat` map 計算範圍覆蓋全部 tasks。讓左側選單 `EpicSidebar.tsx` 的所有收納盒、任務與子卡片皆同步顯示動態進度條（如 `85%` 與 `3/4` 完成數），讓進度狀況一目了然。
+
+
 
 
 
