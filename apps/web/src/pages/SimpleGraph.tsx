@@ -74,13 +74,19 @@ export type SimpleGraphNodeData = {
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
 
-// 計算收納盒邊界與最小尺寸 (依據盒內所有卡片的最大座標與邊界 (x+width, y+height))
+// 計算收納盒邊界與最小尺寸 (依據盒內所有卡片與子收納盒的最大座標與邊界 (x+width, y+height))
 function computeBoxDimensions(
   boxId: string,
   childNodes: Node[],
   currentResizedW?: number,
-  currentResizedH?: number
-) {
+  currentResizedH?: number,
+  visited = new Set<string>()
+): { minWidth: number; minHeight: number; width: number; height: number } {
+  if (visited.has(boxId)) {
+    return { minWidth: 340, minHeight: 260, width: Math.max(340, currentResizedW ?? 0), height: Math.max(260, currentResizedH ?? 0) }
+  }
+  visited.add(boxId)
+
   const kids = childNodes.filter((cn) => cn.parentId === boxId)
   let maxRight = 340
   let maxBottom = 260
@@ -89,8 +95,15 @@ function computeBoxDimensions(
     const isKBox = (k.data as SimpleGraphNodeData)?.mode === 'box'
     const kX = k.position?.x ?? 24
     const kY = k.position?.y ?? 50
-    const kW = Number(k.style?.width ?? k.width ?? (k as any).measured?.width ?? (isKBox ? 340 : 256))
-    const kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 260 : 72))
+    let kW = Number(k.style?.width ?? k.width ?? (k as any).measured?.width ?? (isKBox ? 340 : 256))
+    let kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 260 : 72))
+
+    if (isKBox) {
+      const subDims = computeBoxDimensions(k.id, childNodes, undefined, undefined, new Set(visited))
+      kW = Math.max(kW, subDims.width)
+      kH = Math.max(kH, subDims.height)
+    }
+
     const right = kX + kW + 24
     const bottom = kY + kH + 20
     if (right > maxRight) maxRight = right
@@ -556,25 +569,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
     const newNodes: Node[] = []
     let rootIndex = 0
     const processedTaskIds = new Set<string>()
-
-    // 全自動雙向殘留座標清洗器 (Auto-Purge Residual Coordinates)
-    tasks.forEach((t) => {
-      if (t.parentId) {
-        const saved = draggedMap[t.id]
-        if (saved && (saved.x > 500 || saved.y > 450)) {
-          setDragged((prev) => {
-            const next = { ...prev }
-            delete next[t.id]
-            try {
-              localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(next))
-            } catch {
-              // ignore
-            }
-            return next
-          })
-        }
-      }
-    })
 
     const prevNodesMap = new Map(nodesRef.current.map((n) => [n.id, n]))
 
@@ -1102,9 +1096,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           )
         }
 
+          const nodeBoxDims = isBoxNode ? computeBoxDimensions(node.id, currentNodes, resized[node.id]?.width, resized[node.id]?.height) : undefined
+          const nodeBoxW = nodeBoxDims ? nodeBoxDims.width : Number(node.style?.width ?? node.width ?? 256)
+          const nodeBoxH = nodeBoxDims ? nodeBoxDims.height : Number(node.style?.height ?? node.height ?? 72)
+
           const targetBoxNewDims = computeBoxDimensions(
             targetBox!.id,
-            [...targetKids, { ...node, position: targetSlotPos }],
+            [...targetKids, { ...node, position: targetSlotPos, style: { width: nodeBoxW, height: nodeBoxH }, width: nodeBoxW, height: nodeBoxH }],
             resized[targetBox!.id]?.width,
             resized[targetBox!.id]?.height
           )

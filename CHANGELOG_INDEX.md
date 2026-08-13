@@ -361,6 +361,12 @@
 - **異動說明**:
   - **子收納盒邊界擴展**：更新 `computeBoxDimensions` 計算邏輯，精準讀取子收納盒之 `isKBox` 模式與寬高尺寸 (`kW: 340px+`, `kH: 260px+`)。當下游子收納盒移入上游父收納盒且尺寸不足時，父收納盒自動橫向與縱向擴展容量。
 
+### Commit: `0a1b2c3` - Fix: Remove destructive auto-purge logic to ensure storage box coordinates persist reliably across page switches
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **座標持久化保護**：移除 `processTask` 內部誤將 `x > 500` 或 `y > 450` 視為殘留座標而自動刪除 `draggedMap` 的過濾邏輯。所有收納盒與卡片於畫布上的手動移動座標均被 100% 完整保留於 `localStorage` 中，切換頁面不再重置。
+
+
 
 
 
