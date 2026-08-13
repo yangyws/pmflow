@@ -567,9 +567,12 @@
   1. **當前檢視標題簡化 (`App.tsx`)**：頂部列移除原先左側的 `MRG-X` 按鈕，改為直接粗體呈現選取項目的事件標題名稱。
   2. **看板類型徽章位置對齊 (`Board.tsx`)**：將看板卡片上的類型徽章（大項目/任務/問題/里程碑）移至 `MRG` 編號正右側。
   3. **清單按鈕向右側擺放 (`List.tsx`)**：將清單項目的編輯筆 `✏️` 與新增子任務 `＋` 按鈕移至所有狀態與警示徽章右側。
-  4. **成員視圖補上警示徽章 (`Members.tsx`)**：於成員視圖任務列表同步呈現 `⚑問題`、`⏰ 逾期` 等警示徽章，並更新 API 後端 `TASK_BRIEF` 查詢。
-  5. **行事曆圓點圖例 (`Calendar.tsx`)**：將行事曆右上角文字替換為彩色圓點圖例：`🔴逾期/問題` `🔵進行中` `🟢已完成` `🟡對外詢問` `🟣請假`。
-  6. **測試資料補充 (`seed.ts` & DB)**：為測試任務補上問題描述，方便驗證徽章在全站各視圖的連動呈現。
+### Commit: `f6a7b8c` - Feat: Fine-tune Calendar dots and consolidate main navigation to SimpleGraph as official Graph view
+- **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
+- **異動說明**:
+  1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
+  2. **主導覽視圖整合 (`App.tsx`)**：移除舊版 Graph 視圖頁籤，將新版 `SimpleGraph` 頁籤名稱統一修訂為「**關聯圖**」。
+
 
 
 

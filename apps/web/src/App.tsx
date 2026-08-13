@@ -51,11 +51,9 @@ type AccountView = 'profile' | 'admin' | null
 const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'list', label: T.nav.views.list },
   { key: 'board', label: T.nav.views.board },
-  // Ref: CR-102 - 週檢視已整合至「行事曆」頂部 [月視角 | 週視角] 切換
   { key: 'calendar', label: T.nav.views.calendar },
   { key: 'gantt', label: T.nav.views.gantt },
-  { key: 'graph', label: T.nav.views.graph },
-  { key: 'simpleGraph', label: '新關聯表' },
+  { key: 'simpleGraph', label: '關聯圖' },
   // 儀表板排在幾張「看任務」的圖後面：它看的是整個專案的走勢，
   // 不是同一批任務的另一種排法，翻它的時機也不一樣（回報進度的時候才看）
   { key: 'dashboard', label: T.nav.views.dashboard },

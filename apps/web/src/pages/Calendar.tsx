@@ -516,14 +516,6 @@ export default function CalendarView({
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               已完成
             </span>
-            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              對外詢問
-            </span>
-            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
-              請假
-            </span>
           </div>
         </div>
 
@@ -748,12 +740,6 @@ function DayCell({
               )}
               {dayEvents.tasks.some(t => t.progress >= 100) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-white dark:ring-slate-900" title="有已完成任務" />
-              )}
-              {dayEvents.inquiries.length > 0 && (
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 ring-1 ring-white dark:ring-slate-900" title="有對外詢問" />
-              )}
-              {dayEvents.leaves.length > 0 && (
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-white dark:ring-slate-900" title="有成員請假" />
               )}
             </div>
           )}
