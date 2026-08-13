@@ -1101,8 +1101,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           )
         }
 
-          // 建立基本更新節點陣列
-          const initialNextNodes = currentNodes.map((n) => {
+          const targetBoxNewDims = computeBoxDimensions(
+            targetBox!.id,
+            [...targetKids, { ...node, position: targetSlotPos }],
+            resized[targetBox!.id]?.width,
+            resized[targetBox!.id]?.height
+          )
+
+          nextNodes = currentNodes.map((n) => {
             if (n.id === node.id) {
               return {
                 ...n,
@@ -1110,50 +1116,27 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
                 position: targetSlotPos,
               }
             }
+            if (n.id === targetBox!.id) {
+              const oldW = Number(n.style?.width ?? n.width ?? 340)
+              const oldH = Number(n.style?.height ?? n.height ?? 260)
+              const needsExpand = targetBoxNewDims.width > oldW || targetBoxNewDims.height > oldH
+              if (needsExpand) {
+                return {
+                  ...n,
+                  style: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
+                  width: targetBoxNewDims.width,
+                  height: targetBoxNewDims.height,
+                  measured: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
+                  data: {
+                    ...n.data,
+                    minWidth: targetBoxNewDims.minWidth,
+                    minHeight: targetBoxNewDims.minHeight,
+                  },
+                }
+              }
+            }
             return n
           })
-
-          // 遞迴更新所有祖先收納盒容量 (按需擴大)
-          let updatedNodes = initialNextNodes
-          let curBoxId: string | undefined = targetBox!.id
-          while (curBoxId) {
-            const bId: string = curBoxId
-            const bNode: Node | undefined = updatedNodes.find((n) => n.id === bId)
-            if (!bNode) break
-
-            const bDims = computeBoxDimensions(
-              bId,
-              updatedNodes,
-              resized[bId]?.width,
-              resized[bId]?.height
-            )
-
-            const oldW = Number(bNode.style?.width ?? bNode.width ?? 340)
-            const oldH = Number(bNode.style?.height ?? bNode.height ?? 260)
-            const needsExpand = bDims.width > oldW || bDims.height > oldH
-
-            if (needsExpand) {
-              updatedNodes = updatedNodes.map((n) =>
-                n.id === bId
-                  ? {
-                      ...n,
-                      style: { width: bDims.width, height: bDims.height },
-                      width: bDims.width,
-                      height: bDims.height,
-                      measured: { width: bDims.width, height: bDims.height },
-                      data: {
-                        ...n.data,
-                        minWidth: bDims.minWidth,
-                        minHeight: bDims.minHeight,
-                      },
-                    }
-                  : n
-              )
-            }
-            curBoxId = bNode.parentId
-          }
-
-          nextNodes = updatedNodes
         } else {
           const isChild = !!node.parentId
           if (isChild) {

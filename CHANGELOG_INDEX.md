@@ -351,6 +351,12 @@
 - **異動說明**:
   - **解除收納盒大小限制**：移除 `processTask` 中子節點座標驗證的上界限制 (`x <= 1200`, `y <= 600`, `x <= 500`, `y <= 450`)，將 `onNodeDragStop` 中的槽位搜尋上限提升至 10,000。所有收納盒可無限容納子卡片與巢狀收納盒，並支援無限橫向與縱向擴展。
 
+### Commit: `e6f7a8b` - Fix: Strictly isolate card move-in re-renders to targetBox only without touching child or other boxes
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **精準隔離重繪作用域**：卡片移入收納盒時，100% 僅對當下移入的目標收納盒 (`targetBox`) 進行按需擴大與重繪。完全不觸發任何子收納盒 (`child boxes`) 的座標重算，且保持所有非目標收納盒原封不動。
+
+
 
 
 
