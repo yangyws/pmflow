@@ -417,6 +417,13 @@
   - **盒內舒適間距**：將收納盒內部子卡片與子收納盒的起始縱向座標 (`y`) 由 `50` 統一推移調整至 `70` (槽位高度基數調整為 `110`)。
   - **避開進度條**：使第一排子卡片與標頭內的 `NodeProgressBar` 進度條之間保留 18px 舒適呼吸邊距，徹底摧毀遮擋問題。
 
+### Commit: `0e1f2a3` - Feat & Style: Sync List.tsx card icon to 📄 and change edit/add buttons to hover-only visible
+- **變更檔案**: [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L325-L395)
+- **異動說明**:
+  - **清單圖示同步**：將清單檢視 (`List.tsx`) 中的卡片圖示由 `📇` 統一同步替換為與左側 Menu 與關聯圖一致的 `📄` (卡片圖示)。
+  - **Hover 懸停顯示**：將清單每列中的編輯筆 (`✏️`) 與新增子任務 (`+`) 按鈕調整為預設 `opacity-0`，僅在滑鼠懸停於該列 (`group-hover:opacity-100`) 時才顯示，畫面更加乾淨。
+
+
 
 
 

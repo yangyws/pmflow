@@ -323,14 +323,14 @@ export default function ListView({
                         {t.depth > 0 ? '└' : ''}
                       </span>
                     )}
-                    {/* 📦 收納盒 / 📇 卡片 圖示 */}
+                    {/* 📦 收納盒 / 📄 卡片 圖示 */}
                     <span className="shrink-0 text-xs select-none ml-0.5">
                       {t.type === 'MILESTONE' ? '◆' : (t.type === 'EPIC' || (typeof window !== 'undefined' && (() => {
                         try {
                           const saved = localStorage.getItem('pmflow_graph_container_boxes')
                           return saved ? new Set(JSON.parse(saved)).has(t.id) : false
                         } catch { return false }
-                      })())) ? '📦' : '📇'}
+                      })())) ? '📦' : '📄'}
                     </span>
                     {/* 種類色標 */}
                     {typeOf(t.type) && t.type !== 'MILESTONE' && (
@@ -350,7 +350,7 @@ export default function ListView({
                       : 'text-slate-800 dark:text-slate-200')}>
                       {t.title}
                     </span>
-                    {/* ✏️ 編輯筆按鈕：點擊觸發開啟編輯抽屜 */}
+                    {/* ✏️ 編輯筆按鈕：滑過時才顯示，點擊觸發開啟編輯抽屜 */}
                     {onEdit && (
                       <button
                         type="button"
@@ -360,7 +360,7 @@ export default function ListView({
                         }}
                         title="編輯任務詳情"
                         aria-label="編輯任務詳情"
-                        className="ml-1 shrink-0 rounded p-0.5 text-xs text-slate-400 hover:bg-slate-200 hover:text-blue-600 dark:hover:bg-slate-700 dark:hover:text-blue-400 transition-colors"
+                        className="ml-1 shrink-0 rounded p-0.5 text-xs text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-200 hover:text-blue-600 dark:hover:bg-slate-700 dark:hover:text-blue-400 transition-opacity duration-150"
                       >
                         ✏️
                       </button>
@@ -368,8 +368,7 @@ export default function ListView({
                     {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，
                         為它固定讓出一欄寬度，換來的是整張表每一列都變窄 */}
                     <ProblemBadge problem={t.problem} />
-                    {/* 一直看得到。藏在 hover 底下的話，等於還是只有右上角那一個入口 ——
-                        找得到才叫入口，顏色淡一點就不會吵。
+                    {/* 滑過時才顯示。
                         沒有建立任務的權限就整顆不畫 */}
                     {canCreate && (
                     <button
@@ -383,10 +382,10 @@ export default function ListView({
                          所以完整那句話一定要留在 aria-label 上 */
                       aria-label={T.task.list.addChildTip(t.title)}
                       className={cx(
-                        'ml-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] transition-colors',
+                        'ml-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] transition-all duration-150',
                         addingTo === t.id
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
-                          : 'text-slate-300 hover:bg-slate-200 hover:text-slate-700 '
+                          ? 'opacity-100 bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                          : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:bg-slate-200 hover:text-slate-700 '
                             + 'dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                       )}>
                       {T.task.list.addChild}
