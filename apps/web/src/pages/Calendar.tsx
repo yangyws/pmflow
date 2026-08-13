@@ -502,10 +502,29 @@ export default function CalendarView({
 
           <Button onClick={openNewLeave}>{C.leave.add}</Button>
 
-          <span className="ml-auto shrink-0 text-xs text-slate-400 dark:text-slate-400 cursor-help"
-                title={C.dragHint}>
-            {C.dragHintLabel}
-          </span>
+          <div className="ml-auto flex items-center gap-2.5 text-xs select-none flex-wrap">
+            <span className="text-slate-400 font-medium dark:text-slate-400">圖例：</span>
+            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
+              逾期/問題
+            </span>
+            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              進行中
+            </span>
+            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              已完成
+            </span>
+            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              對外詢問
+            </span>
+            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-purple-500" />
+              請假
+            </span>
+          </div>
         </div>
 
         {/* 請假讀不到時講一聲 —— 不然畫面上「沒有人請假」跟「沒讀到」長得一樣 */}

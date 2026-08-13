@@ -207,7 +207,7 @@ export interface MemberTask {
   type: string
   statusKey: string; progress: number
   startDate: string | null; dueDate: string | null
-  inquiryState: InquiryState
+  inquiryState: InquiryState; problem: string | null
   /** 現在的負責人。「曾經的任務」那一區要靠它講出「現在是誰負責」 */
   assigneeId: string | null; assigneeName: string | null
   assigneeHasAvatar: boolean

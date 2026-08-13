@@ -561,10 +561,16 @@
   - **清單視圖狀態徽章同步 (`List.tsx`)**：於清單項目的標題旁同步呈現 `⚡並行`、`⏰ 逾期`、`❓ 待回覆`、`內含 N 張` 等圖示徽章。
   - **行事曆視圖方案 C 實作 (`Calendar.tsx`)**：在月曆日期格數字旁顯示微型彩色小圓點 Indicator (藍/紅/綠/黃/紫)，代表當天進行中/逾期/已完成/詢問/請假行程；並支援滑鼠懸停 (Hover) 彈出簡潔整齊的事件詳細資訊視窗。
 
-### Commit: `d4e5f6a` - Feat: Synchronize visual progress bar for all items in left sidebar menu
-- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L340-L355, #L685-L710, #L900-L915, #L980-L990)
+### Commit: `e5f6a7b` - Refactor: UI layout refinements across header, board, list, members, calendar, and test data
+- **變更檔案**: [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L605-L615), [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx#L268-L280), [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx#L370-L435), [`Members.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Members.tsx#L460-L475), [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L525), [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts#L100), [`routes/members.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/members.ts#L33-L40), [`api.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/lib/api.ts#L204-L214)
 - **異動說明**:
-  - **左側 Menu 進度條全同步**：更新 `stat` map 計算範圍覆蓋全部 tasks。讓左側選單 `EpicSidebar.tsx` 的所有收納盒、任務與子卡片皆同步顯示動態進度條（如 `85%` 與 `3/4` 完成數），讓進度狀況一目了然。
+  1. **當前檢視標題簡化 (`App.tsx`)**：頂部列移除原先左側的 `MRG-X` 按鈕，改為直接粗體呈現選取項目的事件標題名稱。
+  2. **看板類型徽章位置對齊 (`Board.tsx`)**：將看板卡片上的類型徽章（大項目/任務/問題/里程碑）移至 `MRG` 編號正右側。
+  3. **清單按鈕向右側擺放 (`List.tsx`)**：將清單項目的編輯筆 `✏️` 與新增子任務 `＋` 按鈕移至所有狀態與警示徽章右側。
+  4. **成員視圖補上警示徽章 (`Members.tsx`)**：於成員視圖任務列表同步呈現 `⚑問題`、`⏰ 逾期` 等警示徽章，並更新 API 後端 `TASK_BRIEF` 查詢。
+  5. **行事曆圓點圖例 (`Calendar.tsx`)**：將行事曆右上角文字替換為彩色圓點圖例：`🔴逾期/問題` `🔵進行中` `🟢已完成` `🟡對外詢問` `🟣請假`。
+  6. **測試資料補充 (`seed.ts` & DB)**：為測試任務補上問題描述，方便驗證徽章在全站各視圖的連動呈現。
+
 
 
 

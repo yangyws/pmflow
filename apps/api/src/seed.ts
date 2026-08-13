@@ -97,7 +97,7 @@ export async function seedDemo(): Promise<boolean> {
           hist: [[-6, 'todo', 'doing']] },
         { n: 3, title: '設備清冊建立',   type: 'TASK',      st: 'done',  s: -7, d: -2, parent: 1,    prog: 100, c: -28, mine: true,
           hist: [[-7, 'todo', 'doing'], [-3, 'doing', 'review'], [-2, 'review', 'done']] },
-        { n: 4, title: '網路架構確認',   type: 'TASK',      st: 'doing', s: -1, d: 3,  parent: 1,    prog: 40, c: -28,
+        { n: 4, title: '網路架構確認',   type: 'TASK',      st: 'doing', s: -1, d: 3,  parent: 1,    prog: 40, c: -28, problem: '線路頻寬限制，等待電信商升級',
           hist: [[-1, 'todo', 'doing']] },
         { n: 11, title: '現地勘查與拍照', type: 'TASK',     st: 'done',  s: -28, d: -24, parent: 1,  prog: 100, c: -28, mine: true,
           hist: [[-27, 'todo', 'doing'], [-24, 'doing', 'done']] },

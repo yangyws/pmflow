@@ -603,16 +603,9 @@ function ProjectWorkspace({
               {project?.key}
             </span>
             {epic ? (
-              <>
-                <button onClick={() => setEpicId(null)}
-                        className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60">
-                  {epic.ref ?? `${project?.key}-${epic.number}`}
-                </button>
-                <span className="shrink-0 text-slate-300 dark:text-slate-600">/</span>
-                <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
-                  {epic.title}
-                </span>
-              </>
+              <span className="truncate font-semibold text-slate-900 dark:text-slate-100">
+                {epic.title}
+              </span>
             ) : (
               <span className="truncate text-slate-500 dark:text-slate-400">
                 (當前檢視：{shownViews.find(v => v.key === view)?.label ?? T.common.none})

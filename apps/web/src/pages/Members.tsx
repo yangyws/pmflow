@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Api } from '../lib/api'
 import type { MemberTask, PastMemberTask, ProjectParam, TaskStatus } from '../lib/api'
 import { Avatar } from '../components/Avatar'
-import { Input, Spinner, Empty, InquiryBadge, cx } from '../components/ui'
+import { Input, Spinner, Empty, InquiryBadge, ProblemBadge, cx } from '../components/ui'
 import { useRemembered } from '../lib/remember'
+import { isTaskOverdue } from '../lib/rollup'
 import { T } from '../strings'
 
 /**
@@ -463,7 +464,16 @@ function TaskTable({ groups, statusOf, onOpenTask, onEditTask, focusedTaskId, is
                         {t.ref}
                       </span>
                       <span className="text-slate-800 dark:text-slate-100">{t.title}</span>
+                      <ProblemBadge problem={t.problem} />
                       <InquiryBadge state={t.inquiryState} />
+                      {isTaskOverdue(t.dueDate, t.progress) && (
+                        <span
+                          title={`預計完成日: ${t.dueDate}`}
+                          className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                        >
+                          ⏰ 逾期
+                        </span>
+                      )}
                     </div>
                     {extra?.(t)}
                   </td>

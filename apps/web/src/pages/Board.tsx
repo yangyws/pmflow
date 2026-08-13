@@ -14,6 +14,7 @@ import { InquiryBadge, ProblemBadge, cx } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { T } from '../strings'
+import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 
 /**
  * 看板：dnd-kit 拖曳。
@@ -265,8 +266,21 @@ function Card({
         hasUnread && 'pmflow-flash'
       )}
     >
-      <div className="mb-1 flex items-center gap-1.5">
-        <span className="font-mono text-[11px] text-slate-400 dark:text-slate-400">{task.ref}</span>
+      <div className="mb-1 flex items-center gap-1.5 flex-wrap">
+        <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">{task.ref}</span>
+        {/* 類型徽章對齊 MRG 右側 */}
+        {task.type && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            style={{ borderColor: DEFAULT_TYPE_COLORS[task.type] || '#94a3b8', borderWidth: '1px' }}
+          >
+            <span
+              className="h-2 w-0.5 rounded-full"
+              style={{ background: DEFAULT_TYPE_COLORS[task.type] || '#94a3b8' }}
+            />
+            {task.type === 'EPIC' ? '大項目' : task.type === 'TASK' ? '任務' : task.type === 'BUG' ? '問題' : task.type === 'MILESTONE' ? '里程碑' : task.type}
+          </span>
+        )}
         {task.type === 'MILESTONE' && <span className="text-[11px]">◆</span>}
         {topPriority && task.priority === topPriority.key && (
           <span className="rounded px-1 text-[10px] font-medium"

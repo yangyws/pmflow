@@ -34,7 +34,7 @@ const TASK_BRIEF = sql`
   t.id, p.key || '-' || t.number AS "ref", t.title, t.type,
   t.status_key AS "statusKey", t.progress,
   t.start_date AS "startDate", t.due_date AS "dueDate",
-  t.inquiry_state AS "inquiryState",
+  t.inquiry_state AS "inquiryState", t.problem,
   t.assignee_id AS "assigneeId", u.display_name AS "assigneeName",
   (u.avatar_file IS NOT NULL) AS "assigneeHasAvatar"`
 
