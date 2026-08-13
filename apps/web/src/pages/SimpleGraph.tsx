@@ -1037,9 +1037,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               }
             })
 
-            Api.moveTask(node.id, { parentId: null })
-              .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
-              .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+            Api.moveTask(node.id, { parentId: null }).catch((err: unknown) =>
+              console.error('Failed to moveTask in DB:', err)
+            )
           }
 
           nextNodes = currentNodes.map((n) => {
@@ -1086,9 +1086,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             }
           })
 
-          Api.moveTask(node.id, { parentId: targetBox.id })
-            .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }))
-            .catch((err: unknown) => console.error('Failed to moveTask in DB:', err))
+          Api.moveTask(node.id, { parentId: targetBox.id }).catch((err: unknown) =>
+            console.error('Failed to moveTask in DB:', err)
+          )
         }
 
         const targetBoxNewDims = computeBoxDimensions(

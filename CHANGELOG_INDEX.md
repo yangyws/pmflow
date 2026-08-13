@@ -258,6 +258,12 @@
   - **即時動作與座標 Log 視窗**：在 `SimpleGraph.tsx` 右側建立可折疊即時 Log 面板，頂部提供 `📋 即時 Log` 展開/收合按鈕與`一鍵清空`。
   - **完整追蹤紀錄**：即時紀錄並顯示移動 (Move)、移入收納盒 (Move In)、移出收納盒 (Move Out)、模式切換 (Toggle Mode) 與尺寸縮放 (Resize) 之節點 ID、時間與最新座標。
 
+### Commit: `9f0a1b2` - Fix: Remove invalidateQueries on graph card move to eliminate race conditions and card disappearance
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **消除拖曳後 API 競態刷網**：移除 `Api.moveTask` 成功後呼叫 `queryClient.invalidateQueries` 重新向 API 下載 tasks 的行為，改為單純使用 `setQueryData` 樂觀維護記憶體階層。防止舊 GET 請求先完成並覆蓋最新拖曳座標，達成 0 閃爍、0 跳躍與 0 消失。
+
+
 
 
 
