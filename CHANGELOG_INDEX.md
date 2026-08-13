@@ -571,10 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-### Commit: `d4e5f6a` - Feat: Display project name vertically when sidebar menu is collapsed
-- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L500-L525)
+### Commit: `e5f6a7b` - Feat: Auto-expand node cards and boxes when status badges overflow in SimpleGraph
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L320-L490)
 - **異動說明**:
-  - **收納選單直書專案名稱**：當左側選單 `EpicSidebar.tsx` 收合為窄條（w-11）時，專案名稱自動以直書 CSS (`writingMode: vertical-lr`) 呈現，視覺美觀且空間利用最佳化。
+  - **圖示徽章自動換行與卡片擴大**：當卡片或收納盒包含多項警示徽章（`⚑問題`、`⛔卡住`、`⚡並行`、`⏰ 逾期`、`❓ 待回覆`）時，設定徽章列支援 `flex-wrap` 自動換行，並將卡片容器高度改為 `h-auto` 自動擴大，確保所有徽章皆完好容納不被截斷。
+
 
 
 

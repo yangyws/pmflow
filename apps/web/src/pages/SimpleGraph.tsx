@@ -324,8 +324,8 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               style={{ backgroundColor: data.typeColor || '#6366f1' }}
             />
             <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start gap-1">
-              <div className="flex items-center justify-between gap-1.5 w-full">
-                <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-1.5 w-full">
+                <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
                   <button
                     type="button"
                     onClick={handleToggle}
@@ -415,7 +415,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       ) : (
         <div
           className={cx(
-            'w-64 min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden',
+            'w-64 min-h-[90px] h-auto rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl opacity-100'
               : data.isRelated
@@ -430,7 +430,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
           />
           <div className="p-2.5 flex flex-col justify-start flex-1 gap-1">
-            <div className="flex items-center gap-1.5 overflow-hidden w-full">
+            <div className="flex flex-wrap items-center gap-1 w-full">
               <button
                 type="button"
                 onClick={handleToggle}
