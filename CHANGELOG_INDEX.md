@@ -571,7 +571,11 @@
 - **變更檔案**: [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx#L505-L520, #L740-L750), [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L55-L60)
 - **異動說明**:
   1. **行事曆日期數字微型圓點調整 (`Calendar.tsx`)**：日期格數字旁的微型圓點移除「請假 (紫色)」與「對外詢問 (黃色)」，僅保留 逾期/問題 (紅)、進行中 (藍)、已完成 (綠)；懸停浮動視窗 (Hover Popover) 仍完整保留請假與對外詢問清單。
-  2. **主導覽視圖整合 (`App.tsx`)**：移除舊版 Graph 視圖頁籤，將新版 `SimpleGraph` 頁籤名稱統一修訂為「**關聯圖**」。
+### Commit: `a1b2c3d` - Fix: Improve tab reordering drag handles and sensor constraints in App.tsx
+- **變更檔案**: [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L280-L335)
+- **異動說明**:
+  - **頁籤排序拖曳修正**：將頁籤設定面板中的拖曳手把由 `<button>` 替換為專屬 `<span>` 元素，並修訂 dnd-kit `PointerSensor` 觸發約束，確保滑鼠／觸控拖曳調整頁籤順序順暢無阻。
+
 
 
 
