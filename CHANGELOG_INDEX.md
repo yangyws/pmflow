@@ -271,8 +271,15 @@
 ### Commit: `b1c2d3e` - Style: Customize mouse cursor icons for card nodes and storage boxes for clear visual feedback
 - **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
 - **異動說明**:
-  - **游標圖示分工**：收納盒懸停使用 `cursor-move` (四向移動十字箭頭 `✥`)，卡片懸停使用 `cursor-grab` (張手抓取 `✋`)；兩者拖曳中皆使用 `cursor-grabbing` (握拳 `✊`)。
+  - **游標圖示分工**：收納盒與卡片懸停皆使用 `cursor-grab` (張手 `✋`)，拖曳中皆使用 `cursor-grabbing` (握拳 `✊`)，畫布背景容器使用 `cursor-move` (四向移動十字 `✥`)。
   - **文字點擊透傳**：標題與 MRG 標籤加上 `pointer-events-none select-none`，點擊卡片框內任意區域均可順暢觸發拖曳。
+
+### Commit: `c2d3e4f` - Style & Feat: Set storage box opacity to 50% and enhance Log Panel with dual coordinate displays
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **收納盒半透明化**：為收納盒外框容器加入 `opacity-50` (不透明度 50%)。
+  - **雙重座標對齊 Log**：Log 視窗移入與盒內移動改為同時印出「盒內相對槽位」與「畫布真實大座標」，使 Log 紀錄與畫面視覺位置 100% 完美對齊。
+
 
 
 
