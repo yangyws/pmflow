@@ -596,7 +596,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           ? (isValidChildBoxPos ? rawBoxPos : { x: 312, y: 50 })
           : (rawBoxPos ?? { x: rootX, y: rootY })
 
-        // 預估目前盒內所有子卡片
+        // 預估目前盒內所有子卡片與子收納盒
         const childNodesList: Node[] = kids.map((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
@@ -609,14 +609,22 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             rawPos.x >= 10 &&
             rawPos.y >= 35
           const kPos = isValidChildPos ? rawPos : defaultSlotPos
+
+          const kDefaultBox = parentIdSet.has(k.id)
+          const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
+          const isKBox = kMode === 'box'
+          const kW = isKBox ? Math.max(340, resizedMap[k.id]?.width ?? 340) : 256
+          const kH = isKBox ? Math.max(260, resizedMap[k.id]?.height ?? 260) : 72
+
           return {
             id: k.id,
             type: 'simpleNode',
             parentId: t.id,
             position: kPos,
-            width: 256,
-            height: 72,
-            data: { label: k.title, refText: k.ref, mode: 'card' },
+            width: kW,
+            height: kH,
+            style: { width: kW, height: kH },
+            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card' },
           }
         })
 
@@ -1097,45 +1105,61 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
         }
 
           const nodeBoxDims = isBoxNode ? computeBoxDimensions(node.id, currentNodes, resized[node.id]?.width, resized[node.id]?.height) : undefined
-          const nodeBoxW = nodeBoxDims ? nodeBoxDims.width : Number(node.style?.width ?? node.width ?? 256)
-          const nodeBoxH = nodeBoxDims ? nodeBoxDims.height : Number(node.style?.height ?? node.height ?? 72)
+          const nodeBoxW = nodeBoxDims ? nodeBoxDims.width : Number(node.style?.width ?? node.width ?? (isBoxNode ? 340 : 256))
+          const nodeBoxH = nodeBoxDims ? nodeBoxDims.height : Number(node.style?.height ?? node.height ?? (isBoxNode ? 260 : 72))
 
-          const targetBoxNewDims = computeBoxDimensions(
-            targetBox!.id,
-            [...targetKids, { ...node, position: targetSlotPos, style: { width: nodeBoxW, height: nodeBoxH }, width: nodeBoxW, height: nodeBoxH }],
-            resized[targetBox!.id]?.width,
-            resized[targetBox!.id]?.height
-          )
+          const updatedMap = new Map(currentNodes.map((n) => [n.id, n]))
+          const movedNode = updatedMap.get(node.id)
+          if (movedNode) {
+            updatedMap.set(node.id, {
+              ...movedNode,
+              parentId: targetBox!.id,
+              position: targetSlotPos,
+              style: { width: nodeBoxW, height: nodeBoxH },
+              width: nodeBoxW,
+              height: nodeBoxH,
+              data: {
+                ...movedNode.data,
+                mode: isBoxNode ? 'box' : 'card',
+              },
+            })
+          }
 
-          nextNodes = currentNodes.map((n) => {
-            if (n.id === node.id) {
-              return {
-                ...n,
-                parentId: targetBox!.id,
-                position: targetSlotPos,
-              }
+          let curBoxId: string | undefined = targetBox!.id
+          while (curBoxId) {
+            const bNode = updatedMap.get(curBoxId)
+            if (!bNode) break
+
+            const allNodesList = Array.from(updatedMap.values())
+            const bNewDims = computeBoxDimensions(
+              curBoxId,
+              allNodesList,
+              resized[curBoxId]?.width,
+              resized[curBoxId]?.height
+            )
+
+            const oldW = Number(bNode.style?.width ?? bNode.width ?? 340)
+            const oldH = Number(bNode.style?.height ?? bNode.height ?? 260)
+            const needsExpand = bNewDims.width > oldW || bNewDims.height > oldH
+
+            if (needsExpand) {
+              updatedMap.set(curBoxId, {
+                ...bNode,
+                style: { width: bNewDims.width, height: bNewDims.height },
+                width: bNewDims.width,
+                height: bNewDims.height,
+                measured: { width: bNewDims.width, height: bNewDims.height },
+                data: {
+                  ...bNode.data,
+                  minWidth: bNewDims.minWidth,
+                  minHeight: bNewDims.minHeight,
+                },
+              })
             }
-            if (n.id === targetBox!.id) {
-              const oldW = Number(n.style?.width ?? n.width ?? 340)
-              const oldH = Number(n.style?.height ?? n.height ?? 260)
-              const needsExpand = targetBoxNewDims.width > oldW || targetBoxNewDims.height > oldH
-              if (needsExpand) {
-                return {
-                  ...n,
-                  style: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
-                  width: targetBoxNewDims.width,
-                  height: targetBoxNewDims.height,
-                  measured: { width: targetBoxNewDims.width, height: targetBoxNewDims.height },
-                  data: {
-                    ...n.data,
-                    minWidth: targetBoxNewDims.minWidth,
-                    minHeight: targetBoxNewDims.minHeight,
-                  },
-                }
-              }
-            }
-            return n
-          })
+            curBoxId = bNode.parentId
+          }
+
+          nextNodes = Array.from(updatedMap.values())
         } else {
           const isChild = !!node.parentId
           if (isChild) {

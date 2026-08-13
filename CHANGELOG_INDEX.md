@@ -366,6 +366,13 @@
 - **異動說明**:
   - **座標持久化保護**：移除 `processTask` 內部誤將 `x > 500` 或 `y > 450` 視為殘留座標而自動刪除 `draggedMap` 的過濾邏輯。所有收納盒與卡片於畫布上的手動移動座標均被 100% 完整保留於 `localStorage` 中，切換頁面不再重置。
 
+### Commit: `1b2c3d4` - Fix: Pass parentId during move-in box dimension calculation and recursively expand all ancestor storage boxes
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L605-L620, #L1105-L1150)
+- **異動說明**:
+  - **上游收納盒自動擴大**：補全 `onNodeDragStop` 移入目標盒時 `movedNode` 的 `parentId: targetBox.id` 屬性，確保 `computeBoxDimensions` 計算時不漏掉下游收納盒。
+  - **祖先盒遞迴聯動**：實作 `while (curBoxId)` 向上追溯機制，當下游收納盒移入導致尺寸擴大時，會向上自動觸發所有層級之祖先收納盒按需橫向與縱向擴張。
+
+
 
 
 
