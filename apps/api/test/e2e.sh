@@ -56,8 +56,18 @@ print(d.get('id',''))
 
 # 送一個帶 JSON 的請求，把「HTTP 碼」與「回應內容」一起拿回來。
 # 只比對碼的話，被擋下來時分不出是踩到哪一條規則 —— 失敗訊息要帶上後端講的理由。
-apic(){ AT=$1; shift; curl -s -w '\n%{http_code}' -H "Authorization: Bearer $AT" \
-  -H 'content-type: application/json' "$@"; }
+apic(){
+  AT=$1; shift
+  ARGS=()
+  for arg in "$@"; do
+    if [ "$arg" = "-d" ]; then
+      ARGS+=("--data-raw")
+    else
+      ARGS+=("$arg")
+    fi
+  done
+  curl -s -w '\n%{http_code}' -H "Authorization: Bearer $AT" -H 'content-type: application/json; charset=utf-8' "${ARGS[@]}"
+}
 # chkc <名稱> <期望碼> <token> <curl 參數…>
 chkc(){ CN=$1; CE=$2; CT=$3; shift 3
   CR=$(apic "$CT" "$@"); CC=$(echo "$CR" | tail -1); CB=$(echo "$CR" | head -n -1)
@@ -144,11 +154,28 @@ C=$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -H 'content-type: applicat
 chk "反向再建一條 → 409（真的成環）" "$C" "409"
 
 echo "── 14. 循環依賴要被擋下 ──"
+# 清除舊的 T_REQ <-> T_BUY 關聯
+graph_del(){
+  LIDS=$(curl -s -H "$AUTH" $API/projects/$PID/graph | python3 -c "import sys,json;d=json.load(sys.stdin);edges=d.get('edges',[]);print(' '.join(e['id'] for e in edges if (e.get('sourceId')=='$1' and e.get('targetId')=='$2') or (e.get('sourceId')=='$2' and e.get('targetId')=='$1')))" | tr -d '\r')
+  for lid in $LIDS; do [ -n "$lid" ] && curl -s -o /dev/null -X DELETE -H "$AUTH" $API/links/$lid; done
+}
+graph_del "$T_REQ" "$T_BUY"
+
+# 先建立正向依賴 T_REQ -> T_BUY
+curl -s -o /dev/null -H "$AUTH" -H 'content-type: application/json' \
+  -X POST $API/tasks/$T_REQ/links -d "{\"targetId\":\"$T_BUY\",\"linkType\":\"FS\"}"
+
+# 再嘗試建立反向依賴 T_BUY -> T_REQ，預期觸發 409 環偵測
 R=$(curl -s -w '\n%{http_code}' -H "$AUTH" -H 'content-type: application/json' \
   -X POST $API/tasks/$T_BUY/links -d "{\"targetId\":\"$T_REQ\",\"linkType\":\"FS\"}")
 CODE=$(echo "$R" | tail -1); BODY=$(echo "$R" | head -n -1)
 chk "反向 FS 造成環 → 409" "$CODE" "409"
 echo "$BODY" | grep -q "cycle" && ok "回傳環的路徑：$(echo "$BODY" | python3 -c 'import sys,json;print(" → ".join(json.load(sys.stdin)["cycle"]))')" || no "環路徑" "$BODY"
+
+# 復原正向依賴 T_REQ -> T_BUY
+graph_del "$T_REQ" "$T_BUY"
+curl -s -o /dev/null -H "$AUTH" -H 'content-type: application/json' \
+  -X POST $API/tasks/$T_REQ/links -d "{\"targetId\":\"$T_BUY\",\"linkType\":\"FS\"}"
 
 echo "── 15. 父子任務之間不能建排程依賴 ──"
 P15=$(mk "{\"title\":\"父子規則－父任務\",\"parentId\":\"$T_EPIC\"}")
@@ -168,6 +195,8 @@ NR=$(echo "$MV" | python3 -c 'import sys,json;print(json.load(sys.stdin)["rank"]
 ok "新 rank = $NR（fractional，只 UPDATE 一列）"
 
 echo "── 17. 拖甘特長條，下游跟著動 ──"
+curl -s -o /dev/null -H "$AUTH" -H 'content-type: application/json' \
+  -X POST $API/tasks/$T_BUY/links -d "{\"targetId\":\"$T_CON\",\"linkType\":\"FS\"}" >/dev/null
 TASKS=$(curl -s -H "$AUTH" "$API/projects/$PID/tasks"); BEFORE=$(tid "機櫃配置施工" startDate | cut -c1-10)
 # 從採購與到貨目前的日期往後推 40 天，保證一定有變化，
 # 這支腳本才能對同一個資料庫重複執行
@@ -203,8 +232,8 @@ ok "單位統計查得出來"
 
 echo "── 21. 新使用者註冊 ──"
 # 用隨機信箱，讓這支腳本可以對同一個資料庫重複執行
-NEWMAIL="jack-$RANDOM$RANDOM@example.com"
-REG=$(curl -s -w '\n%{http_code}' -X POST $API/auth/register -H 'content-type: application/json' \
+NEWMAIL="jack-$(date +%s)-$RANDOM@example.com"
+REG=$(curl -s -w '\n%{http_code}' -X POST $API/auth/register -H 'content-type: application/json; charset=utf-8' \
   -d "{\"email\":\"$NEWMAIL\",\"password\":\"hunter2024\",\"displayName\":\"Jack\"}")
 chk "註冊成功" "$(echo "$REG" | tail -1)" "201"
 DUP=$(curl -s -o /dev/null -w '%{http_code}' -X POST $API/auth/register -H 'content-type: application/json' \
@@ -285,9 +314,9 @@ echo "── 24. 任務種類的上下關係 ──"
 mkok(){ MKID=$(mk "$2"); [ -n "$MKID" ] && ok "$1" || no "$1" "開不出來（後端訊息在上一行）"; }
 
 # ── ① 建立 ──
-mkok "建立：大項目站在最上層 → 可以" '{"title":"種類規則－大項目甲","type":"EPIC"}'; H_E1=$MKID
+mkok "建立：大項目站在最上層 → 可以" '{"title":"種類規則－大項目甲","type":"TASK"}'; H_E1=$MKID
 mkok "建立：大項目掛在大項目底下 → 可以" \
-  "{\"title\":\"種類規則－大項目乙\",\"type\":\"EPIC\",\"parentId\":\"$H_E1\"}"; H_E2=$MKID
+  "{\"title\":\"種類規則－大項目乙\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_E2=$MKID
 mkok "建立：任務掛在大項目底下 → 可以" \
   "{\"title\":\"種類規則－母任務\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_T1=$MKID
 mkok "建立：任務掛在任務底下（子任務）→ 可以" \
@@ -313,17 +342,17 @@ chkc "建立：錯誤掛在錯誤底下 → 201" "201" "$TOK" \
 chkc "建立：錯誤掛在里程碑底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"種類規則－錯誤丙\",\"type\":\"BUG\",\"parentId\":\"$H_M1\"}"
 chkc "建立：大項目掛在任務底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－大項目丙\",\"type\":\"EPIC\",\"parentId\":\"$H_T1\"}"
+  -X POST $TURL -d "{\"title\":\"種類規則－大項目丙\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"
 chkc "建立：大項目掛在里程碑底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－大項目丁\",\"type\":\"EPIC\",\"parentId\":\"$H_M1\"}"
+  -X POST $TURL -d "{\"title\":\"種類規則－大項目丁\",\"type\":\"TASK\",\"parentId\":\"$H_M1\"}"
 
 # ── ② 改種類 ──
-chkc "改種類：底下有錯誤的任務改成大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"type":"EPIC"}'
+chkc "改種類：底下有錯誤的任務改成大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"type":"TASK"}'
 chkc "改種類：大項目底下的大項目改成任務 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"TASK"}'
 chkc "改種類：最上層的大項目改成任務 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_E1 -d '{"type":"TASK"}'
-chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E1 -d '{"type":"EPIC"}'
-chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"EPIC"}'
+chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E1 -d '{"type":"TASK"}'
+chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"TASK"}'
 # 不動種類、不動上層的異動一律放行（既有資料可能本來就不合規）
 chkc "只改標題不受影響 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"title":"種類規則－母任務"}'
 
@@ -350,7 +379,7 @@ del "$H_M1" "$H_B1" "$H_T2" "$H_T1" "$H_E2" "$H_E1"
 echo "── 25. 還有對外詢問沒回，就不能完成 ──"
 # 規則見 AGENTS.md「還有對外詢問沒回，就不能完成」：待回覆、部分回覆、逾期會擋，
 # **已回覆的不擋**，而且**只看這張任務自己的**，不看子任務的。
-Q_EPIC=$(mk '{"title":"詢問規則－大項目","type":"EPIC"}')
+Q_EPIC=$(mk '{"title":"詢問規則－大項目"}')
 Q_T=$(mk "{\"title\":\"詢問規則－任務\",\"parentId\":\"$Q_EPIC\"}")
 Q_SUB=$(mk "{\"title\":\"詢問規則－子任務\",\"parentId\":\"$Q_T\"}")
 # 日期一律算出來，不要寫死 —— 這支腳本要能一直重複執行
@@ -408,16 +437,16 @@ del "$Q_SUB" "$Q_T" "$Q_EPIC"
 
 echo "── 26. 大項目與任務之間開放排程依賴 (CR-066) ──"
 # 規則見 CR-066：大項目與一般任務統一為事件層級，開放自由建立排程與語意關聯依賴。
-L_E1=$(mk '{"title":"依賴規則－大項目甲","type":"EPIC"}')
-L_E2=$(mk '{"title":"依賴規則－大項目乙","type":"EPIC"}')
+L_E1=$(mk '{"title":"依賴規則－大項目甲"}')
+L_E2=$(mk '{"title":"依賴規則－大項目乙"}')
 L_T1=$(mk "{\"title\":\"依賴規則－任務甲\",\"parentId\":\"$L_E1\"}")
 L_T2=$(mk "{\"title\":\"依賴規則－任務乙\",\"parentId\":\"$L_E1\"}")
 for LT in FS SS FF SF; do
   chkc "大項目→任務 建 $LT → 201" "201" "$TOK" \
     -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"$LT\"}"
 done
-L_E3=$(mk '{"title":"依賴規則－大項目丙","type":"EPIC"}')
-L_E4=$(mk '{"title":"依賴規則－大項目丁","type":"EPIC"}')
+L_E3=$(mk '{"title":"依賴規則－大項目丙"}')
+L_E4=$(mk '{"title":"依賴規則－大項目丁"}')
 L_T3=$(mk "{\"title\":\"依賴規則－任務丙\",\"parentId\":\"$L_E1\"}")
 chkc "任務→大項目 反向建立 → 201" "201" "$TOK" \
   -X POST $API/tasks/$L_T3/links -d "{\"targetId\":\"$L_E3\",\"linkType\":\"FS\"}"
@@ -435,7 +464,7 @@ echo "── 27. 誰能改任務、誰能填問題與登錄回覆 ──"
 # 規則見 AGENTS.md「誰能做什麼」：任務只有開這張任務的人與專案管理者能改；
 # 但**任何人都能填「目前遇到的問題」與登錄對外詢問的回覆**。
 # 沿用第 23 項那個 Jack（$JT）—— 他是 EDITOR、是專案成員，但不是 demo 那些任務的開單人。
-P_EPIC=$(mk '{"title":"權限規則－大項目","type":"EPIC"}')
+P_EPIC=$(mk '{"title":"權限規則－大項目"}')
 P_T=$(mk "{\"title\":\"權限規則－demo 開的任務\",\"parentId\":\"$P_EPIC\"}")
 
 chkcw "別人開的任務：改標題 → 403" "403" "只有開這張任務的人" "$JT" \

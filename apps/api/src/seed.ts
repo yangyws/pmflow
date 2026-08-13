@@ -34,8 +34,12 @@ const at = (offset: number, time: string) => `${day(offset)}T${time}:00`
  * 已經有使用者就完全不動。設 PMFLOW_SEED_DEMO=false 可關閉。
  */
 export async function seedDemo(): Promise<boolean> {
-  const [{ count }] = await sql<{ count: string }[]>`SELECT count(*) FROM app_user`
-  if (Number(count) > 0) return false
+  if (process.env.RESET_DB === 'true') {
+    await sql`TRUNCATE app_user, workspace, project, task, task_link, task_inquiry, activity, notification CASCADE`
+  } else {
+    const [{ count }] = await sql<{ count: string }[]>`SELECT count(*) FROM app_user`
+    if (Number(count) > 0) return false
+  }
 
   const pw = await hashPassword('demo1234')
 
@@ -229,7 +233,7 @@ export async function seedDemo(): Promise<boolean> {
         },
         {
           task: 9, unit: '總務處', person: '張經理', contact: '分機 1102',
-          asked: day(-1), due: day(4), replied: false, q: '搬遷當日大樓門禁與電梯借用',
+          asked: day(-1), due: day(14), replied: false, q: '搬遷當日大樓門禁與電梯借用',
         },
       ]
 
@@ -289,4 +293,12 @@ export async function seedBugsIfEmpty(): Promise<number> {
     return tasks.length
   }
   return 0
+}
+
+export async function seedProjectTypesIfMissing(): Promise<void> {
+  const projects = await sql<{ id: string }[]>`SELECT id FROM project`
+  for (const p of projects) {
+    await fillDefaults(sql, p.id, 'priority')
+    await fillDefaults(sql, p.id, 'type')
+  }
 }
