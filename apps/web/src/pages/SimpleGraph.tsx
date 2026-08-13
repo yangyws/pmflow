@@ -186,7 +186,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       />
 
       {isBox ? (
-        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/40 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/20 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto opacity-50">
+        <div className="relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border-2 border-dashed border-indigo-400/80 bg-indigo-50/50 p-3 dark:border-indigo-500/60 dark:bg-indigo-950/50 select-none shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto">
           <div>
             <div className="flex items-center justify-between border-b border-indigo-200/60 pb-1.5 dark:border-indigo-800/60">
               <div className="flex items-center gap-1.5">
@@ -1058,6 +1058,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           setDragged((prev) => ({
             ...prev,
             [node.id]: targetSlotPos,
+            [targetBox!.id]: prev[targetBox!.id] ?? targetBox!.position,
           }))
 
         if (projectId) {

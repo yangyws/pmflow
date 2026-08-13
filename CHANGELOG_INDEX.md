@@ -307,6 +307,13 @@
 - **異動說明**:
   - **卡片圖示更新**：將卡片標題左上角按鈕圖示由 `📦 卡片` 更新為 `📄 卡片`，以清晰區分卡片 (Task Card) 與收納盒 (Storage Box)。
 
+### Commit: `c8d9e0f` - Fix & Style: Lock targetBox canvas position on move-in and isolate 50% opacity to box background only
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **收納盒座標永久鎖定**：在 `onNodeDragStop` 卡片移入當下自動鎖定 `[targetBox.id]: targetBox.position`。無論移入多張卡片，收納盒於畫布上 100% 保持原位靜止不動，徹底封鎖跑位問題。
+  - **底色透明度獨立化**：移除外框容器 `opacity-50` 類別，精準設定底色為 `bg-indigo-50/50 dark:bg-indigo-950/50`，使內文字與按鈕維持 100% 清晰度。
+
+
 
 
 
