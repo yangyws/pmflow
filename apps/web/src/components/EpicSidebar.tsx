@@ -884,100 +884,94 @@ function TreeNode({
           aria-current={!isRoot && active ? 'true' : undefined}
           className={cx('block min-w-0 flex-1 rounded-md pr-2.5 text-left',
                         isRoot ? 'py-2' : 'py-1.5')}>
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            {/*
-              * 每一列前面一條種類色的細槓（顏色是他在系統參數頁自己挑的）。
-              * 沒有它的話，最上層的大項目跟最上層的任務長得一模一樣，
-              * 掛在任務底下的錯誤也看不出來跟兄弟任務有什麼不同。
-              *
-              * 只當細槓、不當底色也不當文字色：顏色是使用者挑的，深淺不受控，
-              * 拿去當底色在深色模式下會有一半讀不到（跟清單、週檢視同一套畫法）。
-              */}
-            <span className={cx('shrink-0 rounded-full', isRoot ? 'h-4 w-1' : 'h-3 w-0.5')}
-                  title={kindName}
-                  style={{ background: kindColor }} />
-            <span className="shrink-0 text-xs select-none">
-              {kids.length > 0 || (typeof window !== 'undefined' && (() => {
-                try {
-                  const saved = localStorage.getItem('pmflow_graph_container_boxes')
-                  return saved ? new Set(JSON.parse(saved)).has(task.id) : false
-                } catch { return false }
-              })()) ? '📦' : '📄'}
-            </span>
-            <span className={cx('min-w-0 flex-1 truncate',
-              isRoot ? 'text-sm' : 'text-[13px]',
-              active
-                ? 'font-semibold text-blue-900 dark:text-blue-100'
-                : isRoot
-                  ? 'text-slate-700 dark:text-slate-300'
-                  : 'text-slate-500 dark:text-slate-400'
-            )}>{task.title}</span>
+          <div className="flex flex-col gap-1 min-w-0">
+            {/* 第一行：卡片/收納盒圖示 + 色槓 + MRG編號 + 警示徽章 + 完成打勾(進度100%) */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={cx('shrink-0 rounded-full', isRoot ? 'h-4 w-1' : 'h-3 w-0.5')}
+                    title={kindName}
+                    style={{ background: kindColor }} />
+              <span className="shrink-0 text-xs select-none">
+                {kids.length > 0 || (typeof window !== 'undefined' && (() => {
+                  try {
+                    const saved = localStorage.getItem('pmflow_graph_container_boxes')
+                    return saved ? new Set(JSON.parse(saved)).has(task.id) : false
+                  } catch { return false }
+                })()) ? '📦' : '📄'}
+              </span>
+              <span className="shrink-0 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                {task.ref || (task.number ? `MRG-${task.number}` : '')}
+              </span>
 
-            {/*
-              * 做完了才畫一個勾。沒做完就不畫 —— 前面那條槓已經佔住
-              * 「這一列是什麼」的位置，再放一個灰點只是多一個要解讀的東西。
-              *
-              * 用勾不用綠點：綠點得先知道規則才看得懂（他第一次看到就問了
-              * 「綠色點是什麼意思」），勾不必解釋。
-              */}
-            {!isRoot && task.progress >= 100 && (
-              <span aria-hidden title={T.nav.sidebar.doneDot}
-                    className="shrink-0 text-[11px] leading-none text-emerald-600
-                               dark:text-emerald-400">✓</span>
-            )}
-
-            {/* 警示徽章區域：若警示太多無法在第一行顯示，則該事件警示自動移至第二行 */}
-            {(Boolean(blockedByMap?.get(task.id)?.length) || bugs > 0 || asked > 0 || overdue > 0) && (
-              <div className="flex flex-wrap items-center gap-1 shrink-0 ml-auto">
+              {/* 警示徽章區域 */}
+              <div className="flex flex-wrap items-center gap-1 shrink-0">
                 {blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
                   <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
                         className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
                     ⛔卡住
                   </span>
                 )}
+                {task.problem && (
+                  <span title={task.problem}
+                        className="shrink-0 rounded bg-fuchsia-50 px-1 text-[10px] font-medium text-fuchsia-700 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300">
+                    ⚑有問題
+                  </span>
+                )}
                 {bugs > 0 && (
                   <span title={T.nav.sidebar.bugsUnder(bugs)}
-                        className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700
-                                   dark:bg-rose-500/15 dark:text-rose-300">
+                        className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
                     {T.nav.sidebar.bugBadge(bugs)}
                   </span>
                 )}
                 {asked > 0 && (
                   <span title={T.nav.sidebar.askedUnder(asked)}
-                        className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700
-                                   dark:bg-blue-500/15 dark:text-blue-300">
+                        className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
                     {T.nav.sidebar.askedBadge(asked)}
                   </span>
                 )}
                 {overdue > 0 && (
                   <span title={T.nav.sidebar.overdueUnder(overdue)}
-                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700
-                                   dark:bg-red-500/15 dark:text-red-300">
+                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">
                     {T.nav.sidebar.overdueBadge(overdue)}
+                  </span>
+                )}
+              </div>
+
+              {/* 完成打勾：進度 100% 才能打勾 */}
+              {(stat ? stat.progress >= 100 : task.progress >= 100) && (
+                <span aria-hidden title={T.nav.sidebar.doneDot}
+                      className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
+              )}
+            </div>
+
+            {/* 第二行：任務標題 */}
+            <div className={cx('min-w-0 truncate text-xs leading-snug',
+              isRoot ? 'text-sm font-medium' : 'text-[13px]',
+              active
+                ? 'font-semibold text-blue-900 dark:text-blue-100'
+                : 'text-slate-700 dark:text-slate-300'
+            )}>
+              {task.title}
+            </div>
+
+            {/* 第三行：進度條 */}
+            {stat && (
+              <div className="flex items-center gap-2">
+                <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                  <span className={cx('block h-full transition-all duration-300',
+                          stat.progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
+                        style={{ width: `${stat.progress}%` }} />
+                </span>
+                <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
+                  {stat.progress}%
+                </span>
+                {stat.hasChildren && (
+                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
+                    {stat.done}/{stat.total}
                   </span>
                 )}
               </div>
             )}
           </div>
-
-          {/* 進度條同步呈現（為選單每個項目與收納盒同步呈現進度條） */}
-          {stat && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <span className={cx('block h-full transition-all duration-300',
-                        stat.progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
-                      style={{ width: `${stat.progress}%` }} />
-              </span>
-              <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
-                {stat.progress}%
-              </span>
-              {stat.hasChildren && (
-                <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
-                  {stat.done}/{stat.total}
-                </span>
-              )}
-            </div>
-          )}
         </button>
 
         {/*

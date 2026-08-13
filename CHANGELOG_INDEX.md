@@ -647,6 +647,14 @@
 - **異動說明**:
   - **視圖頁籤名稱更新**：將原「成員」視圖頁籤名稱全數改為「事件歸屬」，更加符合該視圖分析與呈現各成員事件分派與經手狀態之用途。
 
+### Commit: `f2a3b4c` - Layout: Restructure sidebar items into 3-line layout (Line 1: Icon/Ref/Badges/Checkmark, Line 2: Title, Line 3: Progress)
+- **變更檔案**: [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L884-L980)
+- **異動說明**:
+  - **左側選單三行排版重構**：將左側 Menu 樹狀項目結構重新佈局為清晰的三行結構：
+    - **第一行**：卡片/收納盒圖示 (`📦`/`📄`) + 種類色槓 + `MRG` 編號 + 警示徽章區 (卡住/問題/詢問/逾期) + 完成打勾 `✓`（當且僅當進度達 100% 時方才顯示）。
+    - **第二行**：任務標題 (`task.title`)。
+    - **第三行**：進度條 (% 數據及視覺化進度條)。
+
 
 
 
