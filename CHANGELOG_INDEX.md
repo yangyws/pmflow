@@ -447,6 +447,14 @@
   - **指向目標箭頭**：關聯線末端一律加上 `MarkerType.ArrowClosed` 閉合箭頭，明確指明相依性方向。
   - **防穿透撞擊偵測**：拉線時自動計算路徑，若關聯線會穿透無關的中間卡片或收納盒，即時封鎖建立並彈出警示框：「【MRG-X】與【MRG-Y】之間的關聯線會穿透【MRG-Z】，無法建立關聯！請調整卡片位置。」。
 
+### Commit: `5d6e7f8` - Feat & Style: Relocate event title/warning badge, match node type accent color, and fix menu type selector color
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L270-L340, #L390-L405, #L750-L825), [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx#L544-L580)
+- **異動說明**:
+  - **標題與警示位置**：卡片與收納盒的事件標題移至進度條上方、MRG 號碼右側，並在其右邊直接顯示問題警示徽章 (`⚑問題`)。
+  - **動態類型配色**：卡片與收納盒頂部 Accent 條動態匹配專案設定的事件類型顏色 (`data.typeColor`)。
+  - **Menu 選項顏色**：側欄選單 (`EpicSidebar.tsx`) 新增事件時，類型下拉與圓點一律讀取 `readableColor` 與 `project.types` 的自訂配色。
+
+
 
 
 

@@ -544,38 +544,41 @@ export function EpicSidebar({
         {adding ? (
           <div className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2 dark:bg-slate-800">
             <div className="flex gap-1.5 items-center">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{
-                  backgroundColor:
-                    typeList.find(t => t.key === createType)?.color ||
-                    DEFAULT_TYPE_COLORS[createType] ||
-                    '#3178c6',
-                }}
-              />
-              <span className="text-xs text-slate-500 shrink-0">類型：</span>
-              <Select
-                value={createType}
-                onChange={e => setCreateType(e.target.value)}
-                style={{
-                  color:
-                    typeList.find(t => t.key === createType)?.color ||
-                    DEFAULT_TYPE_COLORS[createType] ||
-                    '#3178c6',
-                }}
-                className="text-xs py-1 flex-1 font-semibold"
-              >
-                {typeList.map(t => (
-                  <ColorOption
-                    key={t.key}
-                    value={t.key}
-                    color={t.color || DEFAULT_TYPE_COLORS[t.key] || '#3178c6'}
-                    dark={dark}
-                  >
-                    ● {t.name}
-                  </ColorOption>
-                ))}
-              </Select>
+              {(() => {
+                const activeColor =
+                  typeList.find(t => t.key === createType)?.color ||
+                  DEFAULT_TYPE_COLORS[createType] ||
+                  '#3178c6'
+                return (
+                  <>
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: activeColor }}
+                    />
+                    <span className="text-xs text-slate-500 shrink-0">類型：</span>
+                    <Select
+                      value={createType}
+                      onChange={e => setCreateType(e.target.value)}
+                      style={{ color: readableColor(activeColor, dark) }}
+                      className="text-xs py-1 flex-1 font-semibold"
+                    >
+                      {typeList.map(t => {
+                        const tColor = t.color || DEFAULT_TYPE_COLORS[t.key] || '#3178c6'
+                        return (
+                          <ColorOption
+                            key={t.key}
+                            value={t.key}
+                            color={tColor}
+                            dark={dark}
+                          >
+                            ● {t.name}
+                          </ColorOption>
+                        )
+                      })}
+                    </Select>
+                  </>
+                )
+              })()}
             </div>
             <Input value={title} onChange={e => setTitle(e.target.value)}
                    placeholder="事件名稱" autoFocus

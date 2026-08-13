@@ -24,8 +24,9 @@ import {
   MarkerType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
+import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為藍紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -105,6 +106,8 @@ export type SimpleGraphNodeData = {
   refText?: string
   mode: NodeMode
   progress?: number
+  typeColor?: string
+  problem?: string | null
   minWidth?: number
   minHeight?: number
   onToggleMode?: (id: string) => void
@@ -270,7 +273,10 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       {isBox ? (
         <div className="relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden">
           <div>
-            <div className="h-1 rounded-t-lg shrink-0 bg-indigo-500 dark:bg-indigo-600" />
+            <div
+              className="h-1 rounded-t-lg shrink-0"
+              style={{ backgroundColor: data.typeColor || '#6366f1' }}
+            />
             <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start">
               <div className="flex items-center justify-between gap-1.5 w-full">
                 <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
@@ -288,6 +294,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
                     {data.label || '無標題收納盒'}
                   </span>
+                  {data.problem && (
+                    <span
+                      title={`問題：${data.problem}`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-fuchsia-700 bg-fuchsia-50 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 pointer-events-none select-none"
+                    >
+                      <span aria-hidden>⚑</span>問題
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   (移入卡片自動擴大容量)
@@ -314,7 +328,10 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         </div>
       ) : (
         <div className="w-64 min-h-[90px] rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden">
-          <div className="h-1 rounded-t-lg shrink-0 bg-blue-500 dark:bg-blue-600" />
+          <div
+            className="h-1 rounded-t-lg shrink-0"
+            style={{ backgroundColor: data.typeColor || '#3b82f6' }}
+          />
           <div className="p-2.5 flex flex-col justify-start flex-1">
             <div className="flex items-center gap-1.5 overflow-hidden w-full">
               <button
@@ -331,6 +348,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               <span className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate flex-1 min-w-0" title={data.label}>
                 {data.label || '無標題任務'}
               </span>
+              {data.problem && (
+                <span
+                  title={`問題：${data.problem}`}
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-fuchsia-700 bg-fuchsia-50 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 pointer-events-none select-none"
+                >
+                  <span aria-hidden>⚑</span>問題
+                </span>
+              )}
             </div>
             <NodeProgressBar progress={data.progress ?? 0} />
           </div>
@@ -366,6 +391,18 @@ type LogItem = {
 function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
   const { fitView } = useReactFlow()
   const queryClient = useQueryClient()
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId!),
+    enabled: !!projectId,
+  })
+
+  const typeColorOf = useCallback((typeKey?: string) => {
+    if (!typeKey) return '#3178c6'
+    const custom = project?.types?.find((p) => p.key === typeKey)?.color
+    return custom || DEFAULT_TYPE_COLORS[typeKey] || '#3178c6'
+  }, [project])
+
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
@@ -719,7 +756,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             width: kW,
             height: kH,
             style: { width: kW, height: kH },
-            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card' },
+            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card', typeColor: typeColorOf(k.type), problem: k.problem },
           }
         })
 
@@ -740,6 +777,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
             refText: t.ref,
             mode: 'box',
             progress: t.progress ?? 0,
+            typeColor: typeColorOf(t.type),
+            problem: t.problem,
             minWidth: dims.minWidth,
             minHeight: dims.minHeight,
           },
@@ -770,7 +809,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
               parentId: t.id,
               position: kPos,
               zIndex: 10,
-              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0 },
+              data: { label: k.title, refText: k.ref, mode: 'card', progress: k.progress ?? 0, typeColor: typeColorOf(k.type), problem: k.problem },
             })
           } else {
             processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
@@ -784,7 +823,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask }: SimpleGraphProps) {
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
-          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0 },
+          data: { label: t.title, refText: t.ref, mode: 'card', progress: t.progress ?? 0, typeColor: typeColorOf(t.type), problem: t.problem },
         })
       }
     }
