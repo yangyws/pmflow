@@ -126,12 +126,19 @@ export type SimpleGraphNodeData = {
   typeName?: string
   problem?: string | null
   blockedBy?: string[]
+  isParallel?: boolean
+  parallelPeers?: string[]
+  childCount?: number
+  isOverdue?: boolean
+  dueDate?: string | null
+  inquiryState?: string | null
   isSelected?: boolean
   isRelated?: boolean
   hasSelectionActive?: boolean
   minWidth?: number
   minHeight?: number
   onToggleMode?: (id: string) => void
+  onOpenTask?: (id: string) => void
 }
 
 export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
@@ -225,8 +232,15 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
     data.onToggleMode?.(id)
   }
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    data.onOpenTask?.(id)
+  }
+
   return (
     <div
+      onDoubleClick={handleDoubleClick}
       style={isBox ? { width: boxW, height: boxH } : { width: 256, height: 72 }}
       className="relative w-full h-full cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
@@ -333,6 +347,11 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   >
                     {data.typeName || '任務'}
                   </span>
+                  {typeof data.childCount === 'number' && data.childCount > 0 && (
+                    <span className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 font-medium pointer-events-none select-none">
+                      內含 {data.childCount} 張
+                    </span>
+                  )}
                   <ProblemBadge problem={data.problem} />
                   {data.blockedBy && data.blockedBy.length > 0 && (
                     <span
@@ -340,6 +359,30 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
                       <span aria-hidden>⛔</span>卡住
+                    </span>
+                  )}
+                  {data.isParallel && (
+                    <span
+                      title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
+                    >
+                      ⚡並行
+                    </span>
+                  )}
+                  {data.isOverdue && (
+                    <span
+                      title={`已逾期（應到日期：${data.dueDate || ''}）`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
+                    >
+                      ⏰ 逾期
+                    </span>
+                  )}
+                  {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                    <span
+                      title="對外詢問待回覆"
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
+                    >
+                      ❓ 待回覆
                     </span>
                   )}
                 </div>
@@ -418,6 +461,30 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span aria-hidden>⛔</span>卡住
                 </span>
               )}
+              {data.isParallel && (
+                <span
+                  title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
+                >
+                  ⚡並行
+                </span>
+              )}
+              {data.isOverdue && (
+                <span
+                  title={`已逾期（應到日期：${data.dueDate || ''}）`}
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
+                >
+                  ⏰ 逾期
+                </span>
+              )}
+              {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                <span
+                  title="對外詢問待回覆"
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
+                >
+                  ❓ 待回覆
+                </span>
+              )}
             </div>
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none truncate w-full" title={data.label}>
               {data.label || '無標題任務'}
@@ -484,9 +551,42 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
   const rolledMap = useMemo(() => rollup(tasks ?? []), [tasks])
 
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setUTCHours(0, 0, 0, 0)
+    return d.toISOString().slice(0, 10)
+  }, [])
+
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const parallelMap = useMemo(() => {
+    const map = new Map<string, { isParallel: boolean; peers: string[] }>()
+    if (!edges || !tasks) return map
+
+    const targetMap = new Map<string, Array<{ id: string; ref: string }>>()
+    edges.forEach((e) => {
+      const sId = String(e.source)
+      const tId = String(e.target)
+      const sTask = tasks.find((t) => t.id === sId)
+      if (!sTask) return
+      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : '任務')
+      const list = targetMap.get(tId) || []
+      list.push({ id: sTask.id, ref: sRef })
+      targetMap.set(tId, list)
+    })
+
+    targetMap.forEach((sources) => {
+      if (sources.length >= 2) {
+        sources.forEach((src) => {
+          const peers = sources.filter((s) => s.id !== src.id).map((s) => s.ref)
+          map.set(src.id, { isParallel: true, peers })
+        })
+      }
+    })
+    return map
+  }, [edges, tasks])
 
   const activeSelectedId = selectedNodeId || focusedTaskId
 
@@ -865,6 +965,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
     const draggedMap = draggedRef.current
     const resizedMap = resizedRef.current
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
 
     const parentIdSet = new Set<string>()
     tasks.forEach((t) => {
@@ -918,14 +1019,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
         const childNodesList: Node[] = kids.map((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 70 + cRow * 110 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 85 + cRow * 110 }
           const rawPos = draggedMap[k.id]
           const isValidChildPos =
             rawPos &&
             typeof rawPos.x === 'number' &&
             typeof rawPos.y === 'number' &&
             rawPos.x >= 10 &&
-            rawPos.y >= 55
+            rawPos.y >= 70
           const kPos = isValidChildPos ? rawPos : defaultSlotPos
 
           const kDefaultBox = parentIdSet.has(k.id)
@@ -933,6 +1034,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
           const isKBox = kMode === 'box'
           const kW = isKBox ? Math.max(340, resizedMap[k.id]?.width ?? 340) : 256
           const kH = isKBox ? Math.max(280, resizedMap[k.id]?.height ?? 280) : 90
+
+          const kStatusCat = statusCatMap.get(k.statusKey)
+          const kOverdue = !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && kStatusCat !== 'DONE' && k.statusKey !== 'DONE')
+          const kParallelInfo = parallelMap.get(k.id)
 
           return {
             id: k.id,
@@ -942,11 +1047,29 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             width: kW,
             height: kH,
             style: { width: kW, height: kH },
-            data: { label: k.title, refText: k.ref, mode: isKBox ? 'box' : 'card', typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
+            data: {
+              label: k.title,
+              refText: k.ref,
+              mode: isKBox ? 'box' : 'card',
+              typeColor: typeColorOf(k.type),
+              typeName: typeNameOf(k.type),
+              problem: k.problem,
+              isOverdue: kOverdue,
+              dueDate: k.dueDate,
+              inquiryState: k.inquiryState,
+              isParallel: kParallelInfo?.isParallel,
+              parallelPeers: kParallelInfo?.peers,
+              onToggleMode: handleToggleMode,
+              onOpenTask,
+            },
           }
         })
 
         const dims = computeBoxDimensions(t.id, childNodesList, resizedMap[t.id]?.width, resizedMap[t.id]?.height)
+
+        const tStatusCat = statusCatMap.get(t.statusKey)
+        const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
+        const tParallelInfo = parallelMap.get(t.id)
 
         newNodes.push({
           id: t.id,
@@ -966,15 +1089,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             problem: t.problem,
+            childCount: kids.length,
+            isOverdue: tOverdue,
+            dueDate: t.dueDate,
+            inquiryState: t.inquiryState,
+            isParallel: tParallelInfo?.isParallel,
+            parallelPeers: tParallelInfo?.peers,
             minWidth: dims.minWidth,
             minHeight: dims.minHeight,
+            onToggleMode: handleToggleMode,
+            onOpenTask,
           },
         })
 
         kids.forEach((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 70 + cRow * 110 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 85 + cRow * 110 }
           const kDefaultBox = parentIdSet.has(k.id)
           const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
 
@@ -987,30 +1118,68 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               typeof rawPos.y === 'number' &&
               rawPos.x >= 10 &&
               rawPos.x <= dims.width - 60 &&
-              rawPos.y >= 55 &&
+              rawPos.y >= 70 &&
               rawPos.y <= dims.height - 30
             const kPos = isValidChildPos ? rawPos : defaultSlotPos
+            const kStatusCat = statusCatMap.get(k.statusKey)
+            const kOverdue = !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && kStatusCat !== 'DONE' && k.statusKey !== 'DONE')
+            const kParallelInfo = parallelMap.get(k.id)
+
             newNodes.push({
               id: k.id,
               type: 'simpleNode',
               parentId: t.id,
               position: kPos,
               zIndex: 10,
-              data: { label: k.title, refText: k.ref, mode: 'card', progress: rolledMap.get(k.id)?.progress ?? k.progress ?? 0, typeColor: typeColorOf(k.type), typeName: typeNameOf(k.type), problem: k.problem },
+              data: {
+                label: k.title,
+                refText: k.ref,
+                mode: 'card',
+                progress: rolledMap.get(k.id)?.progress ?? k.progress ?? 0,
+                typeColor: typeColorOf(k.type),
+                typeName: typeNameOf(k.type),
+                problem: k.problem,
+                isOverdue: kOverdue,
+                dueDate: k.dueDate,
+                inquiryState: k.inquiryState,
+                isParallel: kParallelInfo?.isParallel,
+                parallelPeers: kParallelInfo?.peers,
+                onToggleMode: handleToggleMode,
+                onOpenTask,
+              },
             })
           } else {
             processTask(k, t.id, defaultSlotPos.x, defaultSlotPos.y)
           }
         })
       } else {
-        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 70 })
+        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 85 })
+        const tStatusCat = statusCatMap.get(t.statusKey)
+        const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
+        const tParallelInfo = parallelMap.get(t.id)
+
         newNodes.push({
           id: t.id,
           type: 'simpleNode',
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
-          data: { label: t.title, refText: t.ref, mode: 'card', progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0, typeColor: typeColorOf(t.type), typeName: typeNameOf(t.type), problem: t.problem },
+          data: {
+            label: t.title,
+            refText: t.ref,
+            mode: 'card',
+            progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0,
+            typeColor: typeColorOf(t.type),
+            typeName: typeNameOf(t.type),
+            problem: t.problem,
+            isOverdue: tOverdue,
+            dueDate: t.dueDate,
+            inquiryState: t.inquiryState,
+            isParallel: tParallelInfo?.isParallel,
+            parallelPeers: tParallelInfo?.peers,
+            onToggleMode: handleToggleMode,
+            onOpenTask,
+          },
         })
       }
     }
@@ -1700,6 +1869,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             onConnect={onConnect}
             onEdgeClick={onEdgeClick}
             onNodeClick={onNodeClick}
+            onNodeDoubleClick={(_, node) => onOpenTask?.(node.id)}
             onPaneClick={onPaneClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}

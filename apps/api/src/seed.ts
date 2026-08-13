@@ -88,12 +88,12 @@ export async function seedDemo(): Promise<boolean> {
       const defs: Array<{
         n: number; title: string; type: string; st: string
         s: number; d: number; parent: number | null; prog: number
-        c: number; mine?: boolean; est?: number | null
+        c: number; mine?: boolean; est?: number | null; problem?: string
         hist?: Array<[number, string, string]>
       }> = [
         // 大項目一：已經做掉一大半的前置作業，燃盡線的下坡就是這一段
         { n: 1, title: '前置準備',       type: 'EPIC',      st: 'doing', s: -28, d: 3,  parent: null, prog: 55, c: -28 },
-        { n: 2, title: '需求確認與盤點', type: 'TASK',      st: 'doing', s: -7, d: 3,  parent: 1,    prog: 60, c: -28, mine: true,
+        { n: 2, title: '需求確認與盤點', type: 'TASK',      st: 'doing', s: -7, d: 3,  parent: 1,    prog: 60, c: -28, mine: true, problem: '設備規格需要重新對齊廠商',
           hist: [[-6, 'todo', 'doing']] },
         { n: 3, title: '設備清冊建立',   type: 'TASK',      st: 'done',  s: -7, d: -2, parent: 1,    prog: 100, c: -28, mine: true,
           hist: [[-7, 'todo', 'doing'], [-3, 'doing', 'review'], [-2, 'review', 'done']] },
@@ -118,7 +118,7 @@ export async function seedDemo(): Promise<boolean> {
         // 大項目二
         { n: 5, title: '採購與施工',     type: 'EPIC',      st: 'todo',  s: 5,  d: 30, parent: null, prog: 0, c: -28 },
         { n: 6, title: '採購與到貨',     type: 'TASK',      st: 'todo',  s: 5,  d: 20, parent: 5,    prog: 0, c: -28, mine: true },
-        { n: 7, title: '機櫃配置施工',   type: 'TASK',      st: 'todo',  s: 21, d: 30, parent: 5,    prog: 0, c: -28 },
+        { n: 7, title: '機櫃配置施工',   type: 'TASK',      st: 'todo',  s: 21, d: 30, parent: 5,    prog: 0, c: -28, problem: '機櫃空間不足，等待廠商擴充' },
         // 大項目三
         { n: 8, title: '遷移與切換',     type: 'EPIC',      st: 'todo',  s: 21, d: 38, parent: null, prog: 0, c: -28 },
         { n: 9, title: '系統遷移測試',   type: 'TASK',      st: 'todo',  s: 21, d: 34, parent: 8,    prog: 0, c: -28 },
@@ -134,7 +134,7 @@ export async function seedDemo(): Promise<boolean> {
         { n: 18, title: '切換後驗收',   type: 'TASK',      st: 'todo',  s: 39, d: 42, parent: 8,    prog: 0, c: -28 },
         // 大項目四：資安與合規
         { n: 19, title: '資安與合規',   type: 'EPIC',      st: 'doing', s: 5,  d: 36, parent: null, prog: 40, c: -28 },
-        { n: 20, title: '資安架構複審', type: 'TASK',      st: 'doing', s: 5,  d: 20, parent: 19,   prog: 50, c: -28, mine: true },
+        { n: 20, title: '資安架構複審', type: 'TASK',      st: 'doing', s: 5,  d: 20, parent: 19,   prog: 50, c: -28, mine: true, problem: '資安規範更新，需重新審查證照' },
         { n: 21, title: '防火牆規則套用', type: 'TASK',    st: 'todo',  s: 15, d: 25, parent: 19,   prog: 0, c: -28 },
         { n: 22, title: '資安合規稽核', type: 'MILESTONE', st: 'todo',  s: 34, d: 34, parent: 19,   prog: 0, c: -28 },
       ]
@@ -147,12 +147,12 @@ export async function seedDemo(): Promise<boolean> {
         const [row] = await tx<{ id: string }[]>`
           INSERT INTO task (workspace_id, project_id, number, parent_id, title, type,
                             status_key, start_date, due_date, progress, estimate_hours,
-                            assignee_id, rank, created_by, created_at)
+                            assignee_id, rank, created_by, created_at, problem)
           VALUES (${ws.id}, ${p.id}, ${t.n}, ${t.parent ? ids.get(t.parent)! : null},
                   ${t.title}, ${t.type}, ${t.st}, ${day(t.s)}, ${day(t.d)}, ${t.prog},
                   ${t.est !== undefined ? t.est : (t.d - t.s + 1) * 8},
                   ${t.mine ? user.id : null}, ${t.n * 1000}, ${user.id},
-                  ${at(t.c, '09:00')})
+                  ${at(t.c, '09:00')}, ${t.problem ?? null})
           RETURNING id`
         ids.set(t.n, row.id)
         await rebuildClosure(tx, row.id)
