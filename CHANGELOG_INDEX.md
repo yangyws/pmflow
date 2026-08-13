@@ -477,6 +477,12 @@
 - **異動說明**:
   - **紫色線條配色**：將從上下接點 (`top-out` / `bottom-out`) 出發的關聯線顏色明確指定為鮮艷紫色 (`#8b5cf6`) 虛線，與左右接點的紅色實線 (`#ef4444`) 形成顯著區隔。
 
+### Commit: `a1b2c3d` - Fix: Skip enclosing ancestor storage boxes during line penetration obstacle check
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx#L65-L77, #L1140-L1150)
+- **異動說明**:
+  - **包覆收納盒穿透排除**：新增 `isAncestorNode` 遞迴判斷，當關聯線起點或終點位於某個收納盒內部時，該包覆收納盒不會被錯誤判定為「線條穿透障礙物」，解決盒內卡片拉線誤報問題。
+
+
 
 
 

@@ -65,6 +65,19 @@ function getNodeAbsPos(nId: string, allNodes: Node[]): { x: number; y: number } 
   return { x: totalX, y: totalY }
 }
 
+// 檢查某節點是否為另一節點的父級/祖先收納盒
+function isAncestorNode(nodeId: string, potentialAncestorId: string, allNodes: Node[]): boolean {
+  const nodeMap = new Map(allNodes.map((n) => [n.id, n]))
+  let cur = nodeMap.get(nodeId)
+  const visited = new Set<string>()
+  while (cur?.parentId && !visited.has(cur.id)) {
+    visited.add(cur.id)
+    if (cur.parentId === potentialAncestorId) return true
+    cur = nodeMap.get(cur.parentId)
+  }
+  return false
+}
+
 const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
 
 // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
@@ -1139,6 +1152,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       for (const n of nodes) {
         if (n.id === connection.source || n.id === connection.target) continue
         if (n.id === sourceParent || n.id === targetParent) continue
+        if (isAncestorNode(connection.source, n.id, nodes) || isAncestorNode(connection.target, n.id, nodes)) continue
 
         const nAbs = getNodeAbsPos(n.id, nodes)
         const isNBox = (n.data as SimpleGraphNodeData)?.mode === 'box'
