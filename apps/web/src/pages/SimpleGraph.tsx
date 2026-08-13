@@ -29,10 +29,10 @@ import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx } from '../components/ui'
 
-// 依據出發接點（左右出發為紅色實線、上下出發為藍紫色虛線）與標頭箭頭方向產生邊樣式
+// 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
   const isLeftRight = sourceHandle?.includes('left') || sourceHandle?.includes('right')
-  const strokeColor = isLeftRight ? '#ef4444' : '#6366f1'
+  const strokeColor = isLeftRight ? '#ef4444' : '#8b5cf6'
   return {
     style: {
       strokeWidth: 2,
@@ -1624,7 +1624,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
                   由卡片或收納盒的左右接點出發的關聯線。
                 </p>
                 <p>
-                  <span className="font-semibold text-indigo-500">🔵 虛線：</span>
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">🟣 紫色虛線：</span>
                   由卡片或收納盒的上下接點出發的關聯線。
                 </p>
               </div>
