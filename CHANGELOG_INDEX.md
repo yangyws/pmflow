@@ -216,3 +216,14 @@
 - **異動說明**:
   - **使用者明確指令**：「只有我說的東西要改 沒說的都不要自己改」。
   - **紀錄與防護**：寫入 `AGENTS.md` 長期記憶第 1 區塊 `Strict Scope Rule` 規範，未來AI對話與開發均嚴格遵循使用者明確指示，絕不主動修改未被要求之程式碼。
+
+### Commit: `3f4a5b6` - Fix: SimpleGraph tab position persistence, mode toggling, min box bounds, position stability, DOM zIndex, and inside-box slot allocation
+- **變更檔案**: [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx)
+- **異動說明**:
+  - **切頁位置保留**：於 `onNodesChange` 即時記錄並在頁籤切換前將所有節點強制備份至 `localStorage` (`pmflow_simple_graph_dragged_${projectId}`)。
+  - **卡片切換收納盒**：修補子卡片 `!modeChanged` 比對邏輯，並將 `toggledModes` 狀態持久化至 `localStorage`。
+  - **收納盒邊界限制**：動態計算盒內所有卡片的極限座標 `(x + width, y + height)` 設為 `minWidth` 與 `minHeight`，防止收納盒縮小截斷內部卡片。
+  - **移出移入亂跑修正**：移出收納盒時即時更新大座標 `cardAbsPos`，移入時搜尋並分配下一個未被佔用的槽位 `targetSlotPos`。
+  - **DOM 層級與拖曳遮擋**：`onNodesChange` 強制套用 `orderParentNodesFirst`，解決移入後拖曳卡片觸發底層畫布平移 (Pan) 的問題。
+  - **盒內既有卡片保護**：移入新卡片時自動避開既有卡片槽位，絕不強制重排或移動既有卡片。
+
