@@ -316,23 +316,14 @@ export default function ListView({
   }
 
   return (
-    /*
-     * `h-full` 不能省。上層是 `min-h-0 flex-1 overflow-hidden`（App.tsx），
-     * 這一層沒有高度的話會直接長到內容的高度，然後被上層裁掉 ——
-     * `overflow-auto` 因為沒有超出自己，捲軸根本不會出現，
-     * 任務一多就整批看不到，而且捲不到。其他視圖是用 `flex h-full flex-col`
-     * 撐住的，這裡沒有工具列要固定，所以直接 h-full。
-     */
     <div className="h-full overflow-auto p-4">
-      {/* 視窗窄的時候寧可讓整張表左右捲，也不要把任務名稱擠成一個字一行 */}
-      {/* 固定欄寬：任務名稱長的時候讓它自己截斷，不要把整張表撐寬到右邊欄位被推出畫面。
-          視窗真的太窄時整張表左右捲 */}
       <table className="w-full min-w-[76rem] table-fixed border-collapse overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200
                         dark:bg-slate-900 dark:ring-slate-700">
         <thead>
           <tr className="whitespace-nowrap bg-slate-50 text-left text-xs font-medium text-slate-500
                          dark:bg-slate-800 dark:text-slate-400">
-            <th className="min-w-[420px] px-3 py-2">{T.task.list.colTask}</th>
+            <th className="min-w-[340px] px-3 py-2">{T.task.list.colTask}</th>
+            <th className="w-48 px-3 py-2">{T.task.list.colAlert}</th>
             <th className="w-36 px-3 py-2">{T.task.list.colAssignee}</th>
             <th className="w-28 px-3 py-2">{T.task.list.colStatus}</th>
             <th className="w-28 px-3 py-2">{T.task.list.colInquiry}</th>
@@ -373,7 +364,7 @@ export default function ListView({
                     hasUnread && 'pmflow-flash'
                   )}>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5" style={{ paddingLeft: t.depth * 16 }}>
+                  <div className="flex items-center gap-1.5 min-w-0" style={{ paddingLeft: t.depth * 16 }}>
                     {/* 折疊 / 展開 箭頭按鈕 */}
                     {t.hasKids ? (
                       <button
@@ -383,7 +374,7 @@ export default function ListView({
                           toggleCollapse(t.id)
                         }}
                         className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200 rounded transition-colors select-none"
-                        title={collapsedSet.has(t.id) ? '展開子任務' : '收折子任務'}
+                        title={collapsedSet.has(t.id) ? '展開關聯任務' : '收折關聯任務'}
                       >
                         {collapsedSet.has(t.id) ? '▸' : '▾'}
                       </button>
@@ -411,57 +402,13 @@ export default function ListView({
                     {/* 任務名稱 */}
                     <span
                       title={t.title}
-                      className={cx('min-w-[160px] max-w-[520px] truncate', t.type === 'EPIC'
+                      className={cx('min-w-[120px] max-w-[460px] truncate', t.type === 'EPIC'
                         ? 'font-bold text-slate-900 dark:text-slate-100'
                         : 'text-slate-800 dark:text-slate-200')}>
                       {t.title}
                     </span>
-                    {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，
-                        為它固定讓出一欄寬度，換來的是整張表每一列都變窄 */}
-                    <ProblemBadge problem={t.problem} />
-                    {/* 卡住徽章 */}
-                    {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
-                      <span
-                        title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
-                        className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                      >
-                        ⛔ 卡住
-                      </span>
-                    )}
-                    {/* 收納盒子項數量徽章 */}
-                    {t.isBox && tasks.filter(k => k.parentId === t.id).length > 0 && (
-                      <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                        內含 {tasks.filter(k => k.parentId === t.id).length} 張
-                      </span>
-                    )}
-                    {/* 並行徽章 */}
-                    {parallelMap.get(t.id)?.isParallel && (
-                      <span
-                        title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
-                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                      >
-                        ⚡並行
-                      </span>
-                    )}
-                    {/* 逾期徽章 */}
-                    {overdue && (
-                      <span
-                        title={`預計完成日: ${dueDate}`}
-                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                      >
-                        ⏰ 逾期
-                      </span>
-                    )}
-                    {/* 待對外詢問徽章 */}
-                    {hasOpenInquiry(t) && (
-                      <span
-                        title={`對外詢問狀態: ${t.inquiryState}`}
-                        className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
-                      >
-                        ❓ 待回覆
-                      </span>
-                    )}
-                    {/* ✏️ 編輯筆按鈕：移至警示徽章右側，滑過時顯示 */}
+
+                    {/* ✏️ 編輯筆按鈕：放在任務標題後面，滑過時顯示 */}
                     {onEdit && (
                       <button
                         type="button"
@@ -476,11 +423,11 @@ export default function ListView({
                         ✏️
                       </button>
                     )}
-                    {/* ＋ 新增子任務按鈕：移至警示徽章與編輯筆右側 */}
+                    {/* ＋ 新增關聯任務按鈕：放在任務標題與編輯筆後面 */}
                     {canCreate && (
                     <button
                       onClick={e => {
-                        e.stopPropagation()          // 不要順便把任務打開
+                        e.stopPropagation()
                         setAddingTo(id => (id === t.id ? null : t.id))
                         setTitle('')
                       }}
@@ -495,6 +442,49 @@ export default function ListView({
                       )}>
                       {T.task.list.addChild}
                     </button>
+                    )}
+                  </div>
+                </td>
+                {/* 警示欄位 */}
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <ProblemBadge problem={t.problem} />
+                    {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
+                      <span
+                        title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
+                        className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                      >
+                        ⛔ 卡住
+                      </span>
+                    )}
+                    {t.isBox && tasks.filter(k => k.parentId === t.id).length > 0 && (
+                      <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                        內含 {tasks.filter(k => k.parentId === t.id).length} 張
+                      </span>
+                    )}
+                    {parallelMap.get(t.id)?.isParallel && (
+                      <span
+                        title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
+                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      >
+                        ⚡並行
+                      </span>
+                    )}
+                    {overdue && (
+                      <span
+                        title={`預計完成日: ${dueDate}`}
+                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                      >
+                        ⏰ 逾期
+                      </span>
+                    )}
+                    {hasOpenInquiry(t) && (
+                      <span
+                        title={`對外詢問狀態: ${t.inquiryState}`}
+                        className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                      >
+                        ❓ 待回覆
+                      </span>
                     )}
                   </div>
                 </td>
@@ -606,7 +596,7 @@ export default function ListView({
               {addingTo === t.id && (
                 <tr className="border-t border-slate-100 bg-slate-50
                                dark:border-slate-800 dark:bg-slate-800">
-                  <td colSpan={7} className="px-3 py-2">
+                  <td colSpan={8} className="px-3 py-2">
                     <div className="flex items-center gap-2"
                          style={{ paddingLeft: (t.depth + 1) * 20 }}>
                       <span className="select-none text-slate-300 dark:text-slate-500">└</span>
@@ -658,7 +648,7 @@ export default function ListView({
         {canCreate && (
         <tfoot>
           <tr className="border-t border-slate-100 dark:border-slate-800">
-            <td colSpan={7} className="px-3 py-2">
+            <td colSpan={8} className="px-3 py-2">
               {addingTop ? (
                 <>
                 <div className="flex items-center gap-2">

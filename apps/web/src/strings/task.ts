@@ -181,6 +181,7 @@ export const task = {
   /** 清單／樹狀視圖 */
   list: {
     colTask: '任務',
+    colAlert: '警示',
     colAssignee: '負責人',
     colStatus: '狀態',
     colInquiry: '對外詢問',
