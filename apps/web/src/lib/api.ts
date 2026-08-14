@@ -121,7 +121,7 @@ export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 
 export interface MyProfile {
   id: string; email: string; displayName: string
-  locale: string; timezone: string; createdAt: string
+  locale: string; timezone: string; theme?: 'light' | 'dark' | 'system'; createdAt: string
   /** 檔名。有值代表有頭像，圖片本身走 GET /users/:id/avatar */
   avatarFile: string | null
 }
@@ -145,7 +145,7 @@ export interface ApiToken {
  * 站台可能一家都沒設定 —— 後端只回**設定齊全**的那幾家，
  * 所以前端不必判斷任何環境變數，清單是空的就不要畫按鈕。
  */
-export type OauthProviderId = 'GOOGLE' | 'APPLE'
+export type OauthProviderId = 'GOOGLE' | 'APPLE' | 'FACEBOOK'
 
 export interface OauthProvider { id: OauthProviderId; label: string }
 
@@ -344,11 +344,21 @@ export interface Activity {
   actorName: string | null; createdAt: string
 }
 
+export interface ProblemHistoryItem {
+  id: string
+  problem: string
+  solution: string | null
+  resolvedAt: string | null
+  resolvedByName: string | null
+  createdAt: string
+}
+
 export interface TaskDetail extends Task {
   links: TaskLink[]
-  children: Array<{ id: string; ref: string; title: string; statusKey: string; progress: number }>
+  children: Array<{ id: string; ref: string; title: string; statusKey: string; progress: number; type?: string; problem?: string | null }>
   inquiries: Inquiry[]
   activities: Activity[]
+  problemHistory?: ProblemHistoryItem[]
 }
 
 /**
@@ -590,8 +600,8 @@ export const Api = {
   myProfile: () =>
     api<{ user: MyProfile; workspaces: Array<{ id: string; name: string; role: WorkspaceRole }> }>(
       '/me/profile'),
-  updateProfile: (json: { displayName?: string; email?: string }) =>
-    api<{ user: { id: string; email: string; displayName: string } }>(
+  updateProfile: (json: { displayName?: string; email?: string; theme?: 'light' | 'dark' | 'system' }) =>
+    api<{ user: { id: string; email: string; displayName: string; theme?: string } }>(
       '/me/profile', { method: 'PATCH', json }),
   changePassword: (json: { currentPassword: string; newPassword: string }) =>
     api('/me/password', { method: 'POST', json }),
@@ -659,6 +669,14 @@ export const Api = {
   rescheduleTask: (id: string, json: { startDate: string | null; dueDate: string | null; cascade?: boolean }) =>
     api<{ task: Task; schedule: ScheduleResult }>(`/tasks/${id}/reschedule`, { method: 'POST', json }),
   deleteTask: (id: string) => api(`/tasks/${id}`, { method: 'DELETE' }),
+  resolveProblem: (id: string, json: { problemId?: string; solution?: string }) =>
+    api<{ ok: boolean }>(`/tasks/${id}/resolve-problem`, { method: 'POST', json }),
+  deletedTasks: (projectId: string) =>
+    api<{ tasks: Task[] }>(`/projects/${projectId}/deleted-tasks`),
+  restoreTask: (id: string) =>
+    api<{ ok: boolean }>(`/tasks/${id}/restore`, { method: 'POST' }),
+  permanentDeleteTask: (id: string) =>
+    api(`/tasks/${id}/permanent`, { method: 'DELETE' }),
   /**
    * 轉派。跟 `patchTask({ assigneeId })` 分開是為了那句交接說明 ——
    * 換人做的時候，「換成誰」是欄位，「為什麼換、做到哪裡了」是話，

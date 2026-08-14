@@ -45,11 +45,10 @@ import { T } from '../strings'
 
 const S = T.settings
 
-/** 三區的順序就是畫面由上往下的順序。狀態最常改，放第一個 */
+/** 系統參數區塊：保留狀態與優先度，移除事件類型 */
 const SECTIONS: Array<{ kind: ParamKind; title: string; hint: string }> = [
   { kind: 'status', title: S.sections.status.title, hint: S.sections.status.hint },
   { kind: 'priority', title: S.sections.priority.title, hint: S.sections.priority.hint },
-  { kind: 'type', title: S.sections.type.title, hint: S.sections.type.hint },
 ]
 
 const CATEGORIES = ['TODO', 'ACTIVE', 'DONE'] as const

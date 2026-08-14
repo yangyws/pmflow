@@ -27,7 +27,8 @@ export const nav = {
     /** 這一週有哪些任務在跑、各卡在哪個狀態 */
     week: '週檢視',
     gantt: '甘特圖',
-    graph: '關聯圖',
+    graph: '事件關聯圖',
+    systemFlow: '系統流程圖',
     /** 燃盡圖與負載熱圖。看的是整個專案的走勢，不是單張任務 */
     dashboard: '儀表板',
     /** 對外詢問是專案裡的一個頁籤，只看得到這個專案的 */
@@ -36,6 +37,8 @@ export const nav = {
      * 事件歸屬（原成員頁）：回答「這個人手上有什麼、以前經手過什麼」
      */
     members: '事件歸屬',
+    /** 被軟刪除的事件回收站 */
+    deletedTasks: '已刪除事件',
   },
   loadingGantt: '載入甘特圖…',
   loadingGraph: '載入關聯圖…',

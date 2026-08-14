@@ -1,16 +1,9 @@
 import type { OauthProviderId } from '../lib/api'
 
 /**
- * Google 與 Apple 的商標。
+ * Google、Apple 與 Facebook 的商標。
  *
- * **不要拿掉商標只留文字**：這兩家的品牌規範都要求「用他們的帳號登入」這件事
- * 要認得出是他們；反過來也不能只放商標不放字（見 strings/nav.ts 的說明）。
- *
- * 直接內嵌 SVG，不引圖示套件、不連外部網址 —— 這個站要能在完全沒有對外連線的
- * 內網跑起來，而且多一個相依就多一個要過授權白名單的東西。
- *
- * Google 的 G 是四色的，深淺底都一樣（那是它規範裡的樣子，不要加 dark:）；
- * Apple 的是單色，所以跟著文字色走（currentColor），深色模式自然會翻成白的。
+ * 直接內嵌 SVG，不引圖示套件、不連外部網址。
  */
 export function ProviderIcon({ provider }: { provider: OauthProviderId }) {
   if (provider === 'GOOGLE') {
@@ -20,6 +13,13 @@ export function ProviderIcon({ provider }: { provider: OauthProviderId }) {
         <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" />
         <path fill="#FBBC05" d="M3.96 10.71a5.41 5.41 0 0 1 0-3.42V4.96H.96a9 9 0 0 0 0 8.08l3-2.33z" />
         <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z" />
+      </svg>
+    )
+  }
+  if (provider === 'FACEBOOK') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[#1877F2]" fill="currentColor" aria-hidden focusable="false">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
       </svg>
     )
   }

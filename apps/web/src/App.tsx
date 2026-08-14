@@ -27,6 +27,7 @@ const GanttView = lazy(() => import('./pages/Gantt'))
 // React Flow 同理，只有關聯圖用得到
 const GraphView = lazy(() => import('./pages/Graph'))
 const SimpleGraphView = lazy(() => import('./pages/SimpleGraph'))
+const SystemFlowView = lazy(() => import('./pages/SystemFlow'))
 import CalendarView from './pages/Calendar'
 import InquiryBoard from './pages/InquiryBoard'
 import ProjectPicker from './pages/ProjectPicker'
@@ -38,9 +39,10 @@ import AdminPanel from './components/AdminPanel'
 // 儀表板一進去就要打兩支要算的 API，圖表本身也只有這一頁用得到，
 // 跟甘特、關聯圖一樣延後載入
 const DashboardView = lazy(() => import('./pages/Dashboard'))
+const DeletedTasksView = lazy(() => import('./pages/DeletedTasks'))
 
-type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'dashboard'
-  | 'inquiry' | 'members' | 'memberAdmin' | 'settings'
+type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'systemFlow' | 'dashboard'
+  | 'inquiry' | 'members' | 'deletedTasks' | 'memberAdmin' | 'settings'
 
 /**
  * 帳號設定與系統管理不是專案底下的視圖 —— 沒選專案也要進得去，
@@ -53,7 +55,8 @@ const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'board', label: T.nav.views.board },
   { key: 'calendar', label: T.nav.views.calendar },
   { key: 'gantt', label: T.nav.views.gantt },
-  { key: 'simpleGraph', label: '關聯圖' },
+  { key: 'simpleGraph', label: T.nav.views.graph },
+  { key: 'systemFlow', label: T.nav.views.systemFlow },
   // 儀表板排在幾張「看任務」的圖後面：它看的是整個專案的走勢，
   // 不是同一批任務的另一種排法，翻它的時機也不一樣（回報進度的時候才看）
   { key: 'dashboard', label: T.nav.views.dashboard },
@@ -69,6 +72,7 @@ const VIEWS: Array<{ key: View; label: string }> = [
    * 走 `memberAdmin` —— 看人跟管人是兩件事，混在一頁只會兩邊都難用。
    */
   { key: 'members', label: T.nav.views.members },
+  { key: 'deletedTasks', label: T.nav.views.deletedTasks },
 ]
 
 /**
@@ -247,13 +251,16 @@ function AccountTab({ active, onClick, children }: {
 }
 
 function SortableTabItem({
-  v, hidden, lastOne, toggle, P,
+  v, hidden, lastOne, toggle, P, onMove, isFirst, isLast,
 }: {
   v: { key: View; label: string }
   hidden: View[]
   lastOne: boolean
   toggle: (key: View) => void
   P: typeof T.nav.tabPrefs
+  onMove?: (key: View, direction: 'up' | 'down') => void
+  isFirst?: boolean
+  isLast?: boolean
 }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
@@ -297,6 +304,38 @@ function SortableTabItem({
                           focus:ring-blue-500/40 dark:border-slate-500 dark:bg-slate-900" />
         <span className="truncate text-slate-700 dark:text-slate-200">{v.label}</span>
       </label>
+      <div className="flex items-center gap-0.5 shrink-0">
+        <button
+          type="button"
+          disabled={isFirst}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMove?.(v.key, 'up')
+          }}
+          title="往前移"
+          className={cx(
+            'p-0.5 text-xs rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400',
+            isFirst ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
+          )}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          disabled={isLast}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMove?.(v.key, 'down')
+          }}
+          title="往後移"
+          className={cx(
+            'p-0.5 text-xs rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400',
+            isLast ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
+          )}
+        >
+          ▼
+        </button>
+      </div>
     </div>
   )
 }
@@ -311,12 +350,13 @@ function SortableTabItem({
  * **至少留一個**：全部取消勾選會讓上面整排消失，變成一個不知道怎麼救回來的畫面。
  * 剩最後一個時那一格直接 disabled，而不是按下去才跳錯誤。
  */
-function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, setView }: {
+function TabPrefs({ hidden, setHidden, ordered, onReorder, onMove, onResetOrder, view, setView }: {
   hidden: View[]
   setHidden: (v: View[]) => void
   /** 目前的左右順序（已經把存值與 VIEWS 合併過） */
   ordered: Array<{ key: View; label: string }>
   onReorder: (activeKey: View, overKey: View) => void
+  onMove?: (key: View, direction: 'up' | 'down') => void
   onResetOrder: () => void
   view: View
   setView: (v: View) => void
@@ -377,7 +417,7 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={ordered.map(v => v.key)} strategy={verticalListSortingStrategy}>
                 <div className="mt-2 space-y-1">
-                  {ordered.map(v => (
+                  {ordered.map((v, i) => (
                     <SortableTabItem
                       key={v.key}
                       v={v}
@@ -385,6 +425,9 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
                       lastOne={lastOne}
                       toggle={toggle}
                       P={P}
+                      onMove={onMove}
+                      isFirst={i === 0}
+                      isLast={i === ordered.length - 1}
                     />
                   ))}
                 </div>
@@ -473,6 +516,15 @@ function ProjectWorkspace({
     const oldIndex = keys.indexOf(activeKey)
     const newIndex = keys.indexOf(overKey)
     if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
+    setTabOrder(arrayMove(keys, oldIndex, newIndex))
+  }
+
+  function moveTab(key: View, direction: 'up' | 'down') {
+    const keys = orderedViews.map(v => v.key)
+    const oldIndex = keys.indexOf(key)
+    if (oldIndex < 0) return
+    const newIndex = direction === 'up' ? oldIndex - 1 : oldIndex + 1
+    if (newIndex < 0 || newIndex >= keys.length) return
     setTabOrder(arrayMove(keys, oldIndex, newIndex))
   }
 
@@ -594,7 +646,7 @@ function ProjectWorkspace({
                 </button>
               ))}
               <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
-                        ordered={orderedViews} onReorder={reorderTab}
+                        ordered={orderedViews} onReorder={reorderTab} onMove={moveTab}
                         onResetOrder={() => setTabOrder([])}
                         view={view} setView={setView} />
             </nav>
@@ -622,12 +674,6 @@ function ProjectWorkspace({
             ) : (
               <span className="truncate text-slate-500 dark:text-slate-400">
                 (當前顯示：全專案事件 - {shownViews.find(v => v.key === view)?.label ?? T.common.none})
-              </span>
-            )}
-            {overdue > 0 && (
-              <span className="shrink-0 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700
-                               dark:bg-red-500/15 dark:text-red-300 ml-auto">
-                ⚠️ {T.nav.overdueHere(overdue)}
               </span>
             )}
           </div>
@@ -689,6 +735,11 @@ function ProjectWorkspace({
                   />
                 </Suspense>
               )}
+              {view === 'systemFlow' && (
+                <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
+                  <SystemFlowView projectId={projectId} />
+                </Suspense>
+              )}
               {/*
                 * 刻意不傳 visible：燃盡圖與熱圖是整個專案的走勢，後端一次算完。
                 * 跟著側欄選的大項目變的話，看到的數字會跟他嘴上說的「專案進度」對不起來。
@@ -708,6 +759,11 @@ function ProjectWorkspace({
                 <MembersView projectId={projectId} workspaceId={workspaceId}
                              onOpenTask={handleTaskSelect} onEditTask={handleTaskEdit}
                              focusedTaskId={focusedTaskId ?? epicId} />
+              )}
+              {view === 'deletedTasks' && (
+                <Suspense fallback={<Spinner label="載入已刪除事件…" />}>
+                  <DeletedTasksView projectId={projectId} />
+                </Suspense>
               )}
               {/* 頭像選單進來的成員管理：改角色、核准加入申請 */}
               {view === 'memberAdmin' && (

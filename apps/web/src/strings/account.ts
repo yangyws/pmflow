@@ -89,14 +89,14 @@ export const account = {
      * 這裡會直接編譯不過」，而不是在畫面上默默印出 GOOGLE 這種給程式看的字。
      * 商標名不翻譯 —— 使用者要在自己的帳號設定裡認出是同一家。
      */
-    label: { GOOGLE: 'Google', APPLE: 'Apple' } as Record<OauthProviderId, string>,
+    label: { GOOGLE: 'Google', APPLE: 'Apple', FACEBOOK: 'Facebook' } as Record<OauthProviderId, string>,
 
     title: '登入方式',
-    hint: '除了 email 與密碼，也可以綁定 Google 或 Apple 的帳號，'
+    hint: '除了 email 與密碼，也可以綁定 Google、Apple 或 Facebook 的帳號，'
         + '之後用哪一種進來都是同一個 PMFlow 帳號。',
     loading: '載入登入方式…',
     /** 站台沒有設定任何一家時，整區只留這句話 —— 不要留一片空白 */
-    unavailable: '這個站沒有開放用 Google 或 Apple 的帳號登入。'
+    unavailable: '這個站沒有開放用第三方（Google、Apple 或 Facebook）帳號登入。'
                + '要開放的話，請站台管理者參考 README 的設定步驟。',
 
     password: 'email 與密碼',

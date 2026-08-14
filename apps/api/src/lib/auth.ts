@@ -248,15 +248,19 @@ export async function requireProjectManager(
   userId: string, projectId: string
 ): Promise<{ workspaceId: string; createdBy: string | null }> {
   const rows = await sql<{
-    workspace_id: string; created_by: string | null; role: ProjectRole | null
+    workspace_id: string; created_by: string | null; role: ProjectRole | null; ws_role: string | null
   }[]>`
-    SELECT p.workspace_id, p.created_by, pm.role
+    SELECT p.workspace_id, p.created_by, pm.role, wm.role AS ws_role
     FROM project p
     LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
+    LEFT JOIN workspace_member wm ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
-  if (rows[0].role !== 'MANAGER') {
-    throw forbidden('只有專案的管理者可以管理成員')
+  const isCreator = rows[0].created_by === userId
+  const isOwner = rows[0].ws_role === 'OWNER' || rows[0].ws_role === 'ADMIN'
+  const isManager = rows[0].role === 'MANAGER'
+  if (!isCreator && !isOwner && !isManager) {
+    throw forbidden('只有專案建立者或管理者以上可以更改與保存系統參數')
   }
   return { workspaceId: rows[0].workspace_id, createdBy: rows[0].created_by }
 }

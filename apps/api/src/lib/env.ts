@@ -92,5 +92,9 @@ export const env = {
       keyId: req('PMFLOW_APPLE_KEY_ID', '').trim(),
       privateKey: applePrivateKey(),
     },
+    facebook: {
+      clientId: req('PMFLOW_FACEBOOK_CLIENT_ID', '').trim(),
+      clientSecret: req('PMFLOW_FACEBOOK_CLIENT_SECRET', '').trim(),
+    },
   },
 }

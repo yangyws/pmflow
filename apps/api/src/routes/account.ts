@@ -23,6 +23,7 @@ import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 const profileBody = z.object({
   displayName: z.string().min(1, '請填寫顯示名稱').max(80).optional(),
   email: z.string().email('email 格式不正確').max(254).optional(),
+  theme: z.enum(['light', 'dark', 'system']).optional(),
 })
 
 const passwordBody = z.object({
@@ -82,9 +83,9 @@ export default async function accountRoutes(app: FastifyInstance) {
     const auth = await authenticate(req)
     const [row] = await sql<{
       id: string; email: string; displayName: string
-      locale: string; timezone: string; createdAt: string; avatarFile: string | null
+      locale: string; timezone: string; theme: string; createdAt: string; avatarFile: string | null
     }[]>`
-      SELECT id, email, display_name AS "displayName", locale, timezone,
+      SELECT id, email, display_name AS "displayName", locale, timezone, theme,
              created_at AS "createdAt", avatar_file AS "avatarFile"
       FROM app_user WHERE id = ${auth.id}`
     if (!row) throw notFound('找不到帳號')
@@ -146,7 +147,7 @@ export default async function accountRoutes(app: FastifyInstance) {
   app.patch('/me/profile', async req => {
     const auth = await authenticate(req)
     const body = profileBody.parse(req.body)
-    if (body.email === undefined && body.displayName === undefined) {
+    if (body.email === undefined && body.displayName === undefined && body.theme === undefined) {
       throw badRequest('沒有要修改的欄位')
     }
 
@@ -157,12 +158,13 @@ export default async function accountRoutes(app: FastifyInstance) {
     }
 
     // COALESCE 讓「只改名字」跟「只改 email」共用同一句，沒帶到的欄位保持原值
-    const [row] = await sql<{ id: string; email: string; displayName: string }[]>`
+    const [row] = await sql<{ id: string; email: string; displayName: string; theme: string }[]>`
       UPDATE app_user SET
         display_name = COALESCE(${body.displayName ?? null}, display_name),
-        email        = COALESCE(${body.email ?? null}, email)
+        email        = COALESCE(${body.email ?? null}, email),
+        theme        = COALESCE(${body.theme ?? null}, theme)
       WHERE id = ${auth.id}
-      RETURNING id, email, display_name AS "displayName"`
+      RETURNING id, email, display_name AS "displayName", theme`
     return { user: row }
   })
 

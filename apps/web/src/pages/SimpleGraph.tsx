@@ -308,14 +308,10 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       {isBox ? (
         <div
           className={cx(
-            'relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden',
+            'relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
             data.isSelected
-              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl opacity-100'
-              : data.isRelated
-                ? data.hasSelectionActive
-                  ? 'border-indigo-400 dark:border-indigo-500 ring-1 ring-indigo-400/60 shadow-md opacity-100'
-                  : 'border-slate-300 dark:border-slate-700 opacity-100'
-                : 'border-slate-200 dark:border-slate-800 opacity-25'
+              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
+              : 'border-slate-300 dark:border-slate-700'
           )}
         >
           <div>
@@ -415,14 +411,10 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       ) : (
         <div
           className={cx(
-            'min-w-[256px] w-max max-w-[480px] min-h-[90px] h-auto rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden',
+            'min-w-[256px] w-max max-w-[480px] min-h-[90px] h-auto rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden opacity-100',
             data.isSelected
-              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl opacity-100'
-              : data.isRelated
-                ? data.hasSelectionActive
-                  ? 'border-indigo-400 dark:border-indigo-500 ring-1 ring-indigo-400/60 shadow-md opacity-100'
-                  : 'border-slate-200 dark:border-slate-800 opacity-100'
-                : 'border-slate-200 dark:border-slate-800 opacity-25'
+              ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
+              : 'border-slate-200 dark:border-slate-800'
           )}
         >
           <div
@@ -1933,11 +1925,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
 
   const styledEdges = useMemo(() => {
     return edges.map((e) => {
-      const sId = String(e.source)
-      const tId = String(e.target)
-      const isConnected = activeSelectedId
-        ? (relatedSet ? relatedSet.has(sId) && relatedSet.has(tId) : false)
-        : true
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
       return {
         ...e,
@@ -1948,13 +1935,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
           ...e.style,
           stroke: edgeStyleAndMarker.style.stroke,
           strokeDasharray: edgeStyleAndMarker.style.strokeDasharray,
-          strokeWidth: isConnected ? 3 : 1.5,
-          opacity: activeSelectedId ? (isConnected ? 1 : 0.12) : 1,
+          strokeWidth: 2,
+          opacity: 1,
         },
         markerEnd: edgeStyleAndMarker.markerEnd,
       }
     })
-  }, [edges, activeSelectedId, relatedSet])
+  }, [edges])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">

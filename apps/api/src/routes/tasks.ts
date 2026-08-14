@@ -60,6 +60,34 @@ async function assertCanEditTask(
   throw forbidden('只有開這張任務的人、負責人、專案管理者及其代理人可以修改任務')
 }
 
+/**
+ * 檢查是否具有「刪除事件」權限：
+ * 只有「事件建立者」、「專案建立者」、「專案擁有者/管理者」及其代理人可以刪除。
+ */
+async function assertCanDeleteTask(
+  taskId: string, userId: string, role: string
+): Promise<void> {
+  const [row] = await sql<{
+    taskCreator: string | null; projectCreator: string | null;
+  }[]>`
+    SELECT t.created_by AS "taskCreator", p.created_by AS "projectCreator"
+    FROM task t
+    JOIN project p ON p.id = t.project_id
+    WHERE t.id = ${taskId}`
+  if (!row) throw notFound('找不到任務')
+
+  if (role === 'OWNER' || role === 'MANAGER') return
+  if (row.taskCreator === userId || row.projectCreator === userId) return
+
+  const principals = await currentDeputyPrincipals(userId)
+  if (principals.length && (
+    (row.taskCreator && principals.includes(row.taskCreator)) ||
+    (row.projectCreator && principals.includes(row.projectCreator))
+  )) return
+
+  throw forbidden('只有事件建立者、專案建立者或管理者可以刪除事件')
+}
+
 const TASK_COLUMNS = sql`
   t.id, t.project_id AS "projectId", t.workspace_id AS "workspaceId",
   p.key || '-' || t.number AS "ref", t.number, t.parent_id AS "parentId",
@@ -189,6 +217,7 @@ export default async function taskRoutes(app: FastifyInstance) {
       const [{ rank }] = await tx<{ rank: number }[]>`
         SELECT coalesce(max(rank), 0) + 1000 AS rank FROM task WHERE project_id = ${req.params.id}`
 
+      const today = new Date().toISOString().slice(0, 10)
       const [t] = await tx<{ id: string }[]>`
         INSERT INTO task (workspace_id, project_id, number, parent_id, title, description,
                           problem, type, status_key, priority, assignee_id, start_date, due_date,
@@ -197,7 +226,7 @@ export default async function taskRoutes(app: FastifyInstance) {
                 ${body.title}, ${body.description ?? null},
                 ${cleanProblem(body.problem)}, ${body.type ?? 'TASK'},
                 ${body.statusKey ?? 'todo'}, ${body.priority ?? 'NORMAL'},
-                ${body.assigneeId ?? null}, ${body.startDate ?? null}, ${body.dueDate ?? null},
+                ${body.assigneeId ?? null}, ${body.startDate ?? today}, ${body.dueDate ?? today},
                 ${body.estimateHours ?? null}, ${body.scheduleMode ?? 'AUTO'},
                 ${rank}, ${user.id})
         RETURNING id`
@@ -246,7 +275,7 @@ export default async function taskRoutes(app: FastifyInstance) {
 
     const children = await sql`
       SELECT t.id, p.key || '-' || t.number AS "ref", t.title, t.status_key AS "statusKey",
-             t.progress, t.start_date AS "startDate", t.due_date AS "dueDate"
+             t.type, t.problem, t.progress, t.start_date AS "startDate", t.due_date AS "dueDate"
       FROM task t JOIN project p ON p.id = t.project_id
       WHERE t.parent_id = ${req.params.id} AND t.deleted_at IS NULL
       ORDER BY t.rank`
@@ -266,7 +295,15 @@ export default async function taskRoutes(app: FastifyInstance) {
       FROM activity WHERE task_id = ${req.params.id}
       ORDER BY created_at DESC LIMIT 100`
 
-    return { ...task, links, children, inquiries, activities }
+    const problemHistory = await sql`
+      SELECT h.id, h.problem, h.solution, h.resolved_at AS "resolvedAt",
+             h.created_at AS "createdAt", u.display_name AS "resolvedByName"
+      FROM task_problem_history h
+      LEFT JOIN app_user u ON u.id = h.resolved_by
+      WHERE h.task_id = ${req.params.id}
+      ORDER BY h.created_at DESC`
+
+    return { ...task, links, children, inquiries, activities, problemHistory }
   })
 
   // ── 更新任務 ─────────────────────────────────────────
@@ -342,6 +379,11 @@ export default async function taskRoutes(app: FastifyInstance) {
       if (b.problem !== undefined && problem !== (before?.problem ?? null)) {
         logged.problem = problem
         logged.problemBefore = before?.problem ?? null
+        if (problem) {
+          await tx`
+            INSERT INTO task_problem_history (task_id, problem, created_by)
+            VALUES (${req.params.id}, ${problem}, ${user.id})`
+        }
       }
       if (b.type !== undefined && b.type !== before?.type) {
         logged.type = b.type
@@ -579,8 +621,87 @@ export default async function taskRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string } }>('/tasks/:id', async (req, reply) => {
     const user = await authenticate(req)
     const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
-    await assertCanEditTask(req.params.id, user.id, role)
+    await assertCanDeleteTask(req.params.id, user.id, role)
     await sql`UPDATE task SET deleted_at = now() WHERE id = ${req.params.id}`
+    return reply.code(204).send()
+  })
+
+  // ── 取得已刪除事件清單 ──────────────────────────────────
+  app.get<{ Params: { id: string } }>('/projects/:id/deleted-tasks', async (req) => {
+    const user = await authenticate(req)
+    await requireProjectRole(user.id, req.params.id, 'VIEWER')
+    const rows = await sql`
+      SELECT ${TASK_COLUMNS}
+      FROM task t
+      JOIN project p ON p.id = t.project_id
+      LEFT JOIN app_user u ON u.id = t.assignee_id
+      WHERE t.project_id = ${req.params.id} AND t.deleted_at IS NOT NULL
+      ORDER BY t.deleted_at DESC`
+    return { tasks: rows }
+  })
+
+  // ── 還原已刪除事件 ────────────────────────────────────
+  app.post<{ Params: { id: string } }>('/tasks/:id/restore', async (req, reply) => {
+    const user = await authenticate(req)
+    const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    await assertCanDeleteTask(req.params.id, user.id, role)
+    await sql`UPDATE task SET deleted_at = NULL WHERE id = ${req.params.id}`
+    return reply.code(200).send({ ok: true })
+  })
+
+  // ── 關閉/解決遭遇問題 ──────────────────────────────────
+  app.post<{ Params: { id: string } }>('/tasks/:id/resolve-problem', async (req, reply) => {
+    const user = await authenticate(req)
+    const { workspaceId, role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    await assertCanEditTask(req.params.id, user.id, role)
+    const { problemId, solution } = z.object({
+      problemId: z.string().uuid().optional(),
+      solution: z.string().max(20000).optional(),
+    }).parse(req.body)
+
+    const [cur] = await sql<{ problem: string | null }[]>`SELECT problem FROM task WHERE id = ${req.params.id}`
+    const curProblem = cur?.problem
+
+    if (problemId) {
+      await sql`
+        UPDATE task_problem_history
+        SET solution = ${solution || null}, resolved_at = now(), resolved_by = ${user.id}, updated_at = now()
+        WHERE id = ${problemId} AND task_id = ${req.params.id}`
+    } else if (curProblem) {
+      const [existing] = await sql<{ id: string }[]>`
+        SELECT id FROM task_problem_history
+        WHERE task_id = ${req.params.id} AND resolved_at IS NULL
+        ORDER BY created_at DESC LIMIT 1`
+
+      if (existing) {
+        await sql`
+          UPDATE task_problem_history
+          SET solution = ${solution || null}, resolved_at = now(), resolved_by = ${user.id}, updated_at = now()
+          WHERE id = ${existing.id}`
+      } else {
+        await sql`
+          INSERT INTO task_problem_history (task_id, problem, solution, resolved_at, resolved_by, created_by)
+          VALUES (${req.params.id}, ${curProblem}, ${solution || null}, now(), ${user.id}, ${user.id})`
+      }
+    }
+
+    await sql`UPDATE task SET problem = NULL, updated_at = now() WHERE id = ${req.params.id}`
+
+    await sql`
+      INSERT INTO activity (workspace_id, task_id, kind, body, actor_id, actor_name)
+      VALUES (${workspaceId}, ${req.params.id}, 'FIELD_CHANGE',
+              ${sql.json({ problemBefore: curProblem, problem: null, solution: solution || null })},
+              ${user.id}, ${user.displayName})`
+
+    return reply.code(200).send({ ok: true })
+  })
+
+  // ── 永久刪除事件 ────────────────────────────────────
+  app.delete<{ Params: { id: string } }>('/tasks/:id/permanent', async (req, reply) => {
+    const user = await authenticate(req)
+    const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    await assertCanDeleteTask(req.params.id, user.id, role)
+    await sql`DELETE FROM task WHERE id = ${req.params.id}`
     return reply.code(204).send()
   })
 

@@ -397,10 +397,17 @@ export default async function parameterRoutes(app: FastifyInstance) {
   // 而 canManage 是這裡算的，不是前端自己猜的（跟成員頁同一個做法）。
   app.get<{ Params: { id: string } }>('/projects/:id/parameters', async req => {
     const user = await authenticate(req)
-    const { role } = await requireProjectRole(user.id, req.params.id, 'VIEWER')
+    const { role, workspaceId } = await requireProjectRole(user.id, req.params.id, 'VIEWER')
+    const [p] = await sql<{ created_by: string | null }[]>`
+      SELECT created_by FROM project WHERE id = ${req.params.id}`
+    const [wm] = await sql<{ role: string }[]>`
+      SELECT role FROM workspace_member WHERE workspace_id = ${workspaceId} AND user_id = ${user.id}`
+    const isCreator = p?.created_by === user.id
+    const isOwner = wm?.role === 'OWNER' || wm?.role === 'ADMIN'
+    const canManage = isCreator || isOwner || role === 'MANAGER'
     return {
       params: await listAll(sql, req.params.id),
-      canManage: role === 'MANAGER',
+      canManage,
     }
   })
 

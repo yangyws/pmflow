@@ -1,18 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Api } from './api'
 
 /**
- * 深色模式。
- *
- * 三個選項：跟隨系統、淺色、深色。**預設是跟隨系統** —— 使用者在作業系統上
- * 已經表達過一次偏好了，再逼他選一次沒有意義；而「跟隨系統」也是唯一會在
- * 天黑時自己換過去的選項。
- *
- * 存在 localStorage 不存在後端：這是「這台裝置上看起來怎樣」，不是帳號屬性。
- * 同一個人在辦公室的螢幕想要淺色、在家的筆電想要深色，是很正常的事，
- * 存進帳號反而會互相蓋掉。代價是換一台電腦要再選一次，那不痛。
- *
- * 畫面上的深色樣式一律寫成 `dark:` 前綴，靠 <html> 上的 `dark` class 打開，
- * 對照表在 index.css 最上面。
+ * 深色模式與主題設定（同步後端帳號資料庫與本地 localStorage）。
  */
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
@@ -28,7 +19,7 @@ export function storedTheme(): ThemeChoice {
     const v = localStorage.getItem(KEY)
     return isChoice(v) ? v : 'system'
   } catch {
-    // 隱私模式下 localStorage 會直接丟例外，那就當作沒設定過
+    // 隱私模式下 localStorage 會直接丟例外，那就不處理
     return 'system'
   }
 }
@@ -68,6 +59,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [choice, setChoiceState] = useState<ThemeChoice>(() => storedTheme())
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(storedTheme()))
 
+  // 登入後自動取得帳號偏好設定，並與後端同步
+  const { data: profileData } = useQuery({
+    queryKey: ['myProfile'],
+    queryFn: () => Api.myProfile(),
+    staleTime: 60_000,
+    retry: false,
+  })
+
+  useEffect(() => {
+    const backendTheme = profileData?.user?.theme
+    if (backendTheme && isChoice(backendTheme) && backendTheme !== choice) {
+      setChoiceState(backendTheme)
+      setResolved(resolveTheme(backendTheme))
+      applyTheme(backendTheme)
+      try {
+        localStorage.setItem(KEY, backendTheme)
+      } catch {
+        // ignore
+      }
+    }
+  }, [profileData?.user?.theme])
+
   const setChoice = (c: ThemeChoice) => {
     setChoiceState(c)
     setResolved(resolveTheme(c))
@@ -75,8 +88,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(KEY, c)
     } catch {
-      // 存不進去就只有這次有效，不值得為它中斷操作
+      // 存不進去就只有這次有效
     }
+    // 即時寫回後端資料庫持久化存檔
+    Api.updateProfile({ theme: c }).catch(() => {})
   }
 
   // 選「跟隨系統」的人，天黑時作業系統自己換過去，畫面要跟著換

@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Api, ApiError, type LinkType, type ProjectParam, type Task, type TaskDetail, type TaskStatus } from '../lib/api'
+import { Api, ApiError, type LinkType, type ProjectParam, type ProblemHistoryItem, type Task, type TaskDetail, type TaskStatus } from '../lib/api'
 import { LINK_LABEL, LINK_CHIP, SCHEDULING, SEMANTIC, linkSentence } from '../lib/linkText'
 import { Button, Input, Select, Field, Spinner, ColorOption, readableColor, cx } from './ui'
 import { InquiryTable } from './InquiryTable'
@@ -17,6 +17,45 @@ import { DEFAULT_TYPE_COLORS } from './EpicSidebar'
  * variant='pane'（預設）：內嵌在右側主區，左邊選了哪張就顯示哪張——主從式版面。
  * variant='overlay'：舊的覆蓋式抽屜，保留給之後可能需要的浮動情境。
  */
+/**
+ * 抽屜外層容器（抽離至模組層級，避免父層重繪時重新宣告導致 DOM 樹銷毀與焦點遺失）
+ */
+function TaskDrawerShell({
+  variant,
+  shouldFlash,
+  seen,
+  onClose,
+  children,
+}: {
+  variant: 'pane' | 'overlay'
+  shouldFlash: boolean
+  seen: Record<string, unknown>
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  if (variant === 'overlay') {
+    return (
+      <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/20 dark:bg-slate-950/60"
+           onClick={onClose}>
+        {/* 覆蓋式抽屜是疊在卡片上的浮層，深色底要比卡片再亮一階才分得出層次 */}
+        <div className={cx('flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl',
+                           'dark:bg-slate-800', shouldFlash && 'pmflow-flash')}
+             {...seen}
+             onClick={e => e.stopPropagation()}>
+          {children}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className={cx('flex h-full min-h-0 flex-col bg-white dark:bg-slate-900',
+                       shouldFlash && 'pmflow-flash')}
+         {...seen}>
+      {children}
+    </div>
+  )
+}
+
 export function TaskDrawer({
   taskId, workspaceId, statuses, allTasks, onClose, onSelectTask, variant = 'pane', flash = false, onSeen,
 }: {
@@ -83,6 +122,9 @@ export function TaskDrawer({
   // Ref: CR-086 — 開放 EDITOR 與 MANAGER 皆可編輯與保存任務/問題事件
   const canEdit = isManager || role === 'EDITOR'
   const canEditLinks = canEdit
+  const isTaskCreator = Boolean(data?.createdById && data.createdById === user?.id)
+  const isProjectCreator = Boolean(project?.isCreator)
+  const canDelete = isManager || role === 'OWNER' || isTaskCreator || isProjectCreator
 
   // Esc 關閉抽屜。在輸入框裡按 Esc 不關，免得打到一半誤觸把內容弄丟。
   useEffect(() => {
@@ -133,8 +175,51 @@ export function TaskDrawer({
     mutationFn: () => Api.deleteTask(taskId),
     onSuccess: () => { invalidate(); onClose() },
   })
-  /** 刪除是兩段式：按一次問一句，再按一次才真的刪 */
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [solutionText, setSolutionText] = useState('')
+
+  const resolveProblem = useMutation({
+    mutationFn: (solution?: string) => Api.resolveProblem(taskId, { solution }),
+    onSuccess: () => {
+      setSolutionText('')
+      setDraft(d => {
+        const next = { ...d }
+        delete next.problem
+        return next
+      })
+      invalidate()
+    },
+  })
+
+  const createProblemCard = useMutation({
+    mutationFn: async (v: { title: string; content: string }) => {
+      // 1. 確保目前卡片標記為收納盒
+      try {
+        const key = 'pmflow_graph_container_boxes'
+        const saved = localStorage.getItem(key)
+        const set = new Set<string>(saved ? JSON.parse(saved) : [])
+        set.add(taskId)
+        localStorage.setItem(key, JSON.stringify(Array.from(set)))
+      } catch {}
+
+      // 2. 找到專案中對應的「問題」類型 key（優先尋找 BUG 或名稱包含問題的種類）
+      const bugTypeKey = types.find(t => t.key === 'BUG' || t.name.includes('問題'))?.key ?? 'BUG'
+
+      // 3. 建立問題子卡片 (類型設為問題類型)
+      await Api.createTask(data!.projectId, {
+        title: v.title,
+        description: v.content || null,
+        type: bugTypeKey,
+        parentId: taskId,
+      })
+
+      // 4. 記錄問題至父卡片
+      await Api.patchTask(taskId, { problem: v.title })
+    },
+    onSuccess: () => {
+      invalidate()
+    },
+  })
 
   /*
    * 轉派走專屬的端點，不走 patch —— 換人是欄位，交接說明是話，
@@ -200,7 +285,7 @@ export function TaskDrawer({
    * 沒有編輯權的人就沒有東西可以按。
    */
   type Draft = Partial<Pick<TaskDetail,
-    'title' | 'type' | 'statusKey' | 'priority' | 'progress'
+    'title' | 'description' | 'problem' | 'type' | 'statusKey' | 'priority' | 'progress'
     | 'startDate' | 'dueDate' | 'scheduleMode'>>
   const [draft, setDraft] = useState<Draft>({})
   const edit = (v: Draft) => setDraft(d => ({ ...d, ...v }))
@@ -264,30 +349,14 @@ export function TaskDrawer({
     ? { onPointerDownCapture: handleSeen, onKeyDownCapture: handleSeen }
     : {}
 
-  const Shell = ({ children }: { children: React.ReactNode }) =>
-    variant === 'overlay' ? (
-      <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/20 dark:bg-slate-950/60"
-           onClick={onClose}>
-        {/* 覆蓋式抽屜是疊在卡片上的浮層，深色底要比卡片再亮一階才分得出層次 */}
-        <div className={cx('flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl',
-                           'dark:bg-slate-800', shouldFlash && 'pmflow-flash')}
-             {...seen}
-             onClick={e => e.stopPropagation()}>
-          {children}
-        </div>
-      </div>
-    ) : (
-      <div className={cx('flex h-full min-h-0 flex-col bg-white dark:bg-slate-900',
-                         shouldFlash && 'pmflow-flash')}
-           {...seen}>
-        {children}
-      </div>
-    )
-
   return (
-    <Shell>
-      <>
-        {isLoading || !data ? <Spinner /> : (
+    <TaskDrawerShell
+      variant={variant}
+      shouldFlash={Boolean(shouldFlash)}
+      seen={seen}
+      onClose={onClose}
+    >
+      {isLoading || !data ? <Spinner /> : (
           <>
             <header className="flex items-start justify-between border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4
                                dark:border-slate-700">
@@ -373,8 +442,8 @@ export function TaskDrawer({
                 )}
 
                 {/* 刪除兩段式：按一次問一句，再按一次才真的刪。
-                    不用瀏覽器的 confirm —— 那會擋住整個分頁 */}
-                {canEdit && (confirmDelete ? (
+                    只有建立者、專案建立者或管理者以上有權限刪除 */}
+                {canDelete && (confirmDelete ? (
                   <>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       {(data.children?.length ?? 0) > 0
@@ -633,42 +702,54 @@ export function TaskDrawer({
                 </div>
               )}
 
-              {/* ── 目前遇到的問題 ──
-                  放在基本欄位下面、對外詢問上面：它比日期進度更要緊，
-                  但它常常就是「問出去了還在等回覆」的那個原因，兩者要挨著看 */}
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    {T.task.problem.label}
-                  </h3>
-                  {data.problem && (
-                    <Button variant="ghost" className="text-xs text-slate-500 dark:text-slate-400"
-                            onClick={() => patch.mutate({ problem: null })}>
-                      {T.task.problem.clear}
-                    </Button>
-                  )}
+              {/* ── 事件內容 (Description) ── */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">📝</span>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      事件內容
+                    </h3>
+                  </div>
                 </div>
-                <textarea
-                  /* 清空之後輸入框裡的字也要跟著不見。defaultValue 只在掛載時讀一次，
-                     換 key 逼它重新掛載 —— 改成受控值的話每打一個字都要重畫整個抽屜 */
-                  key={data.problem ?? ''}
-                  defaultValue={data.problem ?? ''}
-                  rows={2}
-                  onBlur={e => {
-                    if (e.target.value.trim() === (data.problem ?? '')) return
-                    patch.mutate({ problem: e.target.value })
-                  }}
-                  placeholder={T.task.problem.placeholder}
-                  className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm
-                             placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
-                             focus:ring-2 focus:ring-blue-500/40
-                             dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100
-                             dark:placeholder:text-slate-500"
-                />
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                  {T.task.problem.hint}
-                </p>
+                {canEdit ? (
+                  <textarea
+                    value={form.description ?? ''}
+                    onChange={e => edit({ description: e.target.value || null })}
+                    rows={3}
+                    placeholder="填寫此事件的詳細說明、需求背景或執行指引…"
+                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
+                               placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                               focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+                  />
+                ) : (
+                  <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    {form.description?.trim() ? form.description : (
+                      <span className="text-slate-400 dark:text-slate-500 text-xs">（無事件內容）</span>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* ── 遭遇問題與解決歷程（問題事件本身不顯示問題區） ── */}
+              {form.type !== 'BUG' && data.type !== 'BUG' && (
+                <ProblemSection
+                  taskId={taskId}
+                  projectId={data.projectId}
+                  problemValue={form.problem ?? ''}
+                  solutionValue={solutionText}
+                  childProblems={data.children?.filter(c => c.type === 'BUG' || c.problem)}
+                  onChangeProblem={val => edit({ problem: val || null })}
+                  onChangeSolution={val => setSolutionText(val)}
+                  problemHistory={data.problemHistory}
+                  onResolveProblem={solution => resolveProblem.mutate(solution)}
+                  onClearProblem={() => edit({ problem: null })}
+                  onSelectTask={onSelectTask}
+                  isResolving={resolveProblem.isPending}
+                  onCreateProblemCard={(title, content) => createProblemCard.mutate({ title, content })}
+                  isCreatingCard={createProblemCard.isPending}
+                />
+              )}
 
               {/* ── 對外詢問：核心功能 ──
                   canEdit 一律給 true。登錄回覆後端只要求專案成員，是「誰收到誰登錄」，
@@ -832,8 +913,7 @@ export function TaskDrawer({
             </div>
           </>
         )}
-      </>
-    </Shell>
+    </TaskDrawerShell>
   )
 }
 
@@ -1064,3 +1144,215 @@ function describeActivity(
       return T.task.activity.fieldUpdated
   }
 }
+
+/**
+ * 遭遇問題與解決方案獨立區塊（支援開立問題卡片並自動收納至收納盒）
+ */
+function ProblemSection({
+  taskId,
+  projectId,
+  problemValue,
+  solutionValue,
+  childProblems,
+  onChangeProblem,
+  onChangeSolution,
+  problemHistory,
+  onResolveProblem,
+  onClearProblem,
+  onSelectTask,
+  isResolving,
+  onCreateProblemCard,
+  isCreatingCard,
+}: {
+  taskId: string
+  projectId: string
+  problemValue: string
+  solutionValue: string
+  childProblems?: Array<{ id: string; ref: string; title: string; statusKey: string; progress: number; type?: string; problem?: string | null }>
+  onChangeProblem: (v: string) => void
+  onChangeSolution: (v: string) => void
+  problemHistory?: ProblemHistoryItem[]
+  onResolveProblem: (solution: string) => void
+  onClearProblem: () => void
+  onSelectTask?: (id: string) => void
+  isResolving: boolean
+  onCreateProblemCard: (title: string, content: string) => void
+  isCreatingCard: boolean
+}) {
+  const [newTitle, setNewTitle] = useState('')
+  const [newContent, setNewContent] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
+
+  const hasProblem = problemValue.trim().length > 0 || (childProblems && childProblems.length > 0)
+  const resolvedList = (problemHistory ?? []).filter(h => h.resolvedAt)
+
+  const handleCreate = () => {
+    if (!newTitle.trim()) return
+    onCreateProblemCard(newTitle.trim(), newContent.trim())
+    setNewTitle('')
+    setNewContent('')
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-base">⚠️</span>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            {T.task.problem.label}
+          </h3>
+        </div>
+        {problemValue && (
+          <Button
+            variant="ghost"
+            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            onClick={onClearProblem}
+          >
+            {T.task.problem.clear}
+          </Button>
+        )}
+      </div>
+
+      {/* 現有收納中的問題卡片清單 */}
+      {childProblems && childProblems.length > 0 && (
+        <div className="mb-3 space-y-1.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-3">
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+            <span>📦</span> 已收納之問題卡片 ({childProblems.length} 張)：
+          </p>
+          <div className="space-y-1 mt-1.5">
+            {childProblems.map(p => (
+              <div
+                key={p.id}
+                onClick={() => onSelectTask?.(p.id)}
+                className="flex items-center justify-between gap-2 p-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition text-xs"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 shrink-0">{p.ref}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 shrink-0 font-medium">
+                  {p.type ? '問題' : '問題卡片'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 填寫新問題並開立問題卡片收納 */}
+      <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            問題標題 <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="請輸入問題標題（建立後此事件自動轉為收納盒，並將問題卡片收納其中）…"
+            className="w-full"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            遭遇問題內容 / 描述
+          </label>
+          <textarea
+            value={newContent}
+            onChange={e => setNewContent(e.target.value)}
+            rows={2}
+            placeholder="描述遭遇問題的詳細狀況、影響範圍或排查線索…"
+            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
+                       placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                       focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+          />
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <Button
+            variant="primary"
+            disabled={!newTitle.trim() || isCreatingCard}
+            onClick={handleCreate}
+            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
+          >
+            <span>📦</span> 開立問題卡片並收納
+          </Button>
+        </div>
+
+        {/* 解決方案輸入 */}
+        <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            解決內容 / 因應措施
+          </label>
+          <textarea
+            value={solutionValue}
+            onChange={e => onChangeSolution(e.target.value)}
+            rows={2}
+            placeholder="填寫問題的解決方式或排解說明（填寫後點擊下方「已解決」按鈕）…"
+            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
+                       placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                       focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            點擊「已解決」將問題收納至歷史，警示徽章會自動解除。
+          </p>
+          <Button
+            variant="default"
+            disabled={!hasProblem || isResolving}
+            onClick={() => onResolveProblem(solutionValue)}
+            className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs disabled:opacity-40"
+          >
+            <span>✅</span> 已解決
+          </Button>
+        </div>
+      </div>
+
+      {/* 歷史已解決問題 (折疊/收納清單) */}
+      {resolvedList.length > 0 && (
+        <div className="mt-4 border-t border-slate-100 dark:border-slate-800/80 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowHistory(prev => !prev)}
+            className="flex w-full items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <span>📜</span> 歷史已解決問題 ({resolvedList.length} 件)
+            </span>
+            <span>{showHistory ? '▲ 收合' : '▼ 展開'}</span>
+          </button>
+
+          {showHistory && (
+            <div className="mt-2.5 space-y-2.5">
+              {resolvedList.map(h => (
+                <div key={h.id} className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 p-3 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200">
+                      ❌ 問題：{h.problem}
+                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      {h.resolvedAt ? new Date(h.resolvedAt).toLocaleDateString('zh-TW') : ''}
+                    </span>
+                  </div>
+                  {h.solution && (
+                    <div className="mt-1.5 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 rounded p-2 border border-emerald-200/50 dark:border-emerald-900/50">
+                      💡 解決方案：{h.solution}
+                    </div>
+                  )}
+                  {h.resolvedByName && (
+                    <div className="mt-1 text-[10px] text-slate-400 text-right">
+                      排解人：{h.resolvedByName}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+

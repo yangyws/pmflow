@@ -49,10 +49,10 @@ export const task = {
     nothingToSave: '沒有修改要保存',
 
     /** 刪除。兩段式：按一次問一句，再按一次才真的刪 */
-    delete: '刪除任務',
+    delete: '刪除事件',
     deleteConfirm: '確定要刪除嗎？',
     deleteYes: '確定刪除',
-    deleteHasChildren: (n: number) => `這張任務底下還有 ${n} 張，會一起刪掉`,
+    deleteHasChildren: (n: number) => `這個事件底下還有 ${n} 個子事件，會一起刪掉`,
 
     /** 標題平常是一行字，點一下才變成輸入框 */
     editTitle: '點一下改標題',
