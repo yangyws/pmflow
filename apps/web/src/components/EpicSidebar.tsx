@@ -441,7 +441,12 @@ export function EpicSidebar({
     const isDone = (id: string) => {
       const t = taskMap.get(id)
       if (!t) return false
-      return t.progress >= 100 || t.statusKey === 'DONE'
+      if (t.progress >= 100) return true
+      const kids = tasks.filter(k => k.parentId === t.id)
+      if (kids.length > 0) {
+        return kids.every(k => k.progress >= 100 || k.statusKey === 'DONE')
+      }
+      return t.statusKey === 'DONE'
     }
 
     const edges = graphData?.edges ?? []

@@ -348,6 +348,26 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   >
                     {data.typeName || '任務單'}
                   </span>
+                </div>
+                <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
+                  (移入卡片自動擴大容量)
+                </span>
+              </div>
+
+              {/* 第二行：收納盒警示徽章 */}
+              {((typeof data.childCount === 'number' && data.childCount > 0) ||
+                data.problem ||
+                (typeof data.problemCount === 'number' && data.problemCount > 0) ||
+                (typeof data.blockedCount === 'number' && data.blockedCount > 0) ||
+                (data.blockedBy && data.blockedBy.length > 0) ||
+                data.isParallel ||
+                (typeof data.overdueCount === 'number' && data.overdueCount > 0) ||
+                data.isOverdue ||
+                (typeof data.inquiryCount === 'number' && data.inquiryCount > 0) ||
+                data.inquiryState === 'AWAITING' ||
+                data.inquiryState === 'PARTIAL' ||
+                data.inquiryState === 'OVERDUE') && (
+                <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {typeof data.childCount === 'number' && data.childCount > 0 && (
                     <span className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 font-medium pointer-events-none select-none">
                       內含 {data.childCount} 張
@@ -387,10 +407,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
-                  (移入卡片自動擴大容量)
-                </span>
-              </div>
+              )}
               <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
                 {data.label || '無標題收納盒'}
               </div>
@@ -777,14 +794,16 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     (_: React.MouseEvent, node: Node) => {
       if (isDraggingRef.current) return
       setSelectedNodeId(node.id)
+      onSelectTask?.(node.id)
     },
-    []
+    [onSelectTask]
   )
 
   const onPaneClick = useCallback(() => {
     if (isDraggingRef.current) return
     setSelectedNodeId(null)
-  }, [])
+    onSelectTask?.('')
+  }, [onSelectTask])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
   const [logs, setLogs] = useState<LogItem[]>([])
