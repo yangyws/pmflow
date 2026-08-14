@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Customizable Task Types Restoration & System Flow Creator Permissions
+### Latest Changes: Unified Pill Tag Type Badges & Clean Storage Box Icons
+- **變更檔案**:
+  - [`ui.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx): 新增全站統一的 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx#L248-L278) 元件（10% 柔和底色 + 25% 同色邊框 + 實心微型圓點 + 原色文字）。
+  - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 移除一般卡片 `📄` 圖示（僅收納盒保留 `📦`），並於卡片編號右側整合統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 移除一般卡片 `📄` 與 `◆` 圖示（僅收納盒保留 `📦`），並將事件種類標籤全面換裝為統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx): 移除 `◆` 圖示，將看板卡片事件類型標籤替換為統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`Week.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Week.tsx): 行事曆週檢視統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) & [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 節點按鈕由 `📄 卡片` 精簡為 `卡片`，節點標頭統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx): 抽屜頂部標頭統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+
+### Previous Changes: Customizable Task Types Restoration & System Flow Creator Permissions
 - **變更檔案**:
   - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 恢復「事件類型」系統參數管理區塊，支援自由新增自訂類型、調整順序、編輯名稱與顏色、刪除與搬移既有任務；自訂清單自動排除「問題單」（BUG），確保問題單為系統固定內建事件類型。
   - [`parameters.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/parameters.ts): 嚴格保護「問題單（BUG）」事件類型，禁止於系統參數中被修改、刪除或重複新增，並於 `assertParamKey` 永遠放行 BUG 類型。
