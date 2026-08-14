@@ -910,22 +910,16 @@ function TreeNode({
 
               {/* 警示徽章區域 */}
               <div className="flex flex-wrap items-center gap-1 shrink-0">
-                {blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
+                {((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs) === 0 && blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
                   <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
                         className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
                     ⛔卡住
                   </span>
                 )}
-                {task.type !== 'BUG' && task.problem && (
-                  <span title={task.problem}
+                {((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs) > 0 && (
+                  <span title={task.problem || T.nav.sidebar.bugsUnder((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs)}
                         className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                    問 1
-                  </span>
-                )}
-                {bugs > 0 && (
-                  <span title={T.nav.sidebar.bugsUnder(bugs)}
-                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                    {T.nav.sidebar.bugBadge(bugs)}
+                    {T.nav.sidebar.bugBadge((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs)}
                   </span>
                 )}
                 {asked > 0 && (
