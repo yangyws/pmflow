@@ -18,6 +18,7 @@ export const task = {
    */
   type: {
     EPIC: '大項目',
+    TASK: '事件',
     MILESTONE: '里程碑',
     BUG: '問題',
   },

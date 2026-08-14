@@ -229,7 +229,7 @@ export const DEFAULT_PARAMS: Record<'priority' | 'type', InsertArgs[]> = {
    */
   type: [
     { key: 'EPIC',      name: '大項目', color: '#d97706', rank: 1000, category: 'ACTIVE' },
-    { key: 'TASK',      name: '任務',   color: '#3178c6', rank: 2000, category: 'ACTIVE' },
+    { key: 'TASK',      name: '事件',   color: '#3178c6', rank: 2000, category: 'ACTIVE' },
     { key: 'BUG',       name: '問題',   color: '#dc2626', rank: 3000, category: 'ACTIVE' },
     { key: 'MILESTONE', name: '里程碑', color: '#8b5cf6', rank: 4000, category: 'ACTIVE' },
   ],

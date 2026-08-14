@@ -254,7 +254,7 @@ export default function ListView({
       const tId = String(e.targetId)
       const sTask = tasks.find((t) => t.id === sId)
       if (!sTask) return
-      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : '任務')
+      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : '事件')
       const list = targetMap.get(tId) || []
       list.push({ id: sTask.id, ref: sRef })
       targetMap.set(tId, list)

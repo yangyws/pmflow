@@ -273,7 +273,7 @@ function getTypeName(taskType: string, customName?: string): string {
   if (customName) return customName
   const DEFAULT_NAMES: Record<string, string> = {
     EPIC: '大項目',
-    TASK: '任務',
+    TASK: '事件',
     BUG: '問題',
     MILESTONE: '里程碑',
   }
@@ -1572,7 +1572,7 @@ function GraphCanvas({
   const typeNameMap = useMemo(() => {
     const m = new Map<string, string>()
     m.set('EPIC', '大項目')
-    m.set('TASK', '任務')
+    m.set('TASK', '事件')
     m.set('BUG', '問題')
     m.set('MILESTONE', '里程碑')
     for (const t of (types ?? [])) {
