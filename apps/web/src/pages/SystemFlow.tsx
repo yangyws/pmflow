@@ -22,7 +22,9 @@ import {
   BackgroundVariant,
   MarkerType,
 } from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '../lib/auth'
+import { Api } from '../lib/api'
 import { cx } from '../components/ui'
 
 export interface SystemFlowProps {
@@ -418,6 +420,19 @@ function loadInitialPages(projectId: string): FlowPage[] {
 function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
   const { fitView } = useReactFlow()
+  const { user } = useAuth()
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId),
+    enabled: !!projectId && projectId !== 'default',
+  })
+
+  const role = project?.members?.find((m) => m.id === user?.id)?.role
+  const isManager = role === 'MANAGER'
+  const isOwner = role === 'OWNER'
+  const isProjectCreator = Boolean(project?.isCreator)
+  // 建立者以上權限 (專案建立者、Owner、Manager) 才能刪除分頁
+  const canDeletePage = isManager || isOwner || isProjectCreator
 
   const [pages, setPages] = useState<FlowPage[]>(() => loadInitialPages(projectId))
   const [activePageId, setActivePageId] = useState<string>(() => {
@@ -535,7 +550,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 刪除頁面
   const handleDeletePage = (pageId: string) => {
-    if (pages.length <= 1) return
+    if (!canDeletePage || pages.length <= 1) return
     const nextPages = pages.filter((p) => p.id !== pageId)
     setConfirmDeletePage(null)
     if (activePageId === pageId) {
@@ -908,8 +923,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                     📑
                   </button>
 
-                  {/* 刪除按鈕 (大於1頁時可刪) */}
-                  {pages.length > 1 && (
+                  {/* 刪除按鈕 (大於1頁且具備建立者以上權限時可刪) */}
+                  {pages.length > 1 && canDeletePage && (
                     <button
                       type="button"
                       onClick={(e) => {
