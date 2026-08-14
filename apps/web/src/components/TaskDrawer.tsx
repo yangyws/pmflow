@@ -821,7 +821,11 @@ export function TaskDrawer({
                     {data.links.length === 0 && (
                       <p className="text-sm text-slate-400 dark:text-slate-400">{T.task.link.empty}</p>
                     )}
-                    {data.links.map(l => (
+                    {[...data.links].sort((a, b) => {
+                      const numA = parseInt(a.otherRef?.replace(/\D/g, '') || '0', 10)
+                      const numB = parseInt(b.otherRef?.replace(/\D/g, '') || '0', 10)
+                      return numA - numB
+                    }).map(l => (
                       <div key={l.id + l.direction}
                            className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
                                       dark:bg-slate-800">
@@ -850,7 +854,11 @@ export function TaskDrawer({
                         <Select value={targetId} onChange={e => setTargetId(e.target.value)}
                                 className="w-full">
                           <option value="">{T.task.link.pickTask}</option>
-                          {allTasks.filter(t => t.id !== taskId && t.type !== 'BUG').map(t => (
+                          {allTasks.filter(t => t.id !== taskId && t.type !== 'BUG').sort((a, b) => {
+                            const numA = parseInt(a.ref?.replace(/\D/g, '') || '0', 10)
+                            const numB = parseInt(b.ref?.replace(/\D/g, '') || '0', 10)
+                            return numA - numB
+                          }).map(t => (
                             <option key={t.id} value={t.id}>{t.ref} {t.title}</option>
                           ))}
                         </Select>
@@ -914,7 +922,11 @@ export function TaskDrawer({
                         </div>
                       )}
                       <div className="space-y-1">
-                        {data.children.filter(c => c.type !== 'BUG').map(c => (
+                        {data.children.filter(c => c.type !== 'BUG').sort((a, b) => {
+                          const numA = parseInt(a.ref?.replace(/\D/g, '') || '0', 10)
+                          const numB = parseInt(b.ref?.replace(/\D/g, '') || '0', 10)
+                          return numA - numB
+                        }).map(c => (
                           <button
                             key={c.id}
                             type="button"
