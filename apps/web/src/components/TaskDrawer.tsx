@@ -318,13 +318,17 @@ export function TaskDrawer({
     return false
   }, [data])
 
+  const nonBugChildren = useMemo(() => {
+    return data?.children?.filter(c => c.type !== 'BUG') ?? []
+  }, [data?.children])
+
   const displayProgress = useMemo(() => {
-    if (data?.children && data.children.length > 0) {
-      const sum = data.children.reduce((acc, c) => acc + (c.progress ?? 0), 0)
-      return Math.round(sum / data.children.length)
+    if (nonBugChildren.length > 0) {
+      const sum = nonBugChildren.reduce((acc, c) => acc + (c.progress ?? 0), 0)
+      return Math.round(sum / nonBugChildren.length)
     }
     return form.progress
-  }, [data?.children, form.progress])
+  }, [nonBugChildren, form.progress])
 
   const isDoneStatus = statuses.some(s => s.key === data?.statusKey && s.category === 'DONE')
   const isTaskLocked = isDoneStatus && !isManager
@@ -634,15 +638,15 @@ export function TaskDrawer({
                 {form.type !== 'BUG' && data.type !== 'BUG' && (
                   <div className="sm:col-span-2">
                     <Field label={T.task.drawer.fieldProgress}>
-                      {canEdit && !isContainerBox ? (
+                      {canEdit && nonBugChildren.length === 0 ? (
                         <ProgressField value={displayProgress}
                                        onCommit={v => edit({ progress: v })} />
                       ) : (
                         <ReadOnlyValue>
                           {T.task.drawer.progressValue(displayProgress)}
-                          {isContainerBox ? (
+                          {nonBugChildren.length > 0 ? (
                             <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
-                              (目前由子事件進度總和為主)
+                              (目前由子任務進度總和為主)
                             </span>
                           ) : null}
                         </ReadOnlyValue>

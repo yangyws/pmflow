@@ -39,9 +39,11 @@ export function rollup(tasks: Task[]): Map<string, Rolled> {
     if (cached) return cached
 
     const self = byId.get(id)!
-    const kids = children.get(id) ?? []
+    const allKids = children.get(id) ?? []
+    // 問題單（BUG）不計入進度條加總；只有一般任務會彙總進度
+    const kids = allKids.filter(k => k.type !== 'BUG')
 
-    // 資料若有環（理論上後端擋掉了）就當葉節點，別讓畫面整個爆掉
+    // 若無一般子任務（或僅有問題單），則進度條恢復沿用收納盒/父任務自己的進度
     if (!kids.length || visiting.has(id)) {
       const leaf: Rolled = {
         progress: self.progress,
