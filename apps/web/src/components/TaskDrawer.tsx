@@ -773,25 +773,14 @@ export function TaskDrawer({
                   )}
                   {data.links.map(l => (
                     <div key={l.id + l.direction}
-                         className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
+                         className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
                                     dark:bg-slate-800">
-                      <span className={cx(
-                        'shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium',
-                        SCHEDULING.includes(l.linkType)
-                          ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
-                          : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                      )}>{LINK_CHIP[l.linkType]}</span>
                       <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
-                        {linkSentence(l.linkType, l.direction, l.otherRef)}
-                        <span className="ml-1.5 text-slate-400 dark:text-slate-400">{l.otherTitle}</span>
+                        <span className="font-mono font-semibold text-slate-500 dark:text-slate-400 mr-2">{l.otherRef}</span>
+                        <span>{l.otherTitle}</span>
                       </span>
-                      {l.lagDays !== 0 && (
-                        <span className="shrink-0 text-xs text-slate-400 dark:text-slate-400">
-                          {T.task.link.lagDays(l.lagDays)}
-                        </span>
-                      )}
                       {canEditLinks && (
-                        <Button variant="ghost" className="text-xs text-slate-400 dark:text-slate-400"
+                        <Button variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
                                 onClick={() => delLink.mutate(l.id)}>✕</Button>
                       )}
                     </div>
@@ -805,7 +794,7 @@ export function TaskDrawer({
                 )}
 
                 {canEditLinks && (
-                <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div className="mt-3 flex items-end gap-2">
                   <div className="min-w-56 flex-1">
                     <Field label={T.task.link.fieldTarget}>
                       <Select value={targetId} onChange={e => setTargetId(e.target.value)}
@@ -817,31 +806,8 @@ export function TaskDrawer({
                       </Select>
                     </Field>
                   </div>
-                  <div className="w-60">
-                    <Field label={T.task.link.fieldType}>
-                      <Select value={linkType} onChange={e => setLinkType(e.target.value as LinkType)}
-                              className="w-full">
-                        {/* 僅保留核心 4 項排程依賴 (FS / SS / FF / SF) */}
-                        {schedulingAllowed && SCHEDULING.map(t => (
-                          <option key={t} value={t}>{LINK_LABEL[t]}</option>
-                        ))}
-                      </Select>
-                    </Field>
-                    {/* 選項少了一整組一定要講原因，不然看起來像壞掉 */}
-                    {!schedulingAllowed && (
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {T.task.link.noSchedulingAcrossEpic}
-                      </p>
-                    )}
-                  </div>
-                  <div className="w-28">
-                    <Field label={T.task.link.fieldLag}>
-                      <Input type="number" value={lag} onChange={e => setLag(Number(e.target.value))}
-                             title={T.task.link.lagHint} />
-                    </Field>
-                  </div>
                   <Button variant="primary" disabled={!targetId || addLink.isPending}
-                          onClick={() => addLink.mutate({ targetId, linkType, lagDays: lag })}>
+                          onClick={() => addLink.mutate({ targetId, linkType: 'FS', lagDays: 0 })}>
                     {T.task.link.add}
                   </Button>
                 </div>
