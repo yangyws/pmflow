@@ -207,7 +207,7 @@ export function ProblemBadge({
         title={`收納盒內有 ${count} 項問題單與遭遇問題`}
         className="shrink-0 rounded bg-rose-100 px-1 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
       >
-        問({count})
+        問 {count}
       </span>
     )
   }
