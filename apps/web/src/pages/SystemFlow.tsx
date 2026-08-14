@@ -19,6 +19,7 @@ import {
   type EdgeChange,
   type Connection,
   type NodeProps,
+  type Viewport,
   BackgroundVariant,
   MarkerType,
 } from '@xyflow/react'
@@ -72,24 +73,19 @@ function getEdgeStyleAndMarker(sourceHandle?: string | null) {
   }
 }
 
+// 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 SimpleGraph / Graph: React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
 function orderParentNodesFirst(nodes: Node[]): Node[] {
-  const parents: Node[] = []
-  const children: Node[] = []
-  const independent: Node[] = []
-
-  const boxIds = new Set(nodes.filter((n) => n.type === 'box').map((n) => n.id))
-
-  nodes.forEach((n) => {
-    if (n.type === 'box') {
-      parents.push(n)
-    } else if (n.parentId && boxIds.has(n.parentId)) {
-      children.push(n)
-    } else {
-      independent.push(n)
+  const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
+  const getDepth = (id: string) => {
+    let d = 0
+    let cur = parentMap.get(id)
+    while (cur && d < 20) {
+      d++
+      cur = parentMap.get(cur)
     }
-  })
-
-  return [...parents, ...independent, ...children]
+    return d
+  }
+  return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
 }
 
 // 系統流程圖：模組/收納盒節點
@@ -293,23 +289,24 @@ const nodeTypes = {
 
 const INITIAL_NODES: Node[] = [
   {
-    id: 'node-1',
-    type: 'step',
-    position: { x: 80, y: 160 },
-    data: { label: '客戶端請求 (Client)', desc: '發起 API 呼叫與身分憑證', color: '#10b981', mode: 'step' },
-  },
-  {
     id: 'box-1',
     type: 'box',
     position: { x: 380, y: 80 },
-    style: { width: 360, height: 280 },
+    style: { width: 380, height: 280 },
+    measured: { width: 380, height: 280 },
     data: { label: '應用後端服務 (Backend Service)', color: '#8b5cf6', mode: 'box' },
+  },
+  {
+    id: 'node-1',
+    type: 'step',
+    position: { x: 60, y: 160 },
+    data: { label: '客戶端請求 (Client)', desc: '發起 API 呼叫與身分憑證', color: '#10b981', mode: 'step' },
   },
   {
     id: 'node-2',
     type: 'step',
     parentId: 'box-1',
-    position: { x: 30, y: 70 },
+    position: { x: 30, y: 60 },
     data: { label: 'API 閘道 (Gateway)', desc: '權限驗證與速率限制', color: '#3b82f6', mode: 'step' },
   },
   {
@@ -322,7 +319,7 @@ const INITIAL_NODES: Node[] = [
   {
     id: 'node-4',
     type: 'step',
-    position: { x: 820, y: 160 },
+    position: { x: 840, y: 160 },
     data: { label: '資料庫 (PostgreSQL)', desc: '持久化資料存取與交易', color: '#64748b', mode: 'step' },
   },
 ]
@@ -456,6 +453,22 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     return initPages[0]?.id || 'page-1'
   })
 
+  // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
+  const savedViewport = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`pmflow_system_flow_viewport_${projectId}_${activePageId}`)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Viewport
+        if (parsed && typeof parsed.zoom === 'number' && parsed.zoom >= 0.1) {
+          return parsed
+        }
+      }
+    } catch {}
+    return undefined
+  }, [projectId, activePageId])
+
+  const hasFittedRef = useRef<boolean>(false)
+
   // 當前畫布的 nodes 與 edges
   const activePage = useMemo(() => {
     return pages.find((p) => p.id === activePageId) || pages[0]
@@ -463,6 +476,42 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const [nodes, setNodes] = useState<Node[]>(() => activePage?.nodes ?? [])
   const [edges, setEdges] = useState<Edge[]>(() => activePage?.edges ?? [])
+
+  // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView (對齊 SimpleGraph: 確保測量就緒後再置中，避免排版亂掉或無法移動)
+  useEffect(() => {
+    if (savedViewport) return
+
+    if (nodes.length > 0 && !hasFittedRef.current) {
+      const allMeasured = nodes.every(
+        (n) => n.measured && typeof n.measured.width === 'number' && n.measured.width > 0
+      )
+      if (allMeasured) {
+        hasFittedRef.current = true
+        requestAnimationFrame(() => {
+          fitView({ padding: 0.2, duration: 250 })
+        })
+      } else {
+        const timer = setTimeout(() => {
+          if (!hasFittedRef.current) {
+            hasFittedRef.current = true
+            fitView({ padding: 0.2, duration: 250 })
+          }
+        }, 150)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [nodes, fitView, savedViewport])
+
+  const handleMoveEnd = useCallback((_e: unknown, vp: Viewport) => {
+    if (nodes.length === 0) return
+    if (typeof vp.zoom === 'number' && vp.zoom >= 0.1) {
+      try {
+        localStorage.setItem(`pmflow_system_flow_viewport_${projectId}_${activePageId}`, JSON.stringify(vp))
+      } catch {
+        // ignore
+      }
+    }
+  }, [nodes.length, projectId, activePageId])
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string } | null>(null)
@@ -804,7 +853,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   }
 
   const nodesWithHandlers = useMemo(() => {
-    return nodes.map((node) => ({
+    const mapped = nodes.map((node) => ({
       ...node,
       draggable: true,
       selectable: true,
@@ -816,6 +865,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         onDelete: handleDeleteNode,
       },
     }))
+    return orderParentNodesFirst(mapped)
   }, [nodes, selectedNodeId, handleEditNode, handleDeleteNode])
 
   const styledEdges = useMemo(() => {
@@ -975,7 +1025,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       </div>
 
       {/* 畫布主體 */}
-      <div className="relative flex-1 cursor-move">
+      <div className="relative flex-1 w-full h-full min-h-0 cursor-move">
         <ReactFlow
           nodes={nodesWithHandlers}
           edges={styledEdges}
@@ -993,14 +1043,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               target: edge.target,
             })
           }}
+          onMoveEnd={handleMoveEnd}
           connectionMode={ConnectionMode.Loose}
-          fitView
+          defaultViewport={savedViewport}
+          fitView={!savedViewport}
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.2}
           maxZoom={2.5}
           nodesDraggable={true}
           nodesConnectable={true}
           elementsSelectable={true}
+          panOnDrag={true}
+          zoomOnPinch={true}
+          panOnScroll={false}
+          preventScrolling={true}
+          proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} color="#cbd5e1" className="dark:opacity-30" />
           <Controls showInteractive={false} className="!bg-white dark:!bg-slate-800 !border !border-slate-200 dark:!border-slate-700 !shadow-lg !rounded-xl overflow-hidden">
