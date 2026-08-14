@@ -10,6 +10,8 @@ import { T } from '../strings'
 import { Button, cx } from '../components/ui'
 import { useRemembered } from '../lib/remember'
 
+import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
+
 /**
  * 甘特圖：dhtmlx-gantt v10（v10.0.0 起才是 MIT，9.x 以前是 GPL-2.0，務必鎖 ^10）。
  *
@@ -59,11 +61,25 @@ export default function GanttView({
     queryKey: ['graph', projectId],
     queryFn: () => Api.graph(projectId),
   })
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId),
+  })
 
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
 
   const getCols = (hidden: string[]) => [
-    { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
+    {
+      name: 'text',
+      label: G.col.task,
+      tree: true,
+      width: 240,
+      resize: true,
+      template: (t: any) => {
+        const color = t.color || '#3178c6'
+        return `<span style="color: ${color}; font-weight: 600;">${t.text}</span>`
+      },
+    },
     ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
     ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
   ]
@@ -124,6 +140,7 @@ export default function GanttView({
       if (t.id && unreadTaskIds.has(String(t.id))) cls.push('pmflow-flash')
       return cls.join(' ')
     }
+    g.templates.task_text = () => ''
 
     g.init(hostRef.current)
 
@@ -262,6 +279,8 @@ export default function GanttView({
       const boxBlockedCount = isBox ? ((blockedBy.length ? 1 : 0) + boxKids.filter(k => (blockedByMap.get(k.id)?.length ?? 0) > 0).length) : 0
       const boxOverdueCount = isBox ? ((isOverdue ? 1 : 0) + boxKids.filter(k => Boolean(k.dueDate && k.dueDate < todayYmd() && k.progress < 100 && k.statusKey !== 'DONE')).length) : 0
 
+      const taskColor = project?.types?.find(type => type.key === t.type)?.color || DEFAULT_TYPE_COLORS[t.type] || '#3178c6'
+
       return {
         id: t.id,
         text: `${t.ref} ${t.title}`,
@@ -271,6 +290,7 @@ export default function GanttView({
         parent: t.parentId ?? 0,
         type: t.type === 'MILESTONE' ? 'milestone' : isBox ? 'project' : undefined,
         isBox,
+        color: taskColor,
         critical: critical.has(t.id),
         inquiry: t.inquiryState,
         problem: t.problem,
@@ -299,7 +319,7 @@ export default function GanttView({
       g.selectTask(focusedTaskId)
       g.showTask(focusedTaskId)
     }
-  }, [tasks, sched, graph, hiddenCols])
+  }, [tasks, sched, graph, hiddenCols, project])
 
   // 當外部 focusedTaskId 變更時自動定位與高亮
   useEffect(() => {
@@ -314,39 +334,30 @@ export default function GanttView({
   return (
     <div className="flex h-full flex-col">
       <style>{`
+        .gantt_task_content {
+          display: none !important;
+        }
         .gantt_task_progress {
+          background-color: rgba(0, 0, 0, 0.22) !important;
           background-image: repeating-linear-gradient(
             -45deg,
-            rgba(255, 255, 255, 0.22),
-            rgba(255, 255, 255, 0.22) 6px,
+            rgba(255, 255, 255, 0.25),
+            rgba(255, 255, 255, 0.25) 6px,
             transparent 6px,
             transparent 12px
           ) !important;
         }
-        .gantt_task_line.gantt-bar-box {
-          background-color: #6366f1 !important;
-          border-color: #4f46e5 !important;
-        }
-        .gantt_task_line.gantt-bar-box .gantt_task_progress {
-          background-color: #4338ca !important;
-        }
-        .gantt_task_line.gantt-bar-card {
-          background-color: #3b82f6 !important;
-          border-color: #2563eb !important;
-        }
-        .gantt_task_line.gantt-bar-card .gantt_task_progress {
-          background-color: #1d4ed8 !important;
+        .gantt_task_line {
+          border-color: rgba(0, 0, 0, 0.15) !important;
         }
         /* 移除 dhtmlx 預設關鍵路徑/逾期之粗紅外框 (紅框) */
         .gantt_task_line.critical,
         .gantt_task_line.inq-overdue {
-          border-color: #2563eb !important;
           outline: none !important;
           box-shadow: none !important;
         }
         .gantt_task_line.gantt-bar-box.critical,
         .gantt_task_line.gantt-bar-box.inq-overdue {
-          border-color: #4f46e5 !important;
           outline: none !important;
           box-shadow: none !important;
         }

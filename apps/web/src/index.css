@@ -74,14 +74,6 @@ body {
 .gantt_task_line.inq-overdue   { box-shadow: 0 0 0 2px #dc2626; }
 .gantt_task_line.inq-awaiting  { box-shadow: 0 0 0 2px #3178c6; }
 .gantt_task_line.milestone-done { background: #2e8b57; }
-/* dhtmlx 預設專案/父任務長條為綠色 (#65c16f)，改為符合 PMFlow 質感的深藍/靛藍配色 */
-.gantt_task_line.gantt_project { background-color: #2563eb !important; border-color: #1d4ed8 !important; }
-.gantt_task_line.gantt_project .gantt_task_progress { background-color: #1e40af !important; }
-.gantt_task_line.gantt_project .gantt_side_content,
-.gantt_task_line.gantt_project .gantt_project_right,
-.gantt_task_line.gantt_project .gantt_project_left { background-color: #1d4ed8 !important; border-color: #1d4ed8 !important; }
-.dark .gantt_task_line.gantt_project { background-color: #3b82f6 !important; border-color: #60a5fa !important; }
-.dark .gantt_task_line.gantt_project .gantt_task_progress { background-color: #1d4ed8 !important; }
 /* 尚未設定起迄日的任務長條：半透明虛線外框 */
 .gantt_task_line.no-dates { opacity: 0.65; border-style: dashed !important; }
 .gantt_container { border: none; font-family: var(--font-sans); }
