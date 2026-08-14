@@ -913,13 +913,13 @@ function TreeNode({
                 )}
                 {task.problem && (
                   <span title={task.problem}
-                        className="shrink-0 rounded bg-fuchsia-50 px-1 text-[10px] font-medium text-fuchsia-700 ring-1 ring-inset ring-fuchsia-600/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300">
+                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
                     ⚑有問題
                   </span>
                 )}
                 {bugs > 0 && (
                   <span title={T.nav.sidebar.bugsUnder(bugs)}
-                        className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
                     {T.nav.sidebar.bugBadge(bugs)}
                   </span>
                 )}

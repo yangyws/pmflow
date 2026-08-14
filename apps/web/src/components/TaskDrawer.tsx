@@ -630,24 +630,26 @@ export function TaskDrawer({
                     </ReadOnlyValue>
                   )}
                 </Field>
-                {/* 進度佔兩欄：拖拉條再窄就拖不準了 */}
-                <div className="sm:col-span-2">
-                  <Field label={T.task.drawer.fieldProgress}>
-                    {canEdit && !isContainerBox ? (
-                      <ProgressField value={displayProgress}
-                                     onCommit={v => edit({ progress: v })} />
-                    ) : (
-                      <ReadOnlyValue>
-                        {T.task.drawer.progressValue(displayProgress)}
-                        {isContainerBox ? (
-                          <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
-                            (目前由子事件進度總和為主)
-                          </span>
-                        ) : null}
-                      </ReadOnlyValue>
-                    )}
-                  </Field>
-                </div>
+                {/* 進度佔兩欄：拖拉條再窄就拖不準了（問題單不需要進度條） */}
+                {form.type !== 'BUG' && data.type !== 'BUG' && (
+                  <div className="sm:col-span-2">
+                    <Field label={T.task.drawer.fieldProgress}>
+                      {canEdit && !isContainerBox ? (
+                        <ProgressField value={displayProgress}
+                                       onCommit={v => edit({ progress: v })} />
+                      ) : (
+                        <ReadOnlyValue>
+                          {T.task.drawer.progressValue(displayProgress)}
+                          {isContainerBox ? (
+                            <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
+                              (目前由子事件進度總和為主)
+                            </span>
+                          ) : null}
+                        </ReadOnlyValue>
+                      )}
+                    </Field>
+                  </div>
+                )}
                 {/* 開始與結束擺在同一格，中間一個破折號 —— 它們是一段期間，不是兩個欄位 */}
                 <div className="sm:col-span-4">
                   <Field label={`${T.task.drawer.fieldStart} – ${T.task.drawer.fieldDue}`}>
@@ -757,14 +759,24 @@ export function TaskDrawer({
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
                           解決內容
                         </h3>
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          （填寫即視為 100% 完成解決）
+                        </span>
                       </div>
                     </div>
                     {canEdit ? (
                       <textarea
                         value={form.problem ?? ''}
-                        onChange={e => edit({ problem: e.target.value || null })}
+                        onChange={e => {
+                          const val = e.target.value
+                          const hasContent = val.trim().length > 0
+                          edit({
+                            problem: val || null,
+                            progress: hasContent ? 100 : 0,
+                          })
+                        }}
                         rows={3}
-                        placeholder="填寫問題的解決方式、排解步驟或因應措施…"
+                        placeholder="填寫問題的解決方式、排解步驟或因應措施（填寫即視為100%解決）…"
                         className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
                                    placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
                                    focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"

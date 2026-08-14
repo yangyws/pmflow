@@ -517,7 +517,7 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
                     title={G.badge.blockedTip(data.blockedBy.join('、'))}>{G.badge.blocked}</span>
             )}
             {data.showBadges && data.problem && (
-              <span className={cx(BADGE, BADGE_FUCHSIA)}
+              <span className={cx(BADGE, BADGE_RED)}
                     title={G.badge.problemTip(data.problem)}>{G.badge.problem}</span>
             )}
           </div>
