@@ -868,16 +868,39 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             setEdges((eds) => eds.filter((e) => !affectedEdgeIds.has(e.id)))
           }
 
-          // 2. 呼叫 API 將子卡片的 parentId 設為 null
+          // 2. 呼叫 API 將子卡片的 parentId 設為 null，並即時更新 react-query tasks 快取
           childKids.forEach((k) => {
             Api.moveTask(k.id, { parentId: null }).catch((err) =>
               console.error('Failed to move task out of box:', err)
             )
           })
 
-          // 3. 計算移出後的畫布絕對座標，避免卡片位置異常
+          if (projectId) {
+            queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+              if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+              return {
+                ...oldData,
+                tasks: oldData.tasks.map((t) => (childIds.has(t.id) ? { ...t, parentId: null } : t)),
+              }
+            })
+          }
+
+          // 3. 計算移出後的畫布絕對座標，同步更新 dragged 狀態避免後續切換時卡片重新跑進去
           const boxX = targetNode?.position.x ?? 0
           const boxY = targetNode?.position.y ?? 0
+
+          const newDraggedEntries: Record<string, { x: number; y: number }> = {}
+          childKids.forEach((k) => {
+            newDraggedEntries[k.id] = {
+              x: boxX + k.position.x,
+              y: boxY + k.position.y,
+            }
+          })
+          setDragged((prev) => ({
+            ...prev,
+            ...newDraggedEntries,
+          }))
+
           setNodes((prevNodes) =>
             prevNodes.map((n) => {
               if (childIds.has(n.id)) {
@@ -893,10 +916,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               return n
             })
           )
-
-          if (projectId) {
-            queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
-          }
         }
       }
 
