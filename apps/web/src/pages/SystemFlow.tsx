@@ -523,6 +523,49 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const [editingTitle, setEditingTitle] = useState<string>('')
   const [confirmDeletePage, setConfirmDeletePage] = useState<FlowPage | null>(null)
 
+  // 頁籤拖曳排序狀態
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null)
+  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null)
+
+  // 拖曳重排頁籤
+  const handleReorderTabs = (sourceId: string | null, targetId: string) => {
+    if (!sourceId || sourceId === targetId) return
+    setPages((prev) => {
+      const srcIdx = prev.findIndex((p) => p.id === sourceId)
+      const tgtIdx = prev.findIndex((p) => p.id === targetId)
+      if (srcIdx === -1 || tgtIdx === -1) return prev
+      const next = [...prev]
+      const [removed] = next.splice(srcIdx, 1)
+      next.splice(tgtIdx, 0, removed)
+      try {
+        localStorage.setItem(storageKeyPages, JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+    setDraggedTabId(null)
+    setDragOverTabId(null)
+  }
+
+  // 左右微調移動頁籤
+  const handleMoveTab = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= pages.length) return
+    setPages((prev) => {
+      const next = [...prev]
+      const temp = next[index]
+      next[index] = next[targetIndex]
+      next[targetIndex] = temp
+      try {
+        localStorage.setItem(storageKeyPages, JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
+
   // 自動同步當前畫布至 pages 狀態與 localStorage
   useEffect(() => {
     setPages((prevPages) => {
@@ -930,25 +973,59 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           <span>📄</span> 流程頁面：
         </span>
 
-        {pages.map((p) => {
+        {pages.map((p, idx) => {
           const isActive = p.id === activePageId
           const isEditing = editingPageId === p.id
           const nodeCount = p.id === activePageId ? nodes.length : p.nodes.length
+          const isDragging = draggedTabId === p.id
+          const isDragOver = dragOverTabId === p.id && !isDragging
 
           return (
             <div
               key={p.id}
+              draggable={!isEditing}
+              onDragStart={(e) => {
+                setDraggedTabId(p.id)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', p.id)
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                if (dragOverTabId !== p.id) setDragOverTabId(p.id)
+              }}
+              onDragLeave={() => {
+                if (dragOverTabId === p.id) setDragOverTabId(null)
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                handleReorderTabs(draggedTabId, p.id)
+              }}
+              onDragEnd={() => {
+                setDraggedTabId(null)
+                setDragOverTabId(null)
+              }}
               onClick={() => {
                 if (!isActive && !isEditing) handleSwitchPage(p.id)
               }}
               onDoubleClick={() => handleStartRenamePage(p.id, p.title)}
               className={cx(
-                'group relative flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition cursor-pointer border shrink-0',
+                'group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer border shrink-0',
+                isDragging && 'opacity-40 scale-95',
+                isDragOver && 'border-blue-500 ring-2 ring-blue-400/50 bg-blue-50/50 dark:bg-blue-950/40',
                 isActive
                   ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700/80 shadow-xs ring-1 ring-blue-500/20'
                   : 'bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
               )}
             >
+              {/* 拖曳手柄圖示 */}
+              <span
+                className="text-[10px] text-slate-400/80 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing select-none"
+                title="拖曳排序頁籤"
+              >
+                ⠿
+              </span>
+
               {isEditing ? (
                 <input
                   type="text"
@@ -968,6 +1045,36 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                   <span className="text-[10px] text-slate-400 font-normal">
                     ({nodeCount} 個節點)
                   </span>
+
+                  {/* 左右微調移動按鈕 */}
+                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                    {idx > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleMoveTab(idx, -1)
+                        }}
+                        className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
+                        title="向左移動頁籤"
+                      >
+                        ◀
+                      </button>
+                    )}
+                    {idx < pages.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleMoveTab(idx, 1)
+                        }}
+                        className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
+                        title="向右移動頁籤"
+                      >
+                        ▶
+                      </button>
+                    )}
+                  </div>
 
                   {/* 重新命名按鈕 */}
                   <button
@@ -1003,7 +1110,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                         e.stopPropagation()
                         setConfirmDeletePage(p)
                       }}
-                      className="opacity-0 group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 text-slate-400 p-0.5 rounded transition ml-0.5 cursor-pointer"
+                      className="opacity-0 group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 text-slate-400 p-0.5 rounded transition ml-0.5 cursor-pointer font-bold text-sm"
                       title="刪除此流程頁面"
                     >
                       ×
