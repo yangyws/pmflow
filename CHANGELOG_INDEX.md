@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: System Flow Page Tab Sorting (Drag & Drop + Micro-Adjustment)
+### Latest Changes: Rebuilt Simplified Navigation Tab Management Panel (TabPrefs)
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 移除舊版複雜且易失效的拖曳模組，全面重構為簡約直覺的頁籤管理面板（`TabPrefs`），支援一鍵勾選顯示/隱藏、`▲` / `▼` 上下排序、防呆單一頁籤鎖定與一鍵重設為預設。
+
+### Previous Changes: System Flow Page Tab Sorting (Drag & Drop + Micro-Adjustment)
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 新增流程頁籤拖曳重排（Drag & Drop）與左右微調按鈕（`◀` / `▶`），支援滑鼠拖曳 `⠿` 手柄快速置換頁面順序，並即時寫入專案持久化儲存。
 
