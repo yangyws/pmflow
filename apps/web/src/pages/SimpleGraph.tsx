@@ -505,6 +505,7 @@ export interface SimpleGraphProps {
   tasks?: Task[]
   onOpenTask?: (taskId: string) => void
   focusedTaskId?: string | null
+  menuFocusTarget?: { id: string; ts: number } | null
   onSelectTask?: (taskId: string) => void
 }
 
@@ -521,7 +522,7 @@ type LogItem = {
   message: string
 }
 
-function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelectTask }: SimpleGraphProps) {
+function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask }: SimpleGraphProps) {
   const { fitView, setCenter, getViewport } = useReactFlow()
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
@@ -557,6 +558,47 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const lastFocusedTsRef = useRef<number>(0)
+
+  // 僅限於從左側 Menu 點擊項目時，才觸發關聯圖鏡頭平滑移動並聚焦至該目標
+  useEffect(() => {
+    if (!menuFocusTarget || !menuFocusTarget.id || menuFocusTarget.ts === lastFocusedTsRef.current || !nodes.length) return
+    const targetNode = nodes.find((n) => n.id === menuFocusTarget.id)
+    if (!targetNode) return
+
+    lastFocusedTsRef.current = menuFocusTarget.ts
+
+    let absX = targetNode.position.x
+    let absY = targetNode.position.y
+
+    if (targetNode.parentId) {
+      let curParentId: string | undefined = targetNode.parentId
+      const visited = new Set<string>()
+      while (curParentId && !visited.has(curParentId)) {
+        visited.add(curParentId)
+        const pNode = nodes.find((n) => n.id === curParentId)
+        if (pNode) {
+          absX += pNode.position.x
+          absY += pNode.position.y
+          curParentId = pNode.parentId
+        } else {
+          break
+        }
+      }
+    }
+
+    const isBox = (targetNode.data as SimpleGraphNodeData)?.mode === 'box'
+    const w = (targetNode.measured?.width || targetNode.width || (isBox ? 360 : 220)) as number
+    const h = (targetNode.measured?.height || targetNode.height || (isBox ? 260 : 80)) as number
+
+    const centerX = absX + w / 2
+    const centerY = absY + h / 2
+
+    const currentZoom = getViewport()?.zoom || 1
+    const targetZoom = isBox ? Math.min(Math.max(currentZoom, 0.6), 1.0) : Math.min(Math.max(currentZoom, 0.8), 1.2)
+
+    setCenter(centerX, centerY, { duration: 600, zoom: targetZoom })
+  }, [menuFocusTarget, nodes, setCenter, getViewport])
 
   const parallelMap = useMemo(() => {
     const map = new Map<string, { isParallel: boolean; peers: string[] }>()

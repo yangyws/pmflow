@@ -478,6 +478,8 @@ function ProjectWorkspace({
   const [epicId, setEpicId] = useState<string | null>(null)
   /** 側欄點擊選擇的事件，供右側視圖連動與高亮 */
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
+  /** 側欄點擊觸發的聚焦目標（附帶時間戳以確保只在點擊瞬間平移視角一次） */
+  const [menuFocusTarget, setMenuFocusTarget] = useState<{ id: string; ts: number } | null>(null)
 
   /**
    * 藏起來的頁籤。**每個人自己的偏好，存這台瀏覽器**（見 AGENTS.md）——
@@ -566,6 +568,7 @@ function ProjectWorkspace({
   const handleTaskSelect = (id: string) => {
     setFocusedTaskId(id)
     setOpenTask(null)
+    if (id) setMenuFocusTarget({ id, ts: Date.now() })
   }
 
   const handleTaskEdit = (id: string) => {
@@ -584,6 +587,7 @@ function ProjectWorkspace({
           setEpicId(id)
           setOpenTask(null)
           setFocusedTaskId(id)
+          if (id) setMenuFocusTarget({ id, ts: Date.now() })
         }}
         view={view}
         selectedTaskId={focusedTaskId ?? openTask}
@@ -727,6 +731,7 @@ function ProjectWorkspace({
                     tasks={tasks}
                     onOpenTask={handleTaskEdit}
                     focusedTaskId={focusedTaskId ?? epicId}
+                    menuFocusTarget={menuFocusTarget}
                     onSelectTask={(id) => setFocusedTaskId(id)}
                   />
                 </Suspense>
