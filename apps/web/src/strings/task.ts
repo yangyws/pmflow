@@ -98,30 +98,26 @@ export const task = {
     systemActor: '系統',
   },
 
-  /** 任務之間的關聯：有先後的（依賴）與沒先後的（相關） */
+  /** 任務之間的關聯：前後流程相依 */
   link: {
-    title: '任務關聯',
-    titleHint: '（依賴與相關）',
-    empty: '還沒有任何關聯。',
+    title: '前後相依',
+    titleHint: '（流程連線）',
+    empty: '目前沒有前後相依任務。',
     lagDays: (days: number) => `間隔 ${days > 0 ? '+' : ''}${days} 天`,
-    fieldTarget: '關聯到',
-    fieldType: '關聯類型',
+    fieldTarget: '相依任務',
+    fieldType: '相依類型',
     fieldLag: '間隔（天）',
-    pickTask: '選擇任務…',
+    pickTask: '選擇相依任務…',
     groupScheduling: '排程（會推動日期）',
     groupSemantic: '相關（不影響排程）',
     lagHint: '正數＝中間要空幾天；負數＝可以提前重疊',
-    /**
-     * 一邊是大項目、另一邊不是的時候，排程那一組整個不畫。
-     * 少了一整組選項一定要講原因，不然看起來像壞掉。
-     */
     noSchedulingAcrossEpic:
       '大項目與任務之間沒有先後 —— 大項目是「包含」底下那些任務，'
       + '日期也是由它們彙總出來的。要表達順序請在兩個大項目之間、或兩張任務之間建立；'
       + '只是想標示有關係的話用「相關」。',
-    add: '建立關聯',
+    add: '建立相依',
     /** 後端沒給訊息時才用這句，有訊息一律照後端的 */
-    addFailed: '建立關聯失敗',
+    addFailed: '建立相依失敗',
   },
 
   /**
@@ -152,15 +148,15 @@ export const task = {
 
   /** 上下階層 */
   children: {
-    title: '關聯任務',
-    titleHint: '（上下：階層）',
+    title: '上下階層',
+    titleHint: '（收納關係）',
   },
 
   /** 活動紀錄的每一行 */
   activity: {
     created: '建立了這張任務',
     comment: (text: string) => `留言：${text}`,
-    linkChange: (label: string) => `調整關聯（${label}）`,
+    linkChange: (label: string) => `調整相依（${label}）`,
     inquiryAsk: (unit: string) => `詢問 ${unit}`,
     inquiryReply: (unit: string) => `登錄回覆${unit ? `（${unit}）` : ''}`,
     problemSet: (text: string) => `記下目前遇到的問題：${text}`,
