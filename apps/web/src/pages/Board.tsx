@@ -347,7 +347,7 @@ function Card({
       {(task.inquiryState !== 'NONE' || task.problem || (blockedBy && blockedBy.length > 0)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <InquiryBadge state={task.inquiryState} />
-          <ProblemBadge problem={task.problem} />
+          <ProblemBadge problem={task.problem} isShort={true} />
           {blockedBy && blockedBy.length > 0 && (
             <span
               title={`卡住：要等 ${blockedBy.join('、')}`}

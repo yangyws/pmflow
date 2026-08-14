@@ -192,22 +192,26 @@ export function InquiryBadge({ state, detail }: { state: InquiryState; detail?: 
 export function ProblemBadge({
   problem,
   count,
+  isShort,
   isBox,
 }: {
   problem?: string | null | undefined
   count?: number | null | undefined
+  isShort?: boolean
   isBox?: boolean
 }) {
   const hasCount = typeof count === 'number' && count > 0
   if (!problem && !hasCount) return null
 
-  if (isBox && hasCount) {
+  const displayCount = hasCount ? count : 1
+
+  if (isShort || (isBox && hasCount)) {
     return (
       <span
-        title={`收納盒內有 ${count} 項問題單與遭遇問題`}
+        title={problem ? T.task.problem.tooltip(problem) : `內有 ${displayCount} 項遭遇問題與問題單`}
         className="shrink-0 rounded bg-red-100 px-1 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
       >
-        問 {count}
+        問({displayCount})
       </span>
     )
   }

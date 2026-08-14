@@ -913,8 +913,8 @@ function TreeNode({
                 )}
                 {task.problem && (
                   <span title={task.problem}
-                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
-                    ⚑有問題
+                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                    問(1)
                   </span>
                 )}
                 {bugs > 0 && (

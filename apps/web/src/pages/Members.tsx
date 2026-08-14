@@ -464,7 +464,7 @@ function TaskTable({ groups, statusOf, onOpenTask, onEditTask, focusedTaskId, is
                         {t.ref}
                       </span>
                       <span className="text-slate-800 dark:text-slate-100">{t.title}</span>
-                      <ProblemBadge problem={t.problem} />
+                      <ProblemBadge problem={t.problem} isShort={true} />
                       <InquiryBadge state={t.inquiryState} />
                       {isTaskOverdue(t.dueDate, t.progress) && (
                         <span

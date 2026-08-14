@@ -412,7 +412,7 @@ export default function GanttView({
 const renderAlertCell = (t: any) => {
   const badges: string[] = []
   if (t.problem) {
-    badges.push(`<span title="${t.problem}" style="background:#fdf4ff;color:#a21caf;border:1px solid #f5d0fe;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚑有問題</span>`)
+    badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問(1)</span>`)
   }
   if (t.blockedBy && t.blockedBy.length > 0) {
     badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔卡住</span>`)
