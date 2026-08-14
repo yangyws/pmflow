@@ -558,44 +558,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
-  // 當從側欄 Menu 點擊收納盒或卡片時，視角平滑移動並聚焦至該節點
-  useEffect(() => {
-    if (!focusedTaskId || !nodes.length) return
-    const targetNode = nodes.find((n) => n.id === focusedTaskId)
-    if (!targetNode) return
-
-    let absX = targetNode.position.x
-    let absY = targetNode.position.y
-
-    if (targetNode.parentId) {
-      let curParentId: string | undefined = targetNode.parentId
-      const visited = new Set<string>()
-      while (curParentId && !visited.has(curParentId)) {
-        visited.add(curParentId)
-        const pNode = nodes.find((n) => n.id === curParentId)
-        if (pNode) {
-          absX += pNode.position.x
-          absY += pNode.position.y
-          curParentId = pNode.parentId
-        } else {
-          break
-        }
-      }
-    }
-
-    const isBox = (targetNode.data as SimpleGraphNodeData)?.mode === 'box'
-    const w = (targetNode.measured?.width || targetNode.width || (isBox ? 360 : 220)) as number
-    const h = (targetNode.measured?.height || targetNode.height || (isBox ? 260 : 80)) as number
-
-    const centerX = absX + w / 2
-    const centerY = absY + h / 2
-
-    const currentZoom = getViewport()?.zoom || 1
-    const targetZoom = isBox ? Math.min(Math.max(currentZoom, 0.6), 1.0) : Math.min(Math.max(currentZoom, 0.8), 1.2)
-
-    setCenter(centerX, centerY, { duration: 600, zoom: targetZoom })
-  }, [focusedTaskId, nodes, setCenter, getViewport])
-
   const parallelMap = useMemo(() => {
     const map = new Map<string, { isParallel: boolean; peers: string[] }>()
     if (!edges || !tasks) return map
