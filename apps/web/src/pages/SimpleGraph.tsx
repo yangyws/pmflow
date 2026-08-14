@@ -754,18 +754,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     return map
   }, [tasks, edges, project?.statuses])
 
+  const isDraggingRef = useRef(false)
+
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (isDraggingRef.current) return
       setSelectedNodeId(node.id)
-      onSelectTask?.(node.id)
     },
-    [onSelectTask]
+    []
   )
 
   const onPaneClick = useCallback(() => {
+    if (isDraggingRef.current) return
     setSelectedNodeId(null)
-    onSelectTask?.('')
-  }, [onSelectTask])
+  }, [])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
   const [logs, setLogs] = useState<LogItem[]>([])
@@ -1639,11 +1641,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
+      setTimeout(() => {
+        isDraggingRef.current = false
+      }, 100)
       const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
       const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
 
