@@ -246,8 +246,8 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      style={isBox ? { width: boxW, height: boxH } : { width: 256, height: 72 }}
-      className="relative w-full h-full cursor-grab active:cursor-grabbing select-none pointer-events-auto"
+      style={isBox ? { width: boxW, height: boxH } : { width: 256 }}
+      className="relative w-full h-auto cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
       {/* 接點 (Handles) - 4 個邊各保留 1 個中央精準接點，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
       <Handle
