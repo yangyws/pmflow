@@ -197,11 +197,13 @@ export function EpicSidebar({
   const [title, setTitle] = useState('')
 
   const typeList = useMemo<ProjectParam[]>(() => {
-    const list: ProjectParam[] = types.length ? types : [
+    const list: ProjectParam[] = types.length ? [...types] : [
       { id: 'def-task', key: 'TASK', name: '任務單', color: '#3178c6', kind: 'type', rank: 1, inUse: 0 },
-      { id: 'def-bug', key: 'BUG', name: '問題單', color: '#dc2626', kind: 'type', rank: 2, inUse: 0 },
     ]
-    return list.filter(t => t.key === 'TASK' || t.key === 'BUG')
+    if (!list.some(t => t.key === 'BUG')) {
+      list.push({ id: 'def-bug', key: 'BUG', name: '問題單', color: '#dc2626', kind: 'type', rank: 999999, inUse: 0 })
+    }
+    return list
   }, [types])
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())

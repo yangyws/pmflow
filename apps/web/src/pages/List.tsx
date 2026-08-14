@@ -116,7 +116,16 @@ export default function ListView({
    * 選過的種類**留著不重設**：要連開三張問題的人不必每一張都再選一次。
    */
   const [newType, setNewType] = useState('')
-  const allTypes = project?.types ?? []
+  const rawTypes = project?.types ?? []
+  const allTypes = useMemo<ProjectParam[]>(() => {
+    const list: ProjectParam[] = rawTypes.length ? [...rawTypes] : [
+      { id: 'def-task', key: 'TASK', name: '任務單', color: '#3178c6', kind: 'type', rank: 1, inUse: 0 },
+    ]
+    if (!list.some(t => t.key === 'BUG')) {
+      list.push({ id: 'def-bug', key: 'BUG', name: '問題單', color: '#dc2626', kind: 'type', rank: 999999, inUse: 0 })
+    }
+    return list
+  }, [rawTypes])
   /**
    * 能選哪幾種要看**加在誰底下**（見 lib/hierarchy.ts）：問題只能掛在任務底下、
    * 大項目不能掛在任務底下。不合法的乾脆不要畫出來 ——

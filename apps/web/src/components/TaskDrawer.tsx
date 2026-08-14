@@ -260,11 +260,21 @@ export function TaskDrawer({
     : members
   const nameOf = (id: string) => members.find(m => m.id === id)?.displayName ?? ''
 
+  const allAvailableTypes = useMemo(() => {
+    const list = types.length ? [...types] : [
+      { id: 'def-task', key: 'TASK', name: '任務單', color: '#3178c6', kind: 'type' as const, rank: 1, inUse: 0 },
+    ]
+    if (!list.some(t => t.key === 'BUG')) {
+      list.push({ id: 'def-bug', key: 'BUG', name: '問題單', color: '#dc2626', kind: 'type' as const, rank: 999999, inUse: 0 })
+    }
+    return list
+  }, [types])
+
   /*
    * 種類的下拉要濾掉放不進去的選項。上層與子任務都從 allTasks 找 ——
    * `data.children` 只有 id／標題／狀態，沒有種類。
    */
-  const typeChoices = typesAllowedFor(types.filter(t => t.key === 'TASK' || t.key === 'BUG'), {
+  const typeChoices = typesAllowedFor(allAvailableTypes, {
     current: data?.type ?? '',
     parentType: allTasks.find(t => t.id === data?.parentId)?.type ?? null,
     childTypes: allTasks.filter(t => t.parentId === data?.id).map(t => t.type),

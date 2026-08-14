@@ -45,10 +45,11 @@ import { T } from '../strings'
 
 const S = T.settings
 
-/** 系統參數區塊：保留狀態與優先度，移除事件類型 */
+/** 系統參數區塊：狀態、優先度與自訂事件類型（問題單為系統固定內建，不歸類在自訂清單） */
 const SECTIONS: Array<{ kind: ParamKind; title: string; hint: string }> = [
   { kind: 'status', title: S.sections.status.title, hint: S.sections.status.hint },
   { kind: 'priority', title: S.sections.priority.title, hint: S.sections.priority.hint },
+  { kind: 'type', title: S.sections.type.title, hint: S.sections.type.hint },
 ]
 
 const CATEGORIES = ['TODO', 'ACTIVE', 'DONE'] as const
@@ -175,7 +176,7 @@ export default function ProjectSettings({ projectId }: { projectId: string }) {
             kind={sec.kind}
             title={sec.title}
             hint={sec.hint}
-            rows={params.filter(p => p.kind === sec.kind)}
+            rows={params.filter(p => p.kind === sec.kind && (sec.kind !== 'type' || p.key !== 'BUG'))}
             canManage={canManage}
             busy={patch.isPending || create.isPending || remove.isPending}
             onPatch={(id, body) => patch.mutate({ id, body })}

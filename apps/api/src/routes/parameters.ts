@@ -319,6 +319,7 @@ async function findParam(
 export async function assertParamKey(
   db: Db, projectId: string, kind: ParamKind, key: string
 ): Promise<void> {
+  if (kind === 'type' && key === 'BUG') return
   const rows = await KIND[kind].rows(db, projectId)
   if (!rows.some(r => r.key === key)) {
     throw badRequest(
@@ -422,6 +423,10 @@ export default async function parameterRoutes(app: FastifyInstance) {
         '只有任務狀態需要決定它算不算「還沒做完」。')
     }
 
+    if (body.kind === 'type' && (body.name === '問題單' || body.name === 'BUG' || body.name === '問題')) {
+      throw badRequest('問題單為系統固定事件類型', '問題單為內建固定類型，不需於系統參數重複新增。')
+    }
+
     const existing = await KIND[body.kind].rows(sql, req.params.id)
     if (existing.some(r => r.name === body.name)) {
       throw badRequest(
@@ -457,6 +462,9 @@ export default async function parameterRoutes(app: FastifyInstance) {
 
       const found = await findParam(sql, req.params.id, req.params.paramId)
       if (!found) throw notFound('找不到這個參數')
+      if (found.kind === 'type' && found.self.key === 'BUG') {
+        throw badRequest('問題單為系統固定事件類型', '問題單為系統內建固定類型，不可於系統參數修改。')
+      }
       const spec = KIND[found.kind]
 
       if (b.category && !spec.hasCategory) {
@@ -526,6 +534,9 @@ export default async function parameterRoutes(app: FastifyInstance) {
 
     const found = await findParam(sql, req.params.id, req.params.paramId)
     if (!found) throw notFound('找不到這個參數')
+    if (found.kind === 'type' && found.self.key === 'BUG') {
+      throw badRequest('問題單為系統固定事件類型', '問題單為系統內建固定類型，不可於系統參數刪除。')
+    }
     const { kind, self, siblings } = found
     const spec = KIND[kind]
 
