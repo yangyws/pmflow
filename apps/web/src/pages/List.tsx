@@ -455,6 +455,11 @@ export default function ListView({
                       const boxOverdueCount = (overdue ? 1 : 0) + boxKids.filter(k => isTaskOverdue(k.dueDate, k.progress)).length
                       return (
                         <>
+                          {boxKids.length > 0 && (
+                            <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                              內含 {boxKids.length} 張
+                            </span>
+                          )}
                           {boxProblemCount > 0 && <ProblemBadge problem={t.problem || '遭遇問題'} />}
                           {boxBlockedCount > 0 && (
                             <span
@@ -462,11 +467,6 @@ export default function ListView({
                               className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
                             >
                               ⛔ 卡住 {boxBlockedCount}
-                            </span>
-                          )}
-                          {boxKids.length > 0 && (
-                            <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                              內含 {boxKids.length} 張
                             </span>
                           )}
                           {boxOverdueCount > 0 && (
@@ -482,7 +482,7 @@ export default function ListView({
                     })() : (
                       <>
                         {t.type !== 'BUG' && <ProblemBadge problem={t.problem} />}
-                        {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
+                        {!t.problem && blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
                           <span
                             title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
                             className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
