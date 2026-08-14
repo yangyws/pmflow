@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Unified Pill Tag Type Badges & Clean Storage Box Icons
+### Latest Changes: System Flow Canvas Dragging & Parent-First Depth Ordering Fix
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 對齊 SimpleGraph 重構 `orderParentNodesFirst` 深度演算法並嚴格排序 `nodesWithHandlers`，根除子節點先於收納盒渲染時引發的拖曳鎖死與梯形錯位；加入 `measured` 測量就緒防護與 `Viewport` 持久化，並開啟 `panOnDrag` 與 `zoomOnPinch`。
+
+### Previous Changes: Unified Pill Tag Type Badges & Clean Storage Box Icons
 - **變更檔案**:
   - [`ui.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx): 新增全站統一的 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx#L248-L278) 元件（10% 柔和底色 + 25% 同色邊框 + 實心微型圓點 + 原色文字）。
   - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 移除一般卡片 `📄` 圖示（僅收納盒保留 `📦`），移除前方舊式豎向色條，並於卡片編號右側整合統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
