@@ -892,11 +892,8 @@ function TreeNode({
           className={cx('block min-w-0 flex-1 rounded-md pr-2.5 text-left',
                         isRoot ? 'py-2' : 'py-1.5')}>
           <div className="flex flex-col gap-1 min-w-0">
-            {/* 第一行：卡片/收納盒圖示 + 色槓 + MRG編號 + 警示徽章 + 完成打勾(進度100%) */}
+            {/* 第一行：收納盒圖示(📦) + MRG編號 + 種類標籤 + 警示徽章 + 完成打勾(進度100%) */}
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={cx('shrink-0 rounded-full', isRoot ? 'h-4 w-1' : 'h-3 w-0.5')}
-                    title={kindName}
-                    style={{ background: kindColor }} />
               {task.type !== 'BUG' && (kids.length > 0 || (typeof window !== 'undefined' && (() => {
                 try {
                   const saved = localStorage.getItem('pmflow_graph_container_boxes')

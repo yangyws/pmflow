@@ -338,16 +338,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                     {data.refText || 'MRG-BOX'}
                   </span>
-                  <span
-                    className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] border pointer-events-none select-none font-medium"
-                    style={{
-                      backgroundColor: `${data.typeColor || '#3178c6'}18`,
-                      color: data.typeColor || '#3178c6',
-                      borderColor: `${data.typeColor || '#3178c6'}40`,
-                    }}
-                  >
-                    {data.typeName || '任務單'}
-                  </span>
+                  <TypeBadge name={data.typeName || '任務單'} color={data.typeColor || '#3178c6'} />
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   (移入卡片自動擴大容量)
