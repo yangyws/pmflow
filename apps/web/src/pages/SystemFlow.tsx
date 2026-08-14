@@ -357,6 +357,8 @@ const INITIAL_EDGES: Edge[] = [
 export interface FlowPage {
   id: string
   title: string
+  createdById?: string | null
+  createdByName?: string | null
   nodes: Node[]
   edges: Edge[]
 }
@@ -372,6 +374,8 @@ function loadInitialPages(projectId: string): FlowPage[] {
         return parsed.map((p, idx) => ({
           id: p.id || `page-${idx + 1}`,
           title: p.title || `流程頁面 ${idx + 1}`,
+          createdById: p.createdById || null,
+          createdByName: p.createdByName || null,
           nodes: Array.isArray(p.nodes) ? orderParentNodesFirst(p.nodes) : [],
           edges: Array.isArray(p.edges)
             ? p.edges.map((e: Edge) => ({
@@ -392,6 +396,8 @@ function loadInitialPages(projectId: string): FlowPage[] {
           {
             id: 'page-1',
             title: '主要流程',
+            createdById: null,
+            createdByName: null,
             nodes: orderParentNodesFirst(parsedLegacy.nodes),
             edges: Array.isArray(parsedLegacy.edges)
               ? parsedLegacy.edges.map((e: Edge) => ({
@@ -411,6 +417,8 @@ function loadInitialPages(projectId: string): FlowPage[] {
     {
       id: 'page-1',
       title: '主要流程',
+      createdById: null,
+      createdByName: null,
       nodes: orderParentNodesFirst(INITIAL_NODES),
       edges: INITIAL_EDGES,
     },
@@ -431,10 +439,18 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const isManager = role === 'MANAGER'
   const isOwner = role === 'OWNER'
   const isProjectCreator = Boolean(project?.isCreator)
-  // 建立者以上權限 (專案建立者、Owner、Manager) 才能刪除分頁
-  const canDeletePage = isManager || isOwner || isProjectCreator
 
   const [pages, setPages] = useState<FlowPage[]>(() => loadInitialPages(projectId))
+
+  // 建立者以上權限 (專案建立者、Owner、Manager) 或「該分頁建立者」可刪除分頁
+  const canDeletePage = useCallback(
+    (p?: FlowPage | null) => {
+      if (!p || pages.length <= 1) return false
+      const isPageCreator = Boolean(p.createdById && user?.id && p.createdById === user.id)
+      return isManager || isOwner || isProjectCreator || isPageCreator
+    },
+    [user?.id, isManager, isOwner, isProjectCreator, pages.length]
+  )
   const [activePageId, setActivePageId] = useState<string>(() => {
     const initPages = loadInitialPages(projectId)
     return initPages[0]?.id || 'page-1'
@@ -501,6 +517,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const newPage: FlowPage = {
       id: newId,
       title: newTitle,
+      createdById: user?.id || null,
+      createdByName: user?.displayName || user?.email || null,
       nodes: [],
       edges: [],
     }
@@ -529,6 +547,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const newPage: FlowPage = {
       id: newId,
       title: newTitle,
+      createdById: user?.id || null,
+      createdByName: user?.displayName || user?.email || null,
       nodes: JSON.parse(JSON.stringify(sourceNodes)),
       edges: JSON.parse(JSON.stringify(sourceEdges)),
     }
@@ -550,7 +570,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 刪除頁面
   const handleDeletePage = (pageId: string) => {
-    if (!canDeletePage || pages.length <= 1) return
+    const target = pages.find((p) => p.id === pageId)
+    if (!target || !canDeletePage(target)) return
     const nextPages = pages.filter((p) => p.id !== pageId)
     setConfirmDeletePage(null)
     if (activePageId === pageId) {
@@ -923,8 +944,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                     📑
                   </button>
 
-                  {/* 刪除按鈕 (大於1頁且具備建立者以上權限時可刪) */}
-                  {pages.length > 1 && canDeletePage && (
+                  {/* 刪除按鈕 (大於1頁且具備建立者以上權限或分頁建立者時可刪) */}
+                  {pages.length > 1 && canDeletePage(p) && (
                     <button
                       type="button"
                       onClick={(e) => {
