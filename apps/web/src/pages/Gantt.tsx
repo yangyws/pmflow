@@ -28,6 +28,22 @@ const FROM_DHX: Record<string, LinkType> = { '0': 'FS', '1': 'SS', '2': 'FF', '3
 
 const G = T.chart.gantt
 
+const GANTT_ROW_COLORS = [
+  '#2563eb', // Blue
+  '#7c3aed', // Violet
+  '#059669', // Emerald
+  '#d97706', // Amber
+  '#db2777', // Pink
+  '#0891b2', // Cyan
+  '#4f46e5', // Indigo
+  '#ea580c', // Orange
+  '#0d9488', // Teal
+  '#9333ea', // Purple
+  '#0284c7', // Sky
+  '#16a34a', // Green
+  '#c026d3', // Fuchsia
+]
+
 export default function GanttView({
   projectId, tasks, onOpen, focusedTaskId,
 }: {
@@ -181,11 +197,16 @@ export default function GanttView({
   // ── 餵資料 ──
   useEffect(() => {
     const g = ganttRef.current
-    if (!g || !tasks.length) return
+    const nonBugTasks = tasks.filter(t => t.type !== 'BUG')
+    if (!g || !nonBugTasks.length) {
+      g?.clearAll()
+      return
+    }
 
     const critical = new Set(sched?.criticalPath ?? [])
-    const rolled = rollup(tasks)
-    const kidsSet = new Set(tasks.map(t => t.parentId).filter(Boolean))
+    const rolled = rollup(nonBugTasks)
+    const kidsSet = new Set(nonBugTasks.map(t => t.parentId).filter(Boolean))
+    const validTaskIds = new Set(nonBugTasks.map(t => t.id))
     const containerBoxSet = (() => {
       try {
         const saved = localStorage.getItem('pmflow_graph_container_boxes')
@@ -198,12 +219,12 @@ export default function GanttView({
     const blockedByMap = (() => {
       const map = new Map<string, string[]>()
       const edges = graph?.edges ?? []
-      if (!tasks.length || !edges.length) return map
+      if (!nonBugTasks.length || !edges.length) return map
 
-      const taskMap = new Map(tasks.map((t) => [t.id, t]))
+      const taskMap = new Map(nonBugTasks.map((t) => [t.id, t]))
       const isDone = (t?: Task) => {
         if (!t) return false
-        const kids = tasks.filter(k => k.parentId === t.id)
+        const kids = nonBugTasks.filter(k => k.parentId === t.id)
         if (kids.length > 0) {
           const allKidsDone = kids.every(k => k.progress >= 100 || k.statusKey === 'DONE')
           if (!allKidsDone) return false
@@ -238,7 +259,7 @@ export default function GanttView({
     const parallelSet = (() => {
       const set = new Set<string>()
       const edges = graph?.edges ?? []
-      if (!edges.length || !tasks.length) return set
+      if (!edges.length || !nonBugTasks.length) return set
       const targetMap = new Map<string, string[]>()
       edges.forEach((e) => {
         const tId = String(e.targetId || (e as any).target)
@@ -255,13 +276,13 @@ export default function GanttView({
     })()
 
     let defaultStart = todayYmd()
-    const validDates = tasks.map(t => t.startDate || t.dueDate).filter((x): x is string => Boolean(x))
+    const validDates = nonBugTasks.map(t => t.startDate || t.dueDate).filter((x): x is string => Boolean(x))
     if (validDates.length > 0) {
       validDates.sort()
       defaultStart = validDates[0]
     }
 
-    const data = tasks.map(t => {
+    const data = nonBugTasks.map((t, idx) => {
       const r = rolled.get(t.id)
       const rawStart = r?.startDate ?? t.startDate
       const rawDue = r?.dueDate ?? t.dueDate
@@ -274,12 +295,7 @@ export default function GanttView({
       const isParallel = parallelSet.has(t.id)
       const isOverdue = Boolean(t.dueDate && t.dueDate < todayYmd() && t.progress < 100 && t.statusKey !== 'DONE')
 
-      const boxKids = isBox ? tasks.filter(k => k.parentId === t.id) : []
-      const boxProblemCount = isBox ? ((t.problem ? 1 : 0) + boxKids.filter(k => k.type === 'BUG' || k.problem).length) : 0
-      const boxBlockedCount = isBox ? ((blockedBy.length ? 1 : 0) + boxKids.filter(k => (blockedByMap.get(k.id)?.length ?? 0) > 0).length) : 0
-      const boxOverdueCount = isBox ? ((isOverdue ? 1 : 0) + boxKids.filter(k => Boolean(k.dueDate && k.dueDate < todayYmd() && k.progress < 100 && k.statusKey !== 'DONE')).length) : 0
-
-      const taskColor = project?.types?.find(type => type.key === t.type)?.color || DEFAULT_TYPE_COLORS[t.type] || '#3178c6'
+      const rowColor = GANTT_ROW_COLORS[idx % GANTT_ROW_COLORS.length]
 
       return {
         id: t.id,
@@ -287,10 +303,10 @@ export default function GanttView({
         start_date: startDate.slice(0, 10),
         end_date: addDay(dueDate.slice(0, 10)),
         progress: (r?.progress ?? t.progress ?? 0) / 100,
-        parent: t.parentId ?? 0,
+        parent: (t.parentId && validTaskIds.has(t.parentId)) ? t.parentId : 0,
         type: t.type === 'MILESTONE' ? 'milestone' : isBox ? 'project' : undefined,
         isBox,
-        color: taskColor,
+        color: rowColor,
         critical: critical.has(t.id),
         inquiry: t.inquiryState,
         problem: t.problem,
@@ -298,10 +314,6 @@ export default function GanttView({
         blockedBy,
         isParallel,
         isOverdue,
-        boxKidsCount: boxKids.length,
-        boxProblemCount,
-        boxBlockedCount,
-        boxOverdueCount,
         noDates,
         open: true,
       }
