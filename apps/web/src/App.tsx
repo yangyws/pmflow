@@ -250,198 +250,162 @@ function AccountTab({ active, onClick, children }: {
   )
 }
 
-function SortableTabItem({
-  v, hidden, lastOne, toggle, P, onMove, isFirst, isLast,
-}: {
-  v: { key: View; label: string }
-  hidden: View[]
-  lastOne: boolean
-  toggle: (key: View) => void
-  P: typeof T.nav.tabPrefs
-  onMove?: (key: View, direction: 'up' | 'down') => void
-  isFirst?: boolean
-  isLast?: boolean
-}) {
-  const {
-    attributes, listeners, setNodeRef, transform, transition, isDragging,
-  } = useSortable({ id: v.key })
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 30 : 1,
-  }
-
-  const on = !hidden.includes(v.key)
-  const stuck = on && lastOne
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cx(
-        'flex items-center gap-1.5 rounded px-2 py-1 text-sm bg-white dark:bg-slate-800',
-        'border border-slate-100 dark:border-slate-700/60',
-        isDragging ? 'shadow-md border-blue-400 dark:border-blue-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
-      )}
-    >
-      <span
-        {...attributes}
-        {...listeners}
-        title={P.dragHandleTip}
-        aria-label={P.dragHandleTip}
-        className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 touch-none px-1 py-0.5 select-none font-bold text-base"
-      >
-        ≡
-      </span>
-      <label title={stuck ? P.keepOne : undefined}
-             className={cx('flex min-w-0 flex-1 items-center gap-2',
-               stuck ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
-        <input type="checkbox" checked={on} disabled={stuck}
-               onChange={() => toggle(v.key)}
-               className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600
-                          focus:ring-blue-500/40 dark:border-slate-500 dark:bg-slate-900" />
-        <span className="truncate text-slate-700 dark:text-slate-200">{v.label}</span>
-      </label>
-      <div className="flex items-center gap-0.5 shrink-0">
-        <button
-          type="button"
-          disabled={isFirst}
-          onClick={(e) => {
-            e.stopPropagation()
-            onMove?.(v.key, 'up')
-          }}
-          title="往前移"
-          className={cx(
-            'p-0.5 text-xs rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400',
-            isFirst ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
-          )}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          disabled={isLast}
-          onClick={(e) => {
-            e.stopPropagation()
-            onMove?.(v.key, 'down')
-          }}
-          title="往後移"
-          className={cx(
-            'p-0.5 text-xs rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400',
-            isLast ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
-          )}
-        >
-          ▼
-        </button>
-      </div>
-    </div>
-  )
-}
-
 /**
- * 頁籤右邊那顆齒輪：勾選要顯示哪幾個頁籤、拖曳調整左右順序。
- *
- * **只影響自己這台瀏覽器**，不是專案設定（見 AGENTS.md「頁籤可以自己藏起來」）。
- * 面板裡把這句話寫出來 —— 不寫的話，藏掉甘特圖的人會以為自己剛剛
- * 把全專案的甘特圖關掉了。
- *
- * **至少留一個**：全部取消勾選會讓上面整排消失，變成一個不知道怎麼救回來的畫面。
- * 剩最後一個時那一格直接 disabled，而不是按下去才跳錯誤。
+ * 頁籤顯示與順序管理面板：支援勾選顯示/隱藏、▲ / ▼ 上下排序與一鍵重設。
+ * 只影響本機瀏覽器偏好設定。
  */
-function TabPrefs({ hidden, setHidden, ordered, onReorder, onMove, onResetOrder, view, setView }: {
+function TabPrefs({ hidden, setHidden, ordered, onMove, onResetOrder, view, setView }: {
   hidden: View[]
   setHidden: (v: View[]) => void
-  /** 目前的左右順序（已經把存值與 VIEWS 合併過） */
   ordered: Array<{ key: View; label: string }>
-  onReorder: (activeKey: View, overKey: View) => void
-  onMove?: (key: View, direction: 'up' | 'down') => void
+  onMove: (key: View, direction: 'up' | 'down') => void
   onResetOrder: () => void
   view: View
   setView: (v: View) => void
 }) {
   const [open, setOpen] = useState(false)
-  const P = T.nav.tabPrefs
-  const shown = ordered.filter(v => !hidden.includes(v.key))
+  const shown = ordered.filter((v) => !hidden.includes(v.key))
   const lastOne = shown.length <= 1
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 1 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      onReorder(active.id as View, over.id as View)
-    }
-  }
 
   function toggle(key: View) {
     const next = hidden.includes(key)
-      ? hidden.filter(k => k !== key)
+      ? hidden.filter((k) => k !== key)
       : [...hidden, key]
     setHidden(next)
-    // 藏掉的正好是現在看著的那一頁 → 跳到還留著的第一個，不然畫面會空掉
+    // 若隱藏的剛好是目前瀏覽頁面，自動切換至剩餘的第一個顯示頁籤
     if (key === view && next.includes(key)) {
-      const first = VIEWS.find(v => !next.includes(v.key))
+      const first = ordered.find((v) => !next.includes(v.key))
       if (first) setView(first.key)
     }
   }
 
   return (
     <div className="relative ml-auto">
-      <button onClick={() => setOpen(o => !o)}
-              title={P.open} aria-label={P.open} aria-expanded={open}
-              className="rounded-md px-2 py-1.5 text-sm text-slate-400 hover:bg-slate-100
-                         hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800
-                         dark:hover:text-slate-200">
-        ⚙
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title="自訂頁籤顯示與排序"
+        aria-label="自訂頁籤顯示與排序"
+        aria-expanded={open}
+        className={cx(
+          'flex items-center justify-center rounded-md p-1.5 text-xs font-medium transition cursor-pointer',
+          open
+            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'
+        )}
+      >
+        <span className="text-sm select-none">⚙</span>
       </button>
 
       {open && (
         <>
-          {/* 點旁邊就收起來。蓋在整個畫面上但透明，不然要按兩次才關得掉 */}
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-slate-200
-                          bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{P.title}</div>
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-400 dark:text-slate-400">
-              {P.hint}
-            </p>
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-400 dark:text-slate-400">
-              {P.orderHint}
+          {/* 透明遮罩 */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-50 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <span>⚙️</span> 頁籤顯示與排序
+              </div>
+              <span className="text-[10px] text-slate-400">僅本機偏好</span>
+            </div>
+
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+              勾選顯示或隱藏頁籤，使用 ▲ / ▼ 調整左右順序：
             </p>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={ordered.map(v => v.key)} strategy={verticalListSortingStrategy}>
-                <div className="mt-2 space-y-1">
-                  {ordered.map((v, i) => (
-                    <SortableTabItem
-                      key={v.key}
-                      v={v}
-                      hidden={hidden}
-                      lastOne={lastOne}
-                      toggle={toggle}
-                      P={P}
-                      onMove={onMove}
-                      isFirst={i === 0}
-                      isLast={i === ordered.length - 1}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+            <div className="mt-2.5 space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
+              {ordered.map((v, i) => {
+                const on = !hidden.includes(v.key)
+                const stuck = on && lastOne
 
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-700/60">
-              <Button variant="ghost" className="text-xs"
-                      onClick={() => { setHidden([]); onResetOrder() }}>
-                {P.reset}
-              </Button>
-              <Button variant="ghost" className="text-xs" onClick={() => setOpen(false)}>
-                {P.done}
-              </Button>
+                return (
+                  <div
+                    key={v.key}
+                    className={cx(
+                      'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs border transition-colors',
+                      on
+                        ? 'bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700'
+                        : 'bg-slate-100/40 dark:bg-slate-900/20 border-dashed border-slate-200 dark:border-slate-800 opacity-60'
+                    )}
+                  >
+                    <label
+                      title={stuck ? '至少需保留一個頁籤顯示' : undefined}
+                      className={cx(
+                        'flex min-w-0 flex-1 items-center gap-2 select-none',
+                        stuck ? 'cursor-not-allowed' : 'cursor-pointer'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        disabled={stuck}
+                        onChange={() => toggle(v.key)}
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-900 cursor-pointer"
+                      />
+                      <span
+                        className={cx(
+                          'truncate font-medium',
+                          on ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 line-through'
+                        )}
+                      >
+                        {v.label}
+                      </span>
+                    </label>
+
+                    {/* 排序按鈕 */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => onMove(v.key, 'up')}
+                        title="往前移動"
+                        className={cx(
+                          'p-1 rounded text-xs transition cursor-pointer',
+                          i === 0
+                            ? 'opacity-20 cursor-not-allowed text-slate-400'
+                            : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        )}
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === ordered.length - 1}
+                        onClick={() => onMove(v.key, 'down')}
+                        title="往後移動"
+                        className={cx(
+                          'p-1 rounded text-xs transition cursor-pointer',
+                          i === ordered.length - 1
+                            ? 'opacity-20 cursor-not-allowed text-slate-400'
+                            : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        )}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-700/60">
+              <button
+                type="button"
+                onClick={() => {
+                  setHidden([])
+                  onResetOrder()
+                }}
+                className="text-xs text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition cursor-pointer"
+              >
+                重設為預設
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1 text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                完成
+              </button>
             </div>
           </div>
         </>
@@ -646,7 +610,7 @@ function ProjectWorkspace({
                 </button>
               ))}
               <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
-                        ordered={orderedViews} onReorder={reorderTab} onMove={moveTab}
+                        ordered={orderedViews} onMove={moveTab}
                         onResetOrder={() => setTabOrder([])}
                         view={view} setView={setView} />
             </nav>
