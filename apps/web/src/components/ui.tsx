@@ -201,22 +201,25 @@ export function ProblemBadge({
   const hasCount = typeof count === 'number' && count > 0
   if (!problem && !hasCount) return null
 
-  const label = isBox && hasCount
-    ? `問(${count})`
-    : hasCount
-      ? `問(${count})`
-      : `${T.task.problem.badge}`
-
-  const tooltip = problem ? T.task.problem.tooltip(problem) : hasCount ? `收納盒內有 ${count} 項遭遇問題` : undefined
+  if (isBox && hasCount) {
+    return (
+      <span
+        title={`收納盒內有 ${count} 項問題單與遭遇問題`}
+        className="shrink-0 rounded bg-rose-100 px-1 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+      >
+        問({count})
+      </span>
+    )
+  }
 
   return (
     <span
-      title={tooltip}
+      title={problem ? T.task.problem.tooltip(problem) : undefined}
       className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px]
                  font-medium text-fuchsia-700 ring-1 ring-inset ring-fuchsia-600/20
                  bg-fuchsia-50
                  dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:ring-fuchsia-400/30">
-      <span aria-hidden>⚑</span>{label}
+      <span aria-hidden>⚑</span>{T.task.problem.badge}
     </span>
   )
 }
