@@ -66,10 +66,6 @@ export default function GanttView({
     { name: 'text', label: G.col.task, tree: true, width: 240, resize: true },
     ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
     ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
-    ...(!hidden.includes('alerts') ? [{
-      name: 'alerts', label: '警示', align: 'left' as const, width: 180, resize: true,
-      template: (t: unknown) => renderAlertCell(t)
-    }] : []),
   ]
 
   // ── 掛載一次，之後只餵資料 ──
@@ -318,6 +314,15 @@ export default function GanttView({
   return (
     <div className="flex h-full flex-col">
       <style>{`
+        .gantt_task_progress {
+          background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.22),
+            rgba(255, 255, 255, 0.22) 6px,
+            transparent 6px,
+            transparent 12px
+          ) !important;
+        }
         .gantt_task_line.gantt-bar-box {
           background-color: #6366f1 !important;
           border-color: #4f46e5 !important;
@@ -394,18 +399,6 @@ export default function GanttView({
           >
             {!hiddenCols.includes('duration') ? '✓' : ''} 工期
           </button>
-          <button
-            type="button"
-            onClick={() => toggleCol('alerts')}
-            className={cx(
-              'rounded px-2 py-1 transition-colors cursor-pointer',
-              !hiddenCols.includes('alerts')
-                ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/30'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
-            )}
-          >
-            {!hiddenCols.includes('alerts') ? '✓' : ''} 警示徽章
-          </button>
         </div>
       </div>
 
@@ -425,39 +418,6 @@ export default function GanttView({
       <div ref={hostRef} className="min-h-0 flex-1" />
     </div>
   )
-}
-
-const renderAlertCell = (t: any) => {
-  const badges: string[] = []
-  if (t.isBox) {
-    if (t.boxKidsCount > 0) {
-      badges.push(`<span style="background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">內含 ${t.boxKidsCount} 張</span>`)
-    }
-    if (t.boxProblemCount > 0) {
-      badges.push(`<span title="盒內含問題單或遭遇問題" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;">⚑ 遭遇問題</span>`)
-    }
-    if (t.boxBlockedCount > 0) {
-      badges.push(`<span title="盒內含受阻卡住之任務" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住 ${t.boxBlockedCount}</span>`)
-    }
-    if (t.boxOverdueCount > 0) {
-      badges.push(`<span title="盒內含已逾期之任務" style="background:#ffe4e6;color:#be123c;border:1px solid #fecdd3;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰ 逾期 ${t.boxOverdueCount}</span>`)
-    }
-  } else {
-    if (t.taskType !== 'BUG' && t.problem) {
-      badges.push(`<span title="${t.problem}" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;">⚑ 遭遇問題</span>`)
-    }
-    if (!t.problem && t.blockedBy && t.blockedBy.length > 0) {
-      badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住</span>`)
-    }
-    if (t.isParallel) {
-      badges.push(`<span title="並行" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
-    }
-    if (t.isOverdue) {
-      badges.push(`<span title="預計完成日逾期" style="background:#ffe4e6;color:#be123c;border:1px solid #fecdd3;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰ 逾期</span>`)
-    }
-  }
-  if (!badges.length) return ''
-  return `<div style="display:flex;align-items:center;justify-content:flex-start;gap:4px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
 }
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10)
