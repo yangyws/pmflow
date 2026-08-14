@@ -864,12 +864,12 @@ export function TaskDrawer({
                     )
                   })()}
 
-                  {/* 子任務清單 */}
+                  {/* 關聯任務清單 */}
                   {data.children.filter(c => c.type !== 'BUG').length > 0 && (
                     <div>
                       {allTasks.find(t => t.id === data.parentId) && (
                         <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
-                          子任務清單
+                          關聯任務清單
                         </div>
                       )}
                       <div className="space-y-1">
@@ -879,7 +879,7 @@ export function TaskDrawer({
                             type="button"
                             onClick={() => onSelectTask?.(c.id)}
                             className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
-                            title="點擊打開該子任務事件詳情頁"
+                            title="點擊打開該關聯任務事件詳情頁"
                           >
                             <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
                             <span className="flex-1 truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>

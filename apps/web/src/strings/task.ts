@@ -152,7 +152,7 @@ export const task = {
 
   /** 上下階層 */
   children: {
-    title: '子任務',
+    title: '關聯任務',
     titleHint: '（上下：階層）',
   },
 
