@@ -272,12 +272,10 @@ function getTypeColor(taskType: string, customColor?: string): string {
 function getTypeName(taskType: string, customName?: string): string {
   if (customName) return customName
   const DEFAULT_NAMES: Record<string, string> = {
-    EPIC: '大項目',
     TASK: '任務單',
     BUG: '問題單',
-    MILESTONE: '里程碑',
   }
-  return DEFAULT_NAMES[taskType] ?? taskType
+  return DEFAULT_NAMES[taskType] ?? (taskType === 'BUG' ? '問題單' : '任務單')
 }
 
 // ── 節點 ────────────────────────────────────────────────
@@ -1571,10 +1569,8 @@ function GraphCanvas({
   const typeNameKey = (types ?? []).map(t => `${t.key}:${t.name}`).join('|')
   const typeNameMap = useMemo(() => {
     const m = new Map<string, string>()
-    m.set('EPIC', '大項目')
     m.set('TASK', '任務單')
     m.set('BUG', '問題單')
-    m.set('MILESTONE', '里程碑')
     for (const t of (types ?? [])) {
       if (t.name) m.set(t.key, t.name)
     }

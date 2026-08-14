@@ -533,12 +533,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
     if (!typeKey) return '任務單'
     const custom = project?.types?.find((p) => p.key === typeKey)?.name
     const DEFAULT_MAP: Record<string, string> = {
-      EPIC: '大項目',
       TASK: '任務單',
       BUG: '問題單',
-      MILESTONE: '里程碑',
     }
-    return custom || DEFAULT_MAP[typeKey] || typeKey
+    return custom || DEFAULT_MAP[typeKey] || (typeKey === 'BUG' ? '問題單' : '任務單')
   }, [project])
 
   const rolledMap = useMemo(() => rollup(tasks ?? []), [tasks])

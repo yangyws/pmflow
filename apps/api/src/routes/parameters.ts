@@ -228,10 +228,8 @@ export const DEFAULT_PARAMS: Record<'priority' | 'type', InsertArgs[]> = {
    * 只幫沒有動過順序的專案換）。畫面上不要另外寫一套排序，一律照這份清單。
    */
   type: [
-    { key: 'EPIC',      name: '大項目', color: '#d97706', rank: 1000, category: 'ACTIVE' },
-    { key: 'TASK',      name: '任務單', color: '#3178c6', rank: 2000, category: 'ACTIVE' },
-    { key: 'BUG',       name: '問題單', color: '#dc2626', rank: 3000, category: 'ACTIVE' },
-    { key: 'MILESTONE', name: '里程碑', color: '#8b5cf6', rank: 4000, category: 'ACTIVE' },
+    { key: 'TASK', name: '任務單', color: '#3178c6', rank: 1000, category: 'ACTIVE' },
+    { key: 'BUG',  name: '問題單', color: '#dc2626', rank: 2000, category: 'ACTIVE' },
   ],
 }
 

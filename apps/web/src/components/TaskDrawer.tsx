@@ -264,7 +264,7 @@ export function TaskDrawer({
    * 種類的下拉要濾掉放不進去的選項。上層與子任務都從 allTasks 找 ——
    * `data.children` 只有 id／標題／狀態，沒有種類。
    */
-  const typeChoices = typesAllowedFor(types, {
+  const typeChoices = typesAllowedFor(types.filter(t => t.key === 'TASK' || t.key === 'BUG'), {
     current: data?.type ?? '',
     parentType: allTasks.find(t => t.id === data?.parentId)?.type ?? null,
     childTypes: allTasks.filter(t => t.parentId === data?.id).map(t => t.type),
