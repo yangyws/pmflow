@@ -97,7 +97,7 @@ export const nav = {
      */
     /** 做完的那一列在標題後面點一個綠點 */
     doneDot: '已完成',
-    bugBadge: (n: number) => `問(${n})`,
+    bugBadge: (n: number) => `問 ${n}`,
     askedBadge: (n: number) => `外 ${n}`,
     overdueBadge: (n: number) => `逾 ${n}`,
     bugsUnder: (n: number) => `底下有 ${n} 個問題單`,

@@ -911,10 +911,10 @@ function TreeNode({
                     ⛔卡住
                   </span>
                 )}
-                {task.problem && (
+                {task.type !== 'BUG' && task.problem && (
                   <span title={task.problem}
                         className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                    問(1)
+                    問 1
                   </span>
                 )}
                 {bugs > 0 && (

@@ -211,7 +211,7 @@ export function ProblemBadge({
         title={problem ? T.task.problem.tooltip(problem) : `內有 ${displayCount} 項遭遇問題與問題單`}
         className="shrink-0 rounded bg-red-100 px-1 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
       >
-        問({displayCount})
+        問 {displayCount}
       </span>
     )
   }

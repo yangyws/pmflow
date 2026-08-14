@@ -448,43 +448,65 @@ export default function ListView({
                 {/* 警示欄位 */}
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap items-center gap-1">
-                    <ProblemBadge problem={t.problem} />
-                    {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
-                      <span
-                        title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
-                        className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                      >
-                        ⛔ 卡住
-                      </span>
-                    )}
-                    {t.isBox && tasks.filter(k => k.parentId === t.id).length > 0 && (
-                      <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                        內含 {tasks.filter(k => k.parentId === t.id).length} 張
-                      </span>
-                    )}
-                    {parallelMap.get(t.id)?.isParallel && (
-                      <span
-                        title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
-                        className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                      >
-                        ⚡並行
-                      </span>
-                    )}
-                    {overdue && (
-                      <span
-                        title={`預計完成日: ${dueDate}`}
-                        className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                      >
-                        ⏰ 逾期
-                      </span>
-                    )}
-                    {hasOpenInquiry(t) && (
-                      <span
-                        title={`對外詢問狀態: ${t.inquiryState}`}
-                        className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
-                      >
-                        ❓ 待回覆
-                      </span>
+                    {t.isBox ? (() => {
+                      const boxKids = tasks.filter(k => k.parentId === t.id)
+                      const boxProblemCount = (t.problem ? 1 : 0) + boxKids.filter(k => k.type === 'BUG' || k.problem).length
+                      const boxBlockedCount = (blockedByMap.get(t.id)?.length ? 1 : 0) + boxKids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length
+                      const boxOverdueCount = (overdue ? 1 : 0) + boxKids.filter(k => isTaskOverdue(k.dueDate, k.progress)).length
+                      return (
+                        <>
+                          {boxProblemCount > 0 && <ProblemBadge problem={t.problem || '遭遇問題'} />}
+                          {boxBlockedCount > 0 && (
+                            <span
+                              title="盒內含受阻卡住之任務"
+                              className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                            >
+                              ⛔ 卡住 {boxBlockedCount}
+                            </span>
+                          )}
+                          {boxKids.length > 0 && (
+                            <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                              內含 {boxKids.length} 張
+                            </span>
+                          )}
+                          {boxOverdueCount > 0 && (
+                            <span
+                              title="盒內含已逾期之任務"
+                              className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                            >
+                              ⏰ 逾期 {boxOverdueCount}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })() : (
+                      <>
+                        {t.type !== 'BUG' && <ProblemBadge problem={t.problem} />}
+                        {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
+                          <span
+                            title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
+                            className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                          >
+                            ⛔ 卡住
+                          </span>
+                        )}
+                        {parallelMap.get(t.id)?.isParallel && (
+                          <span
+                            title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
+                            className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                          >
+                            ⚡並行
+                          </span>
+                        )}
+                        {overdue && (
+                          <span
+                            title={`預計完成日: ${dueDate}`}
+                            className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                          >
+                            ⏰ 逾期
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </td>

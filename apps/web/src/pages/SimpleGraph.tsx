@@ -127,6 +127,9 @@ export type SimpleGraphNodeData = {
   taskType?: string
   problem?: string | null
   problemCount?: number
+  blockedCount?: number
+  overdueCount?: number
+  inquiryCount?: number
   blockedBy?: string[]
   isParallel?: boolean
   parallelPeers?: string[]
@@ -351,12 +354,12 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                     </span>
                   )}
                   <ProblemBadge problem={data.problem} count={data.problemCount} isBox={true} />
-                  {data.blockedBy && data.blockedBy.length > 0 && (
+                  {((typeof data.blockedCount === 'number' && data.blockedCount > 0) || (data.blockedBy && data.blockedBy.length > 0)) && (
                     <span
-                      title={`卡住：要等 ${data.blockedBy.join('、')}`}
+                      title={`卡住：${data.blockedBy?.join('、') || '盒內任務受阻'}`}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
-                      <span aria-hidden>⛔</span>卡住
+                      <span aria-hidden>⛔</span>卡住 {typeof data.blockedCount === 'number' && data.blockedCount > 0 ? data.blockedCount : ''}
                     </span>
                   )}
                   {data.isParallel && (
@@ -367,20 +370,20 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                       ⚡並行
                     </span>
                   )}
-                  {data.isOverdue && (
+                  {((typeof data.overdueCount === 'number' && data.overdueCount > 0) || data.isOverdue) && (
                     <span
                       title={`已逾期（應到日期：${data.dueDate || ''}）`}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
                     >
-                      ⏰ 逾期
+                      ⏰ 逾期 {typeof data.overdueCount === 'number' && data.overdueCount > 0 ? data.overdueCount : ''}
                     </span>
                   )}
-                  {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                  {((typeof data.inquiryCount === 'number' && data.inquiryCount > 0) || data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
                     <span
                       title="對外詢問待回覆"
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                     >
-                      ❓ 待回覆
+                      ❓ 待回覆 {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 ? data.inquiryCount : ''}
                     </span>
                   )}
                 </div>
@@ -1122,6 +1125,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             taskType: t.type,
             problem: t.problem,
             problemCount: (t.problem ? 1 : 0) + kids.filter(k => k.type === 'BUG' || k.problem).length,
+            blockedCount: (blockedByMap.get(t.id)?.length ? 1 : 0) + kids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length,
+            overdueCount: (tOverdue ? 1 : 0) + kids.filter(k => !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && statusCatMap.get(k.statusKey) !== 'DONE' && k.statusKey !== 'DONE')).length,
+            inquiryCount: ((t.inquiryState === 'AWAITING' || t.inquiryState === 'PARTIAL' || t.inquiryState === 'OVERDUE') ? 1 : 0) + kids.filter(k => k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL' || k.inquiryState === 'OVERDUE').length,
             childCount: kids.length,
             isOverdue: tOverdue,
             dueDate: t.dueDate,
