@@ -833,32 +833,64 @@ export function TaskDrawer({
                 )}
               </div>
 
-              {/* ── 上下階層 (點擊可切換打開該子任務詳情，排除問題單) ── */}
-              {data.children.filter(c => c.type !== 'BUG').length > 0 && (
+              {/* ── 上下階層（所屬父任務 / 子任務清單，排除問題單） ── */}
+              {(allTasks.find(t => t.id === data.parentId) || data.children.filter(c => c.type !== 'BUG').length > 0) && (
                 <div>
                   <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    {T.task.children.title}{' '}
-                    <span className="font-normal text-slate-400 dark:text-slate-400">
-                      {T.task.children.titleHint}
-                    </span>
+                    {T.task.children.title}
                   </h3>
-                  <div className="space-y-1">
-                    {data.children.filter(c => c.type !== 'BUG').map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => onSelectTask?.(c.id)}
-                        className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
-                        title="點擊打開該子任務事件詳情頁"
-                      >
-                        <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
-                        <span className="flex-1 truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>
-                        {c.problem && <ProblemBadge problem={c.problem} />}
-                        <span className="text-xs text-slate-400 dark:text-slate-400">{c.progress}%</span>
-                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                      </button>
-                    ))}
-                  </div>
+
+                  {/* 所屬父任務 */}
+                  {allTasks.find(t => t.id === data.parentId) && (() => {
+                    const p = allTasks.find(t => t.id === data.parentId)!
+                    return (
+                      <div className="mb-3">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                          <span>所屬父任務（收納於此任務）</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onSelectTask?.(p.id)}
+                          className="flex w-full items-center gap-2 rounded-md bg-blue-50/70 border border-blue-200/80 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-100 dark:bg-slate-800 dark:border-blue-900/50 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
+                          title="點擊前往所屬父任務"
+                        >
+                          <span className="shrink-0 text-xs">📦</span>
+                          <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">{p.ref}</span>
+                          <span className="flex-1 truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{p.title}</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-400">{p.progress}%</span>
+                          <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                        </button>
+                      </div>
+                    )
+                  })()}
+
+                  {/* 子任務清單 */}
+                  {data.children.filter(c => c.type !== 'BUG').length > 0 && (
+                    <div>
+                      {allTasks.find(t => t.id === data.parentId) && (
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
+                          子任務清單
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        {data.children.filter(c => c.type !== 'BUG').map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => onSelectTask?.(c.id)}
+                            className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
+                            title="點擊打開該子任務事件詳情頁"
+                          >
+                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
+                            <span className="flex-1 truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>
+                            {c.problem && <ProblemBadge problem={c.problem} />}
+                            <span className="text-xs text-slate-400 dark:text-slate-400">{c.progress}%</span>
+                            <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
