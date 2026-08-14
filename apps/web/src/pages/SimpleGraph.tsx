@@ -806,6 +806,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [onSelectTask])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<ConfirmDeleteEdgeState | null>(null)
+  const [confirmUnboxModal, setConfirmUnboxModal] = useState<{ boxId: string; refText: string; count: number } | null>(null)
   const [logs, setLogs] = useState<LogItem[]>([])
   const [showLogPanel, setShowLogPanel] = useState<boolean>(false)
   const [showHelpTooltip, setShowHelpTooltip] = useState<boolean>(false)
@@ -837,15 +838,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
 
-  const handleToggleMode = useCallback(
+  const executeToggleMode = useCallback(
     (nodeId: string) => {
       setToggledModes((prev) => {
         const currentNodes = nodesRef.current
         const targetNode = currentNodes.find((n) => n.id === nodeId)
-        const nodeData = targetNode?.data as SimpleGraphNodeData
-        if (nodeData?.taskType === 'BUG') {
-          return prev
-        }
         const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
         const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
         const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
@@ -872,6 +869,34 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       })
     },
     [addLog]
+  )
+
+  const handleToggleMode = useCallback(
+    (nodeId: string) => {
+      const currentNodes = nodesRef.current
+      const targetNode = currentNodes.find((n) => n.id === nodeId)
+      const nodeData = targetNode?.data as SimpleGraphNodeData
+      if (nodeData?.taskType === 'BUG') {
+        return
+      }
+      const currentMode = toggledModes[nodeId] ?? nodeData?.mode ?? 'card'
+      const refText = nodeData?.refText || '收納盒'
+
+      if (currentMode === 'box') {
+        const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
+        if (childKids.length > 0) {
+          setConfirmUnboxModal({
+            boxId: nodeId,
+            refText,
+            count: childKids.length,
+          })
+          return
+        }
+      }
+
+      executeToggleMode(nodeId)
+    },
+    [toggledModes, executeToggleMode]
   )
 
   /** 使用者拖過的節點位置。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
@@ -2251,6 +2276,42 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >
                 確定刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmUnboxModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
+              <span className="text-xl">⚠️</span>
+              <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
+                轉換為卡片提示
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              收納盒 <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{confirmUnboxModal.refText}</span> 轉回卡片後，內含的 <span className="font-bold text-red-600 dark:text-red-400">{confirmUnboxModal.count}</span> 張卡片將移出收納盒。是否確定轉換？
+            </p>
+            <div className="mt-5 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmUnboxModal(null)}
+                className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const bId = confirmUnboxModal.boxId
+                  setConfirmUnboxModal(null)
+                  executeToggleMode(bId)
+                }}
+                className="rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
+              >
+                確定轉換
               </button>
             </div>
           </div>
