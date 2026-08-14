@@ -518,7 +518,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
               {data.label || '無標題任務'}
             </div>
-            <NodeProgressBar progress={data.progress ?? 0} />
+            {data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress ?? 0} />}
           </div>
         </div>
       )}

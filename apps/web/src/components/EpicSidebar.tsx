@@ -942,7 +942,7 @@ function TreeNode({
               </div>
 
               {/* 完成打勾：進度 100% 才能打勾 */}
-              {(stat ? stat.progress >= 100 : task.progress >= 100) && (
+              {task.type !== 'BUG' && (stat ? stat.progress >= 100 : task.progress >= 100) && (
                 <span aria-hidden title={T.nav.sidebar.doneDot}
                       className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
               )}
@@ -959,7 +959,7 @@ function TreeNode({
             </div>
 
             {/* 第三行：進度條 */}
-            {stat && (
+            {task.type !== 'BUG' && stat && (
               <div className="flex items-center gap-2">
                 <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <span className={cx('block h-full transition-all duration-300',

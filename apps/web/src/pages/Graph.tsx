@@ -424,7 +424,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
             {data.title}
           </div>
 
-          <NodeProgressBar progress={data.progress} accentColor={accentColor} />
+          {data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress} accentColor={accentColor} />}
         </div>
       </div>
 
@@ -527,7 +527,7 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
           {data.title}
         </div>
 
-        <NodeProgressBar progress={data.progress} accentColor={accentColor} />
+        {data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress} accentColor={accentColor} />}
       </div>
 
       {data.isContainerMode && (

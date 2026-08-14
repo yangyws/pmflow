@@ -793,7 +793,7 @@ function DayCell({
               <div key={t.id} className="truncate flex items-center gap-1 text-slate-200">
                 <span className="shrink-0 font-mono text-[10px] font-bold text-blue-400">{t.ref || 'MRG'}</span>
                 <span className="truncate">{t.title}</span>
-                <span className="ml-auto shrink-0 text-[10px] text-slate-400">{t.progress}%</span>
+                {t.type !== 'BUG' && <span className="ml-auto shrink-0 text-[10px] text-slate-400">{t.progress}%</span>}
               </div>
             ))}
             {dayEvents.inquiries.map(i => (

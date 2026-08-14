@@ -609,18 +609,22 @@ export default function ListView({
                   {fmt(dueDate)}
                 </td>
                 <td className="px-3 py-2">
-                  <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
-                        title={r?.derived
-                          ? T.task.list.derivedProgressTip(r.totalCount, r.doneCount)
-                          : undefined}>
-                    <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
-                                     dark:bg-slate-700">
-                      <span className={cx('block h-full', progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
-                            style={{ width: `${progress}%` }} />
+                  {t.type === 'BUG' ? (
+                    <span className="text-xs text-slate-300 dark:text-slate-600 select-none">—</span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                          title={r?.derived
+                            ? T.task.list.derivedProgressTip(r.totalCount, r.doneCount)
+                            : undefined}>
+                      <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
+                                       dark:bg-slate-700">
+                        <span className={cx('block h-full', progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
+                              style={{ width: `${progress}%` }} />
+                      </span>
+                      <span className="tabular-nums">{progress}%</span>
+                      {r?.derived && <span className="text-slate-300 dark:text-slate-500" aria-hidden>∑</span>}
                     </span>
-                    <span className="tabular-nums">{progress}%</span>
-                    {r?.derived && <span className="text-slate-300 dark:text-slate-500" aria-hidden>∑</span>}
-                  </span>
+                  )}
                 </td>
               </tr>
 

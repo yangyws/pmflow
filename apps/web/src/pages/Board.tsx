@@ -371,7 +371,7 @@ function Card({
       <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-400">
         {task.dueDate && <span>📅 {task.dueDate.slice(5, 10).replace('-', '/')}</span>}
         {task.assigneeName && <span>👤 {task.assigneeName}</span>}
-        {task.progress > 0 && (
+        {task.type !== 'BUG' && task.progress > 0 && (
           <span className="ml-auto flex items-center gap-1">
             <span className="h-1 w-10 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
               <span className={cx("block h-full", task.progress >= 100 ? "bg-emerald-500" : "bg-red-500")} style={{ width: `${task.progress}%` }} />

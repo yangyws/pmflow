@@ -491,15 +491,19 @@ function TaskTable({ groups, statusOf, onOpenTask, onEditTask, focusedTaskId, is
                     {t.dueDate ? t.dueDate.slice(0, 10) : T.member.noDue}
                   </td>
                   <td className="px-3 py-2">
-                    <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                      <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
-                                       dark:bg-slate-700">
-                        <span className={cx('block h-full',
-                          t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
-                              style={{ width: `${t.progress}%` }} />
+                    {t.type === 'BUG' ? (
+                      <span className="text-xs text-slate-300 dark:text-slate-600 select-none">—</span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
+                                         dark:bg-slate-700">
+                          <span className={cx('block h-full',
+                            t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
+                                style={{ width: `${t.progress}%` }} />
+                        </span>
+                        <span className="tabular-nums">{t.progress}%</span>
                       </span>
-                      <span className="tabular-nums">{t.progress}%</span>
-                    </span>
+                    )}
                   </td>
                 </tr>
               )

@@ -557,14 +557,16 @@ function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
       </div>
 
       {/* 進度 */}
-      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-        <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
-                         dark:bg-slate-700">
-          <span className={cx('block h-full', t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
-                style={{ width: `${t.progress}%` }} />
-        </span>
-        <span className="tabular-nums">{W.progressLabel(t.progress)}</span>
-      </div>
+      {t.type !== 'BUG' && (
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
+                           dark:bg-slate-700">
+            <span className={cx('block h-full', t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
+                  style={{ width: `${t.progress}%` }} />
+          </span>
+          <span className="tabular-nums">{W.progressLabel(t.progress)}</span>
+        </div>
+      )}
 
       {/* 對外詢問 */}
       <div><InquiryBadge state={t.inquiryState} /></div>
