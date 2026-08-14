@@ -837,14 +837,72 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   const isLoadedRef = useRef(false)
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
+  const edgesRef = useRef(edges)
+  edgesRef.current = edges
 
   const executeToggleMode = useCallback(
     (nodeId: string) => {
+      const currentNodes = nodesRef.current
+      const targetNode = currentNodes.find((n) => n.id === nodeId)
+      const currentMode = toggledModes[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
+      const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
+
+      // 若從收納盒轉回卡片，將盒內所有子卡片移出，並移除它們的所有相關關聯線
+      if (currentMode === 'box' && nextMode === 'card') {
+        const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
+        if (childKids.length > 0) {
+          const childIds = new Set(childKids.map((k) => k.id))
+
+          // 1. 找出所有與移出卡片相連的關聯線，呼叫 API 刪除並從前端即時移除
+          const currentEdges = edgesRef.current
+          const affectedEdges = currentEdges.filter(
+            (e) => childIds.has(String(e.source)) || childIds.has(String(e.target))
+          )
+          const affectedEdgeIds = new Set(affectedEdges.map((e) => e.id))
+
+          affectedEdges.forEach((e) => {
+            Api.deleteLink(e.id).catch((err) => console.error('Failed to delete link on unbox:', err))
+          })
+
+          if (affectedEdgeIds.size > 0) {
+            setEdges((eds) => eds.filter((e) => !affectedEdgeIds.has(e.id)))
+          }
+
+          // 2. 呼叫 API 將子卡片的 parentId 設為 null
+          childKids.forEach((k) => {
+            Api.moveTask(k.id, { parentId: null }).catch((err) =>
+              console.error('Failed to move task out of box:', err)
+            )
+          })
+
+          // 3. 計算移出後的畫布絕對座標，避免卡片位置異常
+          const boxX = targetNode?.position.x ?? 0
+          const boxY = targetNode?.position.y ?? 0
+          setNodes((prevNodes) =>
+            prevNodes.map((n) => {
+              if (childIds.has(n.id)) {
+                return {
+                  ...n,
+                  parentId: undefined,
+                  position: {
+                    x: boxX + n.position.x,
+                    y: boxY + n.position.y,
+                  },
+                }
+              }
+              return n
+            })
+          )
+
+          if (projectId) {
+            queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+          }
+        }
+      }
+
       setToggledModes((prev) => {
         const currentNodes = nodesRef.current
         const targetNode = currentNodes.find((n) => n.id === nodeId)
-        const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
-        const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
         const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
         addLog('toggle', `${refText} 模式切換為 [${nextMode === 'box' ? '收納盒' : '卡片'}]`)
 
@@ -868,7 +926,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         }
       })
     },
-    [addLog]
+    [addLog, projectId, queryClient, toggledModes]
   )
 
   const handleToggleMode = useCallback(

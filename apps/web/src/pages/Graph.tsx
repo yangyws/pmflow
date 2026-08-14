@@ -2342,13 +2342,18 @@ function GraphCanvas({
       return next
     })
     if (kids.length > 0) {
+      const childIds = new Set(kids.map(k => k.id))
+      const affectedEdges = (graph?.edges ?? []).filter(e => childIds.has(e.sourceId) || childIds.has(e.targetId))
+      if (affectedEdges.length > 0) {
+        Promise.all(affectedEdges.map(e => Api.deleteLink(e.id))).catch(console.error)
+      }
       Promise.all(kids.map(k => Api.patchTask(k.id, { parentId: null })))
         .then(() => invalidate())
         .catch(e => {
           setError(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : G.link.addFailed)
         })
     }
-  }, [shownNodes, invalidate])
+  }, [shownNodes, graph?.edges, invalidate])
 
   /**
    * 切換容器收納模式：
