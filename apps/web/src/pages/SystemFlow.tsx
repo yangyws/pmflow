@@ -352,55 +352,238 @@ const INITIAL_EDGES: Edge[] = [
   },
 ]
 
+export interface FlowPage {
+  id: string
+  title: string
+  nodes: Node[]
+  edges: Edge[]
+}
+
+function loadInitialPages(projectId: string): FlowPage[] {
+  const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
+  const storageKeyLegacy = `pmflow_system_flow_canvas_${projectId}`
+  try {
+    const savedPages = localStorage.getItem(storageKeyPages)
+    if (savedPages) {
+      const parsed = JSON.parse(savedPages)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((p, idx) => ({
+          id: p.id || `page-${idx + 1}`,
+          title: p.title || `流程頁面 ${idx + 1}`,
+          nodes: Array.isArray(p.nodes) ? orderParentNodesFirst(p.nodes) : [],
+          edges: Array.isArray(p.edges)
+            ? p.edges.map((e: Edge) => ({
+                ...e,
+                ...getEdgeStyleAndMarker(e.sourceHandle),
+              }))
+            : [],
+        }))
+      }
+    }
+
+    // 舊版單頁結構相容性轉移
+    const savedLegacy = localStorage.getItem(storageKeyLegacy)
+    if (savedLegacy) {
+      const parsedLegacy = JSON.parse(savedLegacy)
+      if (parsedLegacy?.nodes && Array.isArray(parsedLegacy.nodes)) {
+        return [
+          {
+            id: 'page-1',
+            title: '主要流程',
+            nodes: orderParentNodesFirst(parsedLegacy.nodes),
+            edges: Array.isArray(parsedLegacy.edges)
+              ? parsedLegacy.edges.map((e: Edge) => ({
+                  ...e,
+                  ...getEdgeStyleAndMarker(e.sourceHandle),
+                }))
+              : [],
+          },
+        ]
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return [
+    {
+      id: 'page-1',
+      title: '主要流程',
+      nodes: orderParentNodesFirst(INITIAL_NODES),
+      edges: INITIAL_EDGES,
+    },
+  ]
+}
+
 function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
-  const storageKey = `pmflow_system_flow_canvas_${projectId}`
+  const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
   const { fitView } = useReactFlow()
 
-  const [nodes, setNodes] = useState<Node[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed?.nodes && Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
-          return orderParentNodesFirst(parsed.nodes)
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return orderParentNodesFirst(INITIAL_NODES)
+  const [pages, setPages] = useState<FlowPage[]>(() => loadInitialPages(projectId))
+  const [activePageId, setActivePageId] = useState<string>(() => {
+    const initPages = loadInitialPages(projectId)
+    return initPages[0]?.id || 'page-1'
   })
 
-  const [edges, setEdges] = useState<Edge[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed?.edges && Array.isArray(parsed.edges)) {
-          return parsed.edges.map((e: Edge) => ({
-            ...e,
-            ...getEdgeStyleAndMarker(e.sourceHandle),
-          }))
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return INITIAL_EDGES
-  })
+  // 當前畫布的 nodes 與 edges
+  const activePage = useMemo(() => {
+    return pages.find((p) => p.id === activePageId) || pages[0]
+  }, [pages, activePageId])
+
+  const [nodes, setNodes] = useState<Node[]>(() => activePage?.nodes ?? [])
+  const [edges, setEdges] = useState<Edge[]>(() => activePage?.edges ?? [])
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string } | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string } | null>(null)
 
-  // 自動保存至獨立 localStorage
+  // 頁面重新命名與刪除狀態
+  const [editingPageId, setEditingPageId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState<string>('')
+  const [confirmDeletePage, setConfirmDeletePage] = useState<FlowPage | null>(null)
+
+  // 自動同步當前畫布至 pages 狀態與 localStorage
   useEffect(() => {
+    setPages((prevPages) => {
+      const updated = prevPages.map((p) => {
+        if (p.id === activePageId) {
+          return { ...p, nodes, edges }
+        }
+        return p
+      })
+      try {
+        localStorage.setItem(storageKeyPages, JSON.stringify(updated))
+      } catch {
+        // ignore
+      }
+      return updated
+    })
+  }, [nodes, edges, activePageId, storageKeyPages])
+
+  // 切換頁面
+  const handleSwitchPage = (targetId: string) => {
+    if (targetId === activePageId) return
+    const target = pages.find((p) => p.id === targetId)
+    if (!target) return
+    setActivePageId(targetId)
+    setSelectedNodeId(null)
+    setNodes(orderParentNodesFirst(target.nodes))
+    setEdges(
+      target.edges.map((e: Edge) => ({
+        ...e,
+        ...getEdgeStyleAndMarker(e.sourceHandle),
+      }))
+    )
+    setTimeout(() => {
+      fitView({ padding: 0.2, duration: 300 })
+    }, 50)
+  }
+
+  // 新增頁面
+  const handleAddPage = () => {
+    const newId = `page-${Date.now()}`
+    const newTitle = `流程頁面 ${pages.length + 1}`
+    const newPage: FlowPage = {
+      id: newId,
+      title: newTitle,
+      nodes: [],
+      edges: [],
+    }
+    const updated = [...pages, newPage]
+    setPages(updated)
+    setActivePageId(newId)
+    setSelectedNodeId(null)
+    setNodes([])
+    setEdges([])
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ nodes, edges }))
+      localStorage.setItem(storageKeyPages, JSON.stringify(updated))
     } catch {
       // ignore
     }
-  }, [nodes, edges, storageKey])
+  }
+
+  // 複製當前頁面
+  const handleDuplicatePage = (pageId: string) => {
+    const source = pages.find((p) => p.id === pageId)
+    if (!source) return
+    const sourceNodes = pageId === activePageId ? nodes : source.nodes
+    const sourceEdges = pageId === activePageId ? edges : source.edges
+
+    const newId = `page-${Date.now()}`
+    const newTitle = `${source.title} (副本)`
+    const newPage: FlowPage = {
+      id: newId,
+      title: newTitle,
+      nodes: JSON.parse(JSON.stringify(sourceNodes)),
+      edges: JSON.parse(JSON.stringify(sourceEdges)),
+    }
+    const updated = [...pages, newPage]
+    setPages(updated)
+    setActivePageId(newId)
+    setSelectedNodeId(null)
+    setNodes(newPage.nodes)
+    setEdges(newPage.edges)
+    try {
+      localStorage.setItem(storageKeyPages, JSON.stringify(updated))
+    } catch {
+      // ignore
+    }
+    setTimeout(() => {
+      fitView({ padding: 0.2, duration: 300 })
+    }, 50)
+  }
+
+  // 刪除頁面
+  const handleDeletePage = (pageId: string) => {
+    if (pages.length <= 1) return
+    const nextPages = pages.filter((p) => p.id !== pageId)
+    setConfirmDeletePage(null)
+    if (activePageId === pageId) {
+      const nextActive = nextPages[0]
+      setActivePageId(nextActive.id)
+      setSelectedNodeId(null)
+      setNodes(orderParentNodesFirst(nextActive.nodes))
+      setEdges(
+        nextActive.edges.map((e: Edge) => ({
+          ...e,
+          ...getEdgeStyleAndMarker(e.sourceHandle),
+        }))
+      )
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 })
+      }, 50)
+    }
+    setPages(nextPages)
+    try {
+      localStorage.setItem(storageKeyPages, JSON.stringify(nextPages))
+    } catch {
+      // ignore
+    }
+  }
+
+  // 開始重新命名
+  const handleStartRenamePage = (id: string, currentTitle: string) => {
+    setEditingPageId(id)
+    setEditingTitle(currentTitle)
+  }
+
+  // 完成重新命名
+  const handleFinishRenamePage = () => {
+    if (!editingPageId) return
+    const trimmed = editingTitle.trim()
+    if (trimmed) {
+      setPages((prev) => {
+        const updated = prev.map((p) => (p.id === editingPageId ? { ...p, title: trimmed } : p))
+        try {
+          localStorage.setItem(storageKeyPages, JSON.stringify(updated))
+        } catch {
+          // ignore
+        }
+        return updated
+      })
+    }
+    setEditingPageId(null)
+  }
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => applyNodeChanges(changes, nds))
@@ -624,7 +807,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             <span>🗺️</span> 系統流程圖
           </span>
           <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-            | 獨立系統架構繪圖
+            | 多頁面獨立繪圖
           </span>
         </div>
 
@@ -652,6 +835,107 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             🎯 視野對焦
           </button>
         </div>
+      </div>
+
+      {/* 多頁面切換標籤列 (Page Tabs) */}
+      <div className="h-10 border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/50 px-4 flex items-center gap-1.5 overflow-x-auto select-none z-10 shrink-0">
+        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
+          <span>📄</span> 流程頁面：
+        </span>
+
+        {pages.map((p) => {
+          const isActive = p.id === activePageId
+          const isEditing = editingPageId === p.id
+          const nodeCount = p.id === activePageId ? nodes.length : p.nodes.length
+
+          return (
+            <div
+              key={p.id}
+              onClick={() => {
+                if (!isActive && !isEditing) handleSwitchPage(p.id)
+              }}
+              onDoubleClick={() => handleStartRenamePage(p.id, p.title)}
+              className={cx(
+                'group relative flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition cursor-pointer border shrink-0',
+                isActive
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700/80 shadow-xs ring-1 ring-blue-500/20'
+                  : 'bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              )}
+            >
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={handleFinishRenamePage}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleFinishRenamePage()
+                    if (e.key === 'Escape') setEditingPageId(null)
+                  }}
+                  autoFocus
+                  className="w-24 bg-transparent outline-none border-b border-blue-500 text-xs font-bold text-slate-900 dark:text-slate-100 py-0.5"
+                />
+              ) : (
+                <>
+                  <span className="truncate max-w-[120px] font-semibold">{p.title}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    ({nodeCount} 個節點)
+                  </span>
+
+                  {/* 重新命名按鈕 */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStartRenamePage(p.id, p.title)
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
+                    title="點擊重新命名 (或連點兩下標籤)"
+                  >
+                    ✏️
+                  </button>
+
+                  {/* 複製頁面按鈕 */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDuplicatePage(p.id)
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
+                    title="複製此頁面"
+                  >
+                    📑
+                  </button>
+
+                  {/* 刪除按鈕 (大於1頁時可刪) */}
+                  {pages.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmDeletePage(p)
+                      }}
+                      className="opacity-0 group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 text-slate-400 p-0.5 rounded transition ml-0.5 cursor-pointer"
+                      title="刪除此流程頁面"
+                    >
+                      ×
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={handleAddPage}
+          className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 text-xs font-medium transition cursor-pointer shrink-0"
+          title="新增流程頁面"
+        >
+          <span>➕</span> 新增頁面
+        </button>
       </div>
 
       {/* 畫布主體 */}
@@ -795,6 +1079,36 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                   setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
                   setConfirmDeleteEdge(null)
                 }}
+                className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
+              >
+                確定刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 刪除流程頁面確認 Modal */}
+      {confirmDeletePage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
+              <span>🗑️</span> 刪除流程頁面
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
+              是否確定要刪除「<strong>{confirmDeletePage.title}</strong>」？此頁面內的全部節點與流程連線將一併移除。
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeletePage(null)}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeletePage(confirmDeletePage.id)}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
               >
                 確定刪除
