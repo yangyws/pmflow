@@ -451,8 +451,8 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               >
                 {data.typeName || '任務單'}
               </span>
-              <ProblemBadge problem={data.problem} />
-              {data.blockedBy && data.blockedBy.length > 0 && (
+              {data.taskType !== 'BUG' && <ProblemBadge problem={data.problem} />}
+              {!data.problem && data.blockedBy && data.blockedBy.length > 0 && (
                 <span
                   title={`卡住：要等 ${data.blockedBy.join('、')}`}
                   className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
