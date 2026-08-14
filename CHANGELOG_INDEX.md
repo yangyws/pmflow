@@ -26,7 +26,7 @@
 - **變更檔案**:
   - [`0019_task_problems.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0019_task_problems.sql): 新建 `task_problem_history` 表記錄歷次遭遇問題與解決方案。
   - [`0021_rename_task_type_to_tickets.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0021_rename_task_type_to_tickets.sql) & [`0023_keep_only_task_and_bug_types.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0023_keep_only_task_and_bug_types.sql): 將事件類型名稱統一定名為「任務單」與「問題單」，並將類型清單嚴格限制僅保留「任務單」與「問題單」。
-  - [`0022_convert_problem_tasks_to_bug.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0022_convert_problem_tasks_to_bug.sql): 將掛在其他任務單下且填有問題的子任務全面更新為「問題單」（BUG）。
+  - [`0022_convert_problem_tasks_to_bug.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0022_convert_problem_tasks_to_bug.sql) & [`0024_cleanup_non_bug_problem_text.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0024_cleanup_non_bug_problem_text.sql): 將掛在其他任務單下且填有問題的子任務全面更新為「問題單」（BUG），並清理一般任務單上殘留的舊版 problem 字串，確保全面由問題單機制統一管理。
   - [`auth.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/lib/auth.ts): 嚴格限制 `requireProjectManager` 僅限專案建立者、Owner 與 Manager（建立者以上），排除一般 Editor。
   - [`parameters.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/parameters.ts): 同步將 `canManage` 權限嚴格校準為建立者以上，保障系統參數安全性。
   - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 移除「事件類型」設定區塊，僅保留狀態與優先度設定。
