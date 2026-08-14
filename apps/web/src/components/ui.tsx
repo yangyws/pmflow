@@ -189,16 +189,34 @@ export function InquiryBadge({ state, detail }: { state: InquiryState; detail?: 
  * 標記上只放三個字，寫了什麼留給游標停著看 ——
  * 問題通常是一整句話，塞進卡片與節點只會把標題擠掉。
  */
-export function ProblemBadge({ problem }: { problem: string | null | undefined }) {
-  if (!problem) return null
+export function ProblemBadge({
+  problem,
+  count,
+  isBox,
+}: {
+  problem?: string | null | undefined
+  count?: number | null | undefined
+  isBox?: boolean
+}) {
+  const hasCount = typeof count === 'number' && count > 0
+  if (!problem && !hasCount) return null
+
+  const label = isBox && hasCount
+    ? `問(${count})`
+    : hasCount
+      ? `問(${count})`
+      : `${T.task.problem.badge}`
+
+  const tooltip = problem ? T.task.problem.tooltip(problem) : hasCount ? `收納盒內有 ${count} 項遭遇問題` : undefined
+
   return (
     <span
-      title={T.task.problem.tooltip(problem)}
+      title={tooltip}
       className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px]
                  font-medium text-fuchsia-700 ring-1 ring-inset ring-fuchsia-600/20
                  bg-fuchsia-50
                  dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:ring-fuchsia-400/30">
-      <span aria-hidden>⚑</span>{T.task.problem.badge}
+      <span aria-hidden>⚑</span>{label}
     </span>
   )
 }

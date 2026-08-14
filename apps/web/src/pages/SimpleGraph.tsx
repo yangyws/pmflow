@@ -126,6 +126,7 @@ export type SimpleGraphNodeData = {
   typeName?: string
   taskType?: string
   problem?: string | null
+  problemCount?: number
   blockedBy?: string[]
   isParallel?: boolean
   parallelPeers?: string[]
@@ -349,7 +350,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                       內含 {data.childCount} 張
                     </span>
                   )}
-                  <ProblemBadge problem={data.problem} />
+                  <ProblemBadge problem={data.problem} count={data.problemCount} isBox={true} />
                   {data.blockedBy && data.blockedBy.length > 0 && (
                     <span
                       title={`卡住：要等 ${data.blockedBy.join('、')}`}
@@ -1120,6 +1121,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             typeName: typeNameOf(t.type),
             taskType: t.type,
             problem: t.problem,
+            problemCount: (t.problem ? 1 : 0) + kids.filter(k => k.type === 'BUG' || k.problem).length,
             childCount: kids.length,
             isOverdue: tOverdue,
             dueDate: t.dueDate,

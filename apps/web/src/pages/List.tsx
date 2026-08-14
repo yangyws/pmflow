@@ -448,7 +448,14 @@ export default function ListView({
                 {/* 警示欄位 */}
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap items-center gap-1">
-                    <ProblemBadge problem={t.problem} />
+                    {t.isBox ? (() => {
+                      const boxProblemCount = (t.problem ? 1 : 0) + tasks.filter(k => k.parentId === t.id && (k.type === 'BUG' || k.problem)).length
+                      return boxProblemCount > 0 ? (
+                        <ProblemBadge problem={t.problem} count={boxProblemCount} isBox={true} />
+                      ) : null
+                    })() : (
+                      <ProblemBadge problem={t.problem} />
+                    )}
                     {blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
                       <span
                         title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
