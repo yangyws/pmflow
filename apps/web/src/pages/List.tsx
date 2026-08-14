@@ -281,6 +281,15 @@ export default function ListView({
 
     const isDone = (t?: Task) => {
       if (!t) return false
+      const kids = tasks.filter(k => k.parentId === t.id)
+      if (kids.length > 0) {
+        const allKidsDone = kids.every(k => {
+          if (k.progress >= 100) return true
+          const cat = statusCatMap.get(k.statusKey)
+          return cat === 'DONE' || k.statusKey === 'DONE'
+        })
+        if (!allKidsDone) return false
+      }
       if (t.progress >= 100) return true
       const cat = statusCatMap.get(t.statusKey)
       return cat === 'DONE' || t.statusKey === 'DONE'

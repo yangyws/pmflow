@@ -188,7 +188,15 @@ export default function GanttView({
       if (!tasks.length || !edges.length) return map
 
       const taskMap = new Map(tasks.map((t) => [t.id, t]))
-      const isDone = (t?: Task) => t ? (t.progress >= 100 || t.statusKey === 'DONE') : false
+      const isDone = (t?: Task) => {
+        if (!t) return false
+        const kids = tasks.filter(k => k.parentId === t.id)
+        if (kids.length > 0) {
+          const allKidsDone = kids.every(k => k.progress >= 100 || k.statusKey === 'DONE')
+          if (!allKidsDone) return false
+        }
+        return t.progress >= 100 || t.statusKey === 'DONE'
+      }
 
       for (const e of edges) {
         const sHandle = String((e as any).sourceHandle || '')

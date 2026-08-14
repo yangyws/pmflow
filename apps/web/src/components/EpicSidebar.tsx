@@ -233,6 +233,11 @@ export function EpicSidebar({
     const taskMap = new Map(tasks.map((t) => [t.id, t]))
     const isDone = (t?: Task) => {
       if (!t) return false
+      const kids = tasks.filter(k => k.parentId === t.id)
+      if (kids.length > 0) {
+        const allKidsDone = kids.every(k => k.progress >= 100 || k.statusKey === 'DONE')
+        if (!allKidsDone) return false
+      }
       return t.progress >= 100 || t.statusKey === 'DONE'
     }
 
