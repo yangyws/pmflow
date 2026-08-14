@@ -38,6 +38,10 @@ This file documents the long-term memory, project guidelines, user preferences, 
 2. **Delete Line Modal Text**:
    - The deletion modal prompt MUST state: `是否刪除 [上游卡片Ref] 與 [下游卡片Ref] 的關聯？` (e.g. `是否刪除 MRG-1 與 MRG-2 的關聯？`).
 
+### D. ReactFlow Essential CSS & Canvas Rules (畫布梯形散落與鎖死防範)
+1. **Mandatory CSS Import**: All ReactFlow views (`Graph`, `SimpleGraph`, `SystemFlow`, etc.) and `main.tsx` MUST import `@xyflow/react/dist/style.css`. Without it, nodes lose `position: absolute` (forming a diagonal staircase/ladder breakdown) and the canvas pane locks pointer events (cannot pan or drag).
+2. **Strict Parent-First Depth Ordering**: `orderParentNodesFirst` MUST sort nodes by ancestor depth before passing to ReactFlow, ensuring parent boxes are created before child cards.
+
 ---
 
 ## 3. Left Menu Sidebar Sorting Rules
