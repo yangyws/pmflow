@@ -25,11 +25,11 @@
 ### Latest Changes: Unified Pill Tag Type Badges & Clean Storage Box Icons
 - **變更檔案**:
   - [`ui.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx): 新增全站統一的 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx#L248-L278) 元件（10% 柔和底色 + 25% 同色邊框 + 實心微型圓點 + 原色文字）。
-  - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 移除一般卡片 `📄` 圖示（僅收納盒保留 `📦`），並於卡片編號右側整合統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 移除一般卡片 `📄` 圖示（僅收納盒保留 `📦`），移除前方舊式豎向色條，並於卡片編號右側整合統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
   - [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 移除一般卡片 `📄` 與 `◆` 圖示（僅收納盒保留 `📦`），並將事件種類標籤全面換裝為統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
   - [`Board.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Board.tsx): 移除 `◆` 圖示，將看板卡片事件類型標籤替換為統一 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
   - [`Week.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Week.tsx): 行事曆週檢視統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
-  - [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) & [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 節點按鈕由 `📄 卡片` 精簡為 `卡片`，節點標頭統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
+  - [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) & [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 節點按鈕由 `📄 卡片` 精簡為 `卡片`，一般節點與收納盒標頭全面統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
   - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx): 抽屜頂部標頭統一使用 [`TypeBadge`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx)。
 
 ### Previous Changes: Customizable Task Types Restoration & System Flow Creator Permissions
