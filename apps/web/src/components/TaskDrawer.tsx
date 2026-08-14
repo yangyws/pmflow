@@ -734,34 +734,32 @@ export function TaskDrawer({
                 )}
               </div>
 
-              {/* ── 遭遇問題與解決歷程（問題事件本身不顯示問題區） ── */}
-              {form.type !== 'BUG' && data.type !== 'BUG' && (
-                <ProblemSection
-                  taskId={taskId}
-                  projectId={data.projectId}
-                  problemValue={form.problem ?? ''}
-                  solutionValue={solutionText}
-                  linkedProblems={data.links
-                    .filter(l => {
-                      const target = allTasks.find(t => t.id === l.otherId)
-                      return target?.type === 'BUG' || target?.problem || l.otherTitle.includes('問題')
-                    })
-                    .map(l => ({
-                      id: l.otherId,
-                      ref: l.otherRef,
-                      title: l.otherTitle,
-                    }))}
-                  onChangeProblem={val => edit({ problem: val || null })}
-                  onChangeSolution={val => setSolutionText(val)}
-                  problemHistory={data.problemHistory}
-                  onResolveProblem={solution => resolveProblem.mutate(solution)}
-                  onClearProblem={() => edit({ problem: null })}
-                  onSelectTask={onSelectTask}
-                  isResolving={resolveProblem.isPending}
-                  onCreateProblemCard={(title, content) => createProblemCard.mutate({ title, content })}
-                  isCreatingCard={createProblemCard.isPending}
-                />
-              )}
+              {/* ── 遭遇問題與解決歷程 ── */}
+              <ProblemSection
+                taskId={taskId}
+                projectId={data.projectId}
+                problemValue={form.problem ?? ''}
+                solutionValue={solutionText}
+                isProblemCard={form.type === 'BUG' || data.type === 'BUG'}
+                linkedProblems={data.links.map(l => {
+                  const target = allTasks.find(t => t.id === l.otherId)
+                  return {
+                    id: l.otherId,
+                    ref: l.otherRef,
+                    title: l.otherTitle,
+                    typeName: target?.type === 'BUG' ? '問題單' : '任務單',
+                  }
+                })}
+                onChangeProblem={val => edit({ problem: val || null })}
+                onChangeSolution={val => setSolutionText(val)}
+                problemHistory={data.problemHistory}
+                onResolveProblem={solution => resolveProblem.mutate(solution)}
+                onClearProblem={() => edit({ problem: null })}
+                onSelectTask={onSelectTask}
+                isResolving={resolveProblem.isPending}
+                onCreateProblemCard={(title, content) => createProblemCard.mutate({ title, content })}
+                isCreatingCard={createProblemCard.isPending}
+              />
 
               {/* ── 對外詢問：核心功能 ──
                   canEdit 一律給 true。登錄回覆後端只要求專案成員，是「誰收到誰登錄」，
@@ -1132,6 +1130,7 @@ function ProblemSection({
   problemValue,
   solutionValue,
   linkedProblems,
+  isProblemCard,
   onChangeProblem,
   onChangeSolution,
   problemHistory,
@@ -1146,7 +1145,8 @@ function ProblemSection({
   projectId: string
   problemValue: string
   solutionValue: string
-  linkedProblems?: Array<{ id: string; ref: string; title: string }>
+  linkedProblems?: Array<{ id: string; ref: string; title: string; typeName?: string }>
+  isProblemCard?: boolean
   onChangeProblem: (v: string) => void
   onChangeSolution: (v: string) => void
   problemHistory?: ProblemHistoryItem[]
@@ -1175,9 +1175,9 @@ function ProblemSection({
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-base">⚠️</span>
+          <span className="text-base">{isProblemCard ? '🛠️' : '⚠️'}</span>
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-            {T.task.problem.label}
+            {isProblemCard ? '問題排解與解決歷程' : T.task.problem.label}
           </h3>
         </div>
         {problemValue && (
@@ -1191,11 +1191,11 @@ function ProblemSection({
         )}
       </div>
 
-      {/* 關聯之問題單清單 */}
+      {/* 關聯之卡片清單（問題單顯示關聯任務單，任務單顯示關聯問題單） */}
       {linkedProblems && linkedProblems.length > 0 && (
         <div className="mb-3 space-y-1.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-3">
           <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-            <span>⚠️</span> 關聯之問題單 ({linkedProblems.length} 張)：
+            <span>🔗</span> {isProblemCard ? '關聯之任務單 / 卡片' : '關聯之問題單'} ({linkedProblems.length} 張)：
           </p>
           <div className="space-y-1 mt-1.5">
             {linkedProblems.map(p => (
@@ -1208,8 +1208,8 @@ function ProblemSection({
                   <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 shrink-0">{p.ref}</span>
                   <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 shrink-0 font-medium">
-                  問題單
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${p.typeName === '問題單' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'}`}>
+                  {p.typeName || (isProblemCard ? '任務單' : '問題單')}
                 </span>
               </div>
             ))}
@@ -1217,45 +1217,51 @@ function ProblemSection({
         </div>
       )}
 
-      {/* 填寫新問題並開立問題單 */}
+      {/* 填寫新問題並開立問題單（僅在任務單顯示） */}
+      {!isProblemCard && (
+        <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5 mb-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              問題標題 <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder="請輸入問題標題（建立後將開立問題單並自動與此任務單關聯）…"
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              遭遇問題內容 / 描述
+            </label>
+            <textarea
+              value={newContent}
+              onChange={e => setNewContent(e.target.value)}
+              rows={2}
+              placeholder="描述遭遇問題的詳細狀況、影響範圍或排查線索…"
+              className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
+                         placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                         focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+            />
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button
+              variant="primary"
+              disabled={!newTitle.trim() || isCreatingCard}
+              onClick={handleCreate}
+              className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
+            >
+              <span>➕</span> 開立問題單並關聯
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 解決方案輸入與操作 */}
       <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            問題標題 <span className="text-rose-500">*</span>
-          </label>
-          <Input
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            placeholder="請輸入問題標題（建立後將開立問題單並自動與此任務單關聯）…"
-            className="w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            遭遇問題內容 / 描述
-          </label>
-          <textarea
-            value={newContent}
-            onChange={e => setNewContent(e.target.value)}
-            rows={2}
-            placeholder="描述遭遇問題的詳細狀況、影響範圍或排查線索…"
-            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
-                       placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
-                       focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
-          />
-        </div>
-
-        <div className="flex justify-end pt-1">
-          <Button
-            variant="primary"
-            disabled={!newTitle.trim() || isCreatingCard}
-            onClick={handleCreate}
-            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
-          >
-            <span>➕</span> 開立問題單並關聯
-          </Button>
-        </div>
 
         {/* 解決方案輸入 */}
         <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80">

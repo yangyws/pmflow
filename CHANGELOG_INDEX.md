@@ -30,7 +30,7 @@
   - [`parameters.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/parameters.ts): 同步將 `canManage` 權限嚴格校準為建立者以上，保障系統參數安全性。
   - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 移除「事件類型」設定區塊，僅保留狀態與優先度設定。
   - [`tasks.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/tasks.ts): 新增 `POST /tasks/:id/resolve-problem`，建立新事件時開始日與結束日自動預設為當天；嚴格限制刪除權限 `assertCanDeleteTask`。
-  - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx): 提供「事件內容」編輯區塊、新增「問題標題」欄位支援一鍵開立「問題單」並自動建立左右關聯線（問題單獨立不進入子任務上下階層）、移除關聯類型與間隔設定精簡關聯建立、折疊收納「📜 歷史已解決問題 (N 件)」，並將按鈕文字更新為「刪除事件」。
+  - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx): 提供「事件內容」編輯區塊、新增「問題標題」欄位支援一鍵開立「問題單」並自動建立左右關聯線（問題單獨立不進入子任務上下階層）、在問題單中保留關聯清單與解決歷程、移除關聯類型與間隔設定精簡關聯建立、折疊收納「📜 歷史已解決問題 (N 件)」，並將按鈕文字更新為「刪除事件」。
   - [`DeletedTasks.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/DeletedTasks.tsx): 新建已刪除事件（回收站）頁籤，支援一鍵還原與永久刪除。
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 完全獨立的系統流程圖（獨立繪圖節點、模組容器、四向連接點、拖曳收納與獨立儲存，不連動 Menu）。
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 移除高亮淡化機制，維持 100% 完整清晰度。
