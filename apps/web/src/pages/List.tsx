@@ -327,17 +327,17 @@ export default function ListView({
       {/* 視窗窄的時候寧可讓整張表左右捲，也不要把任務名稱擠成一個字一行 */}
       {/* 固定欄寬：任務名稱長的時候讓它自己截斷，不要把整張表撐寬到右邊欄位被推出畫面。
           視窗真的太窄時整張表左右捲 */}
-      <table className="w-full min-w-[58rem] table-fixed border-collapse overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200
+      <table className="w-full min-w-[76rem] table-fixed border-collapse overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200
                         dark:bg-slate-900 dark:ring-slate-700">
         <thead>
           <tr className="whitespace-nowrap bg-slate-50 text-left text-xs font-medium text-slate-500
                          dark:bg-slate-800 dark:text-slate-400">
-            <th className="px-3 py-2">{T.task.list.colTask}</th>
-            <th className="w-40 px-3 py-2">{T.task.list.colAssignee}</th>
+            <th className="min-w-[420px] px-3 py-2">{T.task.list.colTask}</th>
+            <th className="w-36 px-3 py-2">{T.task.list.colAssignee}</th>
             <th className="w-28 px-3 py-2">{T.task.list.colStatus}</th>
             <th className="w-28 px-3 py-2">{T.task.list.colInquiry}</th>
-            <th className="w-20 px-3 py-2">{T.task.list.colStart}</th>
-            <th className="w-20 px-3 py-2">{T.task.list.colDue}</th>
+            <th className="w-24 px-3 py-2">{T.task.list.colStart}</th>
+            <th className="w-24 px-3 py-2">{T.task.list.colDue}</th>
             <th className="w-24 px-3 py-2">{T.task.list.colProgress}</th>
           </tr>
         </thead>
@@ -373,7 +373,7 @@ export default function ListView({
                     hasUnread && 'pmflow-flash'
                   )}>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-1" style={{ paddingLeft: t.depth * 16 }}>
+                  <div className="flex items-center gap-1.5" style={{ paddingLeft: t.depth * 16 }}>
                     {/* 折疊 / 展開 箭頭按鈕 */}
                     {t.hasKids ? (
                       <button
@@ -409,9 +409,11 @@ export default function ListView({
                     <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-bold text-slate-500
                                      dark:text-slate-400">{t.ref}</span>
                     {/* 任務名稱 */}
-                    <span className={cx('min-w-0 truncate', t.type === 'EPIC'
-                      ? 'font-bold text-slate-900 dark:text-slate-100'
-                      : 'text-slate-800 dark:text-slate-200')}>
+                    <span
+                      title={t.title}
+                      className={cx('min-w-[160px] max-w-[520px] truncate', t.type === 'EPIC'
+                        ? 'font-bold text-slate-900 dark:text-slate-100'
+                        : 'text-slate-800 dark:text-slate-200')}>
                       {t.title}
                     </span>
                     {/* 緊跟在標題後面，不另外開一欄：有問題的任務是少數，

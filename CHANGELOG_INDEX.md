@@ -35,6 +35,7 @@
   - [`DeletedTasks.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/DeletedTasks.tsx): 新建已刪除事件（回收站）頁籤，支援一鍵還原與永久刪除。
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 完全獨立的系統流程圖（獨立繪圖節點、模組容器、四向連接點、拖曳收納與獨立儲存，不連動 Menu）。
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 移除高亮淡化機制維持 100% 清晰度、限制問題單（BUG）禁止轉換為收納盒（隱藏切換按鈕並阻斷模式切換）；並於 [`index.css`](file:///D:/NewProject/pmflow-git/apps/web/src/index.css) 設定畫布可移動時呈現四向箭頭游標（`cursor: move`）。
+  - [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 擴增表格最小寬度至 `76rem` 並將任務標題欄位最小寬度調升至 `420px`（標題寬度最寬達 `520px`），解決長標題截斷問題。
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頁籤齒輪選單加入 `▲`/`▼` 直覺排序按鈕與拖曳強化，移除逾期標籤。
 
 ### Commit: `b7e2c2f` - Fix: e2e test script and seed parameter auto-population
