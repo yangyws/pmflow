@@ -261,6 +261,11 @@ export default function GanttView({
       const isParallel = parallelSet.has(t.id)
       const isOverdue = Boolean(t.dueDate && t.dueDate < todayYmd() && t.progress < 100 && t.statusKey !== 'DONE')
 
+      const boxKids = isBox ? tasks.filter(k => k.parentId === t.id) : []
+      const boxProblemCount = isBox ? ((t.problem ? 1 : 0) + boxKids.filter(k => k.type === 'BUG' || k.problem).length) : 0
+      const boxBlockedCount = isBox ? ((blockedBy.length ? 1 : 0) + boxKids.filter(k => (blockedByMap.get(k.id)?.length ?? 0) > 0).length) : 0
+      const boxOverdueCount = isBox ? ((isOverdue ? 1 : 0) + boxKids.filter(k => Boolean(k.dueDate && k.dueDate < todayYmd() && k.progress < 100 && k.statusKey !== 'DONE')).length) : 0
+
       return {
         id: t.id,
         text: `${t.ref} ${t.title}`,
@@ -277,6 +282,10 @@ export default function GanttView({
         blockedBy,
         isParallel,
         isOverdue,
+        boxKidsCount: boxKids.length,
+        boxProblemCount,
+        boxBlockedCount,
+        boxOverdueCount,
         noDates,
         open: true,
       }
@@ -420,23 +429,35 @@ export default function GanttView({
 
 const renderAlertCell = (t: any) => {
   const badges: string[] = []
-  if (t.taskType !== 'BUG' && t.problem) {
-    badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問 1</span>`)
-  }
-  if (t.blockedBy && t.blockedBy.length > 0) {
-    badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔卡住</span>`)
-  }
-  if (t.isParallel) {
-    badges.push(`<span title="並行" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
-  }
-  if (t.isOverdue) {
-    badges.push(`<span title="逾期" style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰逾期</span>`)
-  }
-  if (t.inquiry === 'AWAITING' || t.inquiry === 'PARTIAL' || t.inquiry === 'OVERDUE') {
-    badges.push(`<span title="待回覆" style="background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd;padding:1px 4px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">❓待回覆</span>`)
+  if (t.isBox) {
+    if (t.boxKidsCount > 0) {
+      badges.push(`<span style="background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">內含 ${t.boxKidsCount} 張</span>`)
+    }
+    if (t.boxProblemCount > 0) {
+      badges.push(`<span title="盒內含問題單或遭遇問題" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問 ${t.boxProblemCount}</span>`)
+    }
+    if (t.boxBlockedCount > 0) {
+      badges.push(`<span title="盒內含受阻卡住之任務" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住 ${t.boxBlockedCount}</span>`)
+    }
+    if (t.boxOverdueCount > 0) {
+      badges.push(`<span title="盒內含已逾期之任務" style="background:#ffe4e6;color:#be123c;border:1px solid #fecdd3;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰ 逾期 ${t.boxOverdueCount}</span>`)
+    }
+  } else {
+    if (t.taskType !== 'BUG' && t.problem) {
+      badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問 1</span>`)
+    }
+    if (!t.problem && t.blockedBy && t.blockedBy.length > 0) {
+      badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住</span>`)
+    }
+    if (t.isParallel) {
+      badges.push(`<span title="並行" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⚡並行</span>`)
+    }
+    if (t.isOverdue) {
+      badges.push(`<span title="預計完成日逾期" style="background:#ffe4e6;color:#be123c;border:1px solid #fecdd3;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⏰ 逾期</span>`)
+    }
   }
   if (!badges.length) return ''
-  return `<div style="display:flex;align-items:center;justify-content:flex-start;gap:3px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
+  return `<div style="display:flex;align-items:center;justify-content:flex-start;gap:4px;white-space:nowrap;overflow:hidden;">${badges.join('')}</div>`
 }
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10)
