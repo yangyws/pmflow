@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor,
   useSensor, useSensors, closestCorners,
@@ -185,6 +185,45 @@ export default function Board({
     })
   }
 
+  const boardContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = boardContainerRef.current
+    if (!el) return
+
+    const handleWheel = (e: WheelEvent) => {
+      // 若為橫向滾輪操作 (deltaX) 則保留瀏覽器原生行為
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+
+      // 檢查滑鼠所在的內部元素是否可繼續進行垂直捲動
+      let target = e.target as HTMLElement | null
+      let canScrollVertically = false
+
+      while (target && target !== el) {
+        const isScrollable = target.scrollHeight > target.clientHeight
+        const overflowY = window.getComputedStyle(target).overflowY
+        if (isScrollable && (overflowY === 'auto' || overflowY === 'scroll')) {
+          const atTop = target.scrollTop <= 0 && e.deltaY < 0
+          const atBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 1 && e.deltaY > 0
+          if (!atTop && !atBottom) {
+            canScrollVertically = true
+            break
+          }
+        }
+        target = target.parentElement
+      }
+
+      // 若內部元素無法繼續垂直滾動，則將滾輪轉為橫向捲動看板
+      if (!canScrollVertically) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY
+      }
+    }
+
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [])
+
   return (
     <div className="flex h-full flex-col">
       {error && (
@@ -195,7 +234,7 @@ export default function Board({
       )}
       <DndContext sensors={sensors} collisionDetection={closestCorners}
                   onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex flex-1 gap-3 overflow-x-auto p-4">
+        <div ref={boardContainerRef} className="flex flex-1 gap-3 overflow-x-auto p-4">
           {columns.map(col => (
             <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
                     topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap} />
