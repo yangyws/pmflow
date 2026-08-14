@@ -16,7 +16,7 @@ export const calendar = {
   monthLabel: (year: number, month1to12: number) => `${year} 年 ${month1to12} 月`,
 
   /** 工具列上的三個開關，數字接在後面 */
-  filterTasks: '任務',
+  filterTasks: '事件',
   filterInquiries: '期望回覆日',
   filterLeaves: '請假',
   dragHint: '任務與期望回覆日拖到哪一天，就從那天開始（長度不變）；請假要改期請點開來改',

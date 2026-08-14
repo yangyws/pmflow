@@ -325,7 +325,7 @@ function Card({
               className="h-2 w-0.5 rounded-full"
               style={{ background: DEFAULT_TYPE_COLORS[task.type] || '#94a3b8' }}
             />
-            {task.type === 'EPIC' ? '大項目' : task.type === 'TASK' ? '事件' : task.type === 'BUG' ? '問題' : task.type === 'MILESTONE' ? '里程碑' : task.type}
+            {task.type === 'EPIC' ? '大項目' : task.type === 'TASK' ? '任務單' : task.type === 'BUG' ? '問題單' : task.type === 'MILESTONE' ? '里程碑' : task.type}
           </span>
         )}
         {task.type === 'MILESTONE' && <span className="text-[11px]">◆</span>}

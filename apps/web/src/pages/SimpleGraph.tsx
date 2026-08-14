@@ -341,7 +341,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                       borderColor: `${data.typeColor || '#3178c6'}40`,
                     }}
                   >
-                    {data.typeName || '事件'}
+                    {data.typeName || '任務單'}
                   </span>
                   {typeof data.childCount === 'number' && data.childCount > 0 && (
                     <span className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 font-medium pointer-events-none select-none">
@@ -442,7 +442,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   borderColor: `${data.typeColor || '#3178c6'}40`,
                 }}
               >
-                {data.typeName || '事件'}
+                {data.typeName || '任務單'}
               </span>
               <ProblemBadge problem={data.problem} />
               {data.blockedBy && data.blockedBy.length > 0 && (
@@ -530,12 +530,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
   }, [project])
 
   const typeNameOf = useCallback((typeKey?: string) => {
-    if (!typeKey) return '事件'
+    if (!typeKey) return '任務單'
     const custom = project?.types?.find((p) => p.key === typeKey)?.name
     const DEFAULT_MAP: Record<string, string> = {
       EPIC: '大項目',
-      TASK: '事件',
-      BUG: '問題',
+      TASK: '任務單',
+      BUG: '問題單',
       MILESTONE: '里程碑',
     }
     return custom || DEFAULT_MAP[typeKey] || typeKey
@@ -563,7 +563,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       const tId = String(e.target)
       const sTask = tasks.find((t) => t.id === sId)
       if (!sTask) return
-      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : '事件')
+      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : (sTask.type === 'BUG' ? '問題單' : '任務單'))
       const list = targetMap.get(tId) || []
       list.push({ id: sTask.id, ref: sRef })
       targetMap.set(tId, list)

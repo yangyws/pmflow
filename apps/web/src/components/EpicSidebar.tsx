@@ -198,8 +198,8 @@ export function EpicSidebar({
 
   const typeList = useMemo<ProjectParam[]>(() => types.length ? types : [
     { id: 'def-epic', key: 'EPIC', name: '大項目', color: '#d97706', kind: 'type', rank: 1, inUse: 0 },
-    { id: 'def-task', key: 'TASK', name: '任務', color: '#3178c6', kind: 'type', rank: 2, inUse: 0 },
-    { id: 'def-bug', key: 'BUG', name: '問題', color: '#dc2626', kind: 'type', rank: 3, inUse: 0 },
+    { id: 'def-task', key: 'TASK', name: '任務單', color: '#3178c6', kind: 'type', rank: 2, inUse: 0 },
+    { id: 'def-bug', key: 'BUG', name: '問題單', color: '#dc2626', kind: 'type', rank: 3, inUse: 0 },
     { id: 'def-ms', key: 'MILESTONE', name: '里程碑', color: '#8b5cf6', kind: 'type', rank: 4, inUse: 0 }
   ], [types])
 
