@@ -715,16 +715,16 @@ function ProjectWorkspace({
               )}
               {view === 'graph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <GraphView projectId={projectId} tasks={visible}
+                  <GraphView projectId={projectId} tasks={tasks}
                              statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={handleTaskEdit}
-                             focusedTaskId={focusedTaskId} />
+                             focusedTaskId={focusedTaskId ?? epicId} />
                 </Suspense>
               )}
               {view === 'simpleGraph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <SimpleGraphView
                     projectId={projectId}
-                    tasks={visible}
+                    tasks={tasks}
                     onOpenTask={handleTaskEdit}
                     focusedTaskId={focusedTaskId ?? epicId}
                     onSelectTask={(id) => setFocusedTaskId(id)}
