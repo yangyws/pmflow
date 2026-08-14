@@ -5,6 +5,7 @@ import { AuthProvider } from './lib/auth'
 import { ThemeProvider, applyStoredTheme } from './lib/theme'
 import App from './App'
 import './index.css'
+import '@xyflow/react/dist/style.css'
 
 // 在 React 掛載之前先套用，不然第一格畫面會閃一下白的
 applyStoredTheme()

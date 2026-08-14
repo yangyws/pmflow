@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import '@xyflow/react/dist/style.css'
 import {
   ReactFlow,
   Background,
