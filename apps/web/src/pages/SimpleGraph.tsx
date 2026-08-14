@@ -1137,14 +1137,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         const childNodesList: Node[] = kids.map((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 85 + cRow * 110 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 110 + cRow * 115 }
           const rawPos = draggedMap[k.id]
           const isValidChildPos =
             rawPos &&
             typeof rawPos.x === 'number' &&
             typeof rawPos.y === 'number' &&
             rawPos.x >= 10 &&
-            rawPos.y >= 70
+            rawPos.y >= 90
           const kPos = isValidChildPos ? rawPos : defaultSlotPos
 
           const kDefaultBox = parentIdSet.has(k.id)
@@ -1229,7 +1229,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         kids.forEach((k, idx) => {
           const cCol = Math.floor(idx / 5)
           const cRow = idx % 5
-          const defaultSlotPos = { x: 24 + cCol * 280, y: 85 + cRow * 110 }
+          const defaultSlotPos = { x: 24 + cCol * 280, y: 110 + cRow * 115 }
           const kDefaultBox = parentIdSet.has(k.id)
           const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
 
@@ -1242,7 +1242,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               typeof rawPos.y === 'number' &&
               rawPos.x >= 10 &&
               rawPos.x <= dims.width - 60 &&
-              rawPos.y >= 70 &&
+              rawPos.y >= 90 &&
               rawPos.y <= dims.height - 30
             const kPos = isValidChildPos ? rawPos : defaultSlotPos
             const kStatusCat = statusCatMap.get(k.statusKey)
@@ -1278,7 +1278,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           }
         })
       } else {
-        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 85 })
+        const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 110 })
         const tStatusCat = statusCatMap.get(t.statusKey)
         const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
         const tParallelInfo = parallelMap.get(t.id)
@@ -1834,17 +1834,17 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           // 移入收納盒：進入巢狀結構
           const targetKids = currentNodes.filter((cn) => cn.parentId === targetBox!.id && cn.id !== node.id)
           const occupiedSlots = new Set(
-            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 85) / 110)}`)
+            targetKids.map((k) => `${Math.round((k.position.x - 24) / (isBoxNode ? 360 : 280))},${Math.round((k.position.y - 110) / 115)}`)
           )
 
-          let targetSlotPos = { x: 24, y: 70 }
+          let targetSlotPos = { x: 24, y: 110 }
           if (isBoxNode) {
             let maxRightX = 0
             targetKids.forEach((k) => {
               const rightX = (k.position?.x ?? 24) + Number(k.width ?? (k as any).measured?.width ?? 256)
               if (rightX > maxRightX) maxRightX = rightX
             })
-            targetSlotPos = { x: Math.max(312, maxRightX + 24), y: 70 }
+            targetSlotPos = { x: Math.max(312, maxRightX + 24), y: 110 }
           } else {
             let slotIdx = 0
             let tCol = 0
@@ -1855,7 +1855,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               if (!occupiedSlots.has(`${tCol},${tRow}`)) break
               slotIdx++
             }
-            targetSlotPos = { x: 24 + tCol * 280, y: 85 + tRow * 110 }
+            targetSlotPos = { x: 24 + tCol * 280, y: 110 + tRow * 115 }
           }
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
           const realAbsX = Math.round(targetBoxAbsPos.x + targetSlotPos.x)
