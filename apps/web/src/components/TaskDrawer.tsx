@@ -1217,15 +1217,6 @@ function ProblemSection({
             {T.task.problem.label}
           </h3>
         </div>
-        {problemValue && (
-          <Button
-            variant="ghost"
-            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-            onClick={onClearProblem}
-          >
-            {T.task.problem.clear}
-          </Button>
-        )}
       </div>
 
       {/* 現有收納中的問題卡片清單 */}
@@ -1291,40 +1282,6 @@ function ProblemSection({
             className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
           >
             <span>📦</span> 開立問題卡片並收納
-          </Button>
-        </div>
-      </div>
-
-      {/* 解決方案輸入與操作 */}
-      <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5">
-
-        {/* 解決方案輸入 */}
-        <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            解決內容 / 因應措施
-          </label>
-          <textarea
-            value={solutionValue}
-            onChange={e => onChangeSolution(e.target.value)}
-            rows={2}
-            placeholder="填寫問題的解決方式或排解說明（填寫後點擊下方「已解決」按鈕）…"
-            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
-                       placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
-                       focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
-          />
-        </div>
-
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            點擊「已解決」將問題收納至歷史，警示徽章會自動解除。
-          </p>
-          <Button
-            variant="default"
-            disabled={!hasProblem || isResolving}
-            onClick={() => onResolveProblem(solutionValue)}
-            className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs disabled:opacity-40"
-          >
-            <span>✅</span> 已解決
           </Button>
         </div>
       </div>
