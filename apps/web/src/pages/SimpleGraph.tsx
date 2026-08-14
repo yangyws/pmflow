@@ -427,6 +427,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
           />
           <div className="p-2.5 flex flex-col justify-start flex-1 gap-1 min-w-0">
+            {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 */}
             <div className="flex items-center gap-1.5 w-max min-w-full whitespace-nowrap overflow-visible">
               {data.taskType !== 'BUG' && (
                 <button
@@ -451,40 +452,52 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
               >
                 {data.typeName || '任務單'}
               </span>
-              {data.taskType !== 'BUG' && <ProblemBadge problem={data.problem} />}
-              {!data.problem && data.blockedBy && data.blockedBy.length > 0 && (
-                <span
-                  title={`卡住：要等 ${data.blockedBy.join('、')}`}
-                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
-                >
-                  <span aria-hidden>⛔</span>卡住
-                </span>
-              )}
-              {data.isParallel && (
-                <span
-                  title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
-                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
-                >
-                  ⚡並行
-                </span>
-              )}
-              {data.isOverdue && (
-                <span
-                  title={`已逾期（應到日期：${data.dueDate || ''}）`}
-                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
-                >
-                  ⏰ 逾期
-                </span>
-              )}
-              {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
-                <span
-                  title="對外詢問待回覆"
-                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
-                >
-                  ❓ 待回覆
-                </span>
-              )}
             </div>
+
+            {/* 第二行：警示徽章 */}
+            {((data.taskType !== 'BUG' && data.problem) ||
+              (!data.problem && data.blockedBy && data.blockedBy.length > 0) ||
+              data.isParallel ||
+              data.isOverdue ||
+              data.inquiryState === 'AWAITING' ||
+              data.inquiryState === 'PARTIAL' ||
+              data.inquiryState === 'OVERDUE') && (
+              <div className="flex flex-wrap items-center gap-1 min-w-0">
+                {data.taskType !== 'BUG' && <ProblemBadge problem={data.problem} />}
+                {!data.problem && data.blockedBy && data.blockedBy.length > 0 && (
+                  <span
+                    title={`卡住：要等 ${data.blockedBy.join('、')}`}
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
+                  >
+                    <span aria-hidden>⛔</span>卡住
+                  </span>
+                )}
+                {data.isParallel && (
+                  <span
+                    title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
+                  >
+                    ⚡並行
+                  </span>
+                )}
+                {data.isOverdue && (
+                  <span
+                    title={`已逾期（應到日期：${data.dueDate || ''}）`}
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
+                  >
+                    ⏰ 逾期
+                  </span>
+                )}
+                {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                  <span
+                    title="對外詢問待回覆"
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
+                  >
+                    ❓ 待回覆
+                  </span>
+                )}
+              </div>
+            )}
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
               {data.label || '無標題任務'}
             </div>

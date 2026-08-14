@@ -27,7 +27,7 @@ export const nav = {
     /** 這一週有哪些任務在跑、各卡在哪個狀態 */
     week: '週檢視',
     gantt: '甘特圖',
-    graph: '事件關聯圖',
+    graph: '任務關聯圖',
     systemFlow: '系統流程圖',
     /** 燃盡圖與負載熱圖。看的是整個專案的走勢，不是單張任務 */
     dashboard: '儀表板',
