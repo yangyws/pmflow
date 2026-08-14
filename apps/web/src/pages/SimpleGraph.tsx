@@ -1398,6 +1398,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       const targetParent = targetNode?.parentId
 
       if (
+        (sourceNode?.data as SimpleGraphNodeData)?.taskType === 'BUG' ||
+        (targetNode?.data as SimpleGraphNodeData)?.taskType === 'BUG'
+      ) {
+        setAlertMsg('問題單無法建立前後相依連線。')
+        return
+      }
+
+      if (
         (sourceParent && sourceParent !== targetParent) ||
         (targetParent && targetParent !== sourceParent)
       ) {

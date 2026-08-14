@@ -715,30 +715,66 @@ export function TaskDrawer({
                 </div>
               )}
 
-              {/* ── 事件內容 (Description) ── */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base">📝</span>
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                      事件內容
-                    </h3>
+              {/* ── 內容區塊：任務單顯示「任務內容」；問題單顯示「問題內容」與「解決內容」 ── */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs space-y-4">
+                {/* 任務內容 / 問題內容 */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">{form.type === 'BUG' ? '⚠️' : '📝'}</span>
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                        {form.type === 'BUG' ? '問題內容' : '任務內容'}
+                      </h3>
+                    </div>
                   </div>
+                  {canEdit ? (
+                    <textarea
+                      value={form.description ?? ''}
+                      onChange={e => edit({ description: e.target.value || null })}
+                      rows={3}
+                      placeholder={form.type === 'BUG' ? '描述遭遇問題的詳細狀況、影響範圍或排查線索…' : '填寫任務的詳細說明、需求背景或執行指引…'}
+                      className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
+                                 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                                 focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+                    />
+                  ) : (
+                    <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                      {form.description?.trim() ? form.description : (
+                        <span className="text-slate-400 dark:text-slate-500 text-xs">
+                          {form.type === 'BUG' ? '（無問題內容）' : '（無任務內容）'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {canEdit ? (
-                  <textarea
-                    value={form.description ?? ''}
-                    onChange={e => edit({ description: e.target.value || null })}
-                    rows={3}
-                    placeholder="填寫此事件的詳細說明、需求背景或執行指引…"
-                    className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
-                               placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
-                               focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
-                  />
-                ) : (
-                  <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                    {form.description?.trim() ? form.description : (
-                      <span className="text-slate-400 dark:text-slate-500 text-xs">（無事件內容）</span>
+
+                {/* 問題單專屬：解決內容 */}
+                {form.type === 'BUG' && (
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">💡</span>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                          解決內容
+                        </h3>
+                      </div>
+                    </div>
+                    {canEdit ? (
+                      <textarea
+                        value={form.problem ?? ''}
+                        onChange={e => edit({ problem: e.target.value || null })}
+                        rows={3}
+                        placeholder="填寫問題的解決方式、排解步驟或因應措施…"
+                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
+                                   placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                                   focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+                      />
+                    ) : (
+                      <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                        {form.problem?.trim() ? form.problem : (
+                          <span className="text-slate-400 dark:text-slate-500 text-xs">（尚未填寫解決內容）</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -772,66 +808,68 @@ export function TaskDrawer({
               <InquiryTable taskId={taskId} workspaceId={workspaceId}
                             inquiries={data.inquiries} canEdit />
 
-              {/* ── 左右關聯 ── */}
-              <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  {T.task.link.title}{' '}
-                  <span className="font-normal text-slate-400 dark:text-slate-400">
-                    {T.task.link.titleHint}
-                  </span>
-                </h3>
-                <div className="space-y-1.5">
-                  {data.links.length === 0 && (
-                    <p className="text-sm text-slate-400 dark:text-slate-400">{T.task.link.empty}</p>
+              {/* ── 前後相依（僅一般任務單可建立，問題單不參與流程相依） ── */}
+              {data.type !== 'BUG' && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    {T.task.link.title}{' '}
+                    <span className="font-normal text-slate-400 dark:text-slate-400">
+                      {T.task.link.titleHint}
+                    </span>
+                  </h3>
+                  <div className="space-y-1.5">
+                    {data.links.length === 0 && (
+                      <p className="text-sm text-slate-400 dark:text-slate-400">{T.task.link.empty}</p>
+                    )}
+                    {data.links.map(l => (
+                      <div key={l.id + l.direction}
+                           className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
+                                      dark:bg-slate-800">
+                        <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
+                          <span className="font-mono font-semibold text-slate-500 dark:text-slate-400 mr-2">{l.otherRef}</span>
+                          <span>{l.otherTitle}</span>
+                        </span>
+                        {canEditLinks && (
+                          <Button variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
+                                  onClick={() => delLink.mutate(l.id)}>✕</Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {!canEditLinks && role && (
+                    <p className="mt-2 text-xs text-slate-400 dark:text-slate-400">
+                      {T.task.permission.linkReadOnly}
+                    </p>
                   )}
-                  {data.links.map(l => (
-                    <div key={l.id + l.direction}
-                         className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
-                                    dark:bg-slate-800">
-                      <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
-                        <span className="font-mono font-semibold text-slate-500 dark:text-slate-400 mr-2">{l.otherRef}</span>
-                        <span>{l.otherTitle}</span>
-                      </span>
-                      {canEditLinks && (
-                        <Button variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
-                                onClick={() => delLink.mutate(l.id)}>✕</Button>
-                      )}
+
+                  {canEditLinks && (
+                  <div className="mt-3 flex items-end gap-2">
+                    <div className="min-w-56 flex-1">
+                      <Field label={T.task.link.fieldTarget}>
+                        <Select value={targetId} onChange={e => setTargetId(e.target.value)}
+                                className="w-full">
+                          <option value="">{T.task.link.pickTask}</option>
+                          {allTasks.filter(t => t.id !== taskId && t.type !== 'BUG').map(t => (
+                            <option key={t.id} value={t.id}>{t.ref} {t.title}</option>
+                          ))}
+                        </Select>
+                      </Field>
                     </div>
-                  ))}
-                </div>
-
-                {!canEditLinks && role && (
-                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-400">
-                    {T.task.permission.linkReadOnly}
-                  </p>
-                )}
-
-                {canEditLinks && (
-                <div className="mt-3 flex items-end gap-2">
-                  <div className="min-w-56 flex-1">
-                    <Field label={T.task.link.fieldTarget}>
-                      <Select value={targetId} onChange={e => setTargetId(e.target.value)}
-                              className="w-full">
-                        <option value="">{T.task.link.pickTask}</option>
-                        {allTasks.filter(t => t.id !== taskId).map(t => (
-                          <option key={t.id} value={t.id}>{t.ref} {t.title}</option>
-                        ))}
-                      </Select>
-                    </Field>
+                    <Button variant="primary" disabled={!targetId || addLink.isPending}
+                            onClick={() => addLink.mutate({ targetId, linkType: 'FS', lagDays: 0 })}>
+                      {T.task.link.add}
+                    </Button>
                   </div>
-                  <Button variant="primary" disabled={!targetId || addLink.isPending}
-                          onClick={() => addLink.mutate({ targetId, linkType: 'FS', lagDays: 0 })}>
-                    {T.task.link.add}
-                  </Button>
+                  )}
+                  {linkError && (
+                    <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200
+                                    dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30">
+                      {linkError}
+                    </div>
+                  )}
                 </div>
-                )}
-                {linkError && (
-                  <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200
-                                  dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30">
-                    {linkError}
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* ── 上下階層（所屬父任務 / 子任務清單，排除問題單） ── */}
               {(allTasks.find(t => t.id === data.parentId) || data.children.filter(c => c.type !== 'BUG').length > 0) && (
