@@ -193,27 +193,17 @@ export function TaskDrawer({
 
   const createProblemCard = useMutation({
     mutationFn: async (v: { title: string; content: string }) => {
-      // 1. 確保目前卡片標記為收納盒
-      try {
-        const key = 'pmflow_graph_container_boxes'
-        const saved = localStorage.getItem(key)
-        const set = new Set<string>(saved ? JSON.parse(saved) : [])
-        set.add(taskId)
-        localStorage.setItem(key, JSON.stringify(Array.from(set)))
-      } catch {}
-
-      // 2. 找到專案中對應的「問題」類型 key（優先尋找 BUG 或名稱包含問題的種類）
+      // 1. 找到專案中對應的「問題」類型 key（優先尋找 BUG 或名稱包含問題的種類）
       const bugTypeKey = types.find(t => t.key === 'BUG' || t.name.includes('問題'))?.key ?? 'BUG'
 
-      // 3. 建立問題子卡片 (類型設為問題單)
+      // 2. 建立獨立問題單卡片（不設定 parentId，不放入子任務上下階層）
       const createdTask = await Api.createTask(data!.projectId, {
         title: v.title,
         description: v.content || null,
         type: bugTypeKey,
-        parentId: taskId,
       })
 
-      // 4. 自動建立與原任務單的關聯線 (Link)
+      // 3. 自動建立與原任務單的關聯線 (Link)
       if (createdTask?.id) {
         try {
           await Api.addLink(taskId, {
@@ -226,7 +216,7 @@ export function TaskDrawer({
         }
       }
 
-      // 5. 記錄問題至父卡片
+      // 4. 記錄問題至父卡片
       await Api.patchTask(taskId, { problem: v.title })
     },
     onSuccess: () => {
@@ -751,7 +741,16 @@ export function TaskDrawer({
                   projectId={data.projectId}
                   problemValue={form.problem ?? ''}
                   solutionValue={solutionText}
-                  childProblems={data.children?.filter(c => c.type === 'BUG' || c.problem)}
+                  linkedProblems={data.links
+                    .filter(l => {
+                      const target = allTasks.find(t => t.id === l.otherId)
+                      return target?.type === 'BUG' || target?.problem || l.otherTitle.includes('問題')
+                    })
+                    .map(l => ({
+                      id: l.otherId,
+                      ref: l.otherRef,
+                      title: l.otherTitle,
+                    }))}
                   onChangeProblem={val => edit({ problem: val || null })}
                   onChangeSolution={val => setSolutionText(val)}
                   problemHistory={data.problemHistory}
@@ -833,8 +832,8 @@ export function TaskDrawer({
                 )}
               </div>
 
-              {/* ── 上下階層 (點擊可切換打開該子任務詳情) ── */}
-              {data.children.length > 0 && (
+              {/* ── 上下階層 (點擊可切換打開該子任務詳情，排除問題單) ── */}
+              {data.children.filter(c => c.type !== 'BUG').length > 0 && (
                 <div>
                   <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {T.task.children.title}{' '}
@@ -843,7 +842,7 @@ export function TaskDrawer({
                     </span>
                   </h3>
                   <div className="space-y-1">
-                    {data.children.map(c => (
+                    {data.children.filter(c => c.type !== 'BUG').map(c => (
                       <button
                         key={c.id}
                         type="button"
@@ -1125,14 +1124,14 @@ function describeActivity(
 }
 
 /**
- * 遭遇問題與解決方案獨立區塊（支援開立問題卡片並自動收納至收納盒）
+ * 遭遇問題與解決方案獨立區塊（支援開立問題單並建立關聯）
  */
 function ProblemSection({
   taskId,
   projectId,
   problemValue,
   solutionValue,
-  childProblems,
+  linkedProblems,
   onChangeProblem,
   onChangeSolution,
   problemHistory,
@@ -1147,7 +1146,7 @@ function ProblemSection({
   projectId: string
   problemValue: string
   solutionValue: string
-  childProblems?: Array<{ id: string; ref: string; title: string; statusKey: string; progress: number; type?: string; problem?: string | null }>
+  linkedProblems?: Array<{ id: string; ref: string; title: string }>
   onChangeProblem: (v: string) => void
   onChangeSolution: (v: string) => void
   problemHistory?: ProblemHistoryItem[]
@@ -1162,7 +1161,7 @@ function ProblemSection({
   const [newContent, setNewContent] = useState('')
   const [showHistory, setShowHistory] = useState(false)
 
-  const hasProblem = problemValue.trim().length > 0 || (childProblems && childProblems.length > 0)
+  const hasProblem = problemValue.trim().length > 0 || (linkedProblems && linkedProblems.length > 0)
   const resolvedList = (problemHistory ?? []).filter(h => h.resolvedAt)
 
   const handleCreate = () => {
@@ -1192,14 +1191,14 @@ function ProblemSection({
         )}
       </div>
 
-      {/* 現有收納中的問題卡片清單 */}
-      {childProblems && childProblems.length > 0 && (
+      {/* 關聯之問題單清單 */}
+      {linkedProblems && linkedProblems.length > 0 && (
         <div className="mb-3 space-y-1.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-3">
           <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-            <span>📦</span> 已收納之問題卡片 ({childProblems.length} 張)：
+            <span>⚠️</span> 關聯之問題單 ({linkedProblems.length} 張)：
           </p>
           <div className="space-y-1 mt-1.5">
-            {childProblems.map(p => (
+            {linkedProblems.map(p => (
               <div
                 key={p.id}
                 onClick={() => onSelectTask?.(p.id)}
@@ -1210,7 +1209,7 @@ function ProblemSection({
                   <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 shrink-0 font-medium">
-                  {p.type ? '問題' : '問題卡片'}
+                  問題單
                 </span>
               </div>
             ))}
@@ -1218,7 +1217,7 @@ function ProblemSection({
         </div>
       )}
 
-      {/* 填寫新問題並開立問題卡片收納 */}
+      {/* 填寫新問題並開立問題單 */}
       <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5">
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1227,7 +1226,7 @@ function ProblemSection({
           <Input
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            placeholder="請輸入問題標題（建立後此事件自動轉為收納盒，並將問題卡片收納其中）…"
+            placeholder="請輸入問題標題（建立後將開立問題單並自動與此任務單關聯）…"
             className="w-full"
           />
         </div>
@@ -1254,7 +1253,7 @@ function ProblemSection({
             onClick={handleCreate}
             className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
           >
-            <span>📦</span> 開立問題卡片並收納
+            <span>➕</span> 開立問題單並關聯
           </Button>
         </div>
 
