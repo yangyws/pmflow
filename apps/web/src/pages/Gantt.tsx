@@ -306,7 +306,9 @@ export default function GanttView({
         parent: (t.parentId && validTaskIds.has(t.parentId)) ? t.parentId : 0,
         type: t.type === 'MILESTONE' ? 'milestone' : isBox ? 'project' : undefined,
         isBox,
-        color: rowColor,
+        color: `${rowColor}22`,
+        progressColor: rowColor,
+        textColor: rowColor,
         critical: critical.has(t.id),
         inquiry: t.inquiryState,
         problem: t.problem,
@@ -350,17 +352,16 @@ export default function GanttView({
           display: none !important;
         }
         .gantt_task_progress {
-          background-color: rgba(0, 0, 0, 0.22) !important;
           background-image: repeating-linear-gradient(
             -45deg,
-            rgba(255, 255, 255, 0.25),
-            rgba(255, 255, 255, 0.25) 6px,
+            rgba(255, 255, 255, 0.32),
+            rgba(255, 255, 255, 0.32) 6px,
             transparent 6px,
             transparent 12px
           ) !important;
         }
         .gantt_task_line {
-          border-color: rgba(0, 0, 0, 0.15) !important;
+          border-width: 1px !important;
         }
         /* 移除 dhtmlx 預設關鍵路徑/逾期之粗紅外框 (紅框) */
         .gantt_task_line.critical,
