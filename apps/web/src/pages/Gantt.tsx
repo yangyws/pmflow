@@ -92,7 +92,7 @@ export default function GanttView({
       width: 240,
       resize: true,
       template: (t: any) => {
-        const color = t.color || '#3178c6'
+        const color = t.rowColor || '#2563eb'
         return `<span style="color: ${color}; font-weight: 600;">${t.text}</span>`
       },
     },
@@ -146,7 +146,7 @@ export default function GanttView({
 
     // 關鍵路徑與對外詢問及收納盒/卡片區分上色
     g.templates.task_class = (_s: Date, _e: Date, t: any) => {
-      const cls: string[] = []
+      const cls: string[] = [`gantt-row-${t.colorIndex ?? 0}`]
       if (t.isBox) cls.push('gantt-bar-box')
       else cls.push('gantt-bar-card')
       if (t.critical) cls.push('critical')
@@ -294,8 +294,8 @@ export default function GanttView({
       const blockedBy = blockedByMap.get(t.id) ?? []
       const isParallel = parallelSet.has(t.id)
       const isOverdue = Boolean(t.dueDate && t.dueDate < todayYmd() && t.progress < 100 && t.statusKey !== 'DONE')
-
-      const rowColor = GANTT_ROW_COLORS[idx % GANTT_ROW_COLORS.length]
+      const colorIndex = idx % GANTT_ROW_COLORS.length
+      const rowColor = GANTT_ROW_COLORS[colorIndex]
 
       return {
         id: t.id,
@@ -306,9 +306,8 @@ export default function GanttView({
         parent: (t.parentId && validTaskIds.has(t.parentId)) ? t.parentId : 0,
         type: t.type === 'MILESTONE' ? 'milestone' : isBox ? 'project' : undefined,
         isBox,
-        color: `${rowColor}22`,
-        progressColor: rowColor,
-        textColor: rowColor,
+        colorIndex,
+        rowColor,
         critical: critical.has(t.id),
         inquiry: t.inquiryState,
         problem: t.problem,
@@ -354,8 +353,8 @@ export default function GanttView({
         .gantt_task_progress {
           background-image: repeating-linear-gradient(
             -45deg,
-            rgba(255, 255, 255, 0.32),
-            rgba(255, 255, 255, 0.32) 6px,
+            rgba(255, 255, 255, 0.35),
+            rgba(255, 255, 255, 0.35) 6px,
             transparent 6px,
             transparent 12px
           ) !important;
@@ -363,6 +362,15 @@ export default function GanttView({
         .gantt_task_line {
           border-width: 1px !important;
         }
+        ${GANTT_ROW_COLORS.map((c, i) => `
+        .gantt_task_line.gantt-row-${i} {
+          background-color: ${c}22 !important;
+          border-color: ${c} !important;
+        }
+        .gantt_task_line.gantt-row-${i} .gantt_task_progress {
+          background-color: ${c} !important;
+        }
+        `).join('\n')}
         /* 移除 dhtmlx 預設關鍵路徑/逾期之粗紅外框 (紅框) */
         .gantt_task_line.critical,
         .gantt_task_line.inq-overdue {
