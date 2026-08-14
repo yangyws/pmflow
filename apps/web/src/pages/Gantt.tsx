@@ -67,7 +67,7 @@ export default function GanttView({
     ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88 }] : []),
     ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44 }] : []),
     ...(!hidden.includes('alerts') ? [{
-      name: 'alerts', label: '警示', align: 'left' as const, width: 140,
+      name: 'alerts', label: '警示', align: 'left' as const, width: 180, resize: true,
       template: (t: unknown) => renderAlertCell(t)
     }] : []),
   ]
@@ -434,7 +434,7 @@ const renderAlertCell = (t: any) => {
       badges.push(`<span style="background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">內含 ${t.boxKidsCount} 張</span>`)
     }
     if (t.boxProblemCount > 0) {
-      badges.push(`<span title="盒內含問題單或遭遇問題" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問 ${t.boxProblemCount}</span>`)
+      badges.push(`<span title="盒內含問題單或遭遇問題" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;">⚑ 遭遇問題</span>`)
     }
     if (t.boxBlockedCount > 0) {
       badges.push(`<span title="盒內含受阻卡住之任務" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住 ${t.boxBlockedCount}</span>`)
@@ -444,7 +444,7 @@ const renderAlertCell = (t: any) => {
     }
   } else {
     if (t.taskType !== 'BUG' && t.problem) {
-      badges.push(`<span title="${t.problem}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">問 1</span>`)
+      badges.push(`<span title="${t.problem}" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;">⚑ 遭遇問題</span>`)
     }
     if (!t.problem && t.blockedBy && t.blockedBy.length > 0) {
       badges.push(`<span title="卡住：要等 ${t.blockedBy.join('、')}" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;">⛔ 卡住</span>`)

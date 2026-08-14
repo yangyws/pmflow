@@ -663,12 +663,6 @@ export function EpicSidebar({
           </Fragment>
         ))}
 
-        {looseCount > 0 && (
-          <div className="mt-2 px-2.5 text-[11px] leading-snug text-slate-400 dark:text-slate-400">
-            {T.nav.sidebar.loose(looseCount)}
-          </div>
-        )}
-
         {adding ? (
           <div className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2 dark:bg-slate-800">
             <div className="flex gap-1.5 items-center">
