@@ -203,3 +203,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pmflow-flash { animation: none; }
 }
+
+/* ── 畫布可移動時顯示四向箭頭游標 ── */
+.react-flow__pane,
+.react-flow__pane.draggable,
+.react-flow__pane.dragging {
+  cursor: move !important;
+}

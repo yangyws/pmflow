@@ -34,7 +34,7 @@
   - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx): 提供「事件內容」編輯區塊、新增「問題標題」欄位支援一鍵開立「問題單」並自動轉為收納盒將問題單收納其中（顯示上方已收納問題清單）、下方子任務清單過濾排除問題單並即時顯示遭遇問題警示徽章（`ProblemBadge`）、問題單本身隱藏問題區、移除關聯類型與間隔設定精簡關聯建立、折疊收納「📜 歷史已解決問題 (N 件)」，並將按鈕文字更新為「刪除事件」。
   - [`DeletedTasks.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/DeletedTasks.tsx): 新建已刪除事件（回收站）頁籤，支援一鍵還原與永久刪除。
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 完全獨立的系統流程圖（獨立繪圖節點、模組容器、四向連接點、拖曳收納與獨立儲存，不連動 Menu）。
-  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 移除高亮淡化機制，維持 100% 完整清晰度。
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 移除高亮淡化機制維持 100% 清晰度、限制問題單（BUG）禁止轉換為收納盒（隱藏切換按鈕並阻斷模式切換）；並於 [`index.css`](file:///D:/NewProject/pmflow-git/apps/web/src/index.css) 設定畫布可移動時呈現四向箭頭游標（`cursor: move`）。
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頁籤齒輪選單加入 `▲`/`▼` 直覺排序按鈕與拖曳強化，移除逾期標籤。
 
 ### Commit: `b7e2c2f` - Fix: e2e test script and seed parameter auto-population

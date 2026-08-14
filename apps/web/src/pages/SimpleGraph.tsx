@@ -124,6 +124,7 @@ export type SimpleGraphNodeData = {
   progress?: number
   typeColor?: string
   typeName?: string
+  taskType?: string
   problem?: string | null
   blockedBy?: string[]
   isParallel?: boolean
@@ -423,14 +424,16 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           />
           <div className="p-2.5 flex flex-col justify-start flex-1 gap-1 min-w-0">
             <div className="flex items-center gap-1.5 w-max min-w-full whitespace-nowrap overflow-visible">
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-                title="【卡片】點擊轉換為收納盒"
-              >
-                📄 卡片
-              </button>
+              {data.taskType !== 'BUG' && (
+                <button
+                  type="button"
+                  onClick={handleToggle}
+                  className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                  title="【卡片】點擊轉換為收納盒"
+                >
+                  📄 卡片
+                </button>
+              )}
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
@@ -750,6 +753,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
       setToggledModes((prev) => {
         const currentNodes = nodesRef.current
         const targetNode = currentNodes.find((n) => n.id === nodeId)
+        const nodeData = targetNode?.data as SimpleGraphNodeData
+        if (nodeData?.taskType === 'BUG') {
+          return prev
+        }
         const currentMode = prev[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
         const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
         const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
@@ -1075,6 +1082,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
               mode: isKBox ? 'box' : 'card',
               typeColor: typeColorOf(k.type),
               typeName: typeNameOf(k.type),
+              taskType: k.type,
               problem: k.problem,
               isOverdue: kOverdue,
               dueDate: k.dueDate,
@@ -1110,6 +1118,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0,
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
+            taskType: t.type,
             problem: t.problem,
             childCount: kids.length,
             isOverdue: tOverdue,
@@ -1160,6 +1169,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
                 progress: rolledMap.get(k.id)?.progress ?? k.progress ?? 0,
                 typeColor: typeColorOf(k.type),
                 typeName: typeNameOf(k.type),
+                taskType: k.type,
                 problem: k.problem,
                 isOverdue: kOverdue,
                 dueDate: k.dueDate,
@@ -1193,6 +1203,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, onSelec
             progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0,
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
+            taskType: t.type,
             problem: t.problem,
             isOverdue: tOverdue,
             dueDate: t.dueDate,

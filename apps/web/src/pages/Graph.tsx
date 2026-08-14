@@ -1691,7 +1691,7 @@ function GraphCanvas({
           progress: n.progress ?? 0,
           inquiryState: n.inquiryState,
           isEpic: n.type === 'EPIC',
-          isContainerMode: isBox || containerBoxIds.has(n.id),
+          isContainerMode: n.type !== 'BUG' && (isBox || containerBoxIds.has(n.id)),
           onToggleContainer: () => toggleContainerMode(n.id),
           onOpenEditDrawer: onOpen,
           childCount: L.childCount.get(n.id) ?? 0,
@@ -2356,6 +2356,8 @@ function GraphCanvas({
    * 2. 點擊關閉 (📦 收納(關))：取消容器模式，若框內有事件卡片則彈出自訂提示視窗。
    */
   const toggleContainerMode = useCallback((id: string) => {
+    const targetTask = tasks?.find(t => t.id === id)
+    if (targetTask?.type === 'BUG') return
     setContainerBoxIds(prev => {
       const isTurningOff = prev.has(id)
       if (isTurningOff) {

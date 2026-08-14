@@ -278,7 +278,7 @@ export function EpicSidebar({
       const a = rawKids.get(t.parentId) ?? []; a.push(t); rawKids.set(t.parentId, a)
     }
 
-    const isBox = (t: Task) => containerBoxSet.has(t.id) || hasKidsSet.has(t.id)
+    const isBox = (t: Task) => t.type !== 'BUG' && (containerBoxSet.has(t.id) || hasKidsSet.has(t.id))
 
     const rawEpics = tasks.filter(t => !t.parentId)
 
@@ -892,12 +892,12 @@ function TreeNode({
                     title={kindName}
                     style={{ background: kindColor }} />
               <span className="shrink-0 text-xs select-none">
-                {kids.length > 0 || (typeof window !== 'undefined' && (() => {
+                {task.type !== 'BUG' && (kids.length > 0 || (typeof window !== 'undefined' && (() => {
                   try {
                     const saved = localStorage.getItem('pmflow_graph_container_boxes')
                     return saved ? new Set(JSON.parse(saved)).has(task.id) : false
                   } catch { return false }
-                })()) ? '📦' : '📄'}
+                })())) ? '📦' : '📄'}
               </span>
               <span className="shrink-0 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
                 {task.ref || (task.number ? `MRG-${task.number}` : '')}
