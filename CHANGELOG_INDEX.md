@@ -22,7 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Problem Resolution Workflow, SystemFlow Decoupling, Deleted Tasks View, and Strict Delete Permissions
+### Latest Changes: SystemFlow Multi-Page Support, Gantt Row Color & Exclude Bug, Calendar Indicators
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 新增多頁面標籤列（Page Tabs）、支援動態新增頁面（`➕ 新增頁面`）、分頁切換、內嵌重新命名（連點或點擊 `✏️`）、頁面複製副本（`📑`）、刪除頁面（`×` 附確認彈窗），並向下相容舊版單頁 localStorage 資料結構。
+  - [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx): 移除時間軸長條內文字、依任務列輪替指派高辨識度鮮明色彩，並透過 CSS 類別精準綁定左側任務文字與右側進度長條填色為同一個飽和色彩，排除問題單（BUG）。
+  - [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx): 修正日期頂部微型警示紅點判定條件，當日含有問題單（BUG）、遭遇問題任務或逾期任務時即時顯示紅點。
+
+### Previous Changes: Problem Resolution Workflow, SystemFlow Decoupling, Deleted Tasks View, and Strict Delete Permissions
 - **變更檔案**:
   - [`0019_task_problems.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0019_task_problems.sql): 新建 `task_problem_history` 表記錄歷次遭遇問題與解決方案。
   - [`0021_rename_task_type_to_tickets.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0021_rename_task_type_to_tickets.sql) & [`0023_keep_only_task_and_bug_types.sql`](file:///D:/NewProject/pmflow-git/apps/api/src/migrations/0023_keep_only_task_and_bug_types.sql): 將事件類型名稱統一定名為「任務單」與「問題單」，並將類型清單嚴格限制僅保留「任務單」與「問題單」。
