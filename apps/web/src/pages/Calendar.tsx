@@ -753,13 +753,13 @@ function DayCell({
           {/* 方案 C：微型彩色圓點 Indicator (避免雜亂，滑鼠懸停顯示詳情) */}
           {totalEventCount > 0 && (
             <div className="flex items-center gap-0.5 ml-0.5 select-none">
-              {dayEvents.tasks.some(t => t.type !== 'BUG' && (isTaskOverdue(t.dueDate, t.progress) || !!t.problem)) && (
+              {dayEvents.tasks.some(t => isTaskOverdue(t.dueDate, t.progress) || !!t.problem) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-white dark:ring-slate-900" title="有逾期/問題任務" />
               )}
-              {dayEvents.tasks.some(t => t.type !== 'BUG' && t.progress < 100) && (
+              {dayEvents.tasks.some(t => t.progress < 100) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 ring-1 ring-white dark:ring-slate-900" title="有進行中任務" />
               )}
-              {dayEvents.tasks.some(t => t.type !== 'BUG' && t.progress >= 100) && (
+              {dayEvents.tasks.some(t => t.progress >= 100) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-white dark:ring-slate-900" title="有已完成任務" />
               )}
             </div>
