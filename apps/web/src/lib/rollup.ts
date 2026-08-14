@@ -61,19 +61,9 @@ export function rollup(tasks: Task[]): Map<string, Rolled> {
     const rolled = kids.map(k => ({ kid: k, r: compute(k.id) }))
     visiting.delete(id)
 
-    // 權重用估時；全部沒填就退回等權，避免除以零
-    const weights = rolled.map(({ kid }) => {
-      const h = Number(kid.estimateHours ?? 0)
-      return Number.isFinite(h) && h > 0 ? h : 0
-    })
-    const sumW = weights.reduce((a, b) => a + b, 0)
-    const useEqual = sumW <= 0
-
-    let progress = 0
-    rolled.forEach(({ r }, i) => {
-      const w = useEqual ? 1 / rolled.length : weights[i] / sumW
-      progress += r.progress * w
-    })
+    // 收納盒/父任務進度 = 內部的 任務單進度加總 / 任務單數量（排除問題單）
+    const totalProgress = rolled.reduce((acc, { r }) => acc + r.progress, 0)
+    const progress = rolled.length > 0 ? Math.round(totalProgress / rolled.length) : self.progress
 
     const starts = rolled.map(({ r }) => r.startDate).filter(Boolean) as string[]
     const dues = rolled.map(({ r }) => r.dueDate).filter(Boolean) as string[]
