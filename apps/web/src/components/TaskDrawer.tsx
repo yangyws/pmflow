@@ -205,15 +205,28 @@ export function TaskDrawer({
       // 2. 找到專案中對應的「問題」類型 key（優先尋找 BUG 或名稱包含問題的種類）
       const bugTypeKey = types.find(t => t.key === 'BUG' || t.name.includes('問題'))?.key ?? 'BUG'
 
-      // 3. 建立問題子卡片 (類型設為問題類型)
-      await Api.createTask(data!.projectId, {
+      // 3. 建立問題子卡片 (類型設為問題單)
+      const createdTask = await Api.createTask(data!.projectId, {
         title: v.title,
         description: v.content || null,
         type: bugTypeKey,
         parentId: taskId,
       })
 
-      // 4. 記錄問題至父卡片
+      // 4. 自動建立與原任務單的關聯線 (Link)
+      if (createdTask?.id) {
+        try {
+          await Api.addLink(taskId, {
+            targetId: createdTask.id,
+            linkType: 'FS',
+            lagDays: 0,
+          })
+        } catch (e) {
+          console.error('Failed to link problem task to parent task:', e)
+        }
+      }
+
+      // 5. 記錄問題至父卡片
       await Api.patchTask(taskId, { problem: v.title })
     },
     onSuccess: () => {
