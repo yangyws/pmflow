@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: System Flow Canvas Dragging & Parent-First Depth Ordering Fix
+### Latest Changes: System Flow Page Tab Sorting (Drag & Drop + Micro-Adjustment)
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 新增流程頁籤拖曳重排（Drag & Drop）與左右微調按鈕（`◀` / `▶`），支援滑鼠拖曳 `⠿` 手柄快速置換頁面順序，並即時寫入專案持久化儲存。
+
+### Previous Changes: System Flow Canvas Dragging & Parent-First Depth Ordering Fix
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx) & [`main.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/main.tsx): 引入 `@xyflow/react/dist/style.css` 核心樣式表，徹底解決缺少 CSS 導致節點失去絕對定位而呈「梯形階梯排列」與畫布容器「無法移動鎖死」的問題；對齊 SimpleGraph 重構 `orderParentNodesFirst` 深度演算法並嚴格排序 `nodesWithHandlers`，加入 `measured` 測量就緒防護與 `Viewport` 視角記憶。
 
