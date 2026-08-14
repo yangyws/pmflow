@@ -522,7 +522,7 @@ function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
           {t.ref}
         </span>
         <span className="truncate text-slate-800 dark:text-slate-200">{t.title}</span>
-        <ProblemBadge problem={t.problem} />
+        {t.type !== 'BUG' && <ProblemBadge problem={t.problem} />}
       </div>
 
       {/* 負責人 */}
@@ -557,16 +557,20 @@ function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
       </div>
 
       {/* 進度 */}
-      {t.type !== 'BUG' && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-          <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
-                           dark:bg-slate-700">
-            <span className={cx('block h-full', t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
-                  style={{ width: `${t.progress}%` }} />
-          </span>
-          <span className="tabular-nums">{W.progressLabel(t.progress)}</span>
-        </div>
-      )}
+      <div className="min-w-0">
+        {t.type !== 'BUG' ? (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-slate-200
+                             dark:bg-slate-700">
+              <span className={cx('block h-full', t.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500')}
+                    style={{ width: `${t.progress}%` }} />
+            </span>
+            <span className="tabular-nums">{W.progressLabel(t.progress)}</span>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-300 dark:text-slate-600 select-none">—</span>
+        )}
+      </div>
 
       {/* 對外詢問 */}
       <div><InquiryBadge state={t.inquiryState} /></div>
