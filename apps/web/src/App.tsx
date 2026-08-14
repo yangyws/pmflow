@@ -597,15 +597,11 @@ function ProjectWorkspace({
           /* 看單張任務時，上面只留一條麵包屑，把版面讓給內容 */
           <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5
                              text-sm dark:border-slate-700 dark:bg-slate-900">
-            <button onClick={() => setOpenTask(null)}
-                    className="text-slate-400 hover:text-slate-700
-                               dark:text-slate-400 dark:hover:text-slate-300">
-              ← {T.nav.backToOverview}
-            </button>
-            <span className="text-slate-300 dark:text-slate-500">|</span>
             <button onClick={() => { setEpicId(null); setOpenTask(null) }}
-                    className="text-slate-400 hover:text-slate-700
-                               dark:text-slate-400 dark:hover:text-slate-300">{project?.name}</button>
+                    className="flex items-center gap-1 text-slate-500 hover:text-slate-800
+                               dark:text-slate-400 dark:hover:text-slate-200">
+              <span aria-hidden>←</span> {project?.name}
+            </button>
             {(() => {
               const t = tasks.find(x => x.id === openTask)
               const parent = t?.parentId ? tasks.find(x => x.id === t.parentId) : undefined

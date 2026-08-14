@@ -146,9 +146,9 @@ export const task = {
     listHint: '在這裡可以直接換人。要附上交接說明，請開啟任務詳情再轉派。',
   },
 
-  /** 上下階層 */
+  /** 上下階層任務 */
   children: {
-    title: '上下階層',
+    title: '上下階層任務',
     titleHint: '（收納關係）',
   },
 

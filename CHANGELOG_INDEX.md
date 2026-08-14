@@ -36,7 +36,7 @@
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 完全獨立的系統流程圖（獨立繪圖節點、模組容器、四向連接點、拖曳收納與獨立儲存，不連動 Menu）。
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`ui.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ui.tsx) & [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 收納盒上的警示徽章調整為「⚑問(X)」（X 為收納盒內部的遭遇問題與問題單總數）、移除高亮淡化機制維持 100% 清晰度、限制問題單（BUG）禁止轉換為收納盒（隱藏切換按鈕並阻斷模式切換）；並於 [`index.css`](file:///D:/NewProject/pmflow-git/apps/web/src/index.css) 設定畫布可移動時呈現四向箭頭游標（`cursor: move`）。
   - [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 新增「警示」獨立欄位集中呈現遭遇問題與阻塞狀態、將 ✏️ 編輯與 ＋ 新增按鈕移至任務標題正後方，並優化表格最小寬度至 `76rem`。
-  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頁籤齒輪選單加入 `▲`/`▼` 直覺排序按鈕與拖曳強化，移除逾期標籤。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頂部麵包屑移除重複的「回總覽」，整併為直覺的「← 專案名稱 / 父任務 / 當前任務」；頁籤齒輪選單加入 `▲`/`▼` 直覺排序按鈕與拖曳強化，移除逾期標籤。
 
 ### Commit: `b7e2c2f` - Fix: e2e test script and seed parameter auto-population
 - **變更檔案**: 
