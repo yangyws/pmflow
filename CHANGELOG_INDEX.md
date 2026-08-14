@@ -24,7 +24,7 @@
 
 ### Latest Changes: System Flow Canvas Dragging & Parent-First Depth Ordering Fix
 - **變更檔案**:
-  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 對齊 SimpleGraph 重構 `orderParentNodesFirst` 深度演算法並嚴格排序 `nodesWithHandlers`，根除子節點先於收納盒渲染時引發的拖曳鎖死與梯形錯位；加入 `measured` 測量就緒防護與 `Viewport` 持久化，並開啟 `panOnDrag` 與 `zoomOnPinch`。
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx) & [`main.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/main.tsx): 引入 `@xyflow/react/dist/style.css` 核心樣式表，徹底解決缺少 CSS 導致節點失去絕對定位而呈「梯形階梯排列」與畫布容器「無法移動鎖死」的問題；對齊 SimpleGraph 重構 `orderParentNodesFirst` 深度演算法並嚴格排序 `nodesWithHandlers`，加入 `measured` 測量就緒防護與 `Viewport` 視角記憶。
 
 ### Previous Changes: Unified Pill Tag Type Badges & Clean Storage Box Icons
 - **變更檔案**:
