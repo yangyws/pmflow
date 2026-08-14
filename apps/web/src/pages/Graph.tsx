@@ -12,7 +12,7 @@ import '@xyflow/react/dist/style.css'
 import {
   Api, ApiError, type InquiryState, type LinkType, type ProjectParam, type Task, type TaskStatus,
 } from '../lib/api'
-import { Button, Empty, INQUIRY_META, Select, Spinner, cx } from '../components/ui'
+import { Button, Empty, INQUIRY_META, Select, Spinner, TypeBadge, cx } from '../components/ui'
 import { LINK_CHIP, LINK_LABEL } from '../lib/linkText'
 import { useTheme } from '../lib/theme'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
@@ -390,7 +390,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
                 )}
                 title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
               >
-                {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
+                {data.isContainerMode ? '📦 收納盒' : '卡片'}
               </button>
               <button
                 type="button"
@@ -407,16 +407,7 @@ function BoxNodeView({ data }: NodeProps<TaskNode>) {
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                 {data.ref}
               </span>
-              <span
-                className={cx(BADGE, 'shrink-0 border')}
-                style={{
-                  backgroundColor: `${accentColor}18`,
-                  color: accentColor,
-                  borderColor: `${accentColor}40`,
-                }}
-              >
-                {getTypeName(data.taskType, data.typeName)}
-              </span>
+              <TypeBadge name={getTypeName(data.taskType, data.typeName)} color={accentColor} />
             </div>
           </div>
 
@@ -474,7 +465,7 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
               )}
               title={data.isContainerMode ? '【收納盒】點擊轉換回卡片' : '【卡片】點擊轉換為收納盒（允許其它卡片拖放進入內部）'}
             >
-              {data.isContainerMode ? '📦 收納盒' : '📦 卡片'}
+              {data.isContainerMode ? '📦 收納盒' : '卡片'}
             </button>
             <button
               type="button"
@@ -491,16 +482,7 @@ function TaskNodeView({ data }: NodeProps<TaskNode>) {
             <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
               {data.ref}
             </span>
-            <span
-              className={cx(BADGE, 'shrink-0 border')}
-              style={{
-                backgroundColor: `${accentColor}18`,
-                color: accentColor,
-                borderColor: `${accentColor}40`,
-              }}
-            >
-              {getTypeName(data.taskType, data.typeName)}
-            </span>
+            <TypeBadge name={getTypeName(data.taskType, data.typeName)} color={accentColor} />
             {data.showBadges && data.kin && (
               <span className={cx(BADGE, BADGE_VIOLET)}
                     title={data.kin === 'parent' ? G.badge.kinParentTaskTip : G.badge.kinChildTip}>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ProjectParam, Task, TaskStatus } from '../lib/api'
-import { Button, Empty, InquiryBadge, ProblemBadge, cx } from '../components/ui'
+import { Button, Empty, InquiryBadge, ProblemBadge, TypeBadge, cx } from '../components/ui'
 import { Avatar } from '../components/Avatar'
 import { parseYmd, shiftYmd, shortDate, todayYmd, toYmd, WEEKDAY_LABELS } from '../lib/date'
 import { useRemembered } from '../lib/remember'
@@ -512,12 +512,7 @@ function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
           類型色是使用者自己挑的，只當左邊那條細槓，不當底色也不當文字色 ——
           深淺不受控，拿去當底色在深色模式下會有一半讀不到 */}
       <div className="flex min-w-0 items-center gap-2">
-        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded
-                         bg-slate-100 py-0.5 pr-1.5 pl-1 text-[11px] text-slate-600
-                         dark:bg-slate-800 dark:text-slate-300">
-          <span className="h-3 w-0.5 rounded-full" style={{ background: typeColor }} />
-          {typeName}
-        </span>
+        <TypeBadge name={typeName} color={typeColor} />
         <span className="shrink-0 font-mono text-[11px] text-slate-400 dark:text-slate-400">
           {t.ref}
         </span>

@@ -9,8 +9,8 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Api, ApiError, type Task, type TaskStatus } from '../lib/api'
-import { InquiryBadge, ProblemBadge, cx } from '../components/ui'
+import { Api, ApiError, type Task, type TaskStatus, type ProjectParam } from '../lib/api'
+import { InquiryBadge, ProblemBadge, TypeBadge, cx } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { T } from '../strings'
@@ -237,12 +237,13 @@ export default function Board({
         <div ref={boardContainerRef} className="flex flex-1 gap-3 overflow-x-auto p-4">
           {columns.map(col => (
             <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
-                    topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap} />
+                    topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap}
+                    types={project?.types ?? []} />
           ))}
         </div>
         <DragOverlay>
           {dragging && <Card task={dragging} overlay draggable onOpen={() => {}}
-                               topPriority={topPriority} />}
+                               topPriority={topPriority} types={project?.types ?? []} />}
         </DragOverlay>
       </DndContext>
     </div>
@@ -250,7 +251,7 @@ export default function Board({
 }
 
 function Column({
-  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedByMap,
+  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedByMap, types,
 }: {
   column: TaskStatus & { tasks: Task[] }
   onOpen: (id: string) => void
@@ -260,6 +261,7 @@ function Column({
   canDrag: (t: Task) => boolean
   focusedTaskId?: string | null
   blockedByMap?: Map<string, string[]>
+  types?: ProjectParam[]
 }) {
   const { setNodeRef, isOver } = useSortable({ id: column.key, data: { type: 'column' } })
   const overdue = column.tasks.filter(t => t.inquiryState === 'OVERDUE').length
@@ -287,7 +289,8 @@ function Column({
         <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-3">
           {column.tasks.map(task => (
             <SortableCard key={task.id} task={task} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag(task)}
-                          topPriority={topPriority} focusedTaskId={focusedTaskId} blockedBy={blockedByMap?.get(task.id)} />
+                          topPriority={topPriority} focusedTaskId={focusedTaskId} blockedBy={blockedByMap?.get(task.id)}
+                          types={types} />
           ))}
           {column.tasks.length === 0 && (
             <div className="rounded-md border-2 border-dashed border-slate-200 py-6 text-center text-xs
@@ -301,11 +304,12 @@ function Column({
   )
 }
 
-function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedBy }: {
+function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedBy, types }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; canDrag: boolean
   topPriority?: { key: string; name: string; color: string }
   focusedTaskId?: string | null
   blockedBy?: string[]
+  types?: ProjectParam[]
 }) {
   // disabled 讓 dnd-kit 連感應器都不掛上去，滑鼠與鍵盤兩條路徑一起擋掉
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -322,13 +326,13 @@ function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskI
          {...attributes} {...listeners}
          style={{ transform: CSS.Transform.toString(transform), transition }}
          className={isDragging ? 'opacity-30' : ''}>
-      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} blockedBy={blockedBy} />
+      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} blockedBy={blockedBy} types={types} />
     </div>
   )
 }
 
 function Card({
-  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused, blockedBy,
+  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused, blockedBy, types = [],
 }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; overlay?: boolean
   /** 拖不動的卡片不要長成「可以拖」的樣子 —— 手形游標本身就是一種承諾 */
@@ -336,9 +340,13 @@ function Card({
   topPriority?: { key: string; name: string; color: string }
   isFocused?: boolean
   blockedBy?: string[]
+  types?: ProjectParam[]
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
+  const typeObj = types.find(t => t.key === task.type)
+  const typeName = typeObj?.name || (task.type === 'BUG' ? '問題單' : '任務單')
+  const typeColor = typeObj?.color || DEFAULT_TYPE_COLORS[task.type] || '#3178c6'
 
   return (
     <div
@@ -363,20 +371,8 @@ function Card({
     >
       <div className="mb-1 flex items-center gap-1.5 flex-wrap">
         <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">{task.ref}</span>
-        {/* 類型徽章對齊 MRG 右側 */}
-        {task.type && (
-          <span
-            className="inline-flex shrink-0 items-center gap-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-            style={{ borderColor: DEFAULT_TYPE_COLORS[task.type] || '#94a3b8', borderWidth: '1px' }}
-          >
-            <span
-              className="h-2 w-0.5 rounded-full"
-              style={{ background: DEFAULT_TYPE_COLORS[task.type] || '#94a3b8' }}
-            />
-            {task.type === 'BUG' ? '問題單' : '任務單'}
-          </span>
-        )}
-        {task.type === 'MILESTONE' && <span className="text-[11px]">◆</span>}
+        {/* 類型徽章：事件顏色+事件 */}
+        {task.type && <TypeBadge name={typeName} color={typeColor} />}
         {topPriority && task.priority === topPriority.key && (
           <span className="rounded px-1 text-[10px] font-medium"
                 style={{

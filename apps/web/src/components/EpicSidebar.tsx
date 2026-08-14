@@ -5,7 +5,7 @@ import { canBeUnder, typesAllowedUnder } from '../lib/hierarchy'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
-import { Button, Input, Select, ColorOption, readableColor, cx } from './ui'
+import { Button, Input, Select, ColorOption, readableColor, cx, TypeBadge } from './ui'
 import { useTheme } from '../lib/theme'
 
 /**
@@ -897,17 +897,18 @@ function TreeNode({
               <span className={cx('shrink-0 rounded-full', isRoot ? 'h-4 w-1' : 'h-3 w-0.5')}
                     title={kindName}
                     style={{ background: kindColor }} />
-              <span className="shrink-0 text-xs select-none">
-                {task.type !== 'BUG' && (kids.length > 0 || (typeof window !== 'undefined' && (() => {
-                  try {
-                    const saved = localStorage.getItem('pmflow_graph_container_boxes')
-                    return saved ? new Set(JSON.parse(saved)).has(task.id) : false
-                  } catch { return false }
-                })())) ? '📦' : '📄'}
-              </span>
+              {task.type !== 'BUG' && (kids.length > 0 || (typeof window !== 'undefined' && (() => {
+                try {
+                  const saved = localStorage.getItem('pmflow_graph_container_boxes')
+                  return saved ? new Set(JSON.parse(saved)).has(task.id) : false
+                } catch { return false }
+              })())) && (
+                <span className="shrink-0 text-xs select-none">📦</span>
+              )}
               <span className="shrink-0 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
                 {task.ref || (task.number ? `MRG-${task.number}` : '')}
               </span>
+              <TypeBadge name={kindName} color={kindColor} />
 
               {/* 警示徽章區域 */}
               <div className="flex flex-wrap items-center gap-1 shrink-0">

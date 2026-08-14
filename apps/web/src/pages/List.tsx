@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, type ProjectParam, type Task, type TaskStatus } from '../lib/api'
-import { Button, InquiryBadge, ProblemBadge, Empty, Input, Select, ColorOption, readableColor, cx } from '../components/ui'
+import { Button, InquiryBadge, ProblemBadge, TypeBadge, Empty, Input, Select, ColorOption, readableColor, cx } from '../components/ui'
 import { Avatar } from '../components/Avatar'
 import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
@@ -401,19 +401,13 @@ export default function ListView({
                         {t.depth > 0 ? '└' : ''}
                       </span>
                     )}
-                    {/* 📦 收納盒 / 📄 卡片 圖示 (與左側 Menu [EpicSidebar.tsx] 100% 保持一致) */}
-                    <span className="shrink-0 text-xs select-none ml-0.5">
-                      {t.type === 'MILESTONE' ? '◆' : t.isBox ? '📦' : '📄'}
-                    </span>
-                    {/* 種類色標 */}
-                    {typeOf(t.type) && t.type !== 'MILESTONE' && (
-                      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded
-                                       bg-slate-100 py-0.5 pr-1.5 pl-1 text-[10px] text-slate-600
-                                       dark:bg-slate-800 dark:text-slate-300">
-                        <span className="h-2.5 w-1 rounded-full"
-                              style={{ background: typeColorOf(t.type) }} />
-                        {typeOf(t.type)}
-                      </span>
+                    {/* 只有收納盒 (t.isBox) 顯示 📦 圖示，其餘一般卡片不顯示圖示 */}
+                    {t.isBox && (
+                      <span className="shrink-0 text-xs select-none ml-0.5">📦</span>
+                    )}
+                    {/* 種類色標：事件顏色+事件 */}
+                    {typeOf(t.type) && (
+                      <TypeBadge name={typeOf(t.type)} color={typeColorOf(t.type)} />
                     )}
                     <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-bold text-slate-500
                                      dark:text-slate-400">{t.ref}</span>

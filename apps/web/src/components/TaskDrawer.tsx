@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type LinkType, type ProjectParam, type ProblemHistoryItem, type Task, type TaskDetail, type TaskStatus } from '../lib/api'
 import { LINK_LABEL, LINK_CHIP, SCHEDULING, SEMANTIC, linkSentence } from '../lib/linkText'
-import { Button, Input, Select, Field, Spinner, ColorOption, readableColor, cx, ProblemBadge } from './ui'
+import { Button, Input, Select, Field, Spinner, ColorOption, readableColor, cx, ProblemBadge, TypeBadge } from './ui'
 import { InquiryTable } from './InquiryTable'
 import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
@@ -395,17 +395,12 @@ export function TaskDrawer({
                                    dark:bg-slate-800 dark:text-slate-400">
                     {data.ref}
                   </span>
-                  {/* 顏色是那一種種類自己的（系統參數頁裡挑的），不是寫死的紫色；
-                      只畫成左邊那條細槓，理由見 pages/List.tsx 同一段註解 */}
+                  {/* 顏色是那一種種類自己的（系統參數頁裡挑的） */}
                   {typeOf(data.type) && (
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded
-                                     bg-slate-100 py-0.5 pr-1.5 pl-1 text-[11px] text-slate-600
-                                     dark:bg-slate-800 dark:text-slate-300">
-                      <span className="h-3 w-0.5 rounded-full"
-                            style={{ background: types.find(t => t.key === data.type)?.color
-                                                 ?? '#94a3b8' }} />
-                      {typeOf(data.type)}
-                    </span>
+                    <TypeBadge
+                      name={typeOf(data.type)}
+                      color={types.find(t => t.key === data.type)?.color ?? '#94a3b8'}
+                    />
                   )}
 
                   {/*

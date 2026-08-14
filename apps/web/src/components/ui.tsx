@@ -241,3 +241,36 @@ export function Spinner({ label = T.common.loading }: { label?: string }) {
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="p-8 text-center text-sm text-slate-400 dark:text-slate-400">{children}</div>
 }
+
+/**
+ * 全站統一的「事件類型標籤」（膠囊微色塊風格）：
+ * 10% 柔和底色 + 25% 同色邊框 + 實心微型圓點 + 原色文字
+ */
+export function TypeBadge({
+  name,
+  color = '#3178c6',
+  className,
+}: {
+  name?: string | null
+  color?: string | null
+  className?: string
+}) {
+  if (!name) return null
+  const c = color || '#3178c6'
+  return (
+    <span
+      className={cx(
+        'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium border select-none',
+        className
+      )}
+      style={{
+        backgroundColor: `${c}18`,
+        color: c,
+        borderColor: `${c}40`,
+      }}
+    >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c }} />
+      {name}
+    </span>
+  )
+}

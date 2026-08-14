@@ -27,7 +27,7 @@ import '@xyflow/react/dist/style.css'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
-import { cx, ProblemBadge } from '../components/ui'
+import { cx, ProblemBadge, TypeBadge } from '../components/ui'
 import { rollup } from '../lib/rollup'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
@@ -453,22 +453,13 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
                   title="【卡片】點擊轉換為收納盒"
                 >
-                  📄 卡片
+                  卡片
                 </button>
               )}
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
-              <span
-                className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] border pointer-events-none select-none font-medium"
-                style={{
-                  backgroundColor: `${data.typeColor || '#3178c6'}18`,
-                  color: data.typeColor || '#3178c6',
-                  borderColor: `${data.typeColor || '#3178c6'}40`,
-                }}
-              >
-                {data.typeName || '任務單'}
-              </span>
+              <TypeBadge name={data.typeName || '任務單'} color={data.typeColor || '#3178c6'} />
             </div>
 
             {/* 第二行：警示徽章 */}
