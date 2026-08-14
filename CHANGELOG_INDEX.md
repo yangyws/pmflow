@@ -22,11 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: SystemFlow Multi-Page Support, Gantt Row Color & Exclude Bug, Calendar Indicators
+### Latest Changes: Customizable Task Types Restoration & System Flow Creator Permissions
 - **變更檔案**:
-  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 新增多頁面標籤列（Page Tabs）、支援動態新增頁面（`➕ 新增頁面`）、分頁切換、內嵌重新命名（連點或點擊 `✏️`）、頁面複製副本（`📑`）、刪除頁面（`×` 附確認彈窗），並向下相容舊版單頁 localStorage 資料結構。
-  - [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx): 移除時間軸長條內文字、依任務列輪替指派高辨識度鮮明色彩，並透過 CSS 類別精準綁定左側任務文字與右側進度長條填色為同一個飽和色彩，排除問題單（BUG）。
-  - [`Calendar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Calendar.tsx): 修正日期頂部微型警示紅點判定條件，當日含有問題單（BUG）、遭遇問題任務或逾期任務時即時顯示紅點。
+  - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 恢復「事件類型」系統參數管理區塊，支援自由新增自訂類型、調整順序、編輯名稱與顏色、刪除與搬移既有任務；自訂清單自動排除「問題單」（BUG），確保問題單為系統固定內建事件類型。
+  - [`parameters.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/parameters.ts): 嚴格保護「問題單（BUG）」事件類型，禁止於系統參數中被修改、刪除或重複新增，並於 `assertParamKey` 永遠放行 BUG 類型。
+  - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx) & [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx) & [`List.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/List.tsx): 新增或編輯事件時，事件類型下拉選單支援所有專案自訂類型，同時永遠保留「問題單」選項供獨立開立。
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 新增流程圖多分頁（Multi-page Tabs）機制；紀錄 `createdById` 與 `createdByName`，嚴格規範僅限專案建立者、Owner、Manager 以及「該分頁的建立者本人」具備分頁刪除權限。
 
 ### Previous Changes: Problem Resolution Workflow, SystemFlow Decoupling, Deleted Tasks View, and Strict Delete Permissions
 - **變更檔案**:
