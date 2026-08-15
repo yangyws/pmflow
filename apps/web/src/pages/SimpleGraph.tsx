@@ -2188,8 +2188,52 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               <ControlButton onClick={() => zoomOut({ duration: 250 })} title="縮小畫布" aria-label="縮小畫布">
                 <span className="text-sm font-bold select-none">➖</span>
               </ControlButton>
-              <ControlButton onClick={() => fitView({ padding: 0.2, duration: 250 })} title="置中視野" aria-label="置中視野">
+              <ControlButton
+                onClick={() => {
+                  if (nodes.length === 0) {
+                    setCenter(0, 0, { zoom: 1, duration: 300 })
+                    return
+                  }
+                  const targetId = focusedTaskId || nodes[0]?.id
+                  const targetNode = nodes.find((n) => n.id === targetId)
+                  if (targetNode) {
+                    const w = targetNode.measured?.width ?? 260
+                    const h = targetNode.measured?.height ?? 90
+                    setCenter(targetNode.position.x + w / 2, targetNode.position.y + h / 2, { zoom: 1, duration: 300 })
+                  } else {
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+                    nodes.forEach((n) => {
+                      if (n.parentId) return
+                      const x = n.position.x
+                      const y = n.position.y
+                      const w = n.measured?.width ?? 260
+                      const h = n.measured?.height ?? 90
+                      if (x < minX) minX = x
+                      if (x + w > maxX) maxX = x + w
+                      if (y < minY) minY = y
+                      if (y + h > maxY) maxY = y + h
+                    })
+                    const midX = minX !== Infinity ? (minX + maxX) / 2 : 0
+                    const midY = minY !== Infinity ? (minY + maxY) / 2 : 0
+                    setCenter(midX, midY, { zoom: 1, duration: 300 })
+                  }
+                }}
+                title="置中視野 (100% 原始比例)"
+                aria-label="置中視野"
+              >
                 <span className="text-sm select-none">🎯</span>
+              </ControlButton>
+              <ControlButton
+                onClick={() => {
+                  onSelectTask?.(null as unknown as string)
+                  fitView({ padding: 0.15, duration: 350 })
+                }}
+                title="顯示全部 (縮放容納所有卡片)"
+                aria-label="顯示全部"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
               </ControlButton>
               <ControlButton
                 onClick={() => setShowHelpTooltip((prev) => !prev)}

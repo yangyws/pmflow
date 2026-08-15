@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fully Localized Chinese Canvas Controls (SimpleGraph & SystemFlow)
+### Latest Changes: Dedicated '顯示全部' (Fit View) and '置中視野' (1:1 Center) Canvas Controls
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 左下角控制板獨立提供「🎯 置中視野（恢復 100% 原始比例並對焦於目前目標/中央）」與「⛶ 顯示全部（自動縮放並容納全畫布所有節點與卡片）」，明確分工。
+
+### Previous Changes: Fully Localized Chinese Canvas Controls (SimpleGraph & SystemFlow)
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 將左下角畫布控制板（`Controls`）所有功能與浮動提示（Tooltips / `title` / `aria-label`）全面中文化（`➕ 放大畫布`、`➖ 縮小畫布`、`🎯 置中視野`、`ℹ️ 圖示說明`），移除所有預設英文提示。
 
