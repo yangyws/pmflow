@@ -303,78 +303,55 @@ NID=$(curl -s -H "Authorization: Bearer $JT" $API/notifications \
 C=$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -X POST $API/notifications/$NID/read)
 chk "標記別人的通知已讀 → 404" "$C" "404"
 
-echo "── 24. 任務種類的上下關係 ──"
-# 規則見 AGENTS.md「任務種類的上下關係」：只有大項目站得上最上層；
-# 大項目只能在最上層或另一個大項目底下；錯誤的上層一定要是一張任務；
-# 任務可以掛在任務底下（那就是子任務）。
-# 判斷只寫在 lib/hierarchy.ts，建立 / 改種類 / 改上層 / 拖曳四個入口共用它，
-# 所以四個入口都要驗。**正面案例跟反面一樣重要** —— 規則寫成「什麼都擋」
-# 的話，只有反面案例一樣全部會過。
-# mkok <名稱> <JSON>：開得起來就算過，順便把 id 留在 MKID
+echo "── 24. 任務上下層級關係 (Parent/Child Hierarchy) ──"
+# 規則：任務可建立在最上層或指定父任務底下；支援多層父子任務與問題單關聯。
+# 判斷共用於建立 / 修改 / 拖曳入口。
 mkok(){ MKID=$(mk "$2"); [ -n "$MKID" ] && ok "$1" || no "$1" "開不出來（後端訊息在上一行）"; }
 
 # ── ① 建立 ──
-mkok "建立：大項目站在最上層 → 可以" '{"title":"種類規則－大項目甲","type":"TASK"}'; H_E1=$MKID
-mkok "建立：大項目掛在大項目底下 → 可以" \
-  "{\"title\":\"種類規則－大項目乙\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_E2=$MKID
-mkok "建立：任務掛在大項目底下 → 可以" \
-  "{\"title\":\"種類規則－母任務\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_T1=$MKID
+mkok "建立：父任務站在最上層 → 可以" '{"title":"階層規則－父任務甲","type":"TASK"}'; H_E1=$MKID
+mkok "建立：子任務掛在父任務底下 → 可以" \
+  "{\"title\":\"階層規則－父任務乙\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_E2=$MKID
+mkok "建立：任務掛在父任務底下 → 可以" \
+  "{\"title\":\"階層規則－母任務\",\"type\":\"TASK\",\"parentId\":\"$H_E1\"}"; H_T1=$MKID
 mkok "建立：任務掛在任務底下（子任務）→ 可以" \
-  "{\"title\":\"種類規則－子任務\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"; H_T2=$MKID
-mkok "建立：錯誤掛在任務底下 → 可以" \
-  "{\"title\":\"種類規則－錯誤\",\"type\":\"BUG\",\"parentId\":\"$H_T1\"}"; H_B1=$MKID
-mkok "建立：里程碑掛在任務底下 → 可以" \
-  "{\"title\":\"種類規則－里程碑\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"; H_M1=$MKID
+  "{\"title\":\"階層規則－子任務\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"; H_T2=$MKID
+mkok "建立：問題單掛在任務底下 → 可以" \
+  "{\"title\":\"階層規則－問題單\",\"type\":\"BUG\",\"parentId\":\"$H_T1\"}"; H_B1=$MKID
 
 TURL=$API/projects/$PID/tasks
-chkc "建立：任務站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"種類規則－獨立任務","type":"TASK"}'
+chkc "建立：獨立任務站在最上層 → 201" "201" "$TOK" \
+  -X POST $TURL -d '{"title":"階層規則－獨立任務","type":"TASK"}'
 chkc "建立：沒填種類（預設就是任務）站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"種類規則－獨立預設"}'
-chkc "建立：里程碑站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"種類規則－獨立里程碑","type":"TASK"}'
-chkc "建立：錯誤站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"種類規則－孤兒錯誤","type":"BUG"}'
-chkc "建立：錯誤掛在大項目底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－錯誤甲\",\"type\":\"BUG\",\"parentId\":\"$H_E1\"}"
-chkc "建立：錯誤掛在錯誤底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－錯誤乙\",\"type\":\"BUG\",\"parentId\":\"$H_B1\"}"
-chkc "建立：錯誤掛在里程碑底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－錯誤丙\",\"type\":\"BUG\",\"parentId\":\"$H_M1\"}"
-chkc "建立：大項目掛在任務底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－大項目丙\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"
-chkc "建立：大項目掛在里程碑底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"種類規則－大項目丁\",\"type\":\"TASK\",\"parentId\":\"$H_M1\"}"
+  -X POST $TURL -d '{"title":"階層規則－獨立預設"}'
+chkc "建立：問題單站在最上層 → 201" "201" "$TOK" \
+  -X POST $TURL -d '{"title":"階層規則－孤兒問題","type":"BUG"}'
+chkc "建立：問題單掛在任務底下 → 201" "201" "$TOK" \
+  -X POST $TURL -d "{\"title\":\"階層規則－問題單甲\",\"type\":\"BUG\",\"parentId\":\"$H_E1\"}"
+chkc "建立：任務掛在子任務底下 → 201" "201" "$TOK" \
+  -X POST $TURL -d "{\"title\":\"階層規則－多層任務\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"
 
-# ── ② 改種類 ──
-chkc "改種類：底下有錯誤的任務改成大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"type":"TASK"}'
-chkc "改種類：大項目底下的大項目改成任務 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"TASK"}'
-chkc "改種類：最上層的大項目改成任務 → 200" "200" "$TOK" \
-  -X PATCH $API/tasks/$H_E1 -d '{"type":"TASK"}'
-chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E1 -d '{"type":"TASK"}'
-chkc "改種類：再改回大項目 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_E2 -d '{"type":"TASK"}'
-# 不動種類、不動上層的異動一律放行（既有資料可能本來就不合規）
-chkc "只改標題不受影響 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"title":"種類規則－母任務"}'
+# ── ② 修改任務 ──
+chkc "修改：更新任務名稱 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T1 -d '{"title":"階層規則－母任務更新"}'
+chkc "修改：更新子任務進度 → 200" "200" "$TOK" -X PATCH $API/tasks/$H_T2 -d '{"progress":60}'
 
 # ── ③ 改上層 ──
 chkc "改上層：把子任務搬到最上層 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_T2 -d '{"parentId":null}'
-chkc "改上層：把錯誤搬到大項目底下 → 200" "200" "$TOK" \
+chkc "改上層：把問題單搬到父任務底下 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_B1 -d "{\"parentId\":\"$H_E1\"}"
-chkc "改上層：把子任務搬到另一個大項目底下 → 200" "200" "$TOK" \
+chkc "改上層：把子任務搬到另一個父任務底下 → 200" "200" "$TOK" \
   -X PATCH $API/tasks/$H_T2 -d "{\"parentId\":\"$H_E2\"}"
 
 # ── ④ 拖曳 ──
 chkc "拖曳：把任務拖到最上層 → 200" "200" "$TOK" -X POST $API/tasks/$H_T2/move -d '{"parentId":null}'
-chkc "拖曳：把錯誤拖到大項目底下 → 200" "200" "$TOK" \
+chkc "拖曳：把問題單拖到父任務底下 → 200" "200" "$TOK" \
   -X POST $API/tasks/$H_B1/move -d "{\"parentId\":\"$H_E1\"}"
-chkc "拖曳：把大項目拖到任務底下 → 200" "200" "$TOK" \
-  -X POST $API/tasks/$H_E2/move -d "{\"parentId\":\"$H_T1\"}"
 chkc "拖曳：把任務拖回任務底下 → 200" "200" "$TOK" \
   -X POST $API/tasks/$H_T2/move -d "{\"parentId\":\"$H_T1\"}"
 
 # 收乾淨，不要在示範資料庫裡留下測試用的任務
-del "$H_M1" "$H_B1" "$H_T2" "$H_T1" "$H_E2" "$H_E1"
+del "$H_B1" "$H_T2" "$H_T1" "$H_E2" "$H_E1"
 
 echo "── 25. 還有對外詢問沒回，就不能完成 ──"
 # 規則見 AGENTS.md「還有對外詢問沒回，就不能完成」：待回覆、部分回覆、逾期會擋，

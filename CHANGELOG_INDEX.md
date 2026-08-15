@@ -22,9 +22,9 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fixed E2E Bash Test Suite Legacy Type References
+### Latest Changes: Removed Legacy Milestone and Epic Terminology
 - **變更檔案**:
-  - [`e2e.sh`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.sh): 修復第 24 節種類上下關係測試中殘留的舊版寫死 `MILESTONE` 類型引用（更新為有效專案參數類型），解決建立失敗與連鎖 UUID 驗證錯誤。
+  - [`e2e.sh`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.sh): 全面清理第 24 節舊版「里程碑」與「大項目」硬編碼術語，全面重構為「父任務 / 子任務 / 問題單」之標準多層階層關係測試。
   - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 跨平台 TypeScript 端對端測試套件全數通過（11/11 通過）。
 
 ### Previous Changes: Cross-Platform API Test Runner & CI Integration (npm test)
