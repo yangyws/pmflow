@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Left/Top Alignment for Storage Box and Warning Legend Items
+### Latest Changes: New 'Playground' (程式演練) Tab with Live Web, Markdown & SQL Preview
+- **變更檔案**:
+  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 新增多合一即時演練頁面，左側為即時程式碼編輯器（支援 Console 日誌、複製與重設），右側即時展示預覽結果。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx) & [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts): 註冊 `playground: '程式演練'` 頁籤，支援三種模式切換：
+    1. 🌐 **HTML/CSS/JS 即時預覽**（Sandboxed iframe + Console log 捕獲）
+    2. 📝 **Markdown & Mermaid 流程圖**（即時文件排版與流程圖預覽）
+    3. 🗄️ **SQL 查詢測試台**（真實專案任務資料模擬查詢與資料表/JSON 檢視）
+
+### Previous Changes: Left/Top Alignment for Storage Box and Warning Legend Items
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 圖示說明彈窗中，將「📦 收納盒」與多行說明項目的垂直對齊由 `items-center` 調整為 `items-start`，確保圖示與標籤統一靠上對齊，不再強制居中。
 

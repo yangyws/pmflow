@@ -28,6 +28,7 @@ const GanttView = lazy(() => import('./pages/Gantt'))
 const GraphView = lazy(() => import('./pages/Graph'))
 const SimpleGraphView = lazy(() => import('./pages/SimpleGraph'))
 const SystemFlowView = lazy(() => import('./pages/SystemFlow'))
+const PlaygroundView = lazy(() => import('./pages/Playground'))
 import CalendarView from './pages/Calendar'
 import InquiryBoard from './pages/InquiryBoard'
 import ProjectPicker from './pages/ProjectPicker'
@@ -41,7 +42,7 @@ import AdminPanel from './components/AdminPanel'
 const DashboardView = lazy(() => import('./pages/Dashboard'))
 const DeletedTasksView = lazy(() => import('./pages/DeletedTasks'))
 
-type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'systemFlow' | 'dashboard'
+type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'systemFlow' | 'playground' | 'dashboard'
   | 'inquiry' | 'members' | 'deletedTasks' | 'memberAdmin' | 'settings'
 
 /**
@@ -57,6 +58,7 @@ const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'gantt', label: T.nav.views.gantt },
   { key: 'simpleGraph', label: T.nav.views.graph },
   { key: 'systemFlow', label: T.nav.views.systemFlow },
+  { key: 'playground', label: T.nav.views.playground },
   // 儀表板排在幾張「看任務」的圖後面：它看的是整個專案的走勢，
   // 不是同一批任務的另一種排法，翻它的時機也不一樣（回報進度的時候才看）
   { key: 'dashboard', label: T.nav.views.dashboard },
@@ -81,7 +83,7 @@ const VIEWS: Array<{ key: View; label: string }> = [
  * 所以一律先回清單。
  */
 const NOT_FILTERED_BY_EPIC: View[] = [
-  'inquiry', 'members', 'memberAdmin', 'settings', 'dashboard',
+  'inquiry', 'members', 'memberAdmin', 'settings', 'dashboard', 'playground',
 ]
 
 export default function App() {
@@ -745,6 +747,11 @@ function ProjectWorkspace({
               {view === 'systemFlow' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <SystemFlowView projectId={projectId} />
+                </Suspense>
+              )}
+              {view === 'playground' && (
+                <Suspense fallback={<Spinner label="載入演練區…" />}>
+                  <PlaygroundView projectId={projectId} />
                 </Suspense>
               )}
               {/*
