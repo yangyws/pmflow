@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Synchronized Left Sidebar Selection & Smooth Auto-Scroll from Graphs
+### Latest Changes: Unsuppressed '⛔ 卡住' Badge in Dependency Graphs
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 移除過往卡片若有「問題說明（`problem`）」就會被 `!data.problem` 遮蔽「⛔ 卡住（`blockedBy`）」徽章的邏輯，確保當任務有未完成上游依賴時，「⛔ 卡住」與「⚑ 問題」徽章皆能完整顯示。
+
+### Previous Changes: Synchronized Left Sidebar Selection & Smooth Auto-Scroll from Graphs
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx), [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx), [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) & [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 在關聯圖或靶心圖點選任一卡片/收納盒時，左側側欄選單（EpicSidebar）會即時同步焦點狀態（高亮藍色外框）、自動展開該項目所屬的父收納盒，並以平滑動畫自動滾動（`scrollIntoView`）至該項目視野中。
 
