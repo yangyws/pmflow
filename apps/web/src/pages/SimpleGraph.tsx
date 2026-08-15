@@ -2255,25 +2255,77 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             <div
               onMouseEnter={() => setShowHelpTooltip(true)}
               onMouseLeave={() => setShowHelpTooltip(false)}
-              className="absolute left-14 bottom-3 z-30 w-72 rounded-xl border border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-auto"
+              className="absolute left-14 bottom-3 z-30 w-80 rounded-xl border border-slate-200 bg-white/98 p-4 shadow-2xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/98 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-auto max-h-[85vh] overflow-y-auto"
             >
-              <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 mb-2">
-                <span className="text-base">⚑</span>
-                <span>警示與線條圖示說明</span>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2.5">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+                  <span>ℹ️</span>
+                  <span>圖表與警示圖示說明</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-normal">完整圖例</span>
               </div>
-              <div className="space-y-1.5 leading-relaxed text-slate-600 dark:text-slate-300">
-                <p>
-                  <span className="font-semibold text-fuchsia-600 dark:text-fuchsia-400">⚑ 問題標記：</span>
-                  當事件/任務包含尚未解決的「問題說明」時，會在 MRG 與標題右側顯示粉紫色的 ⚑ 問題警示徽章。
-                </p>
-                <p>
-                  <span className="font-semibold text-red-500">🔴 紅色實線：</span>
-                  由卡片或收納盒的左右接點出發的關聯線。
-                </p>
-                <p>
-                  <span className="font-semibold text-purple-600 dark:text-purple-400">🟣 紫色虛線：</span>
-                  由卡片或收納盒的上下接點出發的關聯線。
-                </p>
+
+              <div className="space-y-3 leading-relaxed text-slate-600 dark:text-slate-300">
+                {/* 關聯線條 */}
+                <div>
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+                    <span>🔗</span> 關聯線條
+                  </div>
+                  <div className="space-y-1 pl-1 text-[11px]">
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 font-semibold text-red-500">🔴 紅色實線</span>：左右接點，前後相依關聯（完成後開始）。
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 font-semibold text-purple-600 dark:text-purple-400">🟣 紫色虛線</span>：上下接點，模組與輔助關聯。
+                    </p>
+                  </div>
+                </div>
+
+                {/* 狀態與警示 */}
+                <div>
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+                    <span>🚩</span> 警示徽章
+                  </div>
+                  <div className="space-y-1 pl-1 text-[11px]">
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1 py-0.5 font-semibold text-[10px]">⚑ 問題 / 問 N</span>
+                      <span>：包含未解決之問題單或遭遇問題說明。</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 font-semibold text-[10px]">⚠️ 卡住 / 卡 N</span>
+                      <span>：任務進度受阻、等待外部資源中。</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 px-1 py-0.5 font-semibold text-[10px]">⏰ 逾期 / 逾 N</span>
+                      <span>：已超過預定結束日且尚未達到 100%。</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* 卡片與容器 */}
+                <div>
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+                    <span>📦</span> 容器與事件類型
+                  </div>
+                  <div className="space-y-1 pl-1 text-[11px]">
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 font-semibold">📦 收納盒</span>
+                      <span>：父層容器，內部收納子任務並自動加總內部警示。</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 任務單</span>
+                      <span>：標準事件卡片，支援自訂類型與顏色標籤。</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 font-semibold text-rose-600 dark:text-rose-400">🐛 問題單</span>
+                      <span>：系統固定類型，專門追蹤修復與解決方案。</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-semibold">✓ 100%</span>
+                      <span>：進度達 100% 即標示為已完成。</span>
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

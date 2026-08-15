@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Unconstrained Fit-All Canvas Zoom (minZoom=0.05)
+### Latest Changes: Comprehensive Visual Legend Tooltip (SimpleGraph & SystemFlow)
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 全面擴充左下角「ℹ️ 圖示說明」彈出面板，分類補齊「🔗 關聯線條（🔴 前後實線 / 🟣 上下虛線）」、「🚩 警示徽章（⚑ 問題單 / ⚠️ 卡住 / ⏰ 逾期）」與「📦 容器與事件（收納盒 / 任務單 / 問題單 / 100% 完成）」之完整圖例與說明。
+
+### Previous Changes: Unconstrained Fit-All Canvas Zoom (minZoom=0.05)
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 將 ReactFlow 的縮小限制放寬至 `minZoom={0.05}`，徹底解決「顯示全部」受限於預設 `minZoom: 0.5` 導致大幅面卡片無法完整縮放容納的問題。
 

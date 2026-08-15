@@ -517,6 +517,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string } | null>(null)
   const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string } | null>(null)
+  const [showHelpTooltip, setShowHelpTooltip] = useState(false)
 
   // 頁面重新命名與刪除狀態
   const [editingPageId, setEditingPageId] = useState<string | null>(null)
@@ -1208,8 +1209,70 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
               </svg>
             </ControlButton>
+            <ControlButton
+              onClick={() => setShowHelpTooltip((prev) => !prev)}
+              onMouseEnter={() => setShowHelpTooltip(true)}
+              onMouseLeave={() => setShowHelpTooltip(false)}
+              title="流程圖示說明"
+              aria-label="圖示說明"
+              className="!text-amber-500 font-bold"
+            >
+              ℹ️
+            </ControlButton>
           </Controls>
         </ReactFlow>
+
+        {/* 左下角工具列說明懸浮視窗 */}
+        {showHelpTooltip && (
+          <div
+            onMouseEnter={() => setShowHelpTooltip(true)}
+            onMouseLeave={() => setShowHelpTooltip(false)}
+            className="absolute left-14 bottom-3 z-30 w-80 rounded-xl border border-slate-200 bg-white/98 p-4 shadow-2xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/98 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-auto max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2.5">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+                <span>ℹ️</span>
+                <span>系統流程圖示說明</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-normal">流程圖例</span>
+            </div>
+
+            <div className="space-y-3 leading-relaxed text-slate-600 dark:text-slate-300">
+              {/* 流程節點 */}
+              <div>
+                <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+                  <span>📦</span> 節點與容器
+                </div>
+                <div className="space-y-1 pl-1 text-[11px]">
+                  <p className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 流程步驟</span>：代表具體系統行為、API 呼叫或操作。
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400">📦 模組容器</span>：系統子模組，可拖曳收納多個步驟。
+                  </p>
+                </div>
+              </div>
+
+              {/* 連接點與線條 */}
+              <div>
+                <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
+                  <span>🔗</span> 四向接點與連線
+                </div>
+                <div className="space-y-1 pl-1 text-[11px]">
+                  <p className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-semibold text-blue-500">🔵 左右連接</span>：標準水平流程線，代表先後次序。
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-semibold text-purple-500">🟣 上下連接</span>：模組輔助或跨層連線。
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-semibold">⚙ 點擊連線</span>：點擊任一連線即可一鍵確認刪除。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 編輯節點 Modal */}
