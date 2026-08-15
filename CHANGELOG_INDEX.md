@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Dedicated '顯示全部' (Fit View) and '置中視野' (1:1 Center) Canvas Controls
+### Latest Changes: Unconstrained Fit-All Canvas Zoom (minZoom=0.05)
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 將 ReactFlow 的縮小限制放寬至 `minZoom={0.05}`，徹底解決「顯示全部」受限於預設 `minZoom: 0.5` 導致大幅面卡片無法完整縮放容納的問題。
+
+### Previous Changes: Dedicated '顯示全部' (Fit View) and '置中視野' (1:1 Center) Canvas Controls
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 左下角控制板獨立提供「🎯 置中視野（恢復 100% 原始比例並對焦於目前目標/中央）」與「⛶ 顯示全部（自動縮放並容納全畫布所有節點與卡片）」，明確分工。
 

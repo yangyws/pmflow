@@ -1148,7 +1148,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           defaultViewport={savedViewport}
           fitView={!savedViewport}
           fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
+          minZoom={0.05}
           maxZoom={2.5}
           nodesDraggable={true}
           nodesConnectable={true}
@@ -1200,7 +1200,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               <span className="text-sm select-none">🎯</span>
             </ControlButton>
             <ControlButton
-              onClick={() => fitView({ padding: 0.15, duration: 350 })}
+              onClick={() => fitView({ padding: 0.12, duration: 350, minZoom: 0.05 })}
               title="顯示全部 (縮放容納所有節點)"
               aria-label="顯示全部"
             >

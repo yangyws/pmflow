@@ -2171,6 +2171,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               animated: false,
               style: { strokeWidth: 2, stroke: '#ef4444' },
             }}
+            minZoom={0.05}
+            maxZoom={2.5}
             zoomOnPinch={true}
             panOnScroll={false}
             preventScrolling={true}
@@ -2226,7 +2228,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               <ControlButton
                 onClick={() => {
                   onSelectTask?.(null as unknown as string)
-                  fitView({ padding: 0.15, duration: 350 })
+                  fitView({ padding: 0.12, duration: 350, minZoom: 0.05 })
                 }}
                 title="顯示全部 (縮放容納所有卡片)"
                 aria-label="顯示全部"
