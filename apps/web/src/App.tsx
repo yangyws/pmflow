@@ -750,7 +750,7 @@ function ProjectWorkspace({
                 </Suspense>
               )}
               {view === 'playground' && (
-                <Suspense fallback={<Spinner label="載入演練區…" />}>
+                <Suspense fallback={<Spinner label="載入共用元件範例表…" />}>
                   <PlaygroundView projectId={projectId} />
                 </Suspense>
               )}

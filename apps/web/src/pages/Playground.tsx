@@ -213,8 +213,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
   const [activeId, setActiveId] = useState<string>(() => snippets[0]?.id ?? 'snip-1')
   const activeSnippet = useMemo(() => snippets.find((s) => s.id === activeId) ?? snippets[0], [snippets, activeId])
 
-  // 三欄寬度與收納狀態 (Panel 1: 清單, Panel 2: 編輯器, Panel 3: 結果預覽)
-  const [col1Width, setCol1Width] = useState<number>(240)
+  // 欄位寬度與收納狀態 (Panel 1: 固定寬度清單, Panel 2: 可調寬度編輯器, Panel 3: 結果預覽)
   const [col2Width, setCol2Width] = useState<number>(460)
 
   const [showCol1, setShowCol1] = useState<boolean>(true)
@@ -235,16 +234,14 @@ export default function Playground({ projectId }: { projectId: string | null }) 
     }
   }
 
-  // 拖曳調整寬度
-  const isDraggingResizer = useRef<'resizer1' | 'resizer2' | null>(null)
+  // 拖曳調整編輯區與預覽區寬度
+  const isDraggingResizer = useRef<boolean>(false)
   const startXRef = useRef<number>(0)
-  const startCol1WRef = useRef<number>(240)
   const startCol2WRef = useRef<number>(460)
 
-  const handlePointerDownResizer = (e: React.PointerEvent, resizer: 'resizer1' | 'resizer2') => {
-    isDraggingResizer.current = resizer
+  const handlePointerDownResizer = (e: React.PointerEvent) => {
+    isDraggingResizer.current = true
     startXRef.current = e.clientX
-    startCol1WRef.current = col1Width
     startCol2WRef.current = col2Width
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -252,11 +249,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingResizer.current) return
     const dx = e.clientX - startXRef.current
-    if (isDraggingResizer.current === 'resizer1') {
-      setCol1Width(Math.max(160, Math.min(500, startCol1WRef.current + dx)))
-    } else if (isDraggingResizer.current === 'resizer2') {
-      setCol2Width(Math.max(260, Math.min(800, startCol2WRef.current + dx)))
-    }
+    setCol2Width(Math.max(260, Math.min(900, startCol2WRef.current + dx)))
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -264,7 +257,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
       try {
         ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
       } catch {}
-      isDraggingResizer.current = null
+      isDraggingResizer.current = false
     }
   }
 
@@ -487,10 +480,10 @@ export default function Playground({ projectId }: { projectId: string | null }) 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <span>💻</span> 程式碼演練台
+            <span>🧩</span> 共用元件 範例表
           </span>
           <span className="text-xs text-slate-400">
-            ({snippets.length} 個演練項目)
+            ({snippets.length} 個元件範例)
           </span>
         </div>
 
@@ -542,8 +535,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
         {/* ── 欄位 1: 項目清單 (Snippet List) ── */}
         {showCol1 && (
           <div
-            style={{ width: col1Width }}
-            className="flex flex-col shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
+            className="w-64 shrink-0 flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
           >
             <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">項目清單</span>
@@ -580,6 +572,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
                   <div
                     key={snip.id}
                     onClick={() => setActiveId(snip.id)}
+                    title={snip.title}
                     className={cx(
                       'group flex items-center justify-between p-2.5 rounded-lg text-xs transition cursor-pointer select-none',
                       isActive
@@ -591,7 +584,9 @@ export default function Playground({ projectId }: { projectId: string | null }) 
                       <span className="shrink-0 text-xs">
                         {snip.type === 'web' ? '🌐' : snip.type === 'markdown' ? '📝' : '🗄️'}
                       </span>
-                      <span className="truncate">{snip.title}</span>
+                      <span className="truncate" title={snip.title}>
+                        {snip.title}
+                      </span>
                     </div>
 
                     <button
@@ -606,15 +601,6 @@ export default function Playground({ projectId }: { projectId: string | null }) 
               })}
             </div>
           </div>
-        )}
-
-        {/* 分隔調整手柄 1 */}
-        {showCol1 && (showCol2 || showCol3) && (
-          <div
-            onPointerDown={(e) => handlePointerDownResizer(e, 'resizer1')}
-            className="w-1.5 hover:w-2 bg-slate-200 hover:bg-blue-500 dark:bg-slate-800 dark:hover:bg-blue-500 cursor-col-resize shrink-0 transition-all z-20"
-            title="按住左右拖曳調整寬度"
-          />
         )}
 
         {/* ── 欄位 2: 程式碼編輯區 (Code Editor) ── */}
@@ -669,7 +655,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
         {/* 分隔調整手柄 2 */}
         {showCol2 && showCol3 && (
           <div
-            onPointerDown={(e) => handlePointerDownResizer(e, 'resizer2')}
+            onPointerDown={handlePointerDownResizer}
             className="w-1.5 hover:w-2 bg-slate-200 hover:bg-blue-500 dark:bg-slate-800 dark:hover:bg-blue-500 cursor-col-resize shrink-0 transition-all z-20"
             title="按住左右拖曳調整寬度"
           />

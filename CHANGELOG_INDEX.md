@@ -22,12 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Three-Column Resizable & Collapsible Playground Snippet Manager
+### Latest Changes: Renamed to '共用元件 範例表', Fixed List Width & Hover Tooltips
 - **變更檔案**:
-  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 實作三欄式演練台：
-    1. **欄位 1（項目清單）**：支援建立多個獨立演練項目（網頁、Markdown、SQL），每個項目個別儲存代碼、支援更名與刪除。
-    2. **欄位 2（程式碼編輯區）**：全螢幕專注編輯目前選中項目之程式碼，即時自動儲存。
-    3. **欄位 3（即時預覽結果）**：自動編譯渲染 HTML/CSS/JS、Markdown 或 SQL 查詢表。
+  - [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts) & [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 將頁籤名稱及標題由「程式碼演練台」更名為 **「共用元件 範例表」**。
+  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx):
+    1. **固定左側清單寬度**：左側項目清單改為固定寬度 `w-64`（256px），編輯區與預覽區之間維持自由拖曳調寬。
+    2. **文字過長提示 (Hover Tooltip)**：清單項目名稱加入 `truncate` 與 `title` 屬性，當項目名稱過長省略時，滑鼠懸停即可顯示完整名稱提示。
     4. **拖曳調整與收納保護**：支援按住分隔線自由拖曳各欄寬度；支援個別面板收納切換，並強制至少保留一個面板開啟防呆。
 
 ### Previous Changes: Left/Top Alignment for Storage Box and Warning Legend Items
