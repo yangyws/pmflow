@@ -22,11 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Multi-Block Code Editor Architecture in Playground
+### Latest Changes: Three-Column Resizable & Collapsible Playground Snippet Manager
 - **變更檔案**:
-  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 移除頂部操作按鈕，改為多區塊（HTML、CSS、JS、Markdown、SQL）管理架構：
-    1. **個別區塊管理**：支援動態「＋ 新增區塊」、個別「🗑️ 刪除區塊」、「✏️ 修改標題與內容」及「啟用/停用」切換。
-    2. **即時動態組合**：右側即時將所有已啟用的區塊無縫編譯並渲染至 Live Preview，修改時自動儲存至本地。
+  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 實作三欄式演練台：
+    1. **欄位 1（項目清單）**：支援建立多個獨立演練項目（網頁、Markdown、SQL），每個項目個別儲存代碼、支援更名與刪除。
+    2. **欄位 2（程式碼編輯區）**：全螢幕專注編輯目前選中項目之程式碼，即時自動儲存。
+    3. **欄位 3（即時預覽結果）**：自動編譯渲染 HTML/CSS/JS、Markdown 或 SQL 查詢表。
+    4. **拖曳調整與收納保護**：支援按住分隔線自由拖曳各欄寬度；支援個別面板收納切換，並強制至少保留一個面板開啟防呆。
 
 ### Previous Changes: Left/Top Alignment for Storage Box and Warning Legend Items
 - **變更檔案**:
