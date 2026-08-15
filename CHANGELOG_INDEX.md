@@ -22,13 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Added Custom Tab Names in Project Settings, +Java & +HTML Buttons
+### Latest Changes: Tab Renamed to '各語法範例' with Full Global Synchronization
 - **變更檔案**:
-  - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 新增「自訂頁籤名稱」設定區塊，支援為每個檢視頁籤（清單、看板、關聯圖、共用元件範例表等）自訂顯示名稱與一鍵重設。
-  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 即時同步並渲染「自訂頁籤名稱」，修改後導覽列即刻套用。
-  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx):
-    1. **新增 ＋ Java 支援**：支援建立與演練 Java 程式碼，右側提供 OpenJDK 21 模擬執行終端機。
-    2. **按鈕更名**：將「＋ 網頁」更名為 **「＋ HTML」**。
+  - [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts): 將預設頁籤字串更新為 **`playground: '各語法範例'`**。
+  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 內部標題與導覽列全面同步為「各語法範例」（支援在參數設定中自訂更名連動）。
+  - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 「自訂頁籤名稱」設定中預設值連動更新為「各語法範例」。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頂部頁籤、導覽麵包屑與載入動畫即時全面同步自訂頁籤名稱。
 
 ### Previous Changes: Fixed Item List Header Wrapping & Layout Optimization
 - **變更檔案**:

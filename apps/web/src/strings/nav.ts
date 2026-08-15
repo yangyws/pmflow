@@ -29,7 +29,7 @@ export const nav = {
     gantt: '甘特圖',
     graph: '任務關聯圖',
     systemFlow: '系統流程圖',
-    playground: '共用元件 範例表',
+    playground: '各語法範例',
     /** 燃盡圖與負載熱圖。看的是整個專案的走勢，不是單張任務 */
     dashboard: '儀表板',
     /** 對外詢問是專案裡的一個頁籤，只看得到這個專案的 */

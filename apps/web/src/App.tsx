@@ -771,8 +771,11 @@ function ProjectWorkspace({
                 </Suspense>
               )}
               {view === 'playground' && (
-                <Suspense fallback={<Spinner label="載入共用元件範例表…" />}>
-                  <PlaygroundView projectId={projectId} />
+                <Suspense fallback={<Spinner label={`載入${shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}…`} />}>
+                  <PlaygroundView
+                    projectId={projectId}
+                    title={shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}
+                  />
                 </Suspense>
               )}
               {/*

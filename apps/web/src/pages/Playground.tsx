@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Button, cx } from '../components/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Api } from '../lib/api'
+import { T } from '../strings'
 
 export type SnippetType = 'web' | 'markdown' | 'sql' | 'java'
 
@@ -240,7 +241,13 @@ ORDER BY t.number ASC;
   },
 ]
 
-export default function Playground({ projectId }: { projectId: string | null }) {
+export default function Playground({
+  projectId,
+  title,
+}: {
+  projectId: string | null
+  title?: string
+}) {
   // 演練項目清單與當前選中項目
   const [snippets, setSnippets] = useState<PlaygroundSnippet[]>(() => {
     try {
@@ -526,10 +533,10 @@ export default function Playground({ projectId }: { projectId: string | null }) 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <span>🧩</span> 共用元件 範例表
+            <span>💻</span> {title || T.nav.views.playground}
           </span>
           <span className="text-xs text-slate-400">
-            ({snippets.length} 個元件範例)
+            ({snippets.length} 個範例項目)
           </span>
         </div>
 
