@@ -22,7 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Gantt Menu Selection Sync & SimpleGraph All Tasks FitView
+### Latest Changes: Cross-Platform API Test Runner & Suite (npm test)
+- **變更檔案**:
+  - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 建立跨平台（Windows / macOS / Linux）TypeScript 端對端 API 測試腳本，支援驗證身份認證、專案參數、任務 CRUD、依賴排程與狀態聚合。
+  - [`package.json`](file:///D:/NewProject/pmflow-git/apps/api/package.json): 新增 `npm test`、`npm run test:unit` 與 `npm run test:e2e` 測試指令。目前共 23 項單元與整合測試全數通過（23/23 通過）。
+
+### Previous Changes: Gantt Menu Selection Sync & SimpleGraph All Tasks FitView
 - **變更檔案**:
   - [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx): 補齊 `onTaskClick` 與 `onTaskSelected` 事件監聽，點擊甘特圖中任意任務列或進度條即時連動左側 Menu 高亮與滾動。
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 點擊側欄「☰ 全部任務」時，自動清除選中節點並觸發全圖平滑置中顯示全部 (`fitView`)。
