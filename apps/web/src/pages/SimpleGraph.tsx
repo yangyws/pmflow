@@ -535,7 +535,7 @@ type LogItem = {
 }
 
 function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask }: SimpleGraphProps) {
-  const { fitView, setCenter, getViewport } = useReactFlow()
+  const { fitView, setCenter, getViewport, zoomIn, zoomOut } = useReactFlow()
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -2177,15 +2177,26 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           >
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
             <Controls
-              showFitView={true}
-              showInteractive={true}
-              className="!bg-white dark:!bg-slate-800 !border !border-slate-300 dark:!border-slate-600 !shadow-md !rounded-lg overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-800 dark:[&_button]:!text-slate-100 [&_button]:!border-b [&_button]:!border-slate-200 dark:[&_button]:!border-slate-700 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700 [&_button_svg]:!fill-slate-800 dark:[&_button_svg]:!fill-slate-100"
+              showZoom={false}
+              showFitView={false}
+              showInteractive={false}
+              className="!bg-white dark:!bg-slate-800 !border !border-slate-300 dark:!border-slate-600 !shadow-md !rounded-lg overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-800 dark:[&_button]:!text-slate-100 [&_button]:!border-b [&_button]:!border-slate-200 dark:[&_button]:!border-slate-700 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700"
             >
+              <ControlButton onClick={() => zoomIn({ duration: 250 })} title="放大畫布" aria-label="放大畫布">
+                <span className="text-sm font-bold select-none">➕</span>
+              </ControlButton>
+              <ControlButton onClick={() => zoomOut({ duration: 250 })} title="縮小畫布" aria-label="縮小畫布">
+                <span className="text-sm font-bold select-none">➖</span>
+              </ControlButton>
+              <ControlButton onClick={() => fitView({ padding: 0.2, duration: 250 })} title="置中視野" aria-label="置中視野">
+                <span className="text-sm select-none">🎯</span>
+              </ControlButton>
               <ControlButton
                 onClick={() => setShowHelpTooltip((prev) => !prev)}
                 onMouseEnter={() => setShowHelpTooltip(true)}
                 onMouseLeave={() => setShowHelpTooltip(false)}
                 title="圖示說明 (警示圖示)"
+                aria-label="圖示說明"
                 className="!text-amber-500 font-bold"
               >
                 ℹ️

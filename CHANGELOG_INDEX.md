@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Cleaned Up Redundant FitView Button in System Flow
+### Latest Changes: Fully Localized Chinese Canvas Controls (SimpleGraph & SystemFlow)
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 將左下角畫布控制板（`Controls`）所有功能與浮動提示（Tooltips / `title` / `aria-label`）全面中文化（`➕ 放大畫布`、`➖ 縮小畫布`、`🎯 置中視野`、`ℹ️ 圖示說明`），移除所有預設英文提示。
+
+### Previous Changes: Cleaned Up Redundant FitView Button in System Flow
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 移除頂部工具列重複的「🎯 視野對焦」按鈕，集中由左下角畫布控制板（`Controls`）統一提供縮放與置中操作，對齊 SimpleGraph 標準版型。
 

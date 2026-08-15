@@ -425,7 +425,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
 
 function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
-  const { fitView } = useReactFlow()
+  const { fitView, zoomIn, zoomOut } = useReactFlow()
   const { user } = useAuth()
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -1160,9 +1160,20 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} color="#cbd5e1" className="dark:opacity-30" />
-          <Controls showInteractive={false} className="!bg-white dark:!bg-slate-800 !border !border-slate-200 dark:!border-slate-700 !shadow-lg !rounded-xl overflow-hidden">
-            <ControlButton onClick={() => fitView({ padding: 0.2, duration: 400 })} title="置中全部">
-              <span className="text-slate-700 dark:text-slate-200 text-sm">🎯</span>
+          <Controls
+            showZoom={false}
+            showFitView={false}
+            showInteractive={false}
+            className="!bg-white dark:!bg-slate-800 !border !border-slate-200 dark:!border-slate-700 !shadow-lg !rounded-xl overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-700 dark:[&_button]:!text-slate-200 [&_button]:!border-b [&_button]:!border-slate-100 dark:[&_button]:!border-slate-700/60 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700"
+          >
+            <ControlButton onClick={() => zoomIn({ duration: 300 })} title="放大畫布" aria-label="放大畫布">
+              <span className="text-sm font-bold select-none">➕</span>
+            </ControlButton>
+            <ControlButton onClick={() => zoomOut({ duration: 300 })} title="縮小畫布" aria-label="縮小畫布">
+              <span className="text-sm font-bold select-none">➖</span>
+            </ControlButton>
+            <ControlButton onClick={() => fitView({ padding: 0.2, duration: 400 })} title="置中視野" aria-label="置中視野">
+              <span className="text-sm select-none">🎯</span>
             </ControlButton>
           </Controls>
         </ReactFlow>
