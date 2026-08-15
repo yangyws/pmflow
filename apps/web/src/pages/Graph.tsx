@@ -1326,6 +1326,7 @@ export default function GraphView(props: {
   statuses: TaskStatus[]
   types?: ProjectParam[]
   onOpen: (id: string) => void
+  onSelectTask?: (id: string) => void
   focusedTaskId?: string | null
 }) {
   // useReactFlow（fitView / zoom）必須在 Provider 底下才拿得到
@@ -1337,13 +1338,14 @@ export default function GraphView(props: {
 }
 
 function GraphCanvas({
-  projectId, tasks, statuses, types, onOpen, focusedTaskId,
+  projectId, tasks, statuses, types, onOpen, onSelectTask, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]
   statuses: TaskStatus[]
   types?: ProjectParam[]
   onOpen: (id: string) => void
+  onSelectTask?: (id: string) => void
   focusedTaskId?: string | null
 }) {
   const qc = useQueryClient()
@@ -2876,6 +2878,7 @@ function GraphCanvas({
               setSelectedIds({ [n.id]: true })
             }
             setFocusId(n.id)
+            onSelectTask?.(n.id)
           }}
           onNodeDoubleClick={(_, n) => {
             if (n.type === 'task' || n.type === 'box') {
@@ -2886,6 +2889,7 @@ function GraphCanvas({
           onPaneClick={() => {
             setSelectedIds({})
             setFocusId(null)
+            onSelectTask?.('')
           }}
           // event 為 null 代表是程式呼叫的（fitView 自己），只有真人拖曳縮放才算
           onMoveStart={(e) => { if (e) userAdjusted.current = true }}

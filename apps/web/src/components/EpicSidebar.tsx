@@ -503,6 +503,14 @@ export function EpicSidebar({
         return changed ? next : prev
       })
     }
+
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-sidebar-task-id="${selectedTaskId}"]`)
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }, 60)
+    return () => clearTimeout(timer)
   }, [selectedTaskId, tasks])
 
   function toggle(id: string) {
@@ -854,7 +862,7 @@ function TreeNode({
   const isRelated = relatedTaskIds ? relatedTaskIds.has(task.id) : true
 
   return (
-    <div className={isRoot ? 'mb-0.5' : undefined}>
+    <div className={isRoot ? 'mb-0.5' : undefined} data-sidebar-task-id={task.id}>
       <div className={cx(
         'group/row flex items-center rounded-md transition-all duration-150',
         active

@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Comprehensive Visual Legend Tooltip (SimpleGraph & SystemFlow)
+### Latest Changes: Synchronized Left Sidebar Selection & Smooth Auto-Scroll from Graphs
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx), [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx), [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx) & [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 在關聯圖或靶心圖點選任一卡片/收納盒時，左側側欄選單（EpicSidebar）會即時同步焦點狀態（高亮藍色外框）、自動展開該項目所屬的父收納盒，並以平滑動畫自動滾動（`scrollIntoView`）至該項目視野中。
+
+### Previous Changes: Comprehensive Visual Legend Tooltip (SimpleGraph & SystemFlow)
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 全面擴充左下角「ℹ️ 圖示說明」彈出面板，分類補齊「🔗 關聯線條（🔴 前後實線 / 🟣 上下虛線）」、「🚩 警示徽章（⚑ 問題單 / ⚠️ 卡住 / ⏰ 逾期）」與「📦 容器與事件（收納盒 / 任務單 / 問題單 / 100% 完成）」之完整圖例與說明。
 

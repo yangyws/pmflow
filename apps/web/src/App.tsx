@@ -735,7 +735,8 @@ function ProjectWorkspace({
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
                   <GraphView projectId={projectId} tasks={tasks}
                              statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={handleTaskEdit}
-                             focusedTaskId={focusedTaskId ?? epicId} />
+                             focusedTaskId={focusedTaskId ?? epicId}
+                             onSelectTask={(id) => setFocusedTaskId(id)} />
                 </Suspense>
               )}
               {view === 'simpleGraph' && (
