@@ -22,8 +22,9 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: NAS Custom SQL Seed Directory Support
+### Latest Changes: NAS Custom SQL Seed Directory & Sample Seed File
 - **變更檔案**:
+  - [`01_demo_seed.sql`](file:///D:/NewProject/pmflow-git/seed/01_demo_seed.sql): 建立標準初始資料 SQL 種子範本，包含示範工作區、管理者帳號、專案參數、父子任務與 FS 依賴連線。
   - [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts): 新增 `seedFromSqlDir` 函式，讀取並執行掛載目錄下的 `.sql` 資料腳本。
   - [`index.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/index.ts): 在啟動階段偵測 `PMFLOW_SEED_SQL_DIR`（預設 `/data/seed`），若有自訂 `.sql` 檔則優先依序匯入並略過預設示範資料。
   - [`docker-compose.synology.yml`](file:///D:/NewProject/pmflow-git/docker-compose.synology.yml): 加入 `PMFLOW_SEED_SQL_DIR` 與 `./seed:/data/seed:ro` 掛載目錄設定，支援在 NAS 上直接放入 SQL 檔自動匯入。
