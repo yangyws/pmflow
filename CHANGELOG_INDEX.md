@@ -22,7 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Permanent Top Navigation Tabs in Task Edit Mode
+### Latest Changes: Gantt Menu Selection Sync & SimpleGraph All Tasks FitView
+- **變更檔案**:
+  - [`Gantt.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Gantt.tsx): 補齊 `onTaskClick` 與 `onTaskSelected` 事件監聽，點擊甘特圖中任意任務列或進度條即時連動左側 Menu 高亮與滾動。
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 點擊側欄「☰ 全部任務」時，自動清除選中節點並觸發全圖平滑置中顯示全部 (`fitView`)。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 在 `GanttView` 與 `onSelectEpic` 串接選取狀態與全域聚焦重設。
+
+### Previous Changes: Permanent Top Navigation Tabs in Task Edit Mode
 - **變更檔案**:
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx):
     1. **頂部頁籤常駐顯示**：進入任務編輯模式時，頂部第一層完整保留所有檢視頁籤與偏好選單，隨時一鍵跨頁對照。

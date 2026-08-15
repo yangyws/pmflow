@@ -491,8 +491,8 @@ function ProjectWorkspace({
   const [epicId, setEpicId] = useState<string | null>(null)
   /** 側欄點擊選擇的事件，供右側視圖連動與高亮 */
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
-  /** 側欄點擊觸發的聚焦目標（附帶時間戳以確保只在點擊瞬間平移視角一次） */
-  const [menuFocusTarget, setMenuFocusTarget] = useState<{ id: string; ts: number } | null>(null)
+  /** 側欄點擊觸發的聚焦目標（附帶時間戳以確保只在點擊瞬間平移視角一次，null id 表示顯示全部） */
+  const [menuFocusTarget, setMenuFocusTarget] = useState<{ id: string | null; ts: number } | null>(null)
 
   /**
    * 藏起來的頁籤。**每個人自己的偏好，存這台瀏覽器**（見 AGENTS.md）——
@@ -621,7 +621,7 @@ function ProjectWorkspace({
           setEpicId(id)
           setOpenTask(null)
           setFocusedTaskId(id)
-          if (id) setMenuFocusTarget({ id, ts: Date.now() })
+          setMenuFocusTarget({ id, ts: Date.now() })
         }}
         view={view}
         selectedTaskId={focusedTaskId ?? openTask}
@@ -747,7 +747,7 @@ function ProjectWorkspace({
               )}
               {view === 'gantt' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
-                  <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskEdit} focusedTaskId={focusedTaskId} />
+                  <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskEdit} onSelectTask={handleTaskSelect} focusedTaskId={focusedTaskId} />
                 </Suspense>
               )}
               {view === 'graph' && (

@@ -45,15 +45,20 @@ const GANTT_ROW_COLORS = [
 ]
 
 export default function GanttView({
-  projectId, tasks, onOpen, focusedTaskId,
+  projectId, tasks, onOpen, onSelectTask, focusedTaskId,
 }: {
   projectId: string
   tasks: Task[]
   onOpen: (id: string) => void
+  onSelectTask?: (id: string) => void
   focusedTaskId?: string | null
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<ReturnType<typeof DhtmlxGantt.getGanttInstance> | null>(null)
+  const onSelectTaskRef = useRef(onSelectTask)
+  useEffect(() => { onSelectTaskRef.current = onSelectTask }, [onSelectTask])
+  const onOpenRef = useRef(onOpen)
+  useEffect(() => { onOpenRef.current = onOpen }, [onOpen])
   const qc = useQueryClient()
   const [hiddenCols, setHiddenCols] = useRemembered<string[]>(`gantt.hiddenCols.${projectId}`, [])
 
@@ -160,10 +165,26 @@ export default function GanttView({
 
     g.init(hostRef.current)
 
+    // 單擊任務選取並連動左側 Menu 高亮與滾動
+    g.attachEvent('onTaskClick', (id: string | number) => {
+      const taskId = String(id)
+      if (unreadTaskIds.has(taskId)) markTaskRead(taskId)
+      onSelectTaskRef.current?.(taskId)
+      return true
+    }, {})
+
+    // 點擊左側網格列或選取時連動
+    g.attachEvent('onTaskSelected', (id: string | number) => {
+      const taskId = String(id)
+      onSelectTaskRef.current?.(taskId)
+      return true
+    }, {})
+
     // 雙擊任務開啟詳情頁
     g.attachEvent('onTaskDblClick', (id: string | number) => {
-      if (unreadTaskIds.has(String(id))) markTaskRead(String(id))
-      onOpen(String(id))
+      const taskId = String(id)
+      if (unreadTaskIds.has(taskId)) markTaskRead(taskId)
+      onOpenRef.current(taskId)
       return false
     }, {})
 

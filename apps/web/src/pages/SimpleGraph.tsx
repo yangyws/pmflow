@@ -517,7 +517,7 @@ export interface SimpleGraphProps {
   tasks?: Task[]
   onOpenTask?: (taskId: string) => void
   focusedTaskId?: string | null
-  menuFocusTarget?: { id: string; ts: number } | null
+  menuFocusTarget?: { id: string | null; ts: number } | null
   onSelectTask?: (taskId: string) => void
 }
 
@@ -572,13 +572,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const lastFocusedTsRef = useRef<number>(0)
 
-  // 僅限於從左側 Menu 點擊項目時，才觸發關聯圖鏡頭平滑移動並聚焦至該目標
+  // 僅限於從左側 Menu 點擊項目時，才觸發關聯圖鏡頭平滑移動並聚焦至該目標；點擊「全部任務」時觸發顯示全部
   useEffect(() => {
-    if (!menuFocusTarget || !menuFocusTarget.id || menuFocusTarget.ts === lastFocusedTsRef.current || !nodes.length) return
+    if (!menuFocusTarget || menuFocusTarget.ts === lastFocusedTsRef.current || !nodes.length) return
+    lastFocusedTsRef.current = menuFocusTarget.ts
+
+    if (!menuFocusTarget.id) {
+      // 點擊「全部任務」：清除節點選取狀態，並重設鏡頭平滑顯示全圖
+      setSelectedNodeId(null)
+      fitView({ duration: 500, padding: 0.2 })
+      return
+    }
+
     const targetNode = nodes.find((n) => n.id === menuFocusTarget.id)
     if (!targetNode) return
-
-    lastFocusedTsRef.current = menuFocusTarget.ts
 
     let absX = targetNode.position.x
     let absY = targetNode.position.y
