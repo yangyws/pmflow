@@ -956,14 +956,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           >
             <span>📦</span> 新增模組容器
           </button>
-          <button
-            type="button"
-            onClick={() => fitView({ padding: 0.2, duration: 400 })}
-            className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer"
-            title="縮放並置中畫布"
-          >
-            🎯 視野對焦
-          </button>
         </div>
       </div>
 

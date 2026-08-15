@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Real-Time Animated Tab Reordering (@dnd-kit/sortable)
+### Latest Changes: Cleaned Up Redundant FitView Button in System Flow
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 移除頂部工具列重複的「🎯 視野對焦」按鈕，集中由左下角畫布控制板（`Controls`）統一提供縮放與置中操作，對齊 SimpleGraph 標準版型。
+
+### Previous Changes: Real-Time Animated Tab Reordering (@dnd-kit/sortable)
 - **變更檔案**:
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 導入 `@dnd-kit/sortable` 重構 [`TabPrefs`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L253-L415) 面板，按住三條線（`☰`）手柄上下拖曳時，各頁籤項目即時滑動置換位置（Live-swapping），並具備流暢 CSS Transform 平移動畫與放開即時同步。
 
