@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fix Navigation Tab Management Panel (TabPrefs) Overflow Clipping
+### Latest Changes: Three-Line Drag Handle (☰) Tab Reordering in TabPrefs
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頁籤管理面板（`TabPrefs`）排序改用三條線拖曳手柄（`☰`），支援滑鼠直接拖曳項目上下重排順序，並具備即時高亮拖曳與放置反饋。
+
+### Previous Changes: Fix Navigation Tab Management Panel (TabPrefs) Overflow Clipping
 - **變更檔案**:
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 將頁籤管理面板（`TabPrefs`）移出具備 `overflow-x-auto` 與固定高度的 `nav` 容器，改置於右上角操作區，並補齊 `top-full` 絕對定位錨點，徹底解決彈窗遭父層 CSS 裁切隱藏導致點擊 `⚙` 看似無反應的問題。
 
