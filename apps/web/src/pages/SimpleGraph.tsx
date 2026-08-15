@@ -1706,6 +1706,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
 
         Api.addLink(connection.source, { targetId: connection.target, linkType: 'FS' })
           .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+            queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+            queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
             if (projectId) Api.graph(projectId).then((res) => {
               if (res.edges) {
                 let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
@@ -2097,24 +2100,31 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       nodes.map((node) => {
         const isSelected = activeSelectedId === node.id
         const isRelated = relatedSet ? relatedSet.has(node.id) : true
+        const nodeBlockedBy = blockedByMap.get(node.id)
+        const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
+        const childBlockedCount = isBox
+          ? (tasks ?? []).filter((k) => k.parentId === node.id && (blockedByMap.get(k.id)?.length ?? 0) > 0).length
+          : 0
+
         return {
           ...node,
           draggable: true,
           selectable: true,
-          zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : (node.data as SimpleGraphNodeData)?.mode === 'box' ? 1 : 5,
+          zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : isBox ? 1 : 5,
           extent: [[-100000, -100000], [100000, 100000]],
           data: {
             ...node.data,
             isSelected,
             isRelated,
             hasSelectionActive: !!relatedSet,
-            blockedBy: blockedByMap.get(node.id),
+            blockedBy: nodeBlockedBy,
+            blockedCount: (nodeBlockedBy?.length ? 1 : 0) + childBlockedCount,
             onToggleMode: handleToggleMode,
           },
         }
       })
     )
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks])
 
   const styledEdges = useMemo(() => {
     return edges.map((e) => {

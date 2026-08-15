@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Storage Box Rolled Progress & Downstream Blocked Badge Calculation
+### Latest Changes: Real-Time Blocked Evaluation & React Query Cache Sync on Link Connection
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 建立新關聯線（`onConnect`）時，立即執行快取同步（`invalidateQueries`）並透過 `nodesWithHandlers` 即時重新計算卡片與收納盒的 `blockedBy` 及 `blockedCount`，使新建立依賴的下游卡片瞬間亮起「⛔ 卡住」警示，無須手動重整。
+
+### Previous Changes: Storage Box Rolled Progress & Downstream Blocked Badge Calculation
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 修正上游判定邏輯，改為嚴格參照全域聚合進度（`rolled.progress < 100`）。當上游收納盒內部子任務未全數完成（整體進度未達 100%）時，其所有下游依賴卡片與收納盒皆會確實顯示「⛔ 卡住」警示徽章。
 
