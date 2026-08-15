@@ -22,10 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fixed Item List Header Wrapping & Layout Optimization
+### Latest Changes: Added Custom Tab Names in Project Settings, +Java & +HTML Buttons
+- **變更檔案**:
+  - [`ProjectSettings.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/ProjectSettings.tsx): 新增「自訂頁籤名稱」設定區塊，支援為每個檢視頁籤（清單、看板、關聯圖、共用元件範例表等）自訂顯示名稱與一鍵重設。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 即時同步並渲染「自訂頁籤名稱」，修改後導覽列即刻套用。
+  - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx):
+    1. **新增 ＋ Java 支援**：支援建立與演練 Java 程式碼，右側提供 OpenJDK 21 模擬執行終端機。
+    2. **按鈕更名**：將「＋ 網頁」更名為 **「＋ HTML」**。
+
+### Previous Changes: Fixed Item List Header Wrapping & Layout Optimization
 - **變更檔案**:
   - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx):
-    1. **標頭防折行修復**：左側項目清單寬度微調至 `w-72`（288px），標題「項目清單」與新增按鈕組加入 `whitespace-nowrap` 與 `shrink-0`，徹底防止小螢幕或邊距造成文字與按鈕折行。
+    1. **標頭防折行修復**：左側項目清單寬度微調至 `w-80`（320px），標題「項目清單」與新增按鈕組加入 `whitespace-nowrap` 與 `shrink-0`，徹底防止小螢幕或邊距造成文字與按鈕折行。
     2. **按鈕樣式優化**：精簡按鈕內邊距與邊框，排版更緊湊整潔。
     4. **拖曳調整與收納保護**：支援按住分隔線自由拖曳各欄寬度；支援個別面板收納切換，並強制至少保留一個面板開啟防呆。
 

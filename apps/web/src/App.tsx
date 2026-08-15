@@ -508,12 +508,33 @@ function ProjectWorkspace({
    * 存值裡沒有的照 VIEWS 原順序補在後面，存值裡有但已經不存在的跳過」。
    */
   const [tabOrder, setTabOrder] = useRemembered<View[]>('tabs.order', [])
+  const [customTabNames, setCustomTabNames] = useRemembered<Record<string, string>>('tabs.customNames', {})
+
+  useEffect(() => {
+    const onTabNamesChanged = () => {
+      try {
+        const raw = localStorage.getItem('pmflow.pref.tabs.customNames')
+        if (raw) setCustomTabNames(JSON.parse(raw))
+        else setCustomTabNames({})
+      } catch {}
+    }
+    window.addEventListener('pmflow_tab_names_changed', onTabNamesChanged)
+    return () => window.removeEventListener('pmflow_tab_names_changed', onTabNamesChanged)
+  }, [setCustomTabNames])
+
+  const allViewsWithCustomLabels = useMemo(() => {
+    return VIEWS.map(v => ({
+      ...v,
+      label: customTabNames[v.key]?.trim() || v.label,
+    }))
+  }, [customTabNames])
+
   const orderedViews = useMemo(() => {
-    const known = new Map(VIEWS.map(v => [v.key, v]))
+    const known = new Map(allViewsWithCustomLabels.map(v => [v.key, v]))
     const out = tabOrder.map(k => known.get(k)).filter(v => v !== undefined)
-    for (const v of VIEWS) if (!out.includes(v)) out.push(v)
+    for (const v of allViewsWithCustomLabels) if (!out.includes(v)) out.push(v)
     return out
-  }, [tabOrder])
+  }, [tabOrder, allViewsWithCustomLabels])
   const shownViews = orderedViews.filter(v => !hiddenTabs.includes(v.key))
 
   /**

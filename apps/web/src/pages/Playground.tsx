@@ -3,7 +3,7 @@ import { Button, cx } from '../components/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Api } from '../lib/api'
 
-export type SnippetType = 'web' | 'markdown' | 'sql'
+export type SnippetType = 'web' | 'markdown' | 'sql' | 'java'
 
 export interface PlaygroundSnippet {
   id: string
@@ -14,6 +14,46 @@ export interface PlaygroundSnippet {
 }
 
 const DEFAULT_SNIPPETS: PlaygroundSnippet[] = [
+  {
+    id: 'snip-java-1',
+    title: '☕ Java 任務狀態分析器',
+    type: 'java',
+    updatedAt: Date.now(),
+    code: `package com.pmflow.demo;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * PMFlow 任務狀態分析器 (Java 共用元件範例)
+ */
+public class TaskAnalyzer {
+
+    public record TaskItem(String ref, String title, int progress, boolean isBlocked) {}
+
+    public static void main(String[] args) {
+        System.out.println("☕ Java JVM 服務端元件初始化 [" + LocalDateTime.now() + "]");
+        
+        List<TaskItem> tasks = List.of(
+            new TaskItem("MRG-1", "核心架構重構", 100, false),
+            new TaskItem("MRG-2", "認證服務微服務化", 75, false),
+            new TaskItem("MRG-3", "多執行緒排程器", 30, true)
+        );
+
+        long completedCount = tasks.stream().filter(t -> t.progress() == 100).count();
+        long blockedCount = tasks.stream().filter(TaskItem::isBlocked).count();
+
+        System.out.println("----------------------------------------");
+        System.out.printf("總任務數: %d | 已完成: %d | ⛔ 卡住: %d%n", tasks.size(), completedCount, blockedCount);
+        System.out.println("----------------------------------------");
+
+        tasks.forEach(t -> {
+            String status = t.progress() >= 100 ? "✓ 完成" : (t.isBlocked() ? "⛔ 卡住" : "⏳ 進行中");
+            System.out.printf("[%s] %s (%d%%) -> %s%n", t.ref(), t.title(), t.progress(), status);
+        });
+    }
+}`,
+  },
   {
     id: 'snip-1',
     title: '🌐 互動計數器組件',
@@ -271,7 +311,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
   // 新增項目
   const addSnippet = (type: SnippetType = 'web') => {
     const newId = `snip-${Date.now()}`
-    const typeLabel = type === 'web' ? '網頁' : type === 'markdown' ? '文件' : 'SQL'
+    const typeLabel = type === 'web' ? 'HTML' : type === 'markdown' ? '文件' : type === 'sql' ? 'SQL' : 'Java'
     const newSnip: PlaygroundSnippet = {
       id: newId,
       title: `新 ${typeLabel} 演練項目`,
@@ -288,13 +328,19 @@ export default function Playground({ projectId }: { projectId: string | null }) 
   </style>
 </head>
 <body>
-  <h1>新網頁項目</h1>
+  <h1>新 HTML 元件</h1>
   <p>在此編寫 HTML / CSS / JS 程式碼。</p>
 </body>
 </html>`
           : type === 'markdown'
           ? `# 新 Markdown 文件\n\n- 項目 1\n- 項目 2\n`
-          : `SELECT * FROM tasks;`,
+          : type === 'sql'
+          ? `SELECT * FROM tasks;`
+          : `public class ExampleService {
+    public static void main(String[] args) {
+        System.out.println("☕ Java 服務端元件初始化完成...");
+    }
+}`,
     }
     setSnippets((prev) => [newSnip, ...prev])
     setActiveId(newId)
@@ -535,31 +581,38 @@ export default function Playground({ projectId }: { projectId: string | null }) 
         {/* ── 欄位 1: 項目清單 (Snippet List) ── */}
         {showCol1 && (
           <div
-            className="w-72 shrink-0 flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
+            className="w-80 shrink-0 flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 shrink-0">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0 whitespace-nowrap">項目清單</span>
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => addSnippet('web')}
-                  title="新增網頁 (HTML/CSS/JS)"
-                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap cursor-pointer"
+                  title="新增 HTML (HTML/CSS/JS)"
+                  className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap cursor-pointer"
                 >
-                  ＋ 網頁
+                  ＋ HTML
                 </button>
                 <button
                   onClick={() => addSnippet('markdown')}
                   title="新增 Markdown 文件"
-                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap cursor-pointer"
+                  className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap cursor-pointer"
                 >
                   ＋ MD
                 </button>
                 <button
                   onClick={() => addSnippet('sql')}
                   title="新增 SQL 查詢"
-                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 whitespace-nowrap cursor-pointer"
+                  className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 whitespace-nowrap cursor-pointer"
                 >
                   ＋ SQL
+                </button>
+                <button
+                  onClick={() => addSnippet('java')}
+                  title="新增 Java 程式碼"
+                  className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap cursor-pointer"
+                >
+                  ＋ Java
                 </button>
               </div>
             </div>
@@ -582,7 +635,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="shrink-0 text-xs">
-                        {snip.type === 'web' ? '🌐' : snip.type === 'markdown' ? '📝' : '🗄️'}
+                        {snip.type === 'web' ? '🌐' : snip.type === 'markdown' ? '📝' : snip.type === 'sql' ? '🗄️' : '☕'}
                       </span>
                       <span className="truncate" title={snip.title}>
                         {snip.title}
@@ -635,6 +688,7 @@ export default function Playground({ projectId }: { projectId: string | null }) 
                   <option value="web">WEB (HTML/CSS/JS)</option>
                   <option value="markdown">MARKDOWN</option>
                   <option value="sql">SQL</option>
+                  <option value="java">JAVA</option>
                 </select>
               </div>
             </div>
@@ -731,6 +785,51 @@ export default function Playground({ projectId }: { projectId: string | null }) 
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {activeSnippet?.type === 'java' && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-950 p-4 font-mono text-xs text-slate-200 shadow-md">
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800 text-[11px] text-slate-400 font-bold">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>☕ OpenJDK 21 Runtime (Simulated Console)</span>
+                    </div>
+                    <span className="text-emerald-400 font-semibold">✓ BUILD SUCCESS</span>
+                  </div>
+                  
+                  <div className="space-y-1 text-[11px] leading-relaxed text-slate-300 font-mono">
+                    <div className="text-slate-500">$ javac TaskAnalyzer.java && java com.pmflow.demo.TaskAnalyzer</div>
+                    <div className="text-amber-400">☕ Java JVM 服務端元件初始化 [{new Date().toLocaleTimeString()}]</div>
+                    <div className="text-slate-500">----------------------------------------</div>
+                    <div className="text-slate-200">
+                      總任務數: {projectTasks.length || 3} | 已完成: {(projectTasks.length ? projectTasks.filter(t => (t.progress ?? 0) >= 100).length : 1)} | ⛔ 卡住: {(projectTasks.length ? projectTasks.filter(t => t.statusKey === 'BLOCKED').length : 1)}
+                    </div>
+                    <div className="text-slate-500">----------------------------------------</div>
+                    {(projectTasks.length > 0 ? projectTasks.slice(0, 5) : [
+                      { ref: 'MRG-1', title: '核心架構重構', progress: 100, statusKey: 'DONE' },
+                      { ref: 'MRG-2', title: '認證服務微服務化', progress: 75, statusKey: 'IN_PROGRESS' },
+                      { ref: 'MRG-3', title: '多執行緒排程器', progress: 30, statusKey: 'BLOCKED' },
+                    ]).map((t, idx) => {
+                      const isBlocked = 'statusKey' in t ? t.statusKey === 'BLOCKED' : false
+                      const isDone = (t.progress ?? 0) >= 100
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-blue-400 font-bold">[{t.ref || `MRG-${idx + 1}`}]</span>
+                          <span className="text-slate-300">{t.title}</span>
+                          <span className="text-slate-400">({t.progress ?? 0}%)</span>
+                          <span className="text-slate-500">➔</span>
+                          <span className={isDone ? 'text-emerald-400 font-bold' : (isBlocked ? 'text-rose-400 font-bold' : 'text-amber-400')}>
+                            {isDone ? '✓ 完成' : (isBlocked ? '⛔ 卡住' : '⏳ 進行中')}
+                          </span>
+                        </div>
+                      )
+                    })}
+                    <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between">
+                      <span>Process finished with exit code 0</span>
+                      <span>Execution time: 42ms</span>
+                    </div>
+                  </div>
                 </div>
               )}
 

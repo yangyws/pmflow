@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type ParamKind, type ProjectParam } from '../lib/api'
 import { Button, ColorOption, Empty, Field, Input, Select, Spinner, cx } from './ui'
 import { useTheme } from '../lib/theme'
+import { useRemembered } from '../lib/remember'
 import { T } from '../strings'
 
 /**
@@ -187,8 +188,98 @@ export default function ProjectSettings({ projectId }: { projectId: string }) {
           />
         ))}
 
+        {/* 自訂頁籤顯示名稱設定區塊 */}
+        <TabNamesSection />
+
       </div>
     </div>
+  )
+}
+
+const TAB_DEFINITIONS: Array<{ key: string; defaultLabel: string; icon: string }> = [
+  { key: 'list', defaultLabel: T.nav.views.list, icon: '☰' },
+  { key: 'board', defaultLabel: T.nav.views.board, icon: '▦' },
+  { key: 'calendar', defaultLabel: T.nav.views.calendar, icon: '📅' },
+  { key: 'gantt', defaultLabel: T.nav.views.gantt, icon: '📊' },
+  { key: 'simpleGraph', defaultLabel: T.nav.views.graph, icon: '🎯' },
+  { key: 'systemFlow', defaultLabel: T.nav.views.systemFlow, icon: '🔀' },
+  { key: 'playground', defaultLabel: T.nav.views.playground, icon: '🧩' },
+  { key: 'dashboard', defaultLabel: T.nav.views.dashboard, icon: '📈' },
+  { key: 'inquiry', defaultLabel: T.nav.views.inquiry, icon: '💬' },
+  { key: 'members', defaultLabel: T.nav.views.members, icon: '👥' },
+  { key: 'deletedTasks', defaultLabel: T.nav.views.deletedTasks, icon: '🗑️' },
+]
+
+function TabNamesSection() {
+  const [customNames, setCustomNames] = useRemembered<Record<string, string>>('tabs.customNames', {})
+
+  const handleNameChange = (key: string, name: string) => {
+    const next = { ...customNames }
+    if (name.trim()) {
+      next[key] = name
+    } else {
+      delete next[key]
+    }
+    setCustomNames(next)
+    window.dispatchEvent(new Event('pmflow_tab_names_changed'))
+  }
+
+  const resetAll = () => {
+    setCustomNames({})
+    window.dispatchEvent(new Event('pmflow_tab_names_changed'))
+  }
+
+  return (
+    <section className="mt-8 mb-12">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">自訂頁籤名稱</h2>
+          <p className="mb-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            可依團隊工作習慣自訂頂部各個檢視頁籤的顯示名稱。
+          </p>
+        </div>
+        {Object.keys(customNames).length > 0 && (
+          <Button variant="ghost" onClick={resetAll} className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400">
+            ↺ 重設全部預設名稱
+          </Button>
+        )}
+      </div>
+
+      <div className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200 dark:divide-slate-800 dark:bg-slate-900 dark:ring-slate-700">
+        {TAB_DEFINITIONS.map((tab) => {
+          const custom = customNames[tab.key] ?? ''
+          return (
+            <div key={tab.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+              <div className="flex items-center gap-2 min-w-36">
+                <span className="text-sm">{tab.icon}</span>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                  {tab.defaultLabel}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">({tab.key})</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-1 max-w-sm">
+                <Input
+                  value={custom}
+                  placeholder={`預設：${tab.defaultLabel}`}
+                  onChange={(e) => handleNameChange(tab.key, e.target.value)}
+                  className="text-xs h-8"
+                />
+                {custom && (
+                  <button
+                    onClick={() => handleNameChange(tab.key, '')}
+                    title="重設回預設名稱"
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
