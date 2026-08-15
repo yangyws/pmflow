@@ -731,18 +731,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
 
     const isDone = (t?: Task) => {
       if (!t) return false
-      const kids = tasks.filter(k => k.parentId === t.id)
-      if (kids.length > 0) {
-        const allKidsDone = kids.every(k => {
-          if (k.progress >= 100) return true
-          const cat = statusCatMap.get(k.statusKey)
-          return cat === 'DONE' || k.statusKey === 'DONE'
-        })
-        if (!allKidsDone) return false
-      }
-      if (t.progress >= 100) return true
+      const rolled = rolledMap.get(t.id)
+      const prog = rolled?.progress ?? t.progress ?? 0
+      // 只要進度未達 100%，即使收納盒本體狀態被誤設為 DONE 也不算完成
+      if (prog < 100) return false
+
       const cat = statusCatMap.get(t.statusKey)
-      return cat === 'DONE' || t.statusKey === 'DONE'
+      return cat === 'DONE' || t.statusKey === 'DONE' || prog >= 100
     }
 
     for (const e of edges) {
@@ -768,7 +763,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     }
 
     return map
-  }, [tasks, edges, project?.statuses])
+  }, [tasks, edges, project?.statuses, rolledMap])
 
   const isDraggingRef = useRef(false)
 

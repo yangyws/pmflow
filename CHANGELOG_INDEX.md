@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Unsuppressed '⛔ 卡住' Badge in Dependency Graphs
+### Latest Changes: Storage Box Rolled Progress & Downstream Blocked Badge Calculation
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 修正上游判定邏輯，改為嚴格參照全域聚合進度（`rolled.progress < 100`）。當上游收納盒內部子任務未全數完成（整體進度未達 100%）時，其所有下游依賴卡片與收納盒皆會確實顯示「⛔ 卡住」警示徽章。
+
+### Previous Changes: Unsuppressed '⛔ 卡住' Badge in Dependency Graphs
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`Graph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Graph.tsx): 移除過往卡片若有「問題說明（`problem`）」就會被 `!data.problem` 遮蔽「⛔ 卡住（`blockedBy`）」徽章的邏輯，確保當任務有未完成上游依賴時，「⛔ 卡住」與「⚑ 問題」徽章皆能完整顯示。
 

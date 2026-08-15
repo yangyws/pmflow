@@ -1813,6 +1813,8 @@ function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusCatKey])
 
+  const rolled = useMemo(() => rollup(tasks), [tasks])
+
   const { blockedBy, blockerIds } = useMemo(() => {
     const out = new Map<string, string[]>()
     const ids = new Map<string, string[]>()
@@ -1824,12 +1826,14 @@ function GraphCanvas({
       const dst = byId.get(e.targetId)
       if (!src || !dst) continue
       const srcCat = categoryOf(src.statusKey)
+      const srcProg = rolled.get(src.id)?.progress ?? src.progress ?? 0
+      const isSrcDone = (srcCat === 'DONE' || src.statusKey === 'DONE') && srcProg >= 100
       if (e.linkType === 'FS' || e.linkType === 'BLOCKS' || e.linkType === 'REQUIRES') {
-        if (srcCat === 'DONE') continue
+        if (isSrcDone) continue
         direct.set(dst.id, [...(direct.get(dst.id) ?? []),
                             { id: src.id, label: G.blockedReason.finish(src.ref) }])
       } else if (e.linkType === 'SS') {
-        if (srcCat !== 'TODO') continue
+        if (srcCat !== 'TODO' && srcProg > 0) continue
         startsWith.set(dst.id, [...(startsWith.get(dst.id) ?? []), src.id])
       }
     }
@@ -1847,7 +1851,8 @@ function GraphCanvas({
     }
 
     for (const n of shownNodes) {
-      if (categoryOf(n.statusKey) === 'DONE') continue
+      const nProg = rolled.get(n.id)?.progress ?? n.progress ?? 0
+      if (categoryOf(n.statusKey) === 'DONE' && nProg >= 100) continue
       const reasons = resolve(n.id, new Set())
       if (!reasons.length) continue
       const seenLabel = new Set<string>()
@@ -1856,7 +1861,7 @@ function GraphCanvas({
       ids.set(n.id, uniq.map(r => r.id))
     }
     return { blockedBy: out, blockerIds: ids }
-  }, [graph, shownNodes, categoryOf])
+  }, [graph, shownNodes, categoryOf, rolled])
 
   // ── 聚焦子圖：選中的節點與它的鄰居留亮，其餘淡出 ──
   /**
