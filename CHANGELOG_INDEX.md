@@ -22,9 +22,9 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Three-Line Drag Handle (☰) Tab Reordering in TabPrefs
+### Latest Changes: Real-Time Animated Tab Reordering (@dnd-kit/sortable)
 - **變更檔案**:
-  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 頁籤管理面板（`TabPrefs`）排序改用三條線拖曳手柄（`☰`），支援滑鼠直接拖曳項目上下重排順序，並具備即時高亮拖曳與放置反饋。
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 導入 `@dnd-kit/sortable` 重構 [`TabPrefs`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx#L253-L415) 面板，按住三條線（`☰`）手柄上下拖曳時，各頁籤項目即時滑動置換位置（Live-swapping），並具備流暢 CSS Transform 平移動畫與放開即時同步。
 
 ### Previous Changes: Fix Navigation Tab Management Panel (TabPrefs) Overflow Clipping
 - **變更檔案**:

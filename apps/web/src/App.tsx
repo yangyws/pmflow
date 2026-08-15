@@ -251,6 +251,86 @@ function AccountTab({ active, onClick, children }: {
 }
 
 /**
+ * 單一可拖曳頁籤項目
+ */
+function SortableTabRow({
+  item,
+  on,
+  stuck,
+  onToggle,
+}: {
+  item: { key: View; label: string }
+  on: boolean
+  stuck: boolean
+  onToggle: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.key })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cx(
+        'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs border select-none transition-colors',
+        isDragging
+          ? 'z-50 opacity-90 shadow-lg ring-2 ring-blue-500 bg-white dark:bg-slate-800 border-blue-400'
+          : on
+            ? 'bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700'
+            : 'bg-slate-100/40 dark:bg-slate-900/20 border-dashed border-slate-200 dark:border-slate-800 opacity-60'
+      )}
+    >
+      <label
+        title={stuck ? '至少需保留一個頁籤顯示' : undefined}
+        className={cx(
+          'flex min-w-0 flex-1 items-center gap-2',
+          stuck ? 'cursor-not-allowed' : 'cursor-pointer'
+        )}
+      >
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={stuck}
+          onChange={onToggle}
+          className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-900 cursor-pointer"
+        />
+        <span
+          className={cx(
+            'truncate font-medium',
+            on ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 line-through'
+          )}
+        >
+          {item.label}
+        </span>
+      </label>
+
+      {/* 三條線拖曳手柄 */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center p-1 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing shrink-0 transition-colors touch-none"
+        title="按住拖曳調整順序"
+      >
+        <svg className="w-4 h-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M3 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+/**
  * 頁籤顯示與順序管理面板：支援勾選顯示/隱藏、三條線拖曳手柄排序與一鍵重設。
  * 只影響本機瀏覽器偏好設定。
  */
@@ -264,8 +344,17 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
   setView: (v: View) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [draggedKey, setDraggedKey] = useState<View | null>(null)
-  const [dragOverKey, setDragOverKey] = useState<View | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   const shown = ordered.filter((v) => !hidden.includes(v.key))
   const lastOne = shown.length <= 1
@@ -279,6 +368,13 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
     if (key === view && next.includes(key)) {
       const first = ordered.find((v) => !next.includes(v.key))
       if (first) setView(first.key)
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      onReorder(active.id as View, over.id as View)
     }
   }
 
@@ -316,88 +412,28 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
               勾選顯示或隱藏頁籤，按住 ☰ 拖曳上下順序：
             </p>
 
-            <div className="mt-2.5 space-y-1.5 max-h-72 overflow-y-auto pr-0.5 select-none">
-              {ordered.map((v) => {
-                const on = !hidden.includes(v.key)
-                const stuck = on && lastOne
-                const isDragging = draggedKey === v.key
-                const isDragOver = dragOverKey === v.key && !isDragging
-
-                return (
-                  <div
-                    key={v.key}
-                    draggable={true}
-                    onDragStart={(e) => {
-                      setDraggedKey(v.key)
-                      e.dataTransfer.effectAllowed = 'move'
-                      e.dataTransfer.setData('text/plain', v.key)
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.dataTransfer.dropEffect = 'move'
-                      if (dragOverKey !== v.key) setDragOverKey(v.key)
-                    }}
-                    onDragLeave={() => {
-                      if (dragOverKey === v.key) setDragOverKey(null)
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      if (draggedKey && draggedKey !== v.key) {
-                        onReorder(draggedKey, v.key)
-                      }
-                      setDraggedKey(null)
-                      setDragOverKey(null)
-                    }}
-                    onDragEnd={() => {
-                      setDraggedKey(null)
-                      setDragOverKey(null)
-                    }}
-                    className={cx(
-                      'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs border transition-all cursor-default',
-                      isDragging && 'opacity-30 scale-95 border-dashed border-blue-400 bg-blue-50/40',
-                      isDragOver && 'border-blue-500 ring-2 ring-blue-400/50 bg-blue-50/70 dark:bg-blue-950/50',
-                      on
-                        ? 'bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700'
-                        : 'bg-slate-100/40 dark:bg-slate-900/20 border-dashed border-slate-200 dark:border-slate-800 opacity-60'
-                    )}
-                  >
-                    <label
-                      title={stuck ? '至少需保留一個頁籤顯示' : undefined}
-                      className={cx(
-                        'flex min-w-0 flex-1 items-center gap-2',
-                        stuck ? 'cursor-not-allowed' : 'cursor-pointer'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        disabled={stuck}
-                        onChange={() => toggle(v.key)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-900 cursor-pointer"
-                      />
-                      <span
-                        className={cx(
-                          'truncate font-medium',
-                          on ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 line-through'
-                        )}
-                      >
-                        {v.label}
-                      </span>
-                    </label>
-
-                    {/* 三條線拖曳手柄 */}
-                    <div
-                      className="flex items-center justify-center p-1 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
-                      title="按住拖曳調整順序"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h14a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={ordered.map((v) => v.key)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="mt-2.5 space-y-1.5 max-h-72 overflow-y-auto pr-0.5 select-none">
+                  {ordered.map((v) => (
+                    <SortableTabRow
+                      key={v.key}
+                      item={v}
+                      on={!hidden.includes(v.key)}
+                      stuck={!hidden.includes(v.key) && lastOne}
+                      onToggle={() => toggle(v.key)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
             <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-700/60">
               <button
