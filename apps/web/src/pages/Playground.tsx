@@ -535,32 +535,32 @@ export default function Playground({ projectId }: { projectId: string | null }) 
         {/* ── 欄位 1: 項目清單 (Snippet List) ── */}
         {showCol1 && (
           <div
-            className="w-64 shrink-0 flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
+            className="w-72 shrink-0 flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
           >
-            <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">項目清單</span>
-              <div className="flex items-center gap-1">
-                <Button
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 shrink-0">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0 whitespace-nowrap">項目清單</span>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
                   onClick={() => addSnippet('web')}
                   title="新增網頁 (HTML/CSS/JS)"
-                  className="px-1.5 py-0.5 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300"
+                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap cursor-pointer"
                 >
                   ＋ 網頁
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => addSnippet('markdown')}
                   title="新增 Markdown 文件"
-                  className="px-1.5 py-0.5 text-[11px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap cursor-pointer"
                 >
                   ＋ MD
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => addSnippet('sql')}
                   title="新增 SQL 查詢"
-                  className="px-1.5 py-0.5 text-[11px] bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300"
+                  className="px-2 py-0.5 text-[11px] font-medium rounded bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 whitespace-nowrap cursor-pointer"
                 >
                   ＋ SQL
-                </Button>
+                </button>
               </div>
             </div>
 

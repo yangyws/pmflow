@@ -22,12 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Renamed to '共用元件 範例表', Fixed List Width & Hover Tooltips
+### Latest Changes: Fixed Item List Header Wrapping & Layout Optimization
 - **變更檔案**:
-  - [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts) & [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 將頁籤名稱及標題由「程式碼演練台」更名為 **「共用元件 範例表」**。
   - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx):
-    1. **固定左側清單寬度**：左側項目清單改為固定寬度 `w-64`（256px），編輯區與預覽區之間維持自由拖曳調寬。
-    2. **文字過長提示 (Hover Tooltip)**：清單項目名稱加入 `truncate` 與 `title` 屬性，當項目名稱過長省略時，滑鼠懸停即可顯示完整名稱提示。
+    1. **標頭防折行修復**：左側項目清單寬度微調至 `w-72`（288px），標題「項目清單」與新增按鈕組加入 `whitespace-nowrap` 與 `shrink-0`，徹底防止小螢幕或邊距造成文字與按鈕折行。
+    2. **按鈕樣式優化**：精簡按鈕內邊距與邊框，排版更緊湊整潔。
     4. **拖曳調整與收納保護**：支援按住分隔線自由拖曳各欄寬度；支援個別面板收納切換，並強制至少保留一個面板開啟防呆。
 
 ### Previous Changes: Left/Top Alignment for Storage Box and Warning Legend Items
