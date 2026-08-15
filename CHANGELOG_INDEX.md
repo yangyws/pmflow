@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Rebuilt Simplified Navigation Tab Management Panel (TabPrefs)
+### Latest Changes: Fix Navigation Tab Management Panel (TabPrefs) Overflow Clipping
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 將頁籤管理面板（`TabPrefs`）移出具備 `overflow-x-auto` 與固定高度的 `nav` 容器，改置於右上角操作區，並補齊 `top-full` 絕對定位錨點，徹底解決彈窗遭父層 CSS 裁切隱藏導致點擊 `⚙` 看似無反應的問題。
+
+### Previous Changes: Rebuilt Simplified Navigation Tab Management Panel (TabPrefs)
 - **變更檔案**:
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 移除舊版複雜且易失效的拖曳模組，全面重構為簡約直覺的頁籤管理面板（`TabPrefs`），支援一鍵勾選顯示/隱藏、`▲` / `▼` 上下排序、防呆單一頁籤鎖定與一鍵重設為預設。
 

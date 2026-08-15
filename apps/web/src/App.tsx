@@ -280,7 +280,7 @@ function TabPrefs({ hidden, setHidden, ordered, onMove, onResetOrder, view, setV
   }
 
   return (
-    <div className="relative ml-auto">
+    <div className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -301,7 +301,7 @@ function TabPrefs({ hidden, setHidden, ordered, onMove, onResetOrder, view, setV
         <>
           {/* 透明遮罩 */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
               <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                 <span>⚙️</span> 頁籤顯示與排序
@@ -597,7 +597,7 @@ function ProjectWorkspace({
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，支援行動端橫向滑動 */}
           <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 min-w-0">
-            <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-2 scrollbar-none">
+            <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-1 scrollbar-none">
               {shownViews.map(v => (
                 <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
                         className={cx(
@@ -609,12 +609,15 @@ function ProjectWorkspace({
                   {v.label}
                 </button>
               ))}
+            </nav>
+            <div className="ml-auto shrink-0 flex items-center gap-1.5 sm:gap-2">
               <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
                         ordered={orderedViews} onMove={moveTab}
                         onResetOrder={() => setTabOrder([])}
                         view={view} setView={setView} />
-            </nav>
-            <div className="ml-auto shrink-0 flex items-center gap-1.5 sm:gap-2">{bell}{menu}</div>
+              {bell}
+              {menu}
+            </div>
           </div>
 
           {/* 第二層 (min-h-9)：當前顯示事件 (MRG編號+標題/麵包屑與警示) */}
