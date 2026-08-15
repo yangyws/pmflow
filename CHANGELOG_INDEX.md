@@ -22,12 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Removed Legacy Milestone and Epic Terminology
+### Latest Changes: NAS Custom SQL Seed Directory Support
 - **變更檔案**:
-  - [`e2e.sh`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.sh): 全面清理第 24 節舊版「里程碑」與「大項目」硬編碼術語，全面重構為「父任務 / 子任務 / 問題單」之標準多層階層關係測試。
-  - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 跨平台 TypeScript 端對端測試套件全數通過（11/11 通過）。
+  - [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts): 新增 `seedFromSqlDir` 函式，讀取並執行掛載目錄下的 `.sql` 資料腳本。
+  - [`index.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/index.ts): 在啟動階段偵測 `PMFLOW_SEED_SQL_DIR`（預設 `/data/seed`），若有自訂 `.sql` 檔則優先依序匯入並略過預設示範資料。
+  - [`docker-compose.synology.yml`](file:///D:/NewProject/pmflow-git/docker-compose.synology.yml): 加入 `PMFLOW_SEED_SQL_DIR` 與 `./seed:/data/seed:ro` 掛載目錄設定，支援在 NAS 上直接放入 SQL 檔自動匯入。
 
-### Previous Changes: Cross-Platform API Test Runner & CI Integration (npm test)
+### Previous Changes: Removed Legacy Milestone and Epic Terminology
 - **變更檔案**:
   - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 建立跨平台（Windows / macOS / Linux）TypeScript 端對端 API 測試腳本，支援驗證身份認證、專案參數、任務 CRUD、依賴排程與狀態聚合。
   - [`package.json`](file:///D:/NewProject/pmflow-git/apps/api/package.json): 新增 `npm test`、`npm run test:unit` 與 `npm run test:e2e` 測試指令。目前共 23 項單元與整合測試全數通過（23/23 通過）。

@@ -55,12 +55,14 @@ services:
       PMFLOW_ALLOWED_EMAIL_DOMAINS: ""    # 限制可註冊的信箱網域，逗號分隔；留空 = 不限制
 
       # 第一次部署建議留 true，才有東西可以看。
-      # 確認正常後改成 false，再把專案「停止 → 清除資料 → 重新啟動」就是乾淨的正式環境。
+      # 若 ./seed 資料夾中有 .sql 檔，會優先自動匯入該 SQL 檔並略過預設示範資料。
       PMFLOW_SEED_DEMO: "true"
+      PMFLOW_SEED_SQL_DIR: "/data/seed"
 
       PMFLOW_INQUIRY_DEFAULT_DUE_DAYS: "7"   # 沒填期望回覆日時自動帶「提問日 + 7 天」
     volumes:
       - attachments:/data/attachments
+      - ./seed:/data/seed:ro
     depends_on:
       db:
         condition: service_healthy
@@ -175,6 +177,7 @@ volumes:
 # ══════════════════════════════════════════════════════════
 #
 # 1) File Station 建立資料夾 docker/pmflow
+#    （若有自訂初始資料，可在 /docker/pmflow/ 內建立 seed 資料夾並放入 .sql 檔案，如 01_init.sql）
 # 2) Container Manager → 專案 → 新增
 #    專案名稱：pmflow
 #    路徑：/docker/pmflow

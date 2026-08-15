@@ -18,7 +18,7 @@ import inquiryRoutes from './routes/inquiries.js'
 import notificationRoutes from './routes/notifications.js'
 import leaveRoutes from './routes/leaves.js'
 import dashboardRoutes from './routes/dashboard.js'
-import { seedDemo, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
+import { seedDemo, seedFromSqlDir, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
 
 const app = Fastify({
   logger: env.isProd
@@ -54,11 +54,16 @@ await app.register(async api => {
   await api.register(dashboardRoutes)
 }, { prefix: '/api/v1' })
 
-// ── 啟動：先跑 migration，再視情況塞示範資料 ──
+// ── 啟動：先跑 migration，再執行自訂 SQL 種子或預設示範資料 ──
 const applied = await migrate()
 if (applied.length) app.log.info({ applied }, 'migration 已套用')
 
-if (env.seedDemo) {
+// 如果指定了 SQL 目錄且裡面有 .sql 檔，優先執行指定目錄下的 SQL
+const sqlSeedDir = process.env.PMFLOW_SEED_SQL_DIR || '/data/seed'
+const sqlApplied = await seedFromSqlDir(sqlSeedDir)
+if (sqlApplied.length) {
+  app.log.info({ sqlApplied, dir: sqlSeedDir }, '已自訂執行 NAS 指定目錄之 SQL 資料種子檔')
+} else if (env.seedDemo) {
   const created = await seedDemo()
   if (created) app.log.info('已建立示範資料：demo@pmflow.local / demo1234')
 }
