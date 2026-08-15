@@ -612,28 +612,24 @@ export function EpicSidebar({
         </button>
       </div>
 
-      <div className="px-4 pb-1 pt-3">
-        <div className="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-400">
-          {T.nav.sidebar.epics}
-        </div>
-
-      </div>
-
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div className="px-2 pt-2 pb-1.5 shrink-0 border-b border-slate-100 dark:border-slate-800">
         <button
           onClick={() => onSelectEpic(null)}
           className={cx(
-            'mb-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm',
+            'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors cursor-pointer',
             selectedEpicId === null
-              ? 'bg-slate-100 font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-100'
-              : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+              ? 'bg-blue-50 dark:bg-blue-950/60 font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30 shadow-xs'
+              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
           )}>
           <span className="text-slate-400 dark:text-slate-400">☰</span>
-          <span className="flex-1">{T.nav.sidebar.allTasks}</span>
-          <span className="text-xs tabular-nums text-slate-400 dark:text-slate-400">
+          <span className="flex-1 font-medium">{T.nav.sidebar.allTasks}</span>
+          <span className="text-xs tabular-nums font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
             {tasks.length}
           </span>
         </button>
+      </div>
+
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-2">
 
         {epics.length === 0 && (
           <div className="px-2.5 py-3 text-xs leading-relaxed text-slate-400 dark:text-slate-400">

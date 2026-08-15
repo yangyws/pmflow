@@ -343,6 +343,21 @@ export default async function taskRoutes(app: FastifyInstance) {
 
       const problem = cleanProblem(b.problem)
 
+      // 若該任務受上游未完成依賴阻塞 (卡住)，進度禁止為 100%，最高只能為 99%
+      if (b.progress !== undefined && b.progress >= 100) {
+        const [blocked] = await tx<{ count: number }[]>`
+          SELECT count(*)::int AS count
+          FROM task_link l
+          JOIN task src ON src.id = l.source_id
+          WHERE l.target_id = ${req.params.id}
+            AND l.link_type IN ('FS', 'BLOCKS', 'REQUIRES')
+            AND src.progress < 100
+            AND src.deleted_at IS NULL`
+        if (blocked && blocked.count > 0) {
+          b.progress = 99
+        }
+      }
+
       await tx`
         UPDATE task SET
           title          = coalesce(${b.title ?? null}, title),

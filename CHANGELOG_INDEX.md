@@ -22,7 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Real-Time Blocked Evaluation & React Query Cache Sync on Link Connection
+### Latest Changes: Sticky 'All Tasks' Sidebar Header & 99% Progress Cap on Blocked Tasks
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 將「全部任務」按鈕由可滾動列表內抽離至頂部固定容器（`shrink-0`），向下滾動任務清單時「全部任務」列永久常駐於頂部不隨滾動消失。
+  - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx) & [`tasks.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/tasks.ts): 當任務受上游依賴阻塞（卡住）時，前端滑桿、輸入框與後端皆限制最高進度為 99%，禁止設定為 100%。
+
+### Previous Changes: Real-Time Blocked Evaluation & React Query Cache Sync on Link Connection
 - **變更檔案**:
   - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx): 建立新關聯線（`onConnect`）時，立即執行快取同步（`invalidateQueries`）並透過 `nodesWithHandlers` 即時重新計算卡片與收納盒的 `blockedBy` 及 `blockedCount`，使新建立依賴的下游卡片瞬間亮起「⛔ 卡住」警示，無須手動重整。
 

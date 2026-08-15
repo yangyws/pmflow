@@ -332,6 +332,20 @@ export function TaskDrawer({
     return data?.children?.filter(c => c.type !== 'BUG') ?? []
   }, [data?.children])
 
+  const isBlocked = useMemo(() => {
+    if (!data?.links) return false
+    const incomingDeps = data.links.filter(
+      l => l.direction === 'incoming' && (l.linkType === 'FS' || l.linkType === 'BLOCKS' || l.linkType === 'REQUIRES')
+    )
+    if (incomingDeps.length === 0) return false
+    const taskMap = new Map((allTasks ?? []).map(t => [t.id, t]))
+    return incomingDeps.some(l => {
+      const src = taskMap.get(l.otherId)
+      if (!src) return true
+      return (src.progress ?? 0) < 100
+    })
+  }, [data?.links, allTasks])
+
   const displayProgress = useMemo(() => {
     if (nonBugChildren.length > 0) {
       const sum = nonBugChildren.reduce((acc, c) => acc + (c.progress ?? 0), 0)
@@ -644,14 +658,27 @@ export function TaskDrawer({
                   <div className="sm:col-span-2">
                     <Field label={T.task.drawer.fieldProgress}>
                       {canEdit && nonBugChildren.length === 0 ? (
-                        <ProgressField value={displayProgress}
-                                       onCommit={v => edit({ progress: v })} />
+                        <>
+                          <ProgressField value={displayProgress}
+                                         isBlocked={isBlocked}
+                                         onCommit={v => edit({ progress: v })} />
+                          {isBlocked && (
+                            <p className="mt-1 text-[11px] font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                              <span>⛔</span>
+                              <span>受上游任務依賴阻塞（卡住中），進度最高限制為 99%，無法設為 100%。</span>
+                            </p>
+                          )}
+                        </>
                       ) : (
                         <ReadOnlyValue>
                           {T.task.drawer.progressValue(displayProgress)}
                           {nonBugChildren.length > 0 ? (
                             <span className="ml-1.5 text-[11px] font-normal text-amber-600 dark:text-amber-400">
                               (目前由子任務進度總和為主)
+                            </span>
+                          ) : isBlocked ? (
+                            <span className="ml-1.5 text-[11px] font-normal text-rose-600 dark:text-rose-400">
+                              (受上游阻塞中，最高 99%)
                             </span>
                           ) : null}
                         </ReadOnlyValue>
@@ -1096,19 +1123,21 @@ function TitleBox({ value, onCommit }: { value: string; onCommit: (v: string) =>
  * 外面的值變了（例如別的地方改了進度、或存檔失敗被打回）就跟著回正，
  * 但**正在拖的時候不要被蓋掉**，不然手還按著數字就自己跳回去。
  */
-function ProgressField({ value, onCommit }: {
+function ProgressField({ value, onCommit, isBlocked }: {
   value: number
   onCommit: (v: number) => void
+  isBlocked?: boolean
 }) {
+  const maxAllowed = isBlocked ? 99 : 100
   // useId 產出的字串帶冒號，當 HTML id 用要先換掉
   const ticksId = `ticks-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
-  const [draft, setDraft] = useState(value)
+  const [draft, setDraft] = useState(Math.min(maxAllowed, value))
   const dragging = useRef(false)
-  useEffect(() => { if (!dragging.current) setDraft(value) }, [value])
+  useEffect(() => { if (!dragging.current) setDraft(Math.min(maxAllowed, value)) }, [value, maxAllowed])
 
   const commit = (v: number) => {
     dragging.current = false
-    const clamped = Math.min(100, Math.max(0, Math.round(v)))
+    const clamped = Math.min(maxAllowed, Math.max(0, Math.round(v)))
     setDraft(clamped)
     if (clamped !== value) onCommit(clamped)
   }
@@ -1116,24 +1145,24 @@ function ProgressField({ value, onCommit }: {
   return (
     <div className="flex items-center gap-3">
       <input
-        type="range" min={0} max={100} step={10} list={ticksId} value={draft}
+        type="range" min={0} max={maxAllowed} step={isBlocked ? 1 : 10} list={isBlocked ? undefined : ticksId} value={draft}
         aria-label={T.task.drawer.progressAria}
         onPointerDown={() => { dragging.current = true }}
-        onChange={e => setDraft(Number(e.target.value))}
+        onChange={e => setDraft(Math.min(maxAllowed, Number(e.target.value)))}
         onPointerUp={e => commit(Number((e.target as HTMLInputElement).value))}
         onKeyUp={e => commit(Number((e.target as HTMLInputElement).value))}
         onBlur={() => commit(draft)}
         className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full
                    bg-slate-200 accent-blue-600 dark:bg-slate-700 dark:accent-blue-500"
       />
-      {/* 十格刻度。拖的時候會吸附到整十，也看得出來現在大概在第幾格 ——
-          沒有刻度的話 40% 跟 45% 在畫面上分不出來，而那兩個數字沒有差別到
-          需要分辨的程度（進度本來就是概數） */}
-      <datalist id={ticksId}>
-        {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => (
-          <option key={v} value={v} />
-        ))}
-      </datalist>
+      {/* 十格刻度。拖的時候會吸附到整十，也看得出來現在大概在第幾格 */}
+      {!isBlocked && (
+        <datalist id={ticksId}>
+          {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => (
+            <option key={v} value={v} />
+          ))}
+        </datalist>
+      )}
 
       {/*
         * 數字也能直接打 —— 要 35% 的時候拖拉條對不準。
@@ -1143,9 +1172,9 @@ function ProgressField({ value, onCommit }: {
         */}
       <div className="flex w-20 shrink-0 items-center gap-1">
         <Input
-          type="number" min={0} max={100} value={draft}
+          type="number" min={0} max={maxAllowed} value={draft}
           aria-label={T.task.drawer.fieldProgress}
-          onChange={e => setDraft(Number(e.target.value))}
+          onChange={e => setDraft(Math.min(maxAllowed, Number(e.target.value)))}
           onBlur={e => commit(Number(e.target.value))}
           className="text-right tabular-nums"
         />
