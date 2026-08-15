@@ -22,7 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Tab Renamed to '各語法範例' with Full Global Synchronization
+### Latest Changes: Permanent Top Navigation Tabs in Task Edit Mode
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx):
+    1. **頂部頁籤常駐顯示**：進入任務編輯模式時，頂部第一層完整保留所有檢視頁籤與偏好選單，隨時一鍵跨頁對照。
+    2. **麵包屑第二層整合**：任務路徑導覽麵包屑（專案名稱 / 上層 / 任務標題）整合於第二層，並提供「關閉編輯 ✕」捷徑按鈕。
+
+### Previous Changes: Tab Renamed to '各語法範例' with Full Global Synchronization
 - **變更檔案**:
   - [`nav.ts`](file:///D:/NewProject/pmflow-git/apps/web/src/strings/nav.ts): 將預設頁籤字串更新為 **`playground: '各語法範例'`**。
   - [`Playground.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/Playground.tsx): 內部標題與導覽列全面同步為「各語法範例」（支援在參數設定中自訂更名連動）。
