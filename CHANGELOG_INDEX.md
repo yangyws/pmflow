@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Sticky 'All Tasks' Sidebar Header & 99% Progress Cap on Blocked Tasks
+### Latest Changes: Removed Redundant 'Show All' from Breadcrumb Row
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 移除頂部麵包屑「當前顯示...」列右側多餘的「顯示全部」按鈕，統一由左側常駐的「☰ 全部任務」按鈕負責重置視野與篩選。
+
+### Previous Changes: Sticky 'All Tasks' Sidebar Header & 99% Progress Cap on Blocked Tasks
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/EpicSidebar.tsx): 將「全部任務」按鈕由可滾動列表內抽離至頂部固定容器（`shrink-0`），向下滾動任務清單時「全部任務」列永久常駐於頂部不隨滾動消失。
   - [`TaskDrawer.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/components/TaskDrawer.tsx) & [`tasks.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/routes/tasks.ts): 當任務受上游依賴阻塞（卡住）時，前端滑桿、輸入框與後端皆限制最高進度為 99%，禁止設定為 100%。

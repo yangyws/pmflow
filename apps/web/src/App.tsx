@@ -675,15 +675,6 @@ function ProjectWorkspace({
                 <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
                   {selectedLabel}
                 </span>
-                {(epicId || focusedTaskId) && (
-                  <button
-                    onClick={() => { setEpicId(null); setFocusedTaskId(null) }}
-                    className="shrink-0 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline ml-1 cursor-pointer"
-                    title="清除點選，顯示全部"
-                  >
-                    顯示全部
-                  </button>
-                )}
               </div>
             ) : (
               <span className="truncate text-slate-500 dark:text-slate-400">
