@@ -22,7 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Removed Redundant 'Show All' from Breadcrumb Row
+### Latest Changes: Left/Top Alignment for Storage Box and Warning Legend Items
+- **變更檔案**:
+  - [`SimpleGraph.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SimpleGraph.tsx) & [`SystemFlow.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/pages/SystemFlow.tsx): 圖示說明彈窗中，將「📦 收納盒」與多行說明項目的垂直對齊由 `items-center` 調整為 `items-start`，確保圖示與標籤統一靠上對齊，不再強制居中。
+
+### Previous Changes: Removed Redundant 'Show All' from Breadcrumb Row
 - **變更檔案**:
   - [`App.tsx`](file:///D:/NewProject/pmflow-git/apps/web/src/App.tsx): 移除頂部麵包屑「當前顯示...」列右側多餘的「顯示全部」按鈕，統一由左側常駐的「☰ 全部任務」按鈕負責重置視野與篩選。
 

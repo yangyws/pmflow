@@ -2292,15 +2292,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                     <span>🚩</span> 警示徽章
                   </div>
                   <div className="space-y-1 pl-1 text-[11px]">
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1 py-0.5 font-semibold text-[10px]">⚑ 問題 / 問 N</span>
                       <span>：包含未解決之問題單或遭遇問題說明。</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 font-semibold text-[10px]">⚠️ 卡住 / 卡 N</span>
                       <span>：任務進度受阻、等待外部資源中。</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 px-1 py-0.5 font-semibold text-[10px]">⏰ 逾期 / 逾 N</span>
                       <span>：已超過預定結束日且尚未達到 100%。</span>
                     </p>
@@ -2313,19 +2313,19 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                     <span>📦</span> 容器與事件類型
                   </div>
                   <div className="space-y-1 pl-1 text-[11px]">
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 font-semibold">📦 收納盒</span>
                       <span>：父層容器，內部收納子任務並自動加總內部警示。</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 任務單</span>
                       <span>：標準事件卡片，支援自訂類型與顏色標籤。</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 font-semibold text-rose-600 dark:text-rose-400">🐛 問題單</span>
                       <span>：系統固定類型，專門追蹤修復與解決方案。</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
+                    <p className="flex items-start gap-1.5">
                       <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-semibold">✓ 100%</span>
                       <span>：進度達 100% 即標示為已完成。</span>
                     </p>

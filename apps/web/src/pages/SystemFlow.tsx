@@ -1244,10 +1244,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                   <span>📦</span> 節點與容器
                 </div>
                 <div className="space-y-1 pl-1 text-[11px]">
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex items-start gap-1.5">
                     <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 流程步驟</span>：代表具體系統行為、API 呼叫或操作。
                   </p>
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex items-start gap-1.5">
                     <span className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400">📦 模組容器</span>：系統子模組，可拖曳收納多個步驟。
                   </p>
                 </div>
@@ -1259,13 +1259,13 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                   <span>🔗</span> 四向接點與連線
                 </div>
                 <div className="space-y-1 pl-1 text-[11px]">
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex items-start gap-1.5">
                     <span className="shrink-0 font-semibold text-blue-500">🔵 左右連接</span>：標準水平流程線，代表先後次序。
                   </p>
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex items-start gap-1.5">
                     <span className="shrink-0 font-semibold text-purple-500">🟣 上下連接</span>：模組輔助或跨層連線。
                   </p>
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex items-start gap-1.5">
                     <span className="shrink-0 font-semibold">⚙ 點擊連線</span>：點擊任一連線即可一鍵確認刪除。
                   </p>
                 </div>
