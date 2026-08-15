@@ -22,7 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Cross-Platform API Test Runner & CI Integration (npm test)
+### Latest Changes: Fixed E2E Bash Test Suite Legacy Type References
+- **變更檔案**:
+  - [`e2e.sh`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.sh): 修復第 24 節種類上下關係測試中殘留的舊版寫死 `MILESTONE` 類型引用（更新為有效專案參數類型），解決建立失敗與連鎖 UUID 驗證錯誤。
+  - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 跨平台 TypeScript 端對端測試套件全數通過（11/11 通過）。
+
+### Previous Changes: Cross-Platform API Test Runner & CI Integration (npm test)
 - **變更檔案**:
   - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 建立跨平台（Windows / macOS / Linux）TypeScript 端對端 API 測試腳本，支援驗證身份認證、專案參數、任務 CRUD、依賴排程與狀態聚合。
   - [`package.json`](file:///D:/NewProject/pmflow-git/apps/api/package.json): 新增 `npm test`、`npm run test:unit` 與 `npm run test:e2e` 測試指令。目前共 23 項單元與整合測試全數通過（23/23 通過）。

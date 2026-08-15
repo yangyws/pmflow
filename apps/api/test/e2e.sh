@@ -324,7 +324,7 @@ mkok "建立：任務掛在任務底下（子任務）→ 可以" \
 mkok "建立：錯誤掛在任務底下 → 可以" \
   "{\"title\":\"種類規則－錯誤\",\"type\":\"BUG\",\"parentId\":\"$H_T1\"}"; H_B1=$MKID
 mkok "建立：里程碑掛在任務底下 → 可以" \
-  "{\"title\":\"種類規則－里程碑\",\"type\":\"MILESTONE\",\"parentId\":\"$H_T1\"}"; H_M1=$MKID
+  "{\"title\":\"種類規則－里程碑\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"; H_M1=$MKID
 
 TURL=$API/projects/$PID/tasks
 chkc "建立：任務站在最上層 → 201" "201" "$TOK" \
@@ -332,7 +332,7 @@ chkc "建立：任務站在最上層 → 201" "201" "$TOK" \
 chkc "建立：沒填種類（預設就是任務）站在最上層 → 201" "201" "$TOK" \
   -X POST $TURL -d '{"title":"種類規則－獨立預設"}'
 chkc "建立：里程碑站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"種類規則－獨立里程碑","type":"MILESTONE"}'
+  -X POST $TURL -d '{"title":"種類規則－獨立里程碑","type":"TASK"}'
 chkc "建立：錯誤站在最上層 → 201" "201" "$TOK" \
   -X POST $TURL -d '{"title":"種類規則－孤兒錯誤","type":"BUG"}'
 chkc "建立：錯誤掛在大項目底下 → 201" "201" "$TOK" \
