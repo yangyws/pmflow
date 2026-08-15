@@ -22,10 +22,11 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Cross-Platform API Test Runner & Suite (npm test)
+### Latest Changes: Cross-Platform API Test Runner & CI Integration (npm test)
 - **變更檔案**:
   - [`e2e.test.ts`](file:///D:/NewProject/pmflow-git/apps/api/test/e2e.test.ts): 建立跨平台（Windows / macOS / Linux）TypeScript 端對端 API 測試腳本，支援驗證身份認證、專案參數、任務 CRUD、依賴排程與狀態聚合。
   - [`package.json`](file:///D:/NewProject/pmflow-git/apps/api/package.json): 新增 `npm test`、`npm run test:unit` 與 `npm run test:e2e` 測試指令。目前共 23 項單元與整合測試全數通過（23/23 通過）。
+  - [`.github/workflows/ci.yml`](file:///D:/NewProject/pmflow-git/.github/workflows/ci.yml): 將跨平台 E2E API 整合測試納入 GitHub Actions CI 流水線，確保每次 PR/Push 都自動覆蓋完整 API 測試。
 
 ### Previous Changes: Gantt Menu Selection Sync & SimpleGraph All Tasks FitView
 - **變更檔案**:
