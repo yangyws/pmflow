@@ -16,7 +16,7 @@ services:
 
   # 唯一對外的容器：靜態檔 + 把 /api 轉給後端
   web:
-    image: ghcr.io/yangeric/pmflow-web:latest
+    image: ghcr.io/yangyws/pmflow-web:latest
     container_name: pmflow-web
     restart: unless-stopped
     environment:
@@ -34,7 +34,7 @@ services:
       options: { max-size: "10m", max-file: "3" }
 
   api:
-    image: ghcr.io/yangeric/pmflow-api:latest
+    image: ghcr.io/yangyws/pmflow-api:latest
     container_name: pmflow-api
     restart: unless-stopped
     # 刻意不設 user:。映像內建以 uid 10001 的非 root 帳號執行，
@@ -205,12 +205,12 @@ volumes:
 #   → 九成是 GHCR 的 package 還是私有的。GHCR 對「看不到的」package
 #     一律回 manifest unknown（不回「沒權限」，免得洩漏 package 是否存在），
 #     所以這個訊息看起來像映像不存在，實際上是權限問題。
-#     github.com/yangeric?tab=packages → pmflow-api → Package settings
+#     github.com/yangyws?tab=packages → pmflow-api → Package settings
 #     → Danger Zone → Change visibility → Public。pmflow-web 也做一次。
 #
 #   → 改成 Public 後還是不行，就改用 Docker Hub。把上面兩行 image: 換成：
-#       image: yangeric/pmflow-web:0.1.1
-#       image: yangeric/pmflow-api:0.1.1
+#       image: yangyws/pmflow-web:0.1.1
+#       image: yangyws/pmflow-api:0.1.1
 #     Docker Hub 推上去預設就是公開的，不用另外設定。
 #
 # 想用網域 + HTTPS

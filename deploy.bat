@@ -76,13 +76,13 @@ echo   Successfully deployed release %TAG%!
 echo ====================================
 echo.
 echo GitHub Actions build progress:
-echo   https://github.com/yangeric/pmflow/actions
+echo   https://github.com/yangyws/pmflow/actions
 echo.
 echo Published Docker image tags:
-echo   ghcr.io/yangeric/pmflow-web:%VERSION%
-echo   ghcr.io/yangeric/pmflow-api:%VERSION%
-echo   ghcr.io/yangeric/pmflow-web:latest
-echo   ghcr.io/yangeric/pmflow-api:latest
+echo   ghcr.io/yangyws/pmflow-web:%VERSION%
+echo   ghcr.io/yangyws/pmflow-api:%VERSION%
+echo   ghcr.io/yangyws/pmflow-web:latest
+echo   ghcr.io/yangyws/pmflow-api:latest
 echo.
 
 :hold
