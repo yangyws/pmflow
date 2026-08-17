@@ -8,30 +8,30 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
-| `CR-154` | 2026-08-18 | [系統流程圖：文字註記的編輯與刪除鈕移到文字上方，不要蓋住字](#cr-154) | `SystemFlow.tsx` | 待畫面驗證 |
-| `CR-153` | 2026-08-18 | [任務關聯圖：文字註記「按住就消失」＝節點缺 `measured` 被判定成還沒量過；編輯與刪除鈕移到文字上方](#cr-153) | `SimpleGraph.tsx`, `CODEMAP.md` | 待畫面驗證 |
-| `CR-152` | 2026-08-18 | [兩張圖：線上文字放大、短字不再被把手擋住、區域標示框整塊可拖、拖曳時節點重繪由 N 降為 1](#cr-152) | `SimpleGraph.tsx`, `SystemFlow.tsx` | 待畫面驗證 |
-| `CR-151` | 2026-08-18 | [任務關聯圖：線上文字「消失」其實是被卡片蓋住（標籤容器沒有 z-index）；折點與文字改用關聯線 id 當鍵](#cr-151) | `SimpleGraph.tsx` | 待畫面驗證 |
-| `CR-150` | 2026-08-17 | [任務關聯圖：關聯線可以掛文字，標籤跟著折點走](#cr-150) | `SimpleGraph.tsx`, `strings/flow.ts` | 待畫面驗證 |
+| `CR-154` | 2026-08-18 | [系統流程圖：文字註記的編輯與刪除鈕移到文字上方，不要蓋住字](#cr-154) | `SystemFlow.tsx` | 已驗證 |
+| `CR-153` | 2026-08-18 | [任務關聯圖：文字註記「按住就消失」＝節點缺 `measured` 被判定成還沒量過；編輯與刪除鈕移到文字上方](#cr-153) | `SimpleGraph.tsx`, `CODEMAP.md` | 已驗證 |
+| `CR-152` | 2026-08-18 | [兩張圖：線上文字放大、短字不再被把手擋住、區域標示框整塊可拖、拖曳時節點重繪由 N 降為 1](#cr-152) | `SimpleGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
+| `CR-151` | 2026-08-18 | [任務關聯圖：線上文字「消失」其實是被卡片蓋住（標籤容器沒有 z-index）；折點與文字改用關聯線 id 當鍵](#cr-151) | `SimpleGraph.tsx` | 已驗證 |
+| `CR-150` | 2026-08-17 | [任務關聯圖：關聯線可以掛文字，標籤跟著折點走](#cr-150) | `SimpleGraph.tsx`, `strings/flow.ts` | 已驗證 |
 | `CR-149` | 2026-08-17 | [移除掛載目錄的 SQL 種子機制；JWT 簽章金鑰改成第一次啟動自動產生並存進資料庫](#cr-149) | `0027_app_secret.sql`, `lib/secret.ts`, `env.ts`, `index.ts`, `seed.ts`, `docker-compose*.yml`, `.env.example` | 已驗證 |
-| `CR-148` | 2026-08-17 | [兩張圖的 LAG 與閃爍：拖曳中每個事件寫一次儲存、節點物件參照不穩定；按鈕統一移到頂部](#cr-148) | `SimpleGraph.tsx`, `SystemFlow.tsx`, `CODEMAP.md` | 待畫面驗證 |
+| `CR-148` | 2026-08-17 | [兩張圖的 LAG 與閃爍：拖曳中每個事件寫一次儲存、節點物件參照不穩定；按鈕統一移到頂部](#cr-148) | `SimpleGraph.tsx`, `SystemFlow.tsx`, `CODEMAP.md` | 已驗證 |
 | `CR-147` | 2026-08-17 | [技能文件：用 API 權杖寫資料進 PMFlow，一份內容三個工具入口（Claude／Gemini／讀 AGENTS.md 的）](#cr-147) | `docs/API-WRITE.md`, `.claude/skills/`, `.gemini/commands/`, `AGENTS.md` | 已驗證 |
 | `CR-146` | 2026-08-17 | [畫面文字外移：新增 `strings/flow.ts`，兩張圖的中文全部從 JSX 搬進 strings](#cr-146) | `strings/flow.ts`, `strings/index.ts`, `SimpleGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
 | `CR-145` | 2026-08-17 | [權限：移除 `COMMENTER`（可留言）角色，含 migration 降級既有成員與 CHECK 約束](#cr-145) | `0026_drop_commenter_role.sql`, `auth.ts`, `members.ts`, `api.ts`, `strings/*`, `NotificationBell.tsx` | 已驗證 |
-| `CR-144` | 2026-08-17 | [任務關聯圖：新增文字註記與區域標示框（不是任務、不進節點狀態、不建立隸屬關係）](#cr-144) | `SimpleGraph.tsx` | 待畫面驗證 |
+| `CR-144` | 2026-08-17 | [任務關聯圖：新增文字註記與區域標示框（不是任務、不進節點狀態、不建立隸屬關係）](#cr-144) | `SimpleGraph.tsx` | 已驗證 |
 | `CR-143` | 2026-08-17 | [移除任務留言：功能被「成立問題單」取代，前端顯示端與字串一併清掉](#cr-143) | `TaskDrawer.tsx`, `strings/task.ts`, `strings/settings.ts` | 已驗證 |
 | `CR-142` | 2026-08-17 | [死碼清理：刪除點不到的舊關聯圖（3093 行）與解鎖後變成空殼的階層守門員](#cr-142) | `pages/Graph.tsx`(刪), `lib/hierarchy.ts`(刪), `App.tsx`, `tasks.ts`, `parameters.ts`, `CODEMAP.md` | 已驗證 |
-| `CR-141` | 2026-08-17 | [任務關聯圖：拖曳關聯線轉角會誤觸發刪除確認（React 合成事件沿元件樹冒泡）](#cr-141) | `SimpleGraph.tsx` | 待畫面驗證 |
-| `CR-140` | 2026-08-17 | [系統流程圖：模組容器顯示詳細說明、新增文字與區域標示框、線上文字、箭頭指向終點、直角可拖折點](#cr-140) | `SystemFlow.tsx` | 待畫面驗證 |
-| `CR-139` | 2026-08-17 | [任務關聯圖：關聯線轉角可拖曳（自訂直角 edge），並修掉拉線當下的貝茲預覽線](#cr-139) | `SimpleGraph.tsx` | 待畫面驗證 |
+| `CR-141` | 2026-08-17 | [任務關聯圖：拖曳關聯線轉角會誤觸發刪除確認（React 合成事件沿元件樹冒泡）](#cr-141) | `SimpleGraph.tsx` | 已驗證 |
+| `CR-140` | 2026-08-17 | [系統流程圖：模組容器顯示詳細說明、新增文字與區域標示框、線上文字、箭頭指向終點、直角可拖折點](#cr-140) | `SystemFlow.tsx` | 已驗證 |
+| `CR-139` | 2026-08-17 | [任務關聯圖：關聯線轉角可拖曳（自訂直角 edge），並修掉拉線當下的貝茲預覽線](#cr-139) | `SimpleGraph.tsx` | 已驗證 |
 | `CR-138` | 2026-08-17 | [持久化：圖的座標／尺寸／收納模式／線接點與整份文件存進資料庫（新表 + canvas API）](#cr-138) | `0025_canvas_layout.sql`, `canvas.ts`, `links.ts`, `index.ts`, `e2e.sh` | 已驗證 |
 | `CR-137` | 2026-08-17 | [測試的東西只准出現在測試環境：示範資料竄改正式任務、登入頁預填帳密、`/data/seed` 無條件執行 SQL](#cr-137) | `env.ts`, `seed.ts`, `index.ts`, `Login.tsx`, `docker-compose*.yml`, `AGENTS.md` | 已驗證 |
-| `CR-136` | 2026-08-17 | [任務關聯圖：收納盒依剩餘卡片縮小，空了回到一張卡片大小](#cr-136) | `SimpleGraph.tsx` | 待畫面驗證 |
+| `CR-136` | 2026-08-17 | [任務關聯圖：收納盒依剩餘卡片縮小，空了回到一張卡片大小](#cr-136) | `SimpleGraph.tsx` | 已驗證 |
 | `CR-135` | 2026-08-17 | [語法範例：修掉切 MD 時標頭換行造成的跑版，並改用 markdown-it + highlight.js](#cr-135) | `Playground.tsx`, `package.json` | 已驗證 |
 | `CR-134` | 2026-08-17 | [權限：`impersonate` 可被任何人接管全站、`/admin/users` 漏驗管理者、父任務可跨專案](#cr-134) | `auth.ts`, `account.ts`, `tasks.ts`, `env.ts` | 已驗證 |
 | `CR-133` | 2026-08-17 | [側欄新增事件：種類初始值寫死 `EPIC` 導致顏色與名稱不一致，且會建出專案沒有的種類](#cr-133) | `EpicSidebar.tsx` | 已驗證 |
 | `CR-132` | 2026-08-17 | [關聯圖（`Graph.tsx`）：收納盒依剩餘卡片縮小 —— **做在使用者點不到的頁面上，見 CR-136**](#cr-132) | `Graph.tsx` | 無效 |
-| `CR-131` | 2026-08-17 | [任務關聯圖：拉線拉不出來（穿透否決）、接點太小、線改硬 90 度、移除前端自創的錯誤單連線禁令](#cr-131) | `SimpleGraph.tsx` | 待畫面驗證 |
+| `CR-131` | 2026-08-17 | [任務關聯圖：拉線拉不出來（穿透否決）、接點太小、線改硬 90 度、移除前端自創的錯誤單連線禁令](#cr-131) | `SimpleGraph.tsx` | 已驗證 |
 | `CR-130` | 2026-08-17 | [權限：非關係人不得異動別人建立的資料（系統管理者／專案管理者／建立者／代理人才可改），補上關聯線與對外詢問單的守門，前端改看後端回的 canEdit](#cr-130) | `lib/auth.ts`, `routes/tasks.ts`, `routes/links.ts`, `routes/inquiries.ts`, `lib/api.ts`, `TaskDrawer.tsx`, `AGENTS.md` | 已驗證 |
 | `CR-129` | 2026-08-17 | [文件同步：解除 ARCHITECTURE.md / SPEC.md「過時設計稿」警語，並補回 NEXT-SESSION 落後的三批進度](#cr-129) | `CODEMAP.md`, `AGENTS.md`, `NEXT-SESSION.md` | 已驗證 |
 | `CR-128` | 2026-08-11 | [規格補充：於 SPEC.md 新增第 13 章行動端自適應 (RWD) 與 Mobile/PWA 平台支援規格](#cr-128) | `SPEC.md` | 已驗證 |
