@@ -417,8 +417,8 @@ function FlowFrameNode({ id, data }: NodeProps) {
   const nodeData = data as FlowNodeData
   const color = nodeData.color || '#8b5cf6'
   return (
-    <div className="pointer-events-none relative h-full w-full group">
-      {/* 純視覺標示框：本體不吃點擊，框內節點照樣點得到 */}
+    <div className="relative h-full w-full group cursor-grab active:cursor-grabbing">
+      {/* Ref: CR-152 */}
       <div
         className={cx(
           'h-full w-full rounded-2xl border-2 border-dashed',
@@ -427,7 +427,7 @@ function FlowFrameNode({ id, data }: NodeProps) {
         style={{ borderColor: color, backgroundColor: `${color}12` }}
       />
 
-      <div className="pointer-events-auto absolute -top-3 left-3 flex max-w-[85%] items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs dark:bg-slate-900 cursor-grab active:cursor-grabbing"
+      <div className="absolute -top-3 left-3 flex max-w-[85%] items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs dark:bg-slate-900 cursor-grab active:cursor-grabbing"
         style={{ borderColor: color }}
       >
         <span className="shrink-0 text-[11px]">🏷️</span>
@@ -462,7 +462,7 @@ function FlowFrameNode({ id, data }: NodeProps) {
         minWidth={220}
         minHeight={160}
         style={{ background: 'transparent', border: 'none' }}
-        className="nodrag pointer-events-auto"
+        className="nodrag"
       >
         <div className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">
           ↘
@@ -570,9 +570,10 @@ function FlowLabeledEdge({
       {(text || isEditing) && (
         <EdgeLabelRenderer>
           {/* Ref: CR-140 連線文字跟著折點走 */}
+          {/* Ref: CR-152 */}
           <div
-            className="nodrag nopan pointer-events-auto absolute"
-            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 14}px)` }}
+            className={cx('nodrag nopan absolute', isEditing ? 'pointer-events-auto' : 'pointer-events-none')}
+            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 24}px)` }}
           >
             {isEditing ? (
               <input
@@ -585,7 +586,9 @@ function FlowLabeledEdge({
                   if (e.key === 'Enter') finish(true)
                   if (e.key === 'Escape') finish(false)
                 }}
-                className="w-36 rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
+                // Ref: CR-152
+                style={{ width: `${Math.max(draft.length + 1, 5)}ch` }}
+                className="min-w-[4rem] max-w-[26rem] rounded-md border border-blue-500 bg-white px-2 py-1 text-[13px] font-medium text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
               <span
@@ -596,7 +599,7 @@ function FlowLabeledEdge({
                   setIsEditing(true)
                 }}
                 title={T.flow.systemFlow.edgeTextHint}
-                className="cursor-text rounded-md border border-slate-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+                className="pointer-events-auto inline-block cursor-text whitespace-nowrap rounded-md border border-slate-200 bg-white/95 px-2 py-1 text-[13px] font-medium leading-tight text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
               >
                 {text}
               </span>
@@ -1086,7 +1089,19 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       }
     }
     if (ended) interactingRef.current = false
-    setNodes((nds) => applyNodeChanges(changes, nds))
+    setNodes((nds) => {
+      // Ref: CR-152
+      if (changes.some((c) => c.type === 'select')) {
+        const frameIds = new Set(
+          nds.filter((n) => ((n.data as FlowNodeData)?.mode || n.type) === 'frame').map((n) => n.id)
+        )
+        if (frameIds.size > 0) {
+          const kept = changes.filter((c) => !(c.type === 'select' && frameIds.has(c.id)))
+          return applyNodeChanges(kept, nds)
+        }
+      }
+      return applyNodeChanges(changes, nds)
+    })
   }, [beginInteraction])
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -1314,8 +1329,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       id: newId,
       type: 'frame',
       position: { x: 140 + Math.random() * 60, y: 80 + Math.random() * 60 },
-      // Ref: CR-140 框身不吃指標事件，只有標題列與縮放柄可操作
-      style: { width: 420, height: 300, pointerEvents: 'none' },
+      // Ref: CR-152
+      style: { width: 420, height: 300 },
       data: {
         label: T.flow.shared.annotation.newFrameDefault,
         color: '#8b5cf6',
@@ -1366,10 +1381,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       // Ref: CR-140 區域標示框永遠墊在最底層
       const nodeMode = (node.data as FlowNodeData)?.mode || node.type
       const isFrame = nodeMode === 'frame'
+      // Ref: CR-152
+      const style =
+        isFrame && node.style && 'pointerEvents' in node.style
+          ? (() => {
+              const { pointerEvents: _drop, ...rest } = node.style as Record<string, unknown>
+              return rest as Node['style']
+            })()
+          : node.style
       const out: Node = {
         ...node,
+        style,
         draggable: true,
         selectable: true,
+        // Ref: CR-152
+        selected: isFrame ? false : node.selected,
         zIndex: isFrame
           ? 0
           : selected
@@ -1393,10 +1419,33 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     return orderParentNodesFirst(mapped)
   }, [nodes, selectedNodeId, handleEditNode, handleDeleteNode])
 
+  // Ref: CR-152
+  const edgeViewCacheRef = useRef(new Map<string, { src: Edge; out: Edge }>())
+  const edgeHandlersRef = useRef<unknown[]>([])
+
   const styledEdges = useMemo(() => {
-    return edges.map((e) => {
+    const handlers: unknown[] = [
+      handleSaveEdgeText,
+      handleWaypointChange,
+      handleWaypointReset,
+      beginInteraction,
+      endInteraction,
+    ]
+    const handlersChanged =
+      edgeHandlersRef.current.length !== handlers.length ||
+      handlers.some((h, i) => edgeHandlersRef.current[i] !== h)
+    edgeHandlersRef.current = handlers
+    const prevCache = handlersChanged ? new Map<string, { src: Edge; out: Edge }>() : edgeViewCacheRef.current
+    const nextCache = new Map<string, { src: Edge; out: Edge }>()
+
+    const mapped = edges.map((e) => {
+      const cached = prevCache.get(e.id)
+      if (cached && cached.src === e) {
+        nextCache.set(e.id, cached)
+        return cached.out
+      }
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
-      return {
+      const out: Edge = {
         ...e,
         ...edgeStyleAndMarker,
         // Ref: CR-140 改用可掛文字的自訂連線
@@ -1417,7 +1466,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           opacity: 1,
         },
       }
+      nextCache.set(e.id, { src: e, out })
+      return out
     })
+
+    edgeViewCacheRef.current = nextCache
+    return mapped
   }, [edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
 
   return (

@@ -24,6 +24,8 @@ import {
   type NodeProps,
   type EdgeProps,
   type Viewport,
+  type CoordinateExtent,
+  type DefaultEdgeOptions,
   BackgroundVariant,
   MarkerType,
 } from '@xyflow/react'
@@ -85,6 +87,22 @@ function isAncestorNode(nodeId: string, potentialAncestorId: string, allNodes: N
   return false
 }
 
+/*
+ * Ref: CR-152 這幾個常數本來寫成 JSX 上的行內物件，每次 render 都是新的參照；
+ * React Flow 的 StoreUpdater 是用參照比對決定要不要寫回 store，
+ * 行內物件等於每個 pointermove 都通知一次全部訂閱者。提到模組層就不會再變。
+ */
+const NODE_EXTENT: CoordinateExtent = [
+  [-100000, -100000],
+  [100000, 100000],
+]
+const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
+  type: 'orthogonal',
+  animated: false,
+  style: { strokeWidth: 2, stroke: '#ef4444' },
+}
+const PRO_OPTIONS = { hideAttribution: true }
+
 const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
 
 // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
@@ -106,18 +124,35 @@ function loadSavedViewport(): Viewport | undefined {
 const savedViewport = loadSavedViewport()
 
 // 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 Graph.tsx: React Flow 要求父節點排在子節點前面，否則子節點座標會對不上)
+// Ref: CR-152 深度只算一次並記起來；本來就照順序時直接回傳原陣列，不排序也不配置新陣列
 function orderParentNodesFirst(nodes: Node[]): Node[] {
   const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
-  const getDepth = (id: string) => {
+  const depthCache = new Map<string, number>()
+  const getDepth = (id: string): number => {
+    const cached = depthCache.get(id)
+    if (cached !== undefined) return cached
     let d = 0
     let cur = parentMap.get(id)
     while (cur && d < 20) {
       d++
+      const memo = depthCache.get(cur)
+      if (memo !== undefined) {
+        d += memo
+        break
+      }
       cur = parentMap.get(cur)
     }
+    depthCache.set(id, d)
     return d
   }
-  return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
+
+  const depths = nodes.map((n) => getDepth(n.id))
+  for (let i = 1; i < depths.length; i++) {
+    if (depths[i - 1] > depths[i]) {
+      return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
+    }
+  }
+  return nodes
 }
 
 export type NodeMode = 'card' | 'box'
@@ -644,18 +679,19 @@ function consumeWaypointClickGuard(): boolean {
 
 type OrthogonalEdgeData = {
   waypoint?: Waypoint | null
-  onWaypointChange?: (key: string, p: Waypoint) => void
-  onWaypointReset?: (key: string) => void
+  onWaypointChange?: (edgeId: string, p: Waypoint) => void
+  onWaypointReset?: (edgeId: string) => void
   // Ref: CR-150
   text?: string
-  onSaveText?: (key: string, text: string) => void
+  onSaveText?: (edgeId: string, text: string) => void
+  // Ref: CR-151
+  onWaypointDragStart?: () => void
+  onWaypointDragEnd?: () => void
 }
 
 // Ref: CR-139
 function OrthogonalEdge({
   id,
-  source,
-  target,
   sourceX,
   sourceY,
   targetX,
@@ -669,7 +705,8 @@ function OrthogonalEdge({
   const { screenToFlowPosition } = useReactFlow()
   const draggingRef = useRef(false)
   const eData = data as OrthogonalEdgeData | undefined
-  const wpKey = `${source}_${target}`
+  // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
+  const wpKey = id
 
   // Ref: CR-150
   const edgeText = eData?.text || ''
@@ -679,23 +716,6 @@ function OrthogonalEdge({
   const finishTextEdit = (commit: boolean) => {
     if (commit) eData?.onSaveText?.(wpKey, textDraft)
     setIsEditingText(false)
-  }
-
-  const startTextEdit = (e: React.SyntheticEvent) => {
-    // Ref: CR-150 合成事件會沿元件樹冒泡到這條 edge 的 <g onClick>，一定要擋掉並武裝一次性旗標
-    e.stopPropagation()
-    e.preventDefault()
-    armWaypointClickGuard()
-    scheduleWaypointGuardRelease()
-    setTextDraft(edgeText)
-    setIsEditingText(true)
-  }
-
-  const swallowClick = (e: React.SyntheticEvent) => {
-    // Ref: CR-150
-    e.stopPropagation()
-    armWaypointClickGuard()
-    scheduleWaypointGuardRelease()
   }
 
   const { path, px, py } = buildOrthogonalPath(
@@ -713,6 +733,7 @@ function OrthogonalEdge({
     e.preventDefault()
     draggingRef.current = true
     armWaypointClickGuard() // Ref: CR-141
+    eData?.onWaypointDragStart?.() // Ref: CR-151
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
@@ -728,6 +749,7 @@ function OrthogonalEdge({
     draggingRef.current = false
     e.stopPropagation()
     scheduleWaypointGuardRelease() // Ref: CR-141
+    eData?.onWaypointDragEnd?.() // Ref: CR-151
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -744,6 +766,8 @@ function OrthogonalEdge({
           style={{
             transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
             pointerEvents: 'all',
+            // Ref: CR-151
+            zIndex: 1000,
           }}
           title={T.flow.relationGraph.waypointHint}
           onPointerDown={handlePointerDown}
@@ -765,37 +789,44 @@ function OrthogonalEdge({
         />
       </EdgeLabelRenderer>
 
-      {/* Ref: CR-150 關聯線文字：跟著折點 (px, py) 走，空的時候完全不畫 */}
+      {/* Ref: CR-151 關聯線文字：版面與互動照 SystemFlow.tsx 同一套，跟著折點 (px, py) 走，空的時候完全不畫 */}
       {(edgeText || isEditingText) && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-auto absolute"
-            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 14}px)` }}
+            className={cx('nodrag nopan absolute', isEditingText ? 'pointer-events-auto' : 'pointer-events-none')}
+            /*
+             * Ref: CR-151 .react-flow__edgelabel-renderer 沒有 z-index 且排在 .react-flow__nodes 前面，
+             * 而這一頁每張卡片都帶 zIndex(1~30)，不墊高的話文字會被卡片蓋掉而看起來像消失。
+             */
+            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 14}px)`, zIndex: 1000 }}
           >
             {isEditingText ? (
+              // Ref: CR-152 輸入框寬度跟著內容走，只留一個合理的最小寬度
               <input
                 type="text"
                 value={textDraft}
                 autoFocus
                 onChange={(e) => setTextDraft(e.target.value)}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={swallowClick}
                 onBlur={() => finishTextEdit(true)}
                 onKeyDown={(e) => {
-                  e.stopPropagation()
                   if (e.key === 'Enter') finishTextEdit(true)
                   if (e.key === 'Escape') finishTextEdit(false)
                 }}
                 placeholder={T.flow.relationGraph.edgeTextPlaceholder}
-                className="w-40 rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
+                style={{ width: `${Math.min(28, Math.max(7, textDraft.length + 2))}ch` }}
+                className="rounded-md border border-blue-500 bg-white px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
+              // Ref: CR-152 字放大到 text-sm，命中區就是這塊文字本身（外層容器不吃事件、沒有最小寬度）
               <span
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={swallowClick}
-                onDoubleClick={startTextEdit}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  setTextDraft(edgeText)
+                  setIsEditingText(true)
+                }}
                 title={T.flow.relationGraph.edgeTextHint}
-                className="cursor-text rounded-md border border-slate-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+                className="pointer-events-auto inline-block whitespace-nowrap cursor-text rounded-md border border-slate-200 bg-white/95 px-2 py-0.5 text-sm font-semibold text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
               >
                 {edgeText}
               </span>
@@ -856,19 +887,23 @@ function saveCanvasAnnotations(projectId: string | undefined, data: CanvasAnnota
   }
 }
 
-// Ref: CR-148
-function scheduleDeferredWrite(
-  pending: { current: Record<string, () => void> },
-  key: string,
-  write: () => void,
-  delay = 250
-): () => void {
-  pending.current[key] = write
-  const timer = setTimeout(() => {
-    delete pending.current[key]
-    write()
-  }, delay)
-  return () => clearTimeout(timer)
+// Ref: CR-151 舊資料是用 `${source}_${target}` 當鍵存的，對稱型關聯重整後兩端會被後端對調而找不到，
+// 讀到就順手搬成 link id
+function migrateLegacyEdgeKeys<T>(map: Record<string, T>, allEdges: Edge[]): Record<string, T> {
+  if (!allEdges.length) return map
+  let changed = false
+  const next = { ...map }
+  for (const e of allEdges) {
+    if (next[e.id] !== undefined) continue
+    const forward = `${e.source}_${e.target}`
+    const reversed = `${e.target}_${e.source}`
+    const legacy = next[forward] !== undefined ? forward : next[reversed] !== undefined ? reversed : null
+    if (!legacy) continue
+    next[e.id] = next[legacy]
+    delete next[legacy]
+    changed = true
+  }
+  return changed ? next : map
 }
 
 type SimpleAnnotationNodeData = {
@@ -930,7 +965,8 @@ function SimpleFrameNode({ id, data }: NodeProps) {
   const color = d.color || '#8b5cf6'
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
-    <div className="group pointer-events-none relative h-full w-full">
+    // Ref: CR-152 整塊都能拖：框身恢復接收事件，卡片與線靠 zIndex 仍在框之上
+    <div className="group relative h-full w-full cursor-grab active:cursor-grabbing">
       <div
         className="h-full w-full rounded-2xl border-2 border-dashed"
         style={{ borderColor: color, backgroundColor: `${color}12` }}
@@ -1000,8 +1036,7 @@ type ConfirmDeleteEdgeState = {
   edgeId: string
   sourceRef: string
   targetRef: string
-  // Ref: CR-150
-  edgeKey: string
+  // Ref: CR-151 文字直接掛在 link id 上，不再另外組鍵
   text: string
 }
 
@@ -1466,20 +1501,55 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setWaypoints(loadWaypoints(projectId))
   }, [projectId])
 
-  // Ref: CR-148
+  /*
+   * Ref: CR-151 落盤策略改成跟 SystemFlow.tsx 同一套：拖曳／縮放進行中只把待寫的內容記起來不落盤，
+   * 放開才寫一次；另留一個保險計時器，避免收不到結束事件時整段互動都沒存到。
+   */
+  const interactingRef = useRef(false)
   const pendingWritesRef = useRef<Record<string, () => void>>({})
-  useEffect(
-    () => () => {
-      Object.values(pendingWritesRef.current).forEach((flush) => flush())
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const commitCanvas = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    const pending = pendingWritesRef.current
+    pendingWritesRef.current = {}
+    Object.values(pending).forEach((write) => write())
+  }, [])
+
+  const queueCanvasWrite = useCallback(
+    (key: string, write: () => void) => {
+      pendingWritesRef.current[key] = write
+      if (!interactingRef.current) {
+        commitCanvas()
+        return
+      }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null
+        commitCanvas()
+      }, 800)
     },
-    []
+    [commitCanvas]
   )
 
-  // Ref: CR-148
-  useEffect(
-    () => scheduleDeferredWrite(pendingWritesRef, 'waypoints', () => saveWaypoints(projectId, waypoints)),
-    [waypoints, projectId]
-  )
+  const beginInteraction = useCallback(() => {
+    interactingRef.current = true
+  }, [])
+
+  const endInteraction = useCallback(() => {
+    interactingRef.current = false
+    if (Object.keys(pendingWritesRef.current).length > 0) commitCanvas()
+  }, [commitCanvas])
+
+  useEffect(() => () => commitCanvas(), [commitCanvas])
+
+  // Ref: CR-151
+  useEffect(() => {
+    queueCanvasWrite('waypoints', () => saveWaypoints(projectId, waypoints))
+  }, [waypoints, projectId, queueCanvasWrite])
 
   const handleWaypointChange = useCallback((key: string, p: Waypoint) => {
     setWaypoints((prev) => ({ ...prev, [key]: p }))
@@ -1501,24 +1571,31 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setEdgeTexts(loadEdgeTexts(projectId))
   }, [projectId])
 
-  useEffect(
-    () => scheduleDeferredWrite(pendingWritesRef, 'edgeTexts', () => saveEdgeTexts(projectId, edgeTexts)),
-    [edgeTexts, projectId]
-  )
+  // Ref: CR-151
+  useEffect(() => {
+    queueCanvasWrite('edgeTexts', () => saveEdgeTexts(projectId, edgeTexts))
+  }, [edgeTexts, projectId, queueCanvasWrite])
 
-  const handleSaveEdgeText = useCallback((key: string, text: string) => {
+  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
     const trimmed = text.trim()
     setEdgeTexts((prev) => {
-      if ((prev[key] ?? '') === trimmed) return prev
+      if ((prev[edgeId] ?? '') === trimmed) return prev
       const next = { ...prev }
       if (trimmed) {
-        next[key] = trimmed
+        next[edgeId] = trimmed
       } else {
-        delete next[key]
+        delete next[edgeId]
       }
       return next
     })
   }, [])
+
+  // Ref: CR-151 關聯線一進來就把舊鍵搬成 link id，使用者已經拖好的轉角與寫過的文字不會歸零
+  useEffect(() => {
+    if (edges.length === 0) return
+    setWaypoints((prev) => migrateLegacyEdgeKeys(prev, edges))
+    setEdgeTexts((prev) => migrateLegacyEdgeKeys(prev, edges))
+  }, [edges])
 
   // Ref: CR-144
   const [annotations, setAnnotations] = useState<CanvasAnnotations>(() => loadCanvasAnnotations(projectId))
@@ -1532,11 +1609,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setAnnotations(loadCanvasAnnotations(projectId))
   }, [projectId])
 
-  // Ref: CR-148
-  useEffect(
-    () => scheduleDeferredWrite(pendingWritesRef, 'annotations', () => saveCanvasAnnotations(projectId, annotations)),
-    [annotations, projectId]
-  )
+  // Ref: CR-151
+  useEffect(() => {
+    queueCanvasWrite('annotations', () => saveCanvasAnnotations(projectId, annotations))
+  }, [annotations, projectId, queueCanvasWrite])
 
   const handleAddTextAnnotation = useCallback(() => {
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
@@ -1630,7 +1706,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         id: f.id,
         type: 'annotationFrame',
         position: { x: f.x, y: f.y },
-        style: { width: f.width, height: f.height, pointerEvents: 'none' },
+        style: { width: f.width, height: f.height },
         width: f.width,
         height: f.height,
         measured: { width: f.width, height: f.height },
@@ -1638,7 +1714,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         selectable: false,
         connectable: false,
         deletable: false,
-        zIndex: 0,
+        // Ref: CR-152 墊到所有卡片(1~30)與關聯線之下，框身可拖但搶不走它們的點擊
+        zIndex: -1,
         data: { label: f.label, color: f.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
       }))
     )
@@ -1809,10 +1886,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [dragged, projectId])
 
   // 每次調整大小自動寫入 localStorage 保存 (僅在載入完成後生效)
-  // Ref: CR-148
+  // Ref: CR-151
   useEffect(() => {
     if (!projectId || !isLoadedRef.current) return
-    return scheduleDeferredWrite(pendingWritesRef, 'resized', () => {
+    queueCanvasWrite('resized', () => {
       try {
         if (Object.keys(resized).length > 0) {
           localStorage.setItem(`pmflow_simple_graph_resized_${projectId}`, JSON.stringify(resized))
@@ -1823,7 +1900,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         // ignore
       }
     })
-  }, [resized, projectId])
+  }, [resized, projectId, queueCanvasWrite])
 
   // 每次切換模式自動寫入 localStorage 保存 (僅在載入完成後生效)
   useEffect(() => {
@@ -2195,6 +2272,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [tasks, toggledModes])
 
   const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
+    /*
+     * Ref: CR-151 React Flow 的拖曳會帶 dragging、NodeResizeControl 會帶 resizing
+     * (`XYResizer` 的 onResize 一律 resizing: true、onEnd 補一筆 resizing: false)，
+     * 用它判斷「互動中」，互動期間所有落盤都只記不寫。
+     */
+    for (const ch of rawChanges) {
+      const flag =
+        ch.type === 'position'
+          ? ch.dragging
+          : ch.type === 'dimensions'
+            ? (ch as { resizing?: boolean }).resizing
+            : undefined
+      if (typeof flag !== 'boolean') continue
+      if (flag) beginInteraction()
+      else endInteraction()
+    }
+
     // Ref: CR-144 文字註記與區域標示框不是任務，改動只寫進 annotations，不進任務節點流程
     const annChanges = rawChanges.filter((c) => 'id' in c && isAnnotationId((c as { id: string }).id))
     if (annChanges.length > 0) {
@@ -2262,7 +2356,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       // 關鍵修復：強制父收納盒優先排序，防止 DOM 層級蓋過子卡片造成移動畫布 (Pan)
       return orderParentNodesFirst(next)
     })
-  }, [])
+  }, [beginInteraction, endInteraction])
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
@@ -2282,9 +2376,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         edgeId: edge.id,
         sourceRef,
         targetRef,
-        // Ref: CR-150
-        edgeKey: `${edge.source}_${edge.target}`,
-        text: edgeTexts[`${edge.source}_${edge.target}`] ?? '',
+        // Ref: CR-151
+        text: edgeTexts[edge.id] ?? '',
       })
     },
     [nodes, edgeTexts]
@@ -2763,35 +2856,63 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     [nodes.length]
   )
 
-  const nodesWithHandlers = useMemo(() => {
-    return orderParentNodesFirst(
-      nodes.map((node) => {
-        const isSelected = activeSelectedId === node.id
-        const isRelated = relatedSet ? relatedSet.has(node.id) : true
-        const nodeBlockedBy = blockedByMap.get(node.id)
-        const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
-        const childBlockedCount = isBox
-          ? (tasks ?? []).filter((k) => k.parentId === node.id && (blockedByMap.get(k.id)?.length ?? 0) > 0).length
-          : 0
+  /*
+   * Ref: CR-152 逐張卡片快取衍生節點物件。原本每個 pointermove 都把全部卡片重造一次，
+   * React Flow 的 adoptUserNodes 是靠物件參照判斷有沒有變（checkEquality），
+   * 參照一換整頁每個節點元件都會重繪；改成只有真的變了的那張才換新物件。
+   */
+  const derivedNodeCacheRef = useRef(new Map<string, { src: Node; key: string; node: Node }>())
 
-        return {
-          ...node,
-          draggable: true,
-          selectable: true,
-          zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : isBox ? 1 : 5,
-          extent: [[-100000, -100000], [100000, 100000]],
-          data: {
-            ...node.data,
-            isSelected,
-            isRelated,
-            hasSelectionActive: !!relatedSet,
-            blockedBy: nodeBlockedBy,
-            blockedCount: (nodeBlockedBy?.length ? 1 : 0) + childBlockedCount,
-            onToggleMode: handleToggleMode,
-          },
-        }
-      })
-    )
+  const toggleHandlerRef = useRef(handleToggleMode)
+
+  const nodesWithHandlers = useMemo(() => {
+    // Ref: CR-152 handleToggleMode 會隨 toggledModes 換新，換掉就整份重造，不能發舊的閉包出去
+    if (toggleHandlerRef.current !== handleToggleMode) {
+      toggleHandlerRef.current = handleToggleMode
+      derivedNodeCacheRef.current = new Map()
+    }
+    const prevCache = derivedNodeCacheRef.current
+    const nextCache = new Map<string, { src: Node; key: string; node: Node }>()
+
+    const derived = nodes.map((node) => {
+      const isSelected = activeSelectedId === node.id
+      const isRelated = relatedSet ? relatedSet.has(node.id) : true
+      const nodeBlockedBy = blockedByMap.get(node.id)
+      const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
+      const childBlockedCount = isBox
+        ? (tasks ?? []).filter((k) => k.parentId === node.id && (blockedByMap.get(k.id)?.length ?? 0) > 0).length
+        : 0
+      const blockedCount = (nodeBlockedBy?.length ? 1 : 0) + childBlockedCount
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}`
+
+      const hit = prevCache.get(node.id)
+      if (hit && hit.src === node && hit.key === key) {
+        nextCache.set(node.id, hit)
+        return hit.node
+      }
+
+      const built: Node = {
+        ...node,
+        draggable: true,
+        selectable: true,
+        zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : isBox ? 1 : 5,
+        extent: NODE_EXTENT,
+        data: {
+          ...node.data,
+          isSelected,
+          isRelated,
+          hasSelectionActive: !!relatedSet,
+          blockedBy: nodeBlockedBy,
+          blockedCount,
+          onToggleMode: handleToggleMode,
+        },
+      }
+      nextCache.set(node.id, { src: node, key, node: built })
+      return built
+    })
+
+    derivedNodeCacheRef.current = nextCache
+    return orderParentNodesFirst(derived)
   }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
@@ -2811,12 +2932,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         type: 'orthogonal',
         data: {
           ...(e.data ?? {}),
-          waypoint: waypoints[`${e.source}_${e.target}`] ?? null,
+          // Ref: CR-151 折點與文字都用 link id 當鍵
+          waypoint: waypoints[e.id] ?? null,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
-          // Ref: CR-150
-          text: edgeTexts[`${e.source}_${e.target}`] ?? '',
+          text: edgeTexts[e.id] ?? '',
           onSaveText: handleSaveEdgeText,
+          onWaypointDragStart: beginInteraction,
+          onWaypointDragEnd: endInteraction,
         },
         animated: false,
         style: {
@@ -2830,7 +2953,16 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         markerEnd: edgeStyleAndMarker.markerEnd,
       }
     })
-  }, [edges, waypoints, handleWaypointChange, handleWaypointReset, edgeTexts, handleSaveEdgeText])
+  }, [
+    edges,
+    waypoints,
+    handleWaypointChange,
+    handleWaypointReset,
+    edgeTexts,
+    handleSaveEdgeText,
+    beginInteraction,
+    endInteraction,
+  ])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -2882,12 +3014,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             connectionMode={ConnectionMode.Loose}
             connectionLineType={ConnectionLineType.Step}
             connectionRadius={30}
-            proOptions={{ hideAttribution: true }}
-            defaultEdgeOptions={{
-              type: 'orthogonal',
-              animated: false,
-              style: { strokeWidth: 2, stroke: '#ef4444' },
-            }}
+            proOptions={PRO_OPTIONS}
+            defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
             minZoom={0.05}
             maxZoom={2.5}
             zoomOnPinch={true}
@@ -3246,7 +3374,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                       if (projectId) queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
                     })
                     .catch((err) => console.error('Failed to delete link:', err))
-                  handleSaveEdgeText(confirmDeleteEdge.edgeKey, '')
+                  handleSaveEdgeText(confirmDeleteEdge.edgeId, '')
                   setConfirmDeleteEdge(null)
                 }}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
@@ -3264,7 +3392,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 <button
                   type="button"
                   onClick={() => {
-                    handleSaveEdgeText(confirmDeleteEdge.edgeKey, confirmDeleteEdge.text)
+                    handleSaveEdgeText(confirmDeleteEdge.edgeId, confirmDeleteEdge.text)
                     setConfirmDeleteEdge(null)
                   }}
                   className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm"
