@@ -119,12 +119,19 @@ export function TaskDrawer({
    */
   const role = project?.members.find(m => m.id === user?.id)?.role
   const isManager = role === 'MANAGER'
-  // Ref: CR-086 — 開放 EDITOR 與 MANAGER 皆可編輯與保存任務/問題事件
-  const canEdit = isManager || role === 'EDITOR'
-  const canEditLinks = canEdit
   const isTaskCreator = Boolean(data?.createdById && data.createdById === user?.id)
   const isProjectCreator = Boolean(project?.isCreator)
-  const canDelete = isManager || role === 'OWNER' || isTaskCreator || isProjectCreator
+  const isAssignee = Boolean(data?.assigneeId && data.assigneeId === user?.id)
+  /*
+   * Ref: CR-130 — 權限一律以後端回的 canEdit / canDelete 為準。
+   * 後端才知道代理人是誰、這張有沒有被完成鎖定；前端自己算一套一定對不起來。
+   * 舊版後端沒有這兩個欄位時才退回角色＋關係人的近似判斷。
+   * Ref: CR-086 — EDITOR 與 MANAGER 皆可編輯與保存。
+   */
+  const canEdit = data?.canEdit
+    ?? ((isManager || role === 'EDITOR') && (isManager || isTaskCreator || isAssignee || isProjectCreator))
+  const canEditLinks = canEdit
+  const canDelete = data?.canDelete ?? (isManager || role === 'OWNER' || isTaskCreator || isProjectCreator)
 
   // Esc 關閉抽屜。在輸入框裡按 Esc 不關，免得打到一半誤觸把內容弄丟。
   useEffect(() => {

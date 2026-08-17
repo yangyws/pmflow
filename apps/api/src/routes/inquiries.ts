@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
 import { env } from '../lib/env.js'
-import { authenticate, requireTaskAccess } from '../lib/auth.js'
+import type { ProjectRole } from '../lib/auth.js'
+import { assertTaskStakeholder, authenticate, requireTaskAccess } from '../lib/auth.js'
 import { recalcInquiryState, addWorkingDays, toISODate } from '../lib/inquiry.js'
 import { forbidden, notFound } from '../lib/errors.js'
 
@@ -100,7 +101,9 @@ export default async function inquiryRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>('/inquiries/:id', async req => {
     const user = await authenticate(req)
-    const { taskId } = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    await assertCanEditInquiry(a, user.id) // Ref: CR-130
+    const { taskId } = a
     const b = patchBody.parse(req.body)
 
     await sql.begin(async tx => {
@@ -149,7 +152,9 @@ export default async function inquiryRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>('/inquiries/:id/reopen', async req => {
     const user = await authenticate(req)
-    const { taskId } = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    await assertCanEditInquiry(a, user.id) // Ref: CR-130
+    const { taskId } = a
     await sql.begin(async tx => {
       await tx`
         UPDATE task_inquiry SET is_replied = false, replied_at = NULL,
@@ -162,7 +167,9 @@ export default async function inquiryRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>('/inquiries/:id', async (req, reply) => {
     const user = await authenticate(req)
-    const { taskId } = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
+    await assertCanEditInquiry(a, user.id) // Ref: CR-130
+    const { taskId } = a
     await sql.begin(async tx => {
       await tx`DELETE FROM task_inquiry WHERE id = ${req.params.id}`
       await recalcInquiryState(tx, taskId)
@@ -263,11 +270,24 @@ async function loadInquiry(id: string) {
 async function accessInquiry(
   userId: string, inquiryId: string, min: 'EDITOR' | 'COMMENTER' | 'VIEWER'
 ) {
-  const [row] = await sql<{ task_id: string }[]>`
-    SELECT task_id FROM task_inquiry WHERE id = ${inquiryId}`
+  const [row] = await sql<{ task_id: string; asked_by: string | null }[]>`
+    SELECT task_id, asked_by FROM task_inquiry WHERE id = ${inquiryId}`
   if (!row) throw notFound('找不到這筆詢問單')
   const r = await requireTaskAccess(userId, row.task_id, min)
-  return { taskId: row.task_id, workspaceId: r.workspaceId }
+  return { taskId: row.task_id, workspaceId: r.workspaceId, role: r.role, askedBy: row.asked_by }
+}
+
+/**
+ * 改／刪一筆已經存在的詢問單。Ref: CR-130
+ *
+ * 「登錄回覆」不走這裡 —— 那件事誰收到誰登錄最快，維持誰都能填。
+ * 這裡擋的是改題目、改期望回覆日、抽回已回覆狀態與整筆刪掉。
+ */
+async function assertCanEditInquiry(
+  a: { taskId: string; role: ProjectRole; askedBy: string | null }, userId: string
+): Promise<void> {
+  if (a.askedBy === userId) return
+  await assertTaskStakeholder(a.taskId, userId, a.role, '這筆對外詢問單')
 }
 
 async function requireWorkspaceMember(userId: string, workspaceId: string) {

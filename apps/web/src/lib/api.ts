@@ -359,6 +359,14 @@ export interface TaskDetail extends Task {
   inquiries: Inquiry[]
   activities: Activity[]
   problemHistory?: ProblemHistoryItem[]
+  /**
+   * 後端算好的「這個人動不動得了這張任務」。Ref: CR-130
+   *
+   * 前端自己拼湊不出來 —— 代理人是誰、有沒有被完成鎖定，這裡都拿不到。
+   * 舊版後端不回這兩個欄位，所以是選填；讀不到時退回舊的角色判斷。
+   */
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 /**

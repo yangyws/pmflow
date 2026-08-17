@@ -255,7 +255,7 @@ export default async function taskRoutes(app: FastifyInstance) {
   // ── 單張任務 ─────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/tasks/:id', async req => {
     const user = await authenticate(req)
-    await requireTaskAccess(user.id, req.params.id, 'VIEWER')
+    const { role } = await requireTaskAccess(user.id, req.params.id, 'VIEWER')
     const task = await loadTask(req.params.id)
     if (!task) throw notFound('找不到任務')
 
@@ -303,7 +303,19 @@ export default async function taskRoutes(app: FastifyInstance) {
       WHERE h.task_id = ${req.params.id}
       ORDER BY h.created_at DESC`
 
-    return { ...task, links, children, inquiries, activities, problemHistory }
+    /*
+     * Ref: CR-130 —— 「按不動的按鈕不要畫出來」只有後端算得準：
+     * 代理人是誰、這張是不是他開的、有沒有被完成鎖定，前端手上沒有這些資料，
+     * 自己猜一套一定跟後端對不起來。所以直接把結論回給它。
+     */
+    const may = async (fn: () => Promise<void>) => {
+      try { await fn(); return true } catch { return false }
+    }
+    const canEdit = (role === 'MANAGER' || role === 'EDITOR')
+      && await may(() => assertCanEditTask(req.params.id, user.id, role))
+    const canDelete = await may(() => assertCanDeleteTask(req.params.id, user.id, role))
+
+    return { ...task, links, children, inquiries, activities, problemHistory, canEdit, canDelete }
   })
 
   // ── 更新任務 ─────────────────────────────────────────

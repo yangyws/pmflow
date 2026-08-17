@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
-import { authenticate, requireTaskAccess } from '../lib/auth.js'
+import { assertTaskStakeholder, authenticate, requireTaskAccess } from '../lib/auth.js'
 import { assertNoCycle, isScheduling, SYMMETRIC } from '../lib/graph.js'
 import { notify } from '../lib/notify.js'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
@@ -21,6 +21,13 @@ export default async function linkRoutes(app: FastifyInstance) {
     // 兩端都要驗權限。只驗一端就是 Vikunja 2026 那個關聯 IDOR（GO-2026-4847）。
     const src = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     const tgt = await requireTaskAccess(user.id, b.targetId, 'EDITOR')
+
+    /*
+     * Ref: CR-130 —— 角色過了還要是「關係人」，否則任何 EDITOR 都能去剪接別人的關聯。
+     * 只驗**發起的那一端**：跨人依賴（我的任務要等你的任務做完）是這套系統的核心用法，
+     * 兩端都要求關係人等於把它整個關掉。指到誰身上只需要對那張有編輯權（上面已驗）。
+     */
+    await assertTaskStakeholder(req.params.id, user.id, src.role, '關聯線')
 
     if (src.workspaceId !== tgt.workspaceId) throw forbidden('不能跨工作區建立關聯')
     if (req.params.id === b.targetId) throw badRequest('任務不能關聯到自己')
@@ -105,7 +112,8 @@ export default async function linkRoutes(app: FastifyInstance) {
     const [l] = await sql<{ source_id: string }[]>`
       SELECT source_id FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
-    await requireTaskAccess(user.id, l.source_id, 'EDITOR')
+    const { role } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
+    await assertTaskStakeholder(l.source_id, user.id, role, '關聯線') // Ref: CR-130
     await sql`DELETE FROM task_link WHERE id = ${req.params.id}`
     return reply.code(204).send()
   })

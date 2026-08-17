@@ -194,11 +194,10 @@ const RANK: Record<ProjectRole, number> = { VIEWER: 0, COMMENTER: 1, EDITOR: 2, 
 export async function requireProjectRole(
   userId: string, projectId: string, min: ProjectRole
 ): Promise<{ role: ProjectRole; workspaceId: string }> {
-  const rows = await sql<{ role: ProjectRole; workspace_id: string }[]>`
-    SELECT pm.role, p.workspace_id
+  const rows = await sql<{ role: ProjectRole | null; workspace_id: string; ws_role: string | null }[]>`
+    SELECT pm.role, p.workspace_id, wm.role AS ws_role
     FROM project p
-    JOIN project_member pm ON pm.project_id = p.id
-    WHERE p.id = ${projectId}
+    LEFT JOIN project_member pm ON pm.project_id = p.id
       AND (
         pm.user_id = ${userId}
         -- 我今天正在代理的人，他在這個專案裡的角色也算我的。
@@ -210,12 +209,19 @@ export async function requireProjectRole(
             AND l.workspace_id = p.workspace_id
             AND CURRENT_DATE BETWEEN l.start_date AND l.end_date
         )
-      )`
-  if (!rows.length) throw forbidden('你不是這個專案的成員')
-  const best = rows.reduce((a, b) => (RANK[b.role] > RANK[a.role] ? b : a))
-  const { role, workspace_id } = best
+      )
+    LEFT JOIN workspace_member wm
+      ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
+    WHERE p.id = ${projectId}`
+  if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
+  // Ref: CR-130 —— 系統管理者（工作區 OWNER/ADMIN）在任何專案裡都當成管理者，
+  // 不必先被加進成員名單。其餘人一律照專案角色。
+  const candidates = rows.map(r => r.role).filter((r): r is ProjectRole => !!r)
+  if (rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN')) candidates.push('MANAGER')
+  if (!candidates.length) throw forbidden('你不是這個專案的成員')
+  const role = candidates.reduce((a, b) => (RANK[b] > RANK[a] ? b : a))
   if (RANK[role] < RANK[min]) throw forbidden(`這個操作需要 ${min} 以上權限，你目前是 ${role}`)
-  return { role, workspaceId: workspace_id }
+  return { role, workspaceId: rows[0].workspace_id }
 }
 
 /**
@@ -231,6 +237,33 @@ export async function currentDeputyPrincipals(deputyId: string): Promise<string[
     WHERE l.deputy_id = ${deputyId}
       AND CURRENT_DATE BETWEEN l.start_date AND l.end_date`
   return rows.map(r => r.user_id)
+}
+
+/**
+ * 這個人動不動得了「掛在某張任務底下」的資料（關聯線、對外詢問單…）。
+ * Ref: CR-130
+ *
+ * 判準跟任務本身一致：**系統管理者／專案管理者／開單人／負責人／上面那些人的代理人**。
+ * 只有專案角色是不夠的 —— 光看 EDITOR 會讓任何編輯者去動別人任務的關聯線。
+ */
+export async function assertTaskStakeholder(
+  taskId: string, userId: string, role: ProjectRole, what = '這筆資料'
+): Promise<void> {
+  if (role === 'MANAGER') return
+  const [row] = await sql<{ taskCreator: string | null; assigneeId: string | null; projectCreator: string | null }[]>`
+    SELECT t.created_by AS "taskCreator", t.assignee_id AS "assigneeId",
+           p.created_by AS "projectCreator"
+    FROM task t JOIN project p ON p.id = t.project_id
+    WHERE t.id = ${taskId}`
+  if (!row) throw forbidden('找不到任務，或你沒有權限')
+
+  const owners = [row.taskCreator, row.assigneeId, row.projectCreator].filter((v): v is string => !!v)
+  if (owners.includes(userId)) return
+
+  const principals = await currentDeputyPrincipals(userId)
+  if (principals.some(p => owners.includes(p))) return
+
+  throw forbidden(`只有開這張任務的人、負責人、專案管理者及其代理人可以修改${what}`)
 }
 
 /**
