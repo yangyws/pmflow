@@ -384,7 +384,8 @@ function FlowTextNode({ id, data }: NodeProps) {
         {nodeData.label || T.flow.shared.annotation.textFallback}
       </div>
 
-      <div className="absolute -top-3 -right-3 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
+      {/* Ref: CR-154 —— 按鈕列擺在文字上緣之外。壓在右上角的話，文字一短，按鈕列就比文字還寬，整段字被蓋住 */}
+      <div className="absolute bottom-full right-0 mb-1 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
         <button
           type="button"
           onClick={(e) => {
