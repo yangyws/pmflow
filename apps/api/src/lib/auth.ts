@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import type { FastifyRequest } from 'fastify'
 import { env } from './env.js'
 import { sql } from './db.js'
+import { jwtKey } from './secret.js'   // Ref: CR-149 —— 金鑰是啟動時才備妥的，用到才拿
 import { unauthorized, forbidden } from './errors.js'
 
 const scrypt = promisify(_scrypt) as (
@@ -34,8 +35,6 @@ export async function verifyPassword(pw: string, stored: string | null): Promise
   return actual.length === expected.length && timingSafeEqual(actual, expected)
 }
 
-const secretKey = new TextEncoder().encode(env.jwtSecret)
-
 export interface AuthUser {
   id: string
   email: string
@@ -48,7 +47,7 @@ export async function signAccessToken(u: AuthUser): Promise<string> {
     .setSubject(u.id)
     .setIssuedAt()
     .setExpirationTime(`${env.accessTtlSec}s`)
-    .sign(secretKey)
+    .sign(jwtKey())
 }
 
 export function newRefreshToken() {
@@ -117,7 +116,7 @@ export async function authenticate(req: FastifyRequest): Promise<AuthUser> {
   if (credential.startsWith(API_TOKEN_PREFIX)) return authenticateApiToken(req, credential)
 
   try {
-    const { payload } = await jwtVerify(credential, secretKey)
+    const { payload } = await jwtVerify(credential, jwtKey())
     const user: AuthUser = {
       id: payload.sub as string,
       email: payload.email as string,

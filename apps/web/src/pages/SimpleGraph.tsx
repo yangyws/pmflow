@@ -552,6 +552,34 @@ function saveWaypoints(projectId: string | undefined, map: WaypointMap) {
   }
 }
 
+// Ref: CR-150 關聯線文字：與折點共用同一組 key，之後要改打後端 API 只改這兩個函式
+const EDGE_TEXT_KEY_PREFIX = 'pmflow_simple_graph_edge_texts_'
+
+type EdgeTextMap = Record<string, string>
+
+function loadEdgeTexts(projectId?: string): EdgeTextMap {
+  if (!projectId) return {}
+  try {
+    const raw = localStorage.getItem(`${EDGE_TEXT_KEY_PREFIX}${projectId}`)
+    return raw ? (JSON.parse(raw) as EdgeTextMap) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveEdgeTexts(projectId: string | undefined, map: EdgeTextMap) {
+  if (!projectId) return
+  try {
+    if (Object.keys(map).length > 0) {
+      localStorage.setItem(`${EDGE_TEXT_KEY_PREFIX}${projectId}`, JSON.stringify(map))
+    } else {
+      localStorage.removeItem(`${EDGE_TEXT_KEY_PREFIX}${projectId}`)
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // Ref: CR-139 全程只由水平/垂直線段組成，折點 (px, py) 決定在哪裡轉彎
 function buildOrthogonalPath(
   sx: number,
@@ -618,6 +646,9 @@ type OrthogonalEdgeData = {
   waypoint?: Waypoint | null
   onWaypointChange?: (key: string, p: Waypoint) => void
   onWaypointReset?: (key: string) => void
+  // Ref: CR-150
+  text?: string
+  onSaveText?: (key: string, text: string) => void
 }
 
 // Ref: CR-139
@@ -639,6 +670,33 @@ function OrthogonalEdge({
   const draggingRef = useRef(false)
   const eData = data as OrthogonalEdgeData | undefined
   const wpKey = `${source}_${target}`
+
+  // Ref: CR-150
+  const edgeText = eData?.text || ''
+  const [isEditingText, setIsEditingText] = useState(false)
+  const [textDraft, setTextDraft] = useState('')
+
+  const finishTextEdit = (commit: boolean) => {
+    if (commit) eData?.onSaveText?.(wpKey, textDraft)
+    setIsEditingText(false)
+  }
+
+  const startTextEdit = (e: React.SyntheticEvent) => {
+    // Ref: CR-150 合成事件會沿元件樹冒泡到這條 edge 的 <g onClick>，一定要擋掉並武裝一次性旗標
+    e.stopPropagation()
+    e.preventDefault()
+    armWaypointClickGuard()
+    scheduleWaypointGuardRelease()
+    setTextDraft(edgeText)
+    setIsEditingText(true)
+  }
+
+  const swallowClick = (e: React.SyntheticEvent) => {
+    // Ref: CR-150
+    e.stopPropagation()
+    armWaypointClickGuard()
+    scheduleWaypointGuardRelease()
+  }
 
   const { path, px, py } = buildOrthogonalPath(
     sourceX,
@@ -706,6 +764,45 @@ function OrthogonalEdge({
           }}
         />
       </EdgeLabelRenderer>
+
+      {/* Ref: CR-150 關聯線文字：跟著折點 (px, py) 走，空的時候完全不畫 */}
+      {(edgeText || isEditingText) && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan pointer-events-auto absolute"
+            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 14}px)` }}
+          >
+            {isEditingText ? (
+              <input
+                type="text"
+                value={textDraft}
+                autoFocus
+                onChange={(e) => setTextDraft(e.target.value)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={swallowClick}
+                onBlur={() => finishTextEdit(true)}
+                onKeyDown={(e) => {
+                  e.stopPropagation()
+                  if (e.key === 'Enter') finishTextEdit(true)
+                  if (e.key === 'Escape') finishTextEdit(false)
+                }}
+                placeholder={T.flow.relationGraph.edgeTextPlaceholder}
+                className="w-40 rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
+              />
+            ) : (
+              <span
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={swallowClick}
+                onDoubleClick={startTextEdit}
+                title={T.flow.relationGraph.edgeTextHint}
+                className="cursor-text rounded-md border border-slate-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+              >
+                {edgeText}
+              </span>
+            )}
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   )
 }
@@ -757,6 +854,21 @@ function saveCanvasAnnotations(projectId: string | undefined, data: CanvasAnnota
   } catch {
     // ignore
   }
+}
+
+// Ref: CR-148
+function scheduleDeferredWrite(
+  pending: { current: Record<string, () => void> },
+  key: string,
+  write: () => void,
+  delay = 250
+): () => void {
+  pending.current[key] = write
+  const timer = setTimeout(() => {
+    delete pending.current[key]
+    write()
+  }, delay)
+  return () => clearTimeout(timer)
 }
 
 type SimpleAnnotationNodeData = {
@@ -888,6 +1000,9 @@ type ConfirmDeleteEdgeState = {
   edgeId: string
   sourceRef: string
   targetRef: string
+  // Ref: CR-150
+  edgeKey: string
+  text: string
 }
 
 type LogItem = {
@@ -1351,9 +1466,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setWaypoints(loadWaypoints(projectId))
   }, [projectId])
 
-  useEffect(() => {
-    saveWaypoints(projectId, waypoints)
-  }, [waypoints, projectId])
+  // Ref: CR-148
+  const pendingWritesRef = useRef<Record<string, () => void>>({})
+  useEffect(
+    () => () => {
+      Object.values(pendingWritesRef.current).forEach((flush) => flush())
+    },
+    []
+  )
+
+  // Ref: CR-148
+  useEffect(
+    () => scheduleDeferredWrite(pendingWritesRef, 'waypoints', () => saveWaypoints(projectId, waypoints)),
+    [waypoints, projectId]
+  )
 
   const handleWaypointChange = useCallback((key: string, p: Waypoint) => {
     setWaypoints((prev) => ({ ...prev, [key]: p }))
@@ -1364,6 +1490,32 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       if (!prev[key]) return prev
       const next = { ...prev }
       delete next[key]
+      return next
+    })
+  }, [])
+
+  // Ref: CR-150
+  const [edgeTexts, setEdgeTexts] = useState<EdgeTextMap>(() => loadEdgeTexts(projectId))
+
+  useEffect(() => {
+    setEdgeTexts(loadEdgeTexts(projectId))
+  }, [projectId])
+
+  useEffect(
+    () => scheduleDeferredWrite(pendingWritesRef, 'edgeTexts', () => saveEdgeTexts(projectId, edgeTexts)),
+    [edgeTexts, projectId]
+  )
+
+  const handleSaveEdgeText = useCallback((key: string, text: string) => {
+    const trimmed = text.trim()
+    setEdgeTexts((prev) => {
+      if ((prev[key] ?? '') === trimmed) return prev
+      const next = { ...prev }
+      if (trimmed) {
+        next[key] = trimmed
+      } else {
+        delete next[key]
+      }
       return next
     })
   }, [])
@@ -1380,9 +1532,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setAnnotations(loadCanvasAnnotations(projectId))
   }, [projectId])
 
-  useEffect(() => {
-    saveCanvasAnnotations(projectId, annotations)
-  }, [annotations, projectId])
+  // Ref: CR-148
+  useEffect(
+    () => scheduleDeferredWrite(pendingWritesRef, 'annotations', () => saveCanvasAnnotations(projectId, annotations)),
+    [annotations, projectId]
+  )
 
   const handleAddTextAnnotation = useCallback(() => {
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
@@ -1452,32 +1606,56 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     })
   }, [])
 
+  // Ref: CR-148
+  const annotationNodeCacheRef = useRef(new Map<string, { key: string; node: Node }>())
+
   const annotationNodes = useMemo<Node[]>(() => {
-    const frameNodes: Node[] = annotations.frames.map((f) => ({
-      id: f.id,
-      type: 'annotationFrame',
-      position: { x: f.x, y: f.y },
-      style: { width: f.width, height: f.height, pointerEvents: 'none' },
-      width: f.width,
-      height: f.height,
-      draggable: true,
-      selectable: false,
-      connectable: false,
-      deletable: false,
-      zIndex: 0,
-      data: { label: f.label, color: f.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
-    }))
-    const textNodes: Node[] = annotations.texts.map((t) => ({
-      id: t.id,
-      type: 'annotationText',
-      position: { x: t.x, y: t.y },
-      draggable: true,
-      selectable: false,
-      connectable: false,
-      deletable: false,
-      zIndex: 25,
-      data: { label: t.text, color: t.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
-    }))
+    // Ref: CR-148
+    const prevCache = annotationNodeCacheRef.current
+    const nextCache = new Map<string, { key: string; node: Node }>()
+    const reuseOrBuild = (id: string, key: string, build: () => Node): Node => {
+      const hit = prevCache.get(id)
+      if (hit && hit.key === key) {
+        nextCache.set(id, hit)
+        return hit.node
+      }
+      const node = build()
+      if (!node.measured && hit?.node.measured) node.measured = hit.node.measured
+      nextCache.set(id, { key, node })
+      return node
+    }
+
+    const frameNodes: Node[] = annotations.frames.map((f) =>
+      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}`, () => ({
+        id: f.id,
+        type: 'annotationFrame',
+        position: { x: f.x, y: f.y },
+        style: { width: f.width, height: f.height, pointerEvents: 'none' },
+        width: f.width,
+        height: f.height,
+        measured: { width: f.width, height: f.height },
+        draggable: true,
+        selectable: false,
+        connectable: false,
+        deletable: false,
+        zIndex: 0,
+        data: { label: f.label, color: f.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+      }))
+    )
+    const textNodes: Node[] = annotations.texts.map((t) =>
+      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}`, () => ({
+        id: t.id,
+        type: 'annotationText',
+        position: { x: t.x, y: t.y },
+        draggable: true,
+        selectable: false,
+        connectable: false,
+        deletable: false,
+        zIndex: 25,
+        data: { label: t.text, color: t.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+      }))
+    )
+    annotationNodeCacheRef.current = nextCache
     return [...frameNodes, ...textNodes]
   }, [annotations, handleEditAnnotation, handleDeleteAnnotation])
 
@@ -1631,17 +1809,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [dragged, projectId])
 
   // 每次調整大小自動寫入 localStorage 保存 (僅在載入完成後生效)
+  // Ref: CR-148
   useEffect(() => {
     if (!projectId || !isLoadedRef.current) return
-    try {
-      if (Object.keys(resized).length > 0) {
-        localStorage.setItem(`pmflow_simple_graph_resized_${projectId}`, JSON.stringify(resized))
-      } else {
-        localStorage.removeItem(`pmflow_simple_graph_resized_${projectId}`)
+    return scheduleDeferredWrite(pendingWritesRef, 'resized', () => {
+      try {
+        if (Object.keys(resized).length > 0) {
+          localStorage.setItem(`pmflow_simple_graph_resized_${projectId}`, JSON.stringify(resized))
+        } else {
+          localStorage.removeItem(`pmflow_simple_graph_resized_${projectId}`)
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
+    })
   }, [resized, projectId])
 
   // 每次切換模式自動寫入 localStorage 保存 (僅在載入完成後生效)
@@ -2101,9 +2282,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         edgeId: edge.id,
         sourceRef,
         targetRef,
+        // Ref: CR-150
+        edgeKey: `${edge.source}_${edge.target}`,
+        text: edgeTexts[`${edge.source}_${edge.target}`] ?? '',
       })
     },
-    [nodes]
+    [nodes, edgeTexts]
   )
 
   const onConnect = useCallback(
@@ -2630,6 +2814,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           waypoint: waypoints[`${e.source}_${e.target}`] ?? null,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
+          // Ref: CR-150
+          text: edgeTexts[`${e.source}_${e.target}`] ?? '',
+          onSaveText: handleSaveEdgeText,
         },
         animated: false,
         style: {
@@ -2643,10 +2830,30 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         markerEnd: edgeStyleAndMarker.markerEnd,
       }
     })
-  }, [edges, waypoints, handleWaypointChange, handleWaypointReset])
+  }, [edges, waypoints, handleWaypointChange, handleWaypointReset, edgeTexts, handleSaveEdgeText])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
+      {/* Ref: CR-148 */}
+      <div className="h-12 shrink-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleAddTextAnnotation}
+          title={ANNOTATION_STRINGS.addTextHint}
+          className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+        >
+          <span>📝</span> {ANNOTATION_STRINGS.addText}
+        </button>
+        <button
+          type="button"
+          onClick={handleAddAreaFrame}
+          title={T.flow.relationGraph.addFrameHint}
+          className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+        >
+          <span>🏷️</span> {ANNOTATION_STRINGS.addFrame}
+        </button>
+      </div>
+
       <div className="relative flex-1 flex flex-row overflow-hidden">
         <div className="relative flex-1 cursor-move">
           <ReactFlow
@@ -2746,21 +2953,6 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
                 </svg>
-              </ControlButton>
-              {/* Ref: CR-144 */}
-              <ControlButton
-                onClick={handleAddTextAnnotation}
-                title={ANNOTATION_STRINGS.addTextHint}
-                aria-label={ANNOTATION_STRINGS.addText}
-              >
-                <span className="text-sm select-none">📝</span>
-              </ControlButton>
-              <ControlButton
-                onClick={handleAddAreaFrame}
-                title={T.flow.relationGraph.addFrameHint}
-                aria-label={ANNOTATION_STRINGS.addFrame}
-              >
-                <span className="text-sm select-none">🏷️</span>
               </ControlButton>
               <ControlButton
                 onClick={() => setShowHelpTooltip((prev) => !prev)}
@@ -3019,23 +3211,32 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       {confirmDeleteEdge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
-              <span className="text-xl">🗑️</span>
+            {/* Ref: CR-150 同一個彈窗兼做「編輯文字」與「刪除」，不另外再開一個 */}
+            <div className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200">
+              <span className="text-xl">🔗</span>
               <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
-                {T.flow.relationGraph.deleteEdgeTitle}
+                {T.flow.relationGraph.edgeModalTitle}
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
               {T.flow.relationGraph.deleteEdgeMessage(confirmDeleteEdge.sourceRef, confirmDeleteEdge.targetRef)}
             </p>
-            <div className="mt-5 flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteEdge(null)}
-                className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
-              >
-                {T.common.cancel}
-              </button>
+
+            <label className="mt-4 mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {T.flow.relationGraph.fieldEdgeText}
+            </label>
+            <input
+              type="text"
+              value={confirmDeleteEdge.text}
+              onChange={(e) => setConfirmDeleteEdge({ ...confirmDeleteEdge, text: e.target.value })}
+              placeholder={T.flow.relationGraph.edgeTextPlaceholder}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              {T.flow.relationGraph.edgeTextHelp}
+            </p>
+
+            <div className="mt-5 flex items-center justify-between gap-2.5">
               <button
                 type="button"
                 onClick={() => {
@@ -3045,12 +3246,32 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                       if (projectId) queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
                     })
                     .catch((err) => console.error('Failed to delete link:', err))
+                  handleSaveEdgeText(confirmDeleteEdge.edgeKey, '')
                   setConfirmDeleteEdge(null)
                 }}
-                className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
+                className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >
-                {T.flow.shared.confirmDelete}
+                {T.flow.relationGraph.deleteEdge}
               </button>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteEdge(null)}
+                  className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                >
+                  {T.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSaveEdgeText(confirmDeleteEdge.edgeKey, confirmDeleteEdge.text)
+                    setConfirmDeleteEdge(null)
+                  }}
+                  className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm"
+                >
+                  {T.common.save}
+                </button>
+              </div>
             </div>
           </div>
         </div>

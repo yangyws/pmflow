@@ -88,6 +88,19 @@ export const flow = {
     /** 連線 */
     waypointHint: '拖曳可移動轉角位置，雙擊回到自動位置',
 
+    /**
+     * 關聯線上的文字。Ref: CR-150
+     *
+     * 跟系統流程圖的說法刻意分開：那一頁講「流程連線」，這一頁講「關聯線」，
+     * 兩邊本來就是不同的東西，硬合併會逼出一個兩邊都不對的名字。
+     */
+    edgeTextHint: '雙擊編輯關聯線文字',
+    edgeModalTitle: '編輯關聯線',
+    fieldEdgeText: '關聯線文字 (選填，留空則不顯示)',
+    edgeTextPlaceholder: '例如：完成後才能開始',
+    edgeTextHelp: '也可以直接在畫布上雙擊關聯線文字就地修改。',
+    deleteEdge: '刪除這條關聯線',
+
     /** 工具列 */
     fitAllTitle: '顯示全部 (縮放容納所有卡片)',
     addFrameHint: '拉一個區域標示框，把一群卡片圈起來標示',

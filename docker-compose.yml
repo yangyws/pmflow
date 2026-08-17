@@ -48,7 +48,9 @@ services:
       <<: *common
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-pmflow}:${POSTGRES_PASSWORD:?請在 .env 設定 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pmflow}
-      PMFLOW_JWT_SECRET: ${JWT_SECRET:?請在 .env 設定 JWT_SECRET，用 openssl rand -base64 48 產生}
+      # Ref: CR-149 —— 留空就好：第一次啟動會自動產生一組存進資料庫，之後每次啟動沿用同一組
+      # （重啟不會把大家登出）。要自己指定就在 .env 填 JWT_SECRET，有設一律以它為準。
+      PMFLOW_JWT_SECRET: ${JWT_SECRET:-}
       PMFLOW_ACCESS_TTL_SEC: ${ACCESS_TTL_SEC:-900}
       PMFLOW_REFRESH_TTL_SEC: ${REFRESH_TTL_SEC:-604800}
       PMFLOW_ALLOW_SELF_REGISTRATION: ${ALLOW_SELF_REGISTRATION:-true}

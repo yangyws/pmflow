@@ -58,6 +58,9 @@ export interface FlowEdgeData extends Record<string, unknown> {
   onSaveText?: (edgeId: string, text: string) => void
   onWaypointChange?: (edgeId: string, point: { x: number; y: number }) => void
   onWaypointReset?: (edgeId: string) => void
+  // Ref: CR-148
+  onWaypointDragStart?: () => void
+  onWaypointDragEnd?: () => void
 }
 
 // Ref: CR-146
@@ -516,6 +519,8 @@ function FlowLabeledEdge({
     e.preventDefault()
     draggingRef.current = true
     armEdgeDragGuard()
+    // Ref: CR-148
+    edgeData?.onWaypointDragStart?.()
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
@@ -531,6 +536,8 @@ function FlowLabeledEdge({
     draggingRef.current = false
     e.stopPropagation()
     armEdgeDragGuard()
+    // Ref: CR-148
+    edgeData?.onWaypointDragEnd?.()
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -887,19 +894,69 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     })
   }
 
-  // 自動同步當前畫布至 pages 狀態與 localStorage
-  useEffect(() => {
+  // Ref: CR-148
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+  const interactingRef = useRef(false)
+  const pendingSaveRef = useRef(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Ref: CR-148 整份文件的組裝與寫入集中在這裡，出口仍然只有 savePagesToStore 一個
+  const commitCanvas = useCallback(() => {
+    pendingSaveRef.current = false
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
     setPages((prevPages) => {
       const updated = prevPages.map((p) => {
         if (p.id === activePageId) {
-          return { ...p, nodes, edges }
+          return { ...p, nodes: nodesRef.current, edges: edgesRef.current }
         }
         return p
       })
       savePagesToStore(updated)
       return updated
     })
-  }, [nodes, edges, activePageId, savePagesToStore])
+  }, [activePageId, savePagesToStore])
+
+  const beginInteraction = useCallback(() => {
+    interactingRef.current = true
+  }, [])
+
+  // Ref: CR-148 放開後補上這次互動唯一的一筆寫入 (拖折點沒有後續 state 變動，要在這裡收尾)
+  const endInteraction = useCallback(() => {
+    interactingRef.current = false
+    if (pendingSaveRef.current) commitCanvas()
+  }, [commitCanvas])
+
+  // 自動同步當前畫布至 pages 狀態與 localStorage
+  // Ref: CR-148 拖曳/縮放/拖折點進行中只記旗標不落盤，另留保險計時器避免收不到結束事件時漏存
+  useEffect(() => {
+    nodesRef.current = nodes
+    edgesRef.current = edges
+    pendingSaveRef.current = true
+    if (interactingRef.current) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null
+        if (pendingSaveRef.current) commitCanvas()
+      }, 800)
+      return
+    }
+    commitCanvas()
+  }, [nodes, edges, activePageId, commitCanvas])
+
+  // Ref: CR-148 離開頁面時把還沒落盤的最後一筆補寫回去
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      if (pendingSaveRef.current) commitCanvas()
+    }
+  }, [commitCanvas])
 
   // 切換頁面
   const handleSwitchPage = (targetId: string) => {
@@ -1015,9 +1072,22 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEditingPageId(null)
   }
 
+  // Ref: CR-148 dragging / resizing 旗標就是「互動中」的判準；收到 false 才放行落盤，
+  // 實際寫入交給後面那個 effect (它才拿得到套用完的最新節點)
   const onNodesChange = useCallback((changes: NodeChange[]) => {
+    let ended = false
+    for (const c of changes) {
+      if (c.type === 'position' && typeof c.dragging === 'boolean') {
+        if (c.dragging) beginInteraction()
+        else ended = true
+      } else if (c.type === 'dimensions' && typeof c.resizing === 'boolean') {
+        if (c.resizing) beginInteraction()
+        else ended = true
+      }
+    }
+    if (ended) interactingRef.current = false
     setNodes((nds) => applyNodeChanges(changes, nds))
-  }, [])
+  }, [beginInteraction])
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     setEdges((eds) => applyEdgeChanges(changes, eds))
@@ -1157,11 +1227,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     })
   }, [])
 
+  // Ref: CR-148 改成函式式更新讓這個 callback 永久穩定，下面的節點快取才不會發到過期的處理函式
   const handleDeleteNode = useCallback((nodeId: string) => {
     setNodes((nds) => nds.filter((n) => n.id !== nodeId && n.parentId !== nodeId))
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
-    if (selectedNodeId === nodeId) setSelectedNodeId(null)
-  }, [selectedNodeId])
+    setSelectedNodeId((cur) => (cur === nodeId ? null : cur))
+  }, [])
 
   const handleSaveEdit = () => {
     if (!editingNode) return
@@ -1278,32 +1349,47 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     )
   }, [])
 
+  // Ref: CR-148 來源節點與選取狀態沒變就重用上一輪算好的物件 (measured 靠展開原節點原封帶過)，
+  // 否則每次拖曳都會讓每一個節點換新參照而整片重繪
+  const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; out: Node }>())
+
   const nodesWithHandlers = useMemo(() => {
+    const prevCache = nodeViewCacheRef.current
+    const nextCache = new Map<string, { src: Node; selected: boolean; out: Node }>()
     const mapped = nodes.map((node) => {
+      const selected = node.id === selectedNodeId
+      const cached = prevCache.get(node.id)
+      if (cached && cached.src === node && cached.selected === selected) {
+        nextCache.set(node.id, cached)
+        return cached.out
+      }
       // Ref: CR-140 區域標示框永遠墊在最底層
       const nodeMode = (node.data as FlowNodeData)?.mode || node.type
       const isFrame = nodeMode === 'frame'
-      return {
-      ...node,
-      draggable: true,
-      selectable: true,
-      zIndex: isFrame
-        ? 0
-        : node.id === selectedNodeId
-          ? 30
-          : node.parentId
-            ? 10
-            : nodeMode === 'box'
-              ? 1
-              : 5,
-      data: {
-        ...node.data,
-        isSelected: node.id === selectedNodeId,
-        onEdit: handleEditNode,
-        onDelete: handleDeleteNode,
-      },
+      const out: Node = {
+        ...node,
+        draggable: true,
+        selectable: true,
+        zIndex: isFrame
+          ? 0
+          : selected
+            ? 30
+            : node.parentId
+              ? 10
+              : nodeMode === 'box'
+                ? 1
+                : 5,
+        data: {
+          ...node.data,
+          isSelected: selected,
+          onEdit: handleEditNode,
+          onDelete: handleDeleteNode,
+        },
       }
+      nextCache.set(node.id, { src: node, selected, out })
+      return out
     })
+    nodeViewCacheRef.current = nextCache
     return orderParentNodesFirst(mapped)
   }, [nodes, selectedNodeId, handleEditNode, handleDeleteNode])
 
@@ -1321,6 +1407,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           onSaveText: handleSaveEdgeText,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
+          // Ref: CR-148
+          onWaypointDragStart: beginInteraction,
+          onWaypointDragEnd: endInteraction,
         },
         style: {
           ...edgeStyleAndMarker.style,
@@ -1329,7 +1418,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         },
       }
     })
-  }, [edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset])
+  }, [edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">

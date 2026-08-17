@@ -3,6 +3,7 @@ import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import { env } from './lib/env.js'
 import { sql, migrate } from './lib/db.js'
+import { initJwtSecret } from './lib/secret.js'   // Ref: CR-149
 import { registerErrorHandler } from './lib/errors.js'
 import { sweepOverdue } from './lib/inquiry.js'
 import { sweepPasswordResets, RESET_SWEEP_MS } from './lib/breakglass.js'
@@ -19,7 +20,7 @@ import inquiryRoutes from './routes/inquiries.js'
 import notificationRoutes from './routes/notifications.js'
 import leaveRoutes from './routes/leaves.js'
 import dashboardRoutes from './routes/dashboard.js'
-import { seedDemo, seedFromSqlDir, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
+import { seedDemo, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
 
 const app = Fastify({
   logger: env.isProd
@@ -56,22 +57,21 @@ await app.register(async api => {
   await api.register(dashboardRoutes)
 }, { prefix: '/api/v1' })
 
-// ── 啟動：先跑 migration，再執行自訂 SQL 種子或預設示範資料 ──
+// ── 啟動：先跑 migration，再備妥簽章金鑰，最後才是示範資料 ──
 const applied = await migrate()
 if (applied.length) app.log.info({ applied }, 'migration 已套用')
 
 /*
- * 自訂 SQL 種子。Ref: CR-137
+ * 簽章金鑰一定要在這裡備妥。Ref: CR-149
  *
- * 只在**明確指定目錄**時才跑。原本沒設就退回 `/data/seed`，
- * 而正式部署剛好把 `./seed` 掛在那裡 —— 等於任何人放一個 .sql 進去，
- * 服務下次重啟就會拿最高權限執行它，而且完全不受示範資料開關管制。
+ * lib/auth.ts 與 lib/oauth.ts 都是**用到才去拿**（jwtKey()），不是模組載入時
+ * 就算好的常數 —— 因為金鑰可能要從資料庫讀，而資料庫要等 migrate() 建好表。
+ * 這一行必須排在 migrate() 之後、app.listen() 之前：晚於前者才有表可讀，
+ * 早於後者才保證第一個進來的請求已經有金鑰可用。
  */
-const sqlSeedDir = (process.env.PMFLOW_SEED_SQL_DIR ?? '').trim()
-const sqlApplied = sqlSeedDir ? await seedFromSqlDir(sqlSeedDir) : []
-if (sqlApplied.length) {
-  app.log.info({ sqlApplied, dir: sqlSeedDir }, '已執行指定目錄下的 SQL 資料種子檔')
-} else if (env.seedDemo) {
+await initJwtSecret(app.log)
+
+if (env.seedDemo) {
   const created = await seedDemo()
   // 密碼不進日誌 —— 日誌會被收集、轉寄、貼進工單
   if (created) app.log.info('已建立示範資料（帳號見 README）')

@@ -160,8 +160,8 @@ curl -O https://raw.githubusercontent.com/<你的帳號>/pmflow/main/docker-comp
 curl -O https://raw.githubusercontent.com/<你的帳號>/pmflow/main/.env.example
 
 cp .env.example .env
-openssl rand -base64 48        # 產生 JWT_SECRET，貼進 .env
-# 同時改 POSTGRES_PASSWORD 與 IMAGE_OWNER
+# 改 POSTGRES_PASSWORD 與 IMAGE_OWNER。
+# JWT_SECRET 留空即可 —— 第一次啟動會自動產生一組存進資料庫（Ref: CR-149）。
 
 docker compose pull && docker compose up -d
 ```

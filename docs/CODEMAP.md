@@ -135,6 +135,18 @@ components/（圖表，都是手刻 SVG，沒有圖表套件）
 
 - **React Flow 的節點一定要把 `measured` 疊回去**（`SimpleGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
   `node.measured` 重建尺寸，衍生物件身上沒有它，畫面就會整片 `visibility: hidden`。
+- **拖曳進行中不要每個事件就寫一次 localStorage**（Ref: CR-148）。縮放與拖曳每秒觸發
+  60～120 次，而 `JSON.stringify` + `setItem` 是**同步**的，會卡住主執行緒 —— 症狀是
+  「拉起來卡卡的」。一律等手放開才寫（兩張圖各踩過一次）。
+- **節點物件的參照要穩定**（Ref: CR-148）。React Flow 只有在**參照相同**時才跳過重建；
+  每次 render 重造整個節點陣列，等於告訴它「每一個都變了」，拖一個節點會讓全部節點
+  每一幀重畫。而且重建時**不會把 `measured` 疊回去** —— 就是上面那條的隱藏路徑。
+- **關聯線上的標籤要跟著折點走**（Ref: CR-140／CR-150）。各自算中點的話，
+  使用者拖完轉角，字會飄在半空中。
+- **`EdgeLabelRenderer` portal 出去的東西仍會冒泡到那條線上**（Ref: CR-141）。
+  React 的合成事件沿**元件樹**冒泡，不是沿 DOM 樹 —— 所以線上的把手與標籤要自己
+  `stopPropagation`，否則拖它、點它都會觸發那條線的刪除確認。
+  而且只擋 `pointerdown` 沒用，click 是 pointerup 之後**另外派送**的事件。
 - **佈局是自己寫的，不能引 elkjs** —— EPL-2.0 過不了 CI 的授權掃描。
 - **快取鍵裡沒有使用者**（`['projects']`、`['tasks', id]`），所以換帳號一定要 `qc.clear()`。
 - **migration 檔加了就不能改**，`db.ts` 會比對 checksum，改了會開不起來。

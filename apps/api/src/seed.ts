@@ -1,42 +1,9 @@
-import { readdir, readFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { sql } from './lib/db.js'
 import { env } from './lib/env.js'
 import { hashPassword } from './lib/auth.js'
 import { rebuildClosure } from './lib/graph.js'
 import { recalcInquiryState, addWorkingDays, toISODate } from './lib/inquiry.js'
 import { fillDefaults } from './routes/parameters.js'
-
-/**
- * 讀取 NAS 或本機掛載目錄下的 .sql 檔案並依序執行。
- * 只有在資料庫為空（app_user 為 0）時自動執行，避免重複重啟時反覆塞入。
- */
-export async function seedFromSqlDir(dirPath: string): Promise<string[]> {
-  if (!dirPath || !existsSync(dirPath)) return []
-  try {
-    const [{ count }] = await sql<{ count: string }[]>`SELECT count(*) FROM app_user`
-    if (Number(count) > 0) return []
-
-    const entries = await readdir(dirPath)
-    const sqlFiles = entries.filter(f => f.toLowerCase().endsWith('.sql')).sort()
-    if (!sqlFiles.length) return []
-
-    const applied: string[] = []
-    for (const file of sqlFiles) {
-      const fullPath = join(dirPath, file)
-      const content = await readFile(fullPath, 'utf-8')
-      if (content.trim()) {
-        await sql.unsafe(content)
-        applied.push(file)
-      }
-    }
-    return applied
-  } catch (err) {
-    console.error(`[seedFromSqlDir] 執行 SQL 種子檔案失敗:`, err)
-    return []
-  }
-}
 
 const STATUSES = [
   { key: 'todo',      name: '待辦',     category: 'TODO',   color: '#94a3b8', rank: 1000 },

@@ -4,6 +4,8 @@ import {
 } from 'jose'
 import { env } from './env.js'
 import { badRequest } from './errors.js'
+// Ref: CR-149 —— state／綁定券／Facebook 內部 JWT 都用站台的簽章金鑰，用到才拿
+import { jwtKey } from './secret.js'
 
 /**
  * 用 Google／Apple／Facebook 的帳號登入 —— 協定那一層。
@@ -121,8 +123,6 @@ export const redirectUri = (p: ProviderId): string =>
 
 // ── state：綁瀏覽器、綁這一次流程 ──────────────────────────
 
-const stateKey = new TextEncoder().encode(env.jwtSecret)
-
 /** state 的有效期。使用者在對方的頁面上磨蹭太久就重按一次，比放寬到一小時安全 */
 const STATE_TTL = '10m'
 
@@ -157,11 +157,11 @@ export async function signState(s: OauthState): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(STATE_TTL)
-    .sign(stateKey)
+    .sign(jwtKey())
 }
 
 export async function verifyState(token: string): Promise<OauthState> {
-  const payload = await jwtVerify(token, stateKey).then(r => r.payload).catch(() => {
+  const payload = await jwtVerify(token, jwtKey()).then(r => r.payload).catch(() => {
     throw badRequest(
       '這次登入的識別碼已失效，請重新登入一次',
       '授權頁面停留超過 10 分鐘，或這個連結不是從登入頁按出來的。')
@@ -183,11 +183,11 @@ export async function signLinkTicket(userId: string): Promise<string> {
     .setSubject(userId)
     .setIssuedAt()
     .setExpirationTime(LINK_TICKET_TTL)
-    .sign(stateKey)
+    .sign(jwtKey())
 }
 
 export async function verifyLinkTicket(ticket: string): Promise<string> {
-  const payload = await jwtVerify(ticket, stateKey).then(r => r.payload).catch(() => {
+  const payload = await jwtVerify(ticket, jwtKey()).then(r => r.payload).catch(() => {
     throw badRequest(
       '這張綁定用的憑證已失效，請回到帳號設定再按一次',
       '它只有 60 秒的有效期，這樣就算網址被記進日誌也拿不來做別的事。')
@@ -302,7 +302,7 @@ export async function exchangeCode(p: ProviderId, code: string): Promise<string>
       .setAudience(clientId('FACEBOOK'))
       .setIssuedAt()
       .setExpirationTime('5m')
-      .sign(stateKey)
+      .sign(jwtKey())
   }
 
   return data.id_token!
@@ -328,7 +328,7 @@ export async function verifyIdToken(
   let payload: Record<string, unknown>
   try {
     if (p === 'FACEBOOK') {
-      const res = await jwtVerify(idToken, stateKey, {
+      const res = await jwtVerify(idToken, jwtKey(), {
         issuer: META.FACEBOOK.issuer,
         audience: clientId('FACEBOOK'),
       })

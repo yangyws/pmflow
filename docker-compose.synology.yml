@@ -46,8 +46,11 @@ services:
       # 這行的密碼跟下面 db／backup 兩個服務的密碼是同一組，改一個就要三個都改
       DATABASE_URL: postgres://pmflow:54x4NSyKVU8kkO6ZmQq55Bpzv9cKn3Zt@db:5432/pmflow
 
-      # 這串換掉的話，所有人的登入狀態會全部失效（要重新登入），資料本身不受影響
-      PMFLOW_JWT_SECRET: EI5pgkqTf426WCwsvkSwlczHi1EKn8yDrZZG8BoLvjO7qjNLlqNuokhPoRM2L5Hr
+      # Ref: CR-149 —— 留空就好，**不要**在這裡寫死一串金鑰。
+      # 這個檔是公開在 GitHub 上的，寫死等於任何人都能自簽權杖冒充站上任何人。
+      # 留空時：第一次啟動會自動產生一組存進資料庫，之後每次重啟都沿用同一組
+      #（重啟不會把大家登出）。要自己指定就把那串填在這一行，填了就一律以它為準。
+      PMFLOW_JWT_SECRET: ""
 
       PMFLOW_ACCESS_TTL_SEC: "900"        # access token 15 分鐘
       PMFLOW_REFRESH_TTL_SEC: "604800"    # refresh token 7 天
@@ -59,15 +62,10 @@ services:
       # 人人都知道密碼的帳號。只想先看看畫面長什麼樣的話，改成 "true" 起一次，
       # 看完 `down -v` 清掉再改回 "false"，不要就這樣上線。
       PMFLOW_SEED_DEMO: "false"
-      # ./seed 裡有 .sql 檔的話會優先匯入它並略過示範資料。
-      # ⚠️ repo 內附的 seed/01_demo_seed.sql 是示範用的（一樣是 demo1234），
-      #    正式部署請放自己的資料，或把下面那行 ./seed 掛載整行刪掉。
-      PMFLOW_SEED_SQL_DIR: "/data/seed"
 
       PMFLOW_INQUIRY_DEFAULT_DUE_DAYS: "7"   # 沒填期望回覆日時自動帶「提問日 + 7 天」
     volumes:
       - attachments:/data/attachments
-      - ./seed:/data/seed:ro
     depends_on:
       db:
         condition: service_healthy
@@ -168,15 +166,17 @@ volumes:
   backups:     { name: pmflow-backups }
 
 # ══════════════════════════════════════════════════════════
-# 關於裡面那兩串密碼
+# 關於裡面那串資料庫密碼
 # ══════════════════════════════════════════════════════════
 #
 # 已經產生好填進去了。資料庫密碼刻意只用英數字 —— 它被嵌在
 # DATABASE_URL 這個網址裡，出現 / + @ : 這些字元會讓網址解析錯亂。
 #
-# ⚠️ 這兩串是**公開在 GitHub 上**的（這個 repo 是 public）。這個站只要從外面
-#    連得到，就一定要換掉 PMFLOW_JWT_SECRET —— 用原本那串的話，任何人都能
-#    自己簽一張權杖冒充站上任何人。純內網、只有自己用的情況才可以先放著。
+# ⚠️ 這串是**公開在 GitHub 上**的（這個 repo 是 public）。這個站只要從外面
+#    連得到，就一定要換掉它（上面 db／api／backup 三處必須一字不差）。
+#
+# JWT 簽章金鑰不必自己準備（Ref: CR-149）：第一次啟動會自動產生一組存進資料庫，
+# 之後每次重啟都讀同一組。想自己指定就填 PMFLOW_JWT_SECRET，填了就以它為準。
 #
 # 想自己換一組（在 Windows PowerShell 打）：
 #   -join ((1..32) | %{ (48..57+65..90+97..122 | Get-Random) -as [char] })
@@ -186,7 +186,6 @@ volumes:
 # ══════════════════════════════════════════════════════════
 #
 # 1) File Station 建立資料夾 docker/pmflow
-#    （若有自訂初始資料，可在 /docker/pmflow/ 內建立 seed 資料夾並放入 .sql 檔案，如 01_init.sql）
 # 2) Container Manager → 專案 → 新增
 #    專案名稱：pmflow
 #    路徑：/docker/pmflow

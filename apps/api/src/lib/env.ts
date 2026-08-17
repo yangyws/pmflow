@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto'
-
 function req(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback
   if (v === undefined) throw new Error(`缺少必要環境變數：${name}`)
@@ -8,19 +6,21 @@ function req(name: string, fallback?: string): string {
 
 const isProd = process.env.NODE_ENV === 'production'
 
-// 開發時沒設 JWT_SECRET 就自動產一組（重啟後 token 失效，這是刻意的）。
-// 生產環境一定要自己設，沒設就直接讓服務起不來，不要默默用隨機值。
-function jwtSecret(): string {
-  const v = process.env.PMFLOW_JWT_SECRET
-  if (v && v.length >= 32) return v
-  if (isProd) {
-    throw new Error(
-      'PMFLOW_JWT_SECRET 未設定或長度不足 32 字元。請用 `openssl rand -base64 48` 產生。'
-    )
+/**
+ * 使用者**自己指定**的 JWT 簽章金鑰，沒指定就是空字串。Ref: CR-149
+ *
+ * 有設（且足夠長）就一律以它為準，行為跟以前完全一樣。**沒設不再是錯誤** ——
+ * 改由 lib/secret.ts 在啟動時從資料庫取得：第一次啟動自動產生一組存起來，
+ * 之後每次重啟都讀同一組（大家不會被登出）。舊行為是「正式環境沒設就拒絕啟動」，
+ * 結果是逼人把金鑰寫死在公開 repo 的 compose 檔裡，那比自動產生更危險。
+ */
+function configuredJwtSecret(): string {
+  const v = (process.env.PMFLOW_JWT_SECRET ?? '').trim()
+  if (v.length >= 32) return v
+  if (v) {
+    console.warn('[env] PMFLOW_JWT_SECRET 長度不足 32 字元，忽略它，改用資料庫裡自動產生的金鑰')
   }
-  const generated = randomBytes(48).toString('base64')
-  console.warn('[env] 未設定 PMFLOW_JWT_SECRET，開發模式自動產生一組（重啟後所有登入失效）')
-  return generated
+  return ''
 }
 
 /**
@@ -48,7 +48,8 @@ export const env = {
   port: Number(req('PORT', '8080')),
   host: req('HOST', '0.0.0.0'),
   databaseUrl: req('DATABASE_URL', 'postgres://pmflow:pmflow@localhost:5432/pmflow'),
-  jwtSecret: jwtSecret(),
+  /** 空字串＝沒指定，由 lib/secret.ts 從資料庫取得。Ref: CR-149 */
+  jwtSecret: configuredJwtSecret(),
   accessTtlSec: Number(req('PMFLOW_ACCESS_TTL_SEC', '900')),      // 15 分鐘
   refreshTtlSec: Number(req('PMFLOW_REFRESH_TTL_SEC', '604800')), // 7 天
   allowSelfRegistration: req('PMFLOW_ALLOW_SELF_REGISTRATION', 'true') !== 'false',
