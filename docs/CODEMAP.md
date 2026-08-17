@@ -135,6 +135,11 @@ components/（圖表，都是手刻 SVG，沒有圖表套件）
 
 - **React Flow 的節點一定要把 `measured` 疊回去**（`SimpleGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
   `node.measured` 重建尺寸，衍生物件身上沒有它，畫面就會整片 `visibility: hidden`。
+- **不住在 `nodes` 裡的節點，`measured` 要自己記回去**（Ref: CR-153）。上面那條的第三種變形：
+  住在 `nodes` 的節點，`applyNodeChanges` 會把量到的尺寸寫進節點物件；但**自己另外管一份 state
+  再於渲染時合併進去**的節點（例如文字註記、區域標示框）沒有人幫你寫，每次重組都缺 `measured`
+  → 拖曳過程中整個節點是隱藏的，症狀是「**按住就消失、放開才回來**」。
+  要在 `onNodesChange` 把量到的尺寸另外記下來，組節點時補回去。
 - **拖曳進行中不要每個事件就寫一次 localStorage**（Ref: CR-148）。縮放與拖曳每秒觸發
   60～120 次，而 `JSON.stringify` + `setItem` 是**同步**的，會卡住主執行緒 —— 症狀是
   「拉起來卡卡的」。一律等手放開才寫（兩張圖各踩過一次）。

@@ -916,7 +916,6 @@ type SimpleAnnotationNodeData = {
 // Ref: CR-144 純文字註記：沒有外框、沒有底色、不給接點
 function SimpleTextNode({ id, data }: NodeProps) {
   const d = data as unknown as SimpleAnnotationNodeData
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <div className="group relative cursor-grab select-none active:cursor-grabbing">
       <div
@@ -929,10 +928,10 @@ function SimpleTextNode({ id, data }: NodeProps) {
         {d.label || ANNOTATION_STRINGS.textFallback}
       </div>
 
-      <div className="nodrag absolute -top-3 -right-3 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
+      {/* Ref: CR-153 兩顆鈕整組移到文字上方（bottom-full），短字時也不會壓在字上 */}
+      <div className="absolute right-0 bottom-full mb-1 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
         <button
           type="button"
-          onPointerDown={stop}
           onClick={(e) => {
             e.stopPropagation()
             d.onEdit?.(id)
@@ -944,7 +943,6 @@ function SimpleTextNode({ id, data }: NodeProps) {
         </button>
         <button
           type="button"
-          onPointerDown={stop}
           onClick={(e) => {
             e.stopPropagation()
             d.onDelete?.(id)
@@ -963,7 +961,6 @@ function SimpleTextNode({ id, data }: NodeProps) {
 function SimpleFrameNode({ id, data }: NodeProps) {
   const d = data as unknown as SimpleAnnotationNodeData
   const color = d.color || '#8b5cf6'
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     // Ref: CR-152 整塊都能拖：框身恢復接收事件，卡片與線靠 zIndex 仍在框之上
     <div className="group relative h-full w-full cursor-grab active:cursor-grabbing">
@@ -972,8 +969,9 @@ function SimpleFrameNode({ id, data }: NodeProps) {
         style={{ borderColor: color, backgroundColor: `${color}12` }}
       />
 
+      {/* Ref: CR-153 版面與互動逐項對齊 SystemFlow.tsx 的 FlowFrameNode */}
       <div
-        className="pointer-events-auto absolute -top-3 left-3 flex max-w-[85%] cursor-grab items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs active:cursor-grabbing dark:bg-slate-900"
+        className="absolute -top-3 left-3 flex max-w-[85%] cursor-grab items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs active:cursor-grabbing dark:bg-slate-900"
         style={{ borderColor: color }}
       >
         <span className="shrink-0 text-[11px]">🏷️</span>
@@ -982,25 +980,23 @@ function SimpleFrameNode({ id, data }: NodeProps) {
         </span>
         <button
           type="button"
-          onPointerDown={stop}
           onClick={(e) => {
             e.stopPropagation()
             d.onEdit?.(id)
           }}
           title={ANNOTATION_STRINGS.editFrame}
-          className="nodrag cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400"
         >
           ✏️
         </button>
         <button
           type="button"
-          onPointerDown={stop}
           onClick={(e) => {
             e.stopPropagation()
             d.onDelete?.(id)
           }}
           title={ANNOTATION_STRINGS.deleteFrame}
-          className="nodrag cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400"
         >
           🗑️
         </button>
@@ -1010,7 +1006,7 @@ function SimpleFrameNode({ id, data }: NodeProps) {
         minWidth={220}
         minHeight={160}
         style={{ background: 'transparent', border: 'none' }}
-        className="nodrag pointer-events-auto"
+        className="nodrag"
       >
         <div
           title={T.flow.relationGraph.resizeFrame}
@@ -1685,6 +1681,14 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   // Ref: CR-148
   const annotationNodeCacheRef = useRef(new Map<string, { key: string; node: Node }>())
 
+  /*
+   * Ref: CR-153 隔壁的註記節點住在 nodes 裡，React Flow 量完會透過 dimensions 變更把 measured
+   * 寫回節點物件，之後每次 `{...node}` 都原封帶著走；這一頁的註記是每次從 x/y/文字重新組出來的，
+   * measured 一直是空的，adoptUserNodes 就會判定「還沒量過」而把節點畫成 visibility:hidden
+   * （＝按住文字就消失）。這裡自己把量到的尺寸記下來，組節點時補回去。
+   */
+  const annotationMeasuredRef = useRef(new Map<string, { width: number; height: number }>())
+
   const annotationNodes = useMemo<Node[]>(() => {
     // Ref: CR-148
     const prevCache = annotationNodeCacheRef.current
@@ -1724,6 +1728,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         id: t.id,
         type: 'annotationText',
         position: { x: t.x, y: t.y },
+        // Ref: CR-153
+        measured: annotationMeasuredRef.current.get(t.id),
         draggable: true,
         selectable: false,
         connectable: false,
@@ -2292,6 +2298,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     // Ref: CR-144 文字註記與區域標示框不是任務，改動只寫進 annotations，不進任務節點流程
     const annChanges = rawChanges.filter((c) => 'id' in c && isAnnotationId((c as { id: string }).id))
     if (annChanges.length > 0) {
+      // Ref: CR-153 React Flow 量到的尺寸先記下來，重組註記節點時補回 measured
+      for (const ch of annChanges) {
+        if (ch.type === 'dimensions' && ch.dimensions && ch.dimensions.width > 0 && ch.dimensions.height > 0) {
+          annotationMeasuredRef.current.set(ch.id, {
+            width: ch.dimensions.width,
+            height: ch.dimensions.height,
+          })
+        }
+      }
       setAnnotations((prev) => {
         let texts = prev.texts
         let frames = prev.frames
