@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-129` | 2026-08-17 | [文件同步：解除 ARCHITECTURE.md / SPEC.md「過時設計稿」警語，並補回 NEXT-SESSION 落後的三批進度](#cr-129) | `CODEMAP.md`, `AGENTS.md`, `NEXT-SESSION.md` | 已驗證 |
 | `CR-128` | 2026-08-11 | [規格補充：於 SPEC.md 新增第 13 章行動端自適應 (RWD) 與 Mobile/PWA 平台支援規格](#cr-128) | `SPEC.md` | 已驗證 |
 | `CR-127` | 2026-08-11 | [任務種類上下關係：全數解鎖放行，移除階層嵌套限制並同步更新 AGENTS.md 條文與 API 測試 (e2e.sh)](#cr-127) | `AGENTS.md`, `hierarchy.ts`, `e2e.sh` | 已驗證 |
 | `CR-126` | 2026-08-11 | [任務種類上下關係：恢復 checkPlacement / canBeUnder 守門員邏輯（BUG 只能掛 TASK 下，EPIC 只能放頂層/EPIC 下）](#cr-126) | `hierarchy.ts` | 已驗證 |
@@ -186,6 +187,24 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-129"></a>CR-129 (2026-08-17) — 文件同步：解除 ARCHITECTURE.md / SPEC.md「過時設計稿」警語，並補回 NEXT-SESSION 落後的三批進度
+
+**為什麼這樣改**：接手時照導引讀文件，`CODEMAP.md` 開頭與 `AGENTS.md` 啟動導引都還寫著
+「`ARCHITECTURE.md` 是最早的設計稿（Spring Boot / Java / Flyway / STOMP），不要照著它找檔案」。
+但那兩份文件已在 2026-08-12 改版為 v3.0.0，內容早就是實作現況（Fastify + postgres、自寫 append-only
+migration、含 SimpleGraph 靶心關聯表與 RWD/PWA 第 13 章），Spring/Flyway/STOMP 字樣一個都不剩。
+**警語比它警告的東西還舊**，結果是每個接手的人都被擋在唯二兩份講「為什麼這樣設計」的文件外面。
+
+同時 `NEXT-SESSION.md` 停在 2026-08-09，落後 `CR-124`～`CR-128` 三批，接手的人會以為那些還沒做。
+
+**改法**：警語不是直接刪掉，而是換成分工說明 —— 那兩份可以參考架構與規格，
+但**找檔案一律以 `CODEMAP.md` 為準**。它們回答的是「為什麼」，不是「東西住在哪一行」，
+兩者本來就不該混用；直接刪掉警語會讓下一個人又拿 SPEC 去找檔案。
+
+**怎麼驗的**：`grep -i "spring|flyway|stomp"` 掃過兩份文件，僅剩「未來規劃」與「刻意不做」段落中
+的提及（本來就該留）；比對 `CODEMAP.md` 的頁面清單與 `SPEC.md` 第 3 章功能規格，
+SimpleGraph 靶心關聯表兩邊都在。純文件異動，不影響程式碼，未動 typecheck 範圍。
 
 ### <a id="cr-128"></a>CR-128 (2026-08-11) — 規格補充：於 SPEC.md 新增第 13 章行動端自適應 (RWD) 與 Mobile/PWA 平台支援規格
 
