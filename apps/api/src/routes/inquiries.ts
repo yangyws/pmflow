@@ -124,8 +124,7 @@ export default async function inquiryRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>('/inquiries/:id/mark-replied', async req => {
     const user = await authenticate(req)
-    // COMMENTER 就能登錄回覆 —— 實務上接到電話說「我們回了」的人，
-    // 常常不是有編輯權的專案經理
+    // Ref: CR-145
     // 登錄回覆只要是專案成員就可以 —— 回覆是別人送回來的事實，
     // 誰收到誰登錄最快；卡在編輯權限上只會讓它留在某個人的信箱裡
     const { taskId, workspaceId } = await accessInquiry(user.id, req.params.id, 'VIEWER')
@@ -268,7 +267,7 @@ async function loadInquiry(id: string) {
 
 /** 子資源端點必須從 id 反查所屬任務再驗權限，不能因為拿得到 id 就放行 */
 async function accessInquiry(
-  userId: string, inquiryId: string, min: 'EDITOR' | 'COMMENTER' | 'VIEWER'
+  userId: string, inquiryId: string, min: 'EDITOR' | 'VIEWER'   // Ref: CR-145
 ) {
   const [row] = await sql<{ task_id: string; asked_by: string | null }[]>`
     SELECT task_id, asked_by FROM task_inquiry WHERE id = ${inquiryId}`

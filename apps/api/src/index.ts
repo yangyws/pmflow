@@ -14,6 +14,7 @@ import memberRoutes from './routes/members.js'
 import accountRoutes from './routes/account.js'
 import taskRoutes from './routes/tasks.js'
 import linkRoutes from './routes/links.js'
+import canvasRoutes from './routes/canvas.js'
 import inquiryRoutes from './routes/inquiries.js'
 import notificationRoutes from './routes/notifications.js'
 import leaveRoutes from './routes/leaves.js'
@@ -48,6 +49,7 @@ await app.register(async api => {
   await api.register(accountRoutes)
   await api.register(taskRoutes)
   await api.register(linkRoutes)
+  await api.register(canvasRoutes)
   await api.register(inquiryRoutes)
   await api.register(notificationRoutes)
   await api.register(leaveRoutes)
@@ -58,14 +60,21 @@ await app.register(async api => {
 const applied = await migrate()
 if (applied.length) app.log.info({ applied }, 'migration 已套用')
 
-// 如果指定了 SQL 目錄且裡面有 .sql 檔，優先執行指定目錄下的 SQL
-const sqlSeedDir = process.env.PMFLOW_SEED_SQL_DIR || '/data/seed'
-const sqlApplied = await seedFromSqlDir(sqlSeedDir)
+/*
+ * 自訂 SQL 種子。Ref: CR-137
+ *
+ * 只在**明確指定目錄**時才跑。原本沒設就退回 `/data/seed`，
+ * 而正式部署剛好把 `./seed` 掛在那裡 —— 等於任何人放一個 .sql 進去，
+ * 服務下次重啟就會拿最高權限執行它，而且完全不受示範資料開關管制。
+ */
+const sqlSeedDir = (process.env.PMFLOW_SEED_SQL_DIR ?? '').trim()
+const sqlApplied = sqlSeedDir ? await seedFromSqlDir(sqlSeedDir) : []
 if (sqlApplied.length) {
-  app.log.info({ sqlApplied, dir: sqlSeedDir }, '已自訂執行 NAS 指定目錄之 SQL 資料種子檔')
+  app.log.info({ sqlApplied, dir: sqlSeedDir }, '已執行指定目錄下的 SQL 資料種子檔')
 } else if (env.seedDemo) {
   const created = await seedDemo()
-  if (created) app.log.info('已建立示範資料：demo@pmflow.local / demo1234')
+  // 密碼不進日誌 —— 日誌會被收集、轉寄、貼進工單
+  if (created) app.log.info('已建立示範資料（帳號見 README）')
 }
 await seedProblemsIfEmpty().catch(() => {})
 await seedBugsIfEmpty().catch(() => {})

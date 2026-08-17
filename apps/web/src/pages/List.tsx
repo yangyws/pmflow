@@ -7,7 +7,6 @@ import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { useTheme } from '../lib/theme'
 import { rollup, isTaskOverdue } from '../lib/rollup'
-import { typesAllowedUnder } from '../lib/hierarchy'
 import { T } from '../strings'
 import { useRemembered } from '../lib/remember'
 import { DEFAULT_TYPE_COLORS, divideAndSortLinked } from '../components/EpicSidebar' // Ref: CR-125
@@ -126,12 +125,8 @@ export default function ListView({
     }
     return list
   }, [rawTypes])
-  /**
-   * 能選哪幾種要看**加在誰底下**（見 lib/hierarchy.ts）：問題只能掛在任務底下、
-   * 大項目不能掛在任務底下。不合法的乾脆不要畫出來 ——
-   * 畫出來按了被後端拒絕，比一開始就沒有那個選項難懂得多。
-   */
-  const typesUnder = (parentType: string | null) => typesAllowedUnder(allTypes, parentType)
+  // Ref: CR-127
+  const typesUnder = (_parentType: string | null) => allTypes
 
   /**
    * 這張任務還有沒有對外詢問沒回。有的話「做完」那幾個狀態不給選 ——

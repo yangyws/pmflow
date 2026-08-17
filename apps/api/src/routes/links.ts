@@ -136,7 +136,9 @@ export default async function linkRoutes(app: FastifyInstance) {
 
     const edges = await sql`
       SELECT l.id, l.source_id AS "sourceId", l.target_id AS "targetId",
-             l.link_type AS "linkType", l.lag_days AS "lagDays"
+             l.link_type AS "linkType", l.lag_days AS "lagDays",
+             -- Ref: CR-138 線從哪一邊出去、接到哪一邊，跟著關聯線一起帶回去
+             l.source_handle AS "sourceHandle", l.target_handle AS "targetHandle"
       FROM task_link l
       JOIN task s ON s.id = l.source_id
       WHERE s.project_id = ${req.params.id}`

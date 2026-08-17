@@ -56,7 +56,16 @@ export const env = {
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
   corsOrigin: req('PMFLOW_CORS_ORIGIN', 'http://localhost:5173'),
   inquiryDefaultDueDays: Number(req('PMFLOW_INQUIRY_DEFAULT_DUE_DAYS', '7')),
-  seedDemo: req('PMFLOW_SEED_DEMO', 'true') !== 'false',
+  /**
+   * 示範資料（示範帳號 demo@pmflow.local ／ 示範專案）。
+   * **正式環境預設不建，開發環境預設建**。Ref: CR-137
+   *
+   * 示範帳號的密碼寫在 README 上，等於人人都知道；正式站自帶一個這樣的帳號
+   * 就是一個公開的後門。要在正式站示範就自己設 PMFLOW_SEED_DEMO=true。
+   */
+  seedDemo: process.env.PMFLOW_SEED_DEMO
+    ? process.env.PMFLOW_SEED_DEMO !== 'false'
+    : !isProd,
   /** 上傳的檔案放這裡。容器把它掛成 volume，換版本不會把圖弄丟 */
   attachmentsDir: req('PMFLOW_ATTACHMENTS_DIR', '/data/attachments'),
   /**
@@ -64,6 +73,18 @@ export const env = {
    * **預設空字串＝整組關掉**，要用的人自己開 —— 這是 break-glass，不是常設功能。
    */
   passwordResetDir: req('PMFLOW_PASSWORD_RESET_DIR', '').trim(),
+
+  /**
+   * 身分切換（impersonation）。**正式環境預設關閉**，開發環境預設開著。
+   * Ref: CR-134
+   *
+   * 這支端點會直接發出別人的登入權杖，等於一個後門；它存在的理由只有
+   * 「開發時想看別的角色的畫面長什麼樣」。正式站沒有這個需求，
+   * 卻要為它承擔「權限判斷一有疏漏就是全站接管」的風險，所以預設不開。
+   */
+  allowImpersonation: process.env.PMFLOW_ALLOW_IMPERSONATION
+    ? process.env.PMFLOW_ALLOW_IMPERSONATION !== 'false'
+    : !isProd,
 
   /**
    * 這個站**從外面看**的網址（含 scheme，結尾不要斜線），例如 `https://pm.example.com`。

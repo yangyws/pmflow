@@ -215,7 +215,12 @@ function detail(n: AppNotification): string | null {
     case 'JOIN_APPROVED': {
       const role = b.role as ProjectRole | undefined
       const note = (b.note as string | null) || null
-      const parts = [role ? N.roleIs(N.role[role]) : null, note]
+      /*
+       * 舊通知的 body 裡可能存著現在已經不存在的角色（例如 CR-145 移除的 COMMENTER）。
+       * migration 只降級 project_member，不會回頭改寫通知的 JSON，
+       * 所以查不到中文說法時就把原值印出來，不要變成「你的身分是 undefined」。
+       */
+      const parts = [role ? N.roleIs(N.role[role] ?? role) : null, note]
       return parts.filter(Boolean).join('　') || null
     }
   }

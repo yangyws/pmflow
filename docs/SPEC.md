@@ -96,8 +96,10 @@ PMFlow 是一套自架式專案管理系統，核心特色是「任務可以上�
 - **Auth flow**: 登入畫面 → ProjectPicker (專案選擇) → Main shell (主應用程式殼層)。
 - **Main shell 佈局**: 左側 EpicSidebar（史詩側欄） + 頂部 Tab bar（頁籤列） + 中間 Content（主要內容） + 右側 TaskDrawer（任務詳情覆疊）。
 - **Tab bar**: 支援拖曳排序、隱藏/顯示頁籤，並且狀態持久化儲存於 localStorage 中。
-- **10 大檢視模式 (Views)**: 清單、看板、週檢視、行事曆、甘特圖、關聯圖、靶心、發文追蹤、成員、儀表板。
-- **Lazy Loading**: 較為吃資源的檢視（Gantt, Graph, SimpleGraph, Dashboard）採延遲載入（lazy-loaded）。
+- **檢視模式 (Views)**: 清單、看板、行事曆（內含週檢視）、甘特圖、**任務關聯圖**、**系統流程圖**、
+  **各語法範例**、儀表板、對外詢問、事件歸屬。
+  （Ref: CR-142 —— 舊的 `Graph.tsx` 已刪除，「任務關聯圖」現在是 `SimpleGraph.tsx`。）
+- **Lazy Loading**: 較為吃資源的檢視（Gantt, SimpleGraph, SystemFlow, Playground, Dashboard）採延遲載入。
 - **任務詳情 (Task Detail)**: 點擊任務時，會從右側滑出 TaskDrawer 面板，**不會**跳轉到獨立的路由頁面。
 
 ### 3.2 清單視圖 (List View)
@@ -135,16 +137,19 @@ PMFlow 是一套自架式專案管理系統，核心特色是「任務可以上�
 - 支援在甘特圖上直接拖曳改變排程。
 - 技術細節：因為 dhtmlx-gantt 是 imperative API，所以將其封裝在 React ref 內部操作，而不是透過 React state 驅動。
 
-### 3.7 關聯圖 (Graph View)
+### 3.7 任務關聯圖 (`SimpleGraph.tsx`)
 
-- 基於 `@xyflow/react` (React Flow) 開發。
-- **自訂佈局演算法**：使用 union-find 演算法進行欄位合併，不使用 `elkjs` 避免授權問題。
-- 以 DAG (Directed Acyclic Graph) 呈現任務間的相依性，並帶有方向箭頭。
-- 視覺標示出卡關（Stuck）或平行處理（Parallel）的任務節點。
+> Ref: CR-142 —— 舊的 `Graph.tsx`（union-find 自動佈局的 DAG 檢視）**已於 2026-08-17 刪除**，
+> 它早就不在頁籤清單上、使用者點不到。頁籤「任務關聯圖」現在對應的是這一頁。
 
-### 3.8 靶心關聯表 (SimpleGraph)
+- 基於 `@xyflow/react` (React Flow)，佈局自己寫（不使用 `elkjs`，EPL-2.0 過不了授權掃描）。
+- **關聯線一律直角**（Ref: CR-131／CR-139）：不用貝茲、不用圓角。
+  **轉角可以拖曳**，雙擊把手回到自動位置。拉線當下的預覽線也是直角
+  （`connectionLineType` 沒設的話 React Flow 預設是貝茲，那是兩套渲染）。
+- **文字註記與區域標示框**（Ref: CR-144）：兩者都**不是任務**，只在渲染階段疊上畫布，
+  不會呼叫任何任務 API。標示框墊在最底層且不吃點擊，也**不會**把拖進去的卡片變成它的子節點。
 
-靶心視圖是用來專注於單一核心任務及其周邊關聯的特化視圖。
+### 3.8 節點與收納盒細節
 - **單一節點類型 (`simpleNode`)**：具備卡片 (card) 與收納盒 (box) 雙模式。
 - **8 個雙向連接點 (Handles)**：4 個方向 (上/下/左/右) × 進入/離開。
 - **連接點顏色定義**：左/右 = indigo (靛藍)；上/下 = amber (琥珀黃)。
@@ -163,6 +168,23 @@ PMFlow 是一套自架式專案管理系統，核心特色是「任務可以上�
   - 阻擋重複連線。
   - 阻擋有連線的卡片離開收納盒。
 - **刪除連線**：點擊關聯線條 (Edge) 會跳出確認對話框：「是否刪除 [A] 與 [B] 的關聯？」
+
+### 3.8.1 系統流程圖 (`SystemFlow.tsx`)
+
+畫「這套系統怎麼運作」用的自由畫布，**節點不是任務**，整頁是一份文件。（Ref: CR-140）
+
+- **模組容器**：可裝流程步驟，容器內顯示標題與**詳細說明**（超長截斷、滑過看全文、沒填不佔位）。
+- **流程步驟卡片**、**文字註記**（無框無底色的說明字）、**區域標示框**（純視覺標示，
+  墊最底層、不吃點擊、不建立隸屬關係）。
+- **關聯線**：直角、轉角可拖、線上可以掛文字（標籤跟著轉角走，拖完不會飄在半空中）。
+- **箭頭永遠指向終點**：React Flow 內部在「從輸入接點起拉」時會自己把兩端對調，這一頁修正回來。
+- 多分頁，可改名與排序。
+
+### 3.8.2 各語法範例 (`Playground.tsx`)
+
+Markdown／SQL／Java／網頁語法的範例與即時預覽。Markdown 走 `markdown-it`(MIT) +
+`highlight.js`(BSD-3)，`html:false` 預設擋掉原始 HTML 注入，因此不需要額外的消毒套件
+（`dompurify` 是 MPL-2.0，過不了授權關卡）。程式碼區塊支援 TypeScript 高亮。（Ref: CR-135）
 
 ### 3.9 發文追蹤 (Inquiry Tracking)
 
@@ -353,8 +375,8 @@ erDiagram
 | GET | `/tasks/:id/inquiries` | Member | 列出任務的發文追蹤 |
 | POST | `/tasks/:id/inquiries` | EDITOR+ | 建立發文追蹤 |
 | PATCH | `/inquiries/:id` | EDITOR+ | 更新發文資訊 |
-| POST | `/inquiries/:id/mark-replied` | COMMENTER+ | 標記為已回覆 |
-| POST | `/inquiries/:id/reopen` | COMMENTER+ | 重新開啟發文 |
+| POST | `/inquiries/:id/mark-replied` | VIEWER+ | 標記為已回覆 |
+| POST | `/inquiries/:id/reopen` | EDITOR+ | 重新開啟發文 |
 | DELETE | `/inquiries/:id` | EDITOR+ | 刪除發文追蹤 |
 | GET | `/workspaces/:ws/inquiry-board` | Bearer | 取得跨專案發文看板資料 |
 | GET | `/workspaces/:ws/inquiry-stats` | Bearer | 取得單位回覆統計數據 |
@@ -413,16 +435,22 @@ erDiagram
 
 ### Permission Matrix (權限矩陣)
 
-| 操作 | MANAGER | EDITOR | COMMENTER | VIEWER |
-| --- | :---: | :---: | :---: | :---: |
-| 專案設定修改 | ✅ | ❌ | ❌ | ❌ |
-| 成員權限變更 | ✅ | ❌ | ❌ | ❌ |
-| 新增/編輯任務 | ✅ | ✅ | ❌ | ❌ |
-| 調整排程/關聯 | ✅ | ✅ | ❌ | ❌ |
-| 建立/編輯發文 | ✅ | ✅ | ❌ | ❌ |
-| 標記發文已回覆 | ✅ | ✅ | ✅ | ❌ |
-| 留言討論 | ✅ | ✅ | ✅ | ❌ |
-| 檢視專案內容 | ✅ | ✅ | ✅ | ✅ |
+> 角色只有三級（Ref: CR-145）。`COMMENTER`（可留言）已移除 —— 任務留言功能改成
+> 「成立問題單」之後它沒有任何專屬權限，實際等同 VIEWER。
+
+| 操作 | MANAGER | EDITOR | VIEWER |
+| --- | :---: | :---: | :---: |
+| 專案設定修改 | ✅ | ❌ | ❌ |
+| 成員權限變更 | ✅ | ❌ | ❌ |
+| 新增/編輯任務 | ✅ | ✅ | ❌ |
+| 調整排程/關聯 | ✅ | ✅ | ❌ |
+| 建立/編輯發文 | ✅ | ✅ | ❌ |
+| 標記發文已回覆 | ✅ | ✅ | ✅ |
+| 檢視專案內容 | ✅ | ✅ | ✅ |
+
+「新增/編輯任務」還要再過一層**關係人**判斷（Ref: CR-130）：EDITOR 只改得動
+自己開的、自己負責的，或自己是專案管理者／代理人的任務。
+「標記發文已回覆」與填寫「目前遇到的問題」刻意只要求 VIEWER —— 誰收到誰登錄最快。
 
 ---
 

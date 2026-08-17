@@ -129,7 +129,7 @@ export const nav = {
     emptyTitle: '目前沒有通知。',
     emptyHint: '任務被指向、被指派，或有人申請加入你開的專案時會出現在這裡。',
     role: {
-      MANAGER: '管理者', EDITOR: '編輯者', COMMENTER: '可留言', VIEWER: '唯讀',
+      MANAGER: '管理者', EDITOR: '編輯者', VIEWER: '唯讀',
     },
     /** 通知句子裡的代稱：資料缺一角時頂上去，句子才不會斷掉 */
     someone: '有人',

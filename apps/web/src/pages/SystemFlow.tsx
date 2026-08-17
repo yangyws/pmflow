@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 import '@xyflow/react/dist/style.css'
 import {
   ReactFlow,
@@ -14,12 +14,16 @@ import {
   Position,
   ConnectionMode,
   NodeResizeControl,
+  BaseEdge,
+  EdgeLabelRenderer,
+  ConnectionLineType,
   type Node,
   type Edge,
   type NodeChange,
   type EdgeChange,
   type Connection,
   type NodeProps,
+  type EdgeProps,
   type Viewport,
   BackgroundVariant,
   MarkerType,
@@ -28,12 +32,14 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { Api } from '../lib/api'
 import { cx } from '../components/ui'
+import { T } from '../strings' // Ref: CR-146
 
 export interface SystemFlowProps {
   projectId?: string
 }
 
-export type FlowNodeType = 'step' | 'box'
+// Ref: CR-140
+export type FlowNodeType = 'step' | 'box' | 'text' | 'frame'
 
 export interface FlowNodeData extends Record<string, unknown> {
   label: string
@@ -45,14 +51,17 @@ export interface FlowNodeData extends Record<string, unknown> {
   onDelete?: (nodeId: string) => void
 }
 
-const COLOR_OPTIONS = [
-  { name: '藍色 (處理/服務)', color: '#3b82f6' },
-  { name: '綠色 (起點/成功)', color: '#10b981' },
-  { name: '紫色 (模組/邏輯)', color: '#8b5cf6' },
-  { name: '琥珀 (判斷/驗證)', color: '#f59e0b' },
-  { name: '紅色 (錯誤/終點)', color: '#ef4444' },
-  { name: '灰色 (資料/儲存)', color: '#64748b' },
-]
+// Ref: CR-140
+export interface FlowEdgeData extends Record<string, unknown> {
+  text?: string
+  waypoint?: { x: number; y: number } | null
+  onSaveText?: (edgeId: string, text: string) => void
+  onWaypointChange?: (edgeId: string, point: { x: number; y: number }) => void
+  onWaypointReset?: (edgeId: string) => void
+}
+
+// Ref: CR-146
+const COLOR_OPTIONS = T.flow.systemFlow.colorOptions
 
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
   const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
@@ -71,6 +80,68 @@ function getEdgeStyleAndMarker(sourceHandle?: string | null) {
       width: 14,
       height: 14,
     },
+  }
+}
+
+// Ref: CR-140 接點方向正規化：來源端一定要用「輸出接點」、終點端一定要用「輸入接點」
+function toOutHandle(handle?: string | null) {
+  return handle && (handle.includes('top') || handle.includes('bottom')) ? 'bottom-out' : 'right-out'
+}
+
+function toInHandle(handle?: string | null) {
+  return handle && (handle.includes('top') || handle.includes('bottom')) ? 'top-in' : 'left-in'
+}
+
+// Ref: CR-140 拖折點時把緊接著那次 click 吞掉 (合成事件會沿元件樹冒泡回連線本身)
+const edgeDragGuard: { active: boolean; timer: ReturnType<typeof setTimeout> | null } = {
+  active: false,
+  timer: null,
+}
+
+function armEdgeDragGuard() {
+  edgeDragGuard.active = true
+  if (edgeDragGuard.timer) clearTimeout(edgeDragGuard.timer)
+  edgeDragGuard.timer = setTimeout(() => {
+    edgeDragGuard.active = false
+    edgeDragGuard.timer = null
+  }, 400)
+}
+
+function consumeEdgeDragGuard(): boolean {
+  if (!edgeDragGuard.active) return false
+  armEdgeDragGuard()
+  return true
+}
+
+// Ref: CR-140 全程只由水平/垂直線段組成，折點 (px, py) 決定在哪裡轉彎
+function buildOrthogonalPath(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  sourcePosition: Position,
+  targetPosition: Position,
+  waypoint?: { x: number; y: number } | null
+): { path: string; px: number; py: number } {
+  const px = waypoint ? waypoint.x : (sx + tx) / 2
+  const py = waypoint ? waypoint.y : (sy + ty) / 2
+  const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
+  const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
+
+  const a = srcHoriz ? { x: px, y: sy } : { x: sx, y: py }
+  const b = tgtHoriz ? { x: px, y: ty } : { x: tx, y: py }
+  const raw = [{ x: sx, y: sy }, a, { x: px, y: py }, b, { x: tx, y: ty }]
+
+  const pts: { x: number; y: number }[] = []
+  for (const p of raw) {
+    const last = pts[pts.length - 1]
+    if (!last || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.y - p.y) > 0.01) pts.push(p)
+  }
+
+  return {
+    path: pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
+    px,
+    py,
   }
 }
 
@@ -138,22 +209,33 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
           {/* 頂部裝飾條 */}
           <div className="h-1.5 rounded-t-xl" style={{ backgroundColor: nodeData.color || '#6366f1' }} />
           {/* 標題欄 */}
-          <div className="px-3.5 py-2 border-b border-indigo-200/60 dark:border-indigo-900/60 bg-white/80 dark:bg-slate-900/80 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="text-base shrink-0">📦</span>
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
-                {nodeData.label || '系統模組容器'}
-              </span>
+          <div className="px-3.5 py-2 border-b border-indigo-200/60 dark:border-indigo-900/60 bg-white/80 dark:bg-slate-900/80 flex items-start justify-between gap-2">
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base shrink-0">📦</span>
+                <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
+                  {nodeData.label || T.flow.systemFlow.boxFallback}
+                </span>
+              </div>
+              {/* Ref: CR-140 */}
+              {nodeData.desc && (
+                <p
+                  title={nodeData.desc}
+                  className="pl-6 text-xs text-slate-500 dark:text-slate-400 leading-snug line-clamp-2 break-words"
+                >
+                  {nodeData.desc}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   nodeData.onEdit?.(id)
                 }}
-                title="編輯模組名稱與顏色"
+                title={T.flow.systemFlow.editBoxTitle}
                 className="p-1 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer"
               >
                 ✏️
@@ -164,7 +246,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
                   e.stopPropagation()
                   nodeData.onDelete?.(id)
                 }}
-                title="刪除模組容器"
+                title={T.flow.systemFlow.deleteBoxTitle}
                 className="p-1 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition cursor-pointer"
               >
                 🗑️
@@ -242,7 +324,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className="text-base shrink-0">⚡</span>
               <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
-                {nodeData.label || '流程步驟'}
+                {nodeData.label || T.flow.systemFlow.stepFallback}
               </span>
             </div>
 
@@ -253,7 +335,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
                   e.stopPropagation()
                   nodeData.onEdit?.(id)
                 }}
-                title="編輯節點"
+                title={T.flow.systemFlow.editNodeTitle}
                 className="p-1 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer"
               >
                 ✏️
@@ -264,7 +346,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
                   e.stopPropagation()
                   nodeData.onDelete?.(id)
                 }}
-                title="刪除節點"
+                title={T.flow.systemFlow.deleteNodeTitle}
                 className="p-1 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition cursor-pointer"
               >
                 🗑️
@@ -283,9 +365,244 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   )
 }
 
+// Ref: CR-140
+function FlowTextNode({ id, data }: NodeProps) {
+  const nodeData = data as FlowNodeData
+  return (
+    <div className="group relative cursor-grab active:cursor-grabbing select-none">
+      <div
+        className={cx(
+          'max-w-[420px] whitespace-pre-wrap break-words rounded px-1.5 py-1 text-sm font-semibold leading-relaxed',
+          !nodeData.color && 'text-slate-700 dark:text-slate-200',
+          nodeData.isSelected && 'ring-2 ring-blue-500/50'
+        )}
+        style={nodeData.color ? { color: nodeData.color } : undefined}
+      >
+        {nodeData.label || T.flow.shared.annotation.textFallback}
+      </div>
+
+      <div className="absolute -top-3 -right-3 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            nodeData.onEdit?.(id)
+          }}
+          title={T.flow.shared.annotation.editText}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+        >
+          ✏️
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            nodeData.onDelete?.(id)
+          }}
+          title={T.flow.shared.annotation.deleteText}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Ref: CR-140
+function FlowFrameNode({ id, data }: NodeProps) {
+  const nodeData = data as FlowNodeData
+  const color = nodeData.color || '#8b5cf6'
+  return (
+    <div className="pointer-events-none relative h-full w-full group">
+      {/* 純視覺標示框：本體不吃點擊，框內節點照樣點得到 */}
+      <div
+        className={cx(
+          'h-full w-full rounded-2xl border-2 border-dashed',
+          nodeData.isSelected && 'ring-2 ring-blue-500/50'
+        )}
+        style={{ borderColor: color, backgroundColor: `${color}12` }}
+      />
+
+      <div className="pointer-events-auto absolute -top-3 left-3 flex max-w-[85%] items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs dark:bg-slate-900 cursor-grab active:cursor-grabbing"
+        style={{ borderColor: color }}
+      >
+        <span className="shrink-0 text-[11px]">🏷️</span>
+        <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+          {nodeData.label || T.flow.shared.annotation.frameFallback}
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            nodeData.onEdit?.(id)
+          }}
+          title={T.flow.shared.annotation.editFrame}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-blue-600 group-hover:opacity-100 dark:hover:text-blue-400"
+        >
+          ✏️
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            nodeData.onDelete?.(id)
+          }}
+          title={T.flow.shared.annotation.deleteFrame}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-400"
+        >
+          🗑️
+        </button>
+      </div>
+
+      <NodeResizeControl
+        minWidth={220}
+        minHeight={160}
+        style={{ background: 'transparent', border: 'none' }}
+        className="nodrag pointer-events-auto"
+      >
+        <div className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+          ↘
+        </div>
+      </NodeResizeControl>
+    </div>
+  )
+}
+
 const nodeTypes = {
   step: FlowStepNode,
   box: FlowBoxNode,
+  text: FlowTextNode,
+  frame: FlowFrameNode,
+}
+
+// Ref: CR-140
+function FlowLabeledEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  markerEnd,
+  data,
+}: EdgeProps) {
+  const edgeData = data as FlowEdgeData | undefined
+  const { screenToFlowPosition } = useReactFlow()
+  const draggingRef = useRef(false)
+  // Ref: CR-140 全程直角，折點可拖曳
+  const { path, px, py } = buildOrthogonalPath(
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    edgeData?.waypoint
+  )
+  const [isEditing, setIsEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const text = edgeData?.text || ''
+
+  const finish = (commit: boolean) => {
+    if (commit) edgeData?.onSaveText?.(id, draft)
+    setIsEditing(false)
+  }
+
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    draggingRef.current = true
+    armEdgeDragGuard()
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const onHandlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return
+    e.stopPropagation()
+    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
+  }
+
+  const onHandlePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    e.stopPropagation()
+    armEdgeDragGuard()
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <>
+      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={20} />
+      <EdgeLabelRenderer>
+        {/* Ref: CR-140 轉角把手：拖曳移動、連點兩下復位 */}
+        <div
+          className="nodrag nopan absolute h-2.5 w-2.5 cursor-move rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 after:absolute after:-inset-[9px] after:rounded-full after:content-['']"
+          style={{ transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`, pointerEvents: 'all' }}
+          title={T.flow.systemFlow.waypointHint}
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={onHandlePointerUp}
+          onPointerCancel={onHandlePointerUp}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            armEdgeDragGuard()
+            edgeData?.onWaypointReset?.(id)
+          }}
+        />
+      </EdgeLabelRenderer>
+      {(text || isEditing) && (
+        <EdgeLabelRenderer>
+          {/* Ref: CR-140 連線文字跟著折點走 */}
+          <div
+            className="nodrag nopan pointer-events-auto absolute"
+            style={{ transform: `translate(-50%, -100%) translate(${px}px, ${py - 14}px)` }}
+          >
+            {isEditing ? (
+              <input
+                type="text"
+                value={draft}
+                autoFocus
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => finish(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') finish(true)
+                  if (e.key === 'Escape') finish(false)
+                }}
+                className="w-36 rounded-md border border-blue-500 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-800 outline-none dark:bg-slate-900 dark:text-slate-100"
+              />
+            ) : (
+              <span
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  setDraft(text)
+                  setIsEditing(true)
+                }}
+                title={T.flow.systemFlow.edgeTextHint}
+                className="cursor-text rounded-md border border-slate-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+              >
+                {text}
+              </span>
+            )}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  )
+}
+
+const edgeTypes = {
+  flowEdge: FlowLabeledEdge,
 }
 
 const INITIAL_NODES: Node[] = [
@@ -295,33 +612,33 @@ const INITIAL_NODES: Node[] = [
     position: { x: 380, y: 80 },
     style: { width: 380, height: 280 },
     measured: { width: 380, height: 280 },
-    data: { label: '應用後端服務 (Backend Service)', color: '#8b5cf6', mode: 'box' },
+    data: { label: T.flow.systemFlow.sample.backend, color: '#8b5cf6', mode: 'box' },
   },
   {
     id: 'node-1',
     type: 'step',
     position: { x: 60, y: 160 },
-    data: { label: '客戶端請求 (Client)', desc: '發起 API 呼叫與身分憑證', color: '#10b981', mode: 'step' },
+    data: { label: T.flow.systemFlow.sample.client, desc: T.flow.systemFlow.sample.clientDesc, color: '#10b981', mode: 'step' },
   },
   {
     id: 'node-2',
     type: 'step',
     parentId: 'box-1',
     position: { x: 30, y: 60 },
-    data: { label: 'API 閘道 (Gateway)', desc: '權限驗證與速率限制', color: '#3b82f6', mode: 'step' },
+    data: { label: T.flow.systemFlow.sample.gateway, desc: T.flow.systemFlow.sample.gatewayDesc, color: '#3b82f6', mode: 'step' },
   },
   {
     id: 'node-3',
     type: 'step',
     parentId: 'box-1',
     position: { x: 30, y: 160 },
-    data: { label: '業務邏輯核心 (Controller)', desc: '資料處理與流程排程', color: '#8b5cf6', mode: 'step' },
+    data: { label: T.flow.systemFlow.sample.controller, desc: T.flow.systemFlow.sample.controllerDesc, color: '#8b5cf6', mode: 'step' },
   },
   {
     id: 'node-4',
     type: 'step',
     position: { x: 840, y: 160 },
-    data: { label: '資料庫 (PostgreSQL)', desc: '持久化資料存取與交易', color: '#64748b', mode: 'step' },
+    data: { label: T.flow.systemFlow.sample.database, desc: T.flow.systemFlow.sample.databaseDesc, color: '#64748b', mode: 'step' },
   },
 ]
 
@@ -371,7 +688,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((p, idx) => ({
           id: p.id || `page-${idx + 1}`,
-          title: p.title || `流程頁面 ${idx + 1}`,
+          title: p.title || T.flow.systemFlow.pageDefaultTitle(idx + 1),
           createdById: p.createdById || null,
           createdByName: p.createdByName || null,
           nodes: Array.isArray(p.nodes) ? orderParentNodesFirst(p.nodes) : [],
@@ -393,7 +710,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
         return [
           {
             id: 'page-1',
-            title: '主要流程',
+            title: T.flow.systemFlow.mainPageTitle,
             createdById: null,
             createdByName: null,
             nodes: orderParentNodesFirst(parsedLegacy.nodes),
@@ -414,7 +731,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
   return [
     {
       id: 'page-1',
-      title: '主要流程',
+      title: T.flow.systemFlow.mainPageTitle,
       createdById: null,
       createdByName: null,
       nodes: orderParentNodesFirst(INITIAL_NODES),
@@ -425,6 +742,17 @@ function loadInitialPages(projectId: string): FlowPage[] {
 
 function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
+  // Ref: CR-140 整份文件的寫入統一走這一個出口 (日後改打 API 只需改這裡)
+  const savePagesToStore = useCallback(
+    (next: FlowPage[]) => {
+      try {
+        localStorage.setItem(storageKeyPages, JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+    },
+    [storageKeyPages]
+  )
   const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow()
   const { user } = useAuth()
   const { data: project } = useQuery({
@@ -515,8 +843,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   }, [nodes.length, projectId, activePageId])
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string } | null>(null)
-  const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string } | null>(null)
+  const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string; mode: FlowNodeType } | null>(null)
+  const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string; text: string } | null>(null)
   const [showHelpTooltip, setShowHelpTooltip] = useState(false)
 
   // 頁面重新命名與刪除狀態
@@ -538,11 +866,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       const next = [...prev]
       const [removed] = next.splice(srcIdx, 1)
       next.splice(tgtIdx, 0, removed)
-      try {
-        localStorage.setItem(storageKeyPages, JSON.stringify(next))
-      } catch {
-        // ignore
-      }
+      savePagesToStore(next)
       return next
     })
     setDraggedTabId(null)
@@ -558,11 +882,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       const temp = next[index]
       next[index] = next[targetIndex]
       next[targetIndex] = temp
-      try {
-        localStorage.setItem(storageKeyPages, JSON.stringify(next))
-      } catch {
-        // ignore
-      }
+      savePagesToStore(next)
       return next
     })
   }
@@ -576,14 +896,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         }
         return p
       })
-      try {
-        localStorage.setItem(storageKeyPages, JSON.stringify(updated))
-      } catch {
-        // ignore
-      }
+      savePagesToStore(updated)
       return updated
     })
-  }, [nodes, edges, activePageId, storageKeyPages])
+  }, [nodes, edges, activePageId, savePagesToStore])
 
   // 切換頁面
   const handleSwitchPage = (targetId: string) => {
@@ -607,7 +923,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   // 新增頁面
   const handleAddPage = () => {
     const newId = `page-${Date.now()}`
-    const newTitle = `流程頁面 ${pages.length + 1}`
+    const newTitle = T.flow.systemFlow.pageDefaultTitle(pages.length + 1)
     const newPage: FlowPage = {
       id: newId,
       title: newTitle,
@@ -622,11 +938,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setSelectedNodeId(null)
     setNodes([])
     setEdges([])
-    try {
-      localStorage.setItem(storageKeyPages, JSON.stringify(updated))
-    } catch {
-      // ignore
-    }
+    savePagesToStore(updated)
   }
 
   // 複製當前頁面
@@ -637,7 +949,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const sourceEdges = pageId === activePageId ? edges : source.edges
 
     const newId = `page-${Date.now()}`
-    const newTitle = `${source.title} (副本)`
+    const newTitle = T.flow.systemFlow.duplicateTitle(source.title)
     const newPage: FlowPage = {
       id: newId,
       title: newTitle,
@@ -652,11 +964,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setSelectedNodeId(null)
     setNodes(newPage.nodes)
     setEdges(newPage.edges)
-    try {
-      localStorage.setItem(storageKeyPages, JSON.stringify(updated))
-    } catch {
-      // ignore
-    }
+    savePagesToStore(updated)
     setTimeout(() => {
       fitView({ padding: 0.2, duration: 300 })
     }, 50)
@@ -684,11 +992,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       }, 50)
     }
     setPages(nextPages)
-    try {
-      localStorage.setItem(storageKeyPages, JSON.stringify(nextPages))
-    } catch {
-      // ignore
-    }
+    savePagesToStore(nextPages)
   }
 
   // 開始重新命名
@@ -704,11 +1008,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     if (trimmed) {
       setPages((prev) => {
         const updated = prev.map((p) => (p.id === editingPageId ? { ...p, title: trimmed } : p))
-        try {
-          localStorage.setItem(storageKeyPages, JSON.stringify(updated))
-        } catch {
-          // ignore
-        }
+        savePagesToStore(updated)
         return updated
       })
     }
@@ -723,11 +1023,32 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEdges((eds) => applyEdgeChanges(changes, eds))
   }, [])
 
+  // Ref: CR-140 記住使用者是從哪一顆接點開始拉的
+  const connectStartRef = useRef<{ handleType: string | null } | null>(null)
+
+  const onConnectStart = useCallback((_e: unknown, params: { handleType: string | null }) => {
+    connectStartRef.current = { handleType: params?.handleType ?? null }
+  }, [])
+
   const onConnect = useCallback((params: Connection) => {
     if (!params.source || !params.target) return
-    const edgeStyleAndMarker = getEdgeStyleAndMarker(params.sourceHandle)
+
+    // Ref: CR-140 寬鬆連線模式下，從「輸入接點」起拉時 React Flow 會把兩端對調，
+    // 這裡換回來：使用者放開滑鼠的那一端才是終點，箭頭永遠掛在終點
+    const startedFromTargetHandle = connectStartRef.current?.handleType === 'target'
+    const resolved: Connection = startedFromTargetHandle
+      ? {
+          source: params.target,
+          sourceHandle: toOutHandle(params.targetHandle),
+          target: params.source,
+          targetHandle: toInHandle(params.sourceHandle),
+        }
+      : params
+    connectStartRef.current = null
+
+    const edgeStyleAndMarker = getEdgeStyleAndMarker(resolved.sourceHandle)
     const newEdge: Edge = {
-      ...params,
+      ...resolved,
       id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       ...edgeStyleAndMarker,
     }
@@ -828,7 +1149,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           id: nodeId,
           label: data.label || '',
           desc: data.desc || '',
-          color: data.color || '#3b82f6',
+          color: data.color || '',
+          mode: (data.mode || (target.type as FlowNodeType) || 'step') as FlowNodeType,
         })
       }
       return currentNodes
@@ -869,8 +1191,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       type: 'step',
       position: { x: 200 + Math.random() * 80, y: 150 + Math.random() * 80 },
       data: {
-        label: '新流程步驟',
-        desc: '點擊 ✏️ 編輯內容描述',
+        label: T.flow.systemFlow.newStep,
+        desc: T.flow.systemFlow.newStepDesc,
         color: '#3b82f6',
         mode: 'step',
       },
@@ -888,7 +1210,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       position: { x: 180 + Math.random() * 60, y: 100 + Math.random() * 60 },
       style: { width: 360, height: 260 },
       data: {
-        label: '新系統模組',
+        label: T.flow.systemFlow.newBox,
         color: '#8b5cf6',
         mode: 'box',
       },
@@ -897,19 +1219,91 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setSelectedNodeId(newId)
   }
 
+  // Ref: CR-140 新增純文字註記
+  const handleAddText = () => {
+    const newId = `text-${Date.now()}`
+    const newNode: Node = {
+      id: newId,
+      type: 'text',
+      position: { x: 220 + Math.random() * 80, y: 120 + Math.random() * 80 },
+      data: {
+        label: T.flow.shared.annotation.newTextDefault,
+        color: '',
+        mode: 'text',
+      },
+    }
+    setNodes((nds) => orderParentNodesFirst([...nds, newNode]))
+    setSelectedNodeId(newId)
+  }
+
+  // Ref: CR-140 新增區域標示框 (只做視覺圈選，不建立隸屬關係)
+  const handleAddFrame = () => {
+    const newId = `frame-${Date.now()}`
+    const newNode: Node = {
+      id: newId,
+      type: 'frame',
+      position: { x: 140 + Math.random() * 60, y: 80 + Math.random() * 60 },
+      // Ref: CR-140 框身不吃指標事件，只有標題列與縮放柄可操作
+      style: { width: 420, height: 300, pointerEvents: 'none' },
+      data: {
+        label: T.flow.shared.annotation.newFrameDefault,
+        color: '#8b5cf6',
+        mode: 'frame',
+      },
+    }
+    setNodes((nds) => orderParentNodesFirst([newNode, ...nds]))
+    setSelectedNodeId(newId)
+  }
+
+  // Ref: CR-140 連線文字寫回 edge.data，跟著整份文件一起存
+  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
+    const trimmed = text.trim()
+    setEdges((eds) =>
+      eds.map((e) =>
+        e.id === edgeId ? { ...e, data: { ...(e.data || {}), text: trimmed } } : e
+      )
+    )
+  }, [])
+
+  // Ref: CR-140 折點位置寫回 edge.data，跟著整份文件一起存
+  const handleWaypointChange = useCallback((edgeId: string, point: { x: number; y: number }) => {
+    setEdges((eds) =>
+      eds.map((e) => (e.id === edgeId ? { ...e, data: { ...(e.data || {}), waypoint: point } } : e))
+    )
+  }, [])
+
+  const handleWaypointReset = useCallback((edgeId: string) => {
+    setEdges((eds) =>
+      eds.map((e) => (e.id === edgeId ? { ...e, data: { ...(e.data || {}), waypoint: null } } : e))
+    )
+  }, [])
+
   const nodesWithHandlers = useMemo(() => {
-    const mapped = nodes.map((node) => ({
+    const mapped = nodes.map((node) => {
+      // Ref: CR-140 區域標示框永遠墊在最底層
+      const nodeMode = (node.data as FlowNodeData)?.mode || node.type
+      const isFrame = nodeMode === 'frame'
+      return {
       ...node,
       draggable: true,
       selectable: true,
-      zIndex: node.id === selectedNodeId ? 30 : node.parentId ? 10 : (node.data as FlowNodeData)?.mode === 'box' ? 1 : 5,
+      zIndex: isFrame
+        ? 0
+        : node.id === selectedNodeId
+          ? 30
+          : node.parentId
+            ? 10
+            : nodeMode === 'box'
+              ? 1
+              : 5,
       data: {
         ...node.data,
         isSelected: node.id === selectedNodeId,
         onEdit: handleEditNode,
         onDelete: handleDeleteNode,
       },
-    }))
+      }
+    })
     return orderParentNodesFirst(mapped)
   }, [nodes, selectedNodeId, handleEditNode, handleDeleteNode])
 
@@ -919,7 +1313,15 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       return {
         ...e,
         ...edgeStyleAndMarker,
+        // Ref: CR-140 改用可掛文字的自訂連線
+        type: 'flowEdge',
         animated: false,
+        data: {
+          ...(e.data || {}),
+          onSaveText: handleSaveEdgeText,
+          onWaypointChange: handleWaypointChange,
+          onWaypointReset: handleWaypointReset,
+        },
         style: {
           ...edgeStyleAndMarker.style,
           strokeWidth: 2,
@@ -927,7 +1329,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         },
       }
     })
-  }, [edges])
+  }, [edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -935,10 +1337,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <span>🗺️</span> 系統流程圖
+            <span>🗺️</span> {T.flow.systemFlow.title}
           </span>
           <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-            | 多頁面獨立繪圖
+            {T.flow.systemFlow.subtitle}
           </span>
         </div>
 
@@ -948,14 +1350,31 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             onClick={handleAddStep}
             className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
-            <span>➕</span> 新增流程步驟
+            <span>➕</span> {T.flow.systemFlow.addStep}
           </button>
           <button
             type="button"
             onClick={handleAddBox}
             className="flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
           >
-            <span>📦</span> 新增模組容器
+            <span>📦</span> {T.flow.systemFlow.addBox}
+          </button>
+          {/* Ref: CR-140 */}
+          <button
+            type="button"
+            onClick={handleAddText}
+            title={T.flow.shared.annotation.addTextHint}
+            className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <span>📝</span> {T.flow.shared.annotation.addText}
+          </button>
+          <button
+            type="button"
+            onClick={handleAddFrame}
+            title={T.flow.systemFlow.addFrameHint}
+            className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <span>🏷️</span> {T.flow.shared.annotation.addFrame}
           </button>
         </div>
       </div>
@@ -963,7 +1382,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       {/* 多頁面切換標籤列 (Page Tabs) */}
       <div className="h-10 border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/50 px-4 flex items-center gap-1.5 overflow-x-auto select-none z-10 shrink-0">
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0 flex items-center gap-1">
-          <span>📄</span> 流程頁面：
+          <span>📄</span> {T.flow.systemFlow.pagesLabel}
         </span>
 
         {pages.map((p, idx) => {
@@ -1014,7 +1433,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               {/* 拖曳手柄圖示 */}
               <span
                 className="text-[10px] text-slate-400/80 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing select-none"
-                title="拖曳排序頁籤"
+                title={T.flow.systemFlow.tabDragHint}
               >
                 ⠿
               </span>
@@ -1036,7 +1455,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 <>
                   <span className="truncate max-w-[120px] font-semibold">{p.title}</span>
                   <span className="text-[10px] text-slate-400 font-normal">
-                    ({nodeCount} 個節點)
+                    {T.flow.systemFlow.nodeCount(nodeCount)}
                   </span>
 
                   {/* 左右微調移動按鈕 */}
@@ -1049,7 +1468,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                           handleMoveTab(idx, -1)
                         }}
                         className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
-                        title="向左移動頁籤"
+                        title={T.flow.systemFlow.tabMoveLeft}
                       >
                         ◀
                       </button>
@@ -1062,7 +1481,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                           handleMoveTab(idx, 1)
                         }}
                         className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
-                        title="向右移動頁籤"
+                        title={T.flow.systemFlow.tabMoveRight}
                       >
                         ▶
                       </button>
@@ -1077,7 +1496,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                       handleStartRenamePage(p.id, p.title)
                     }}
                     className="opacity-0 group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
-                    title="點擊重新命名 (或連點兩下標籤)"
+                    title={T.flow.systemFlow.tabRename}
                   >
                     ✏️
                   </button>
@@ -1090,7 +1509,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                       handleDuplicatePage(p.id)
                     }}
                     className="opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
-                    title="複製此頁面"
+                    title={T.flow.systemFlow.tabDuplicate}
                   >
                     📑
                   </button>
@@ -1104,7 +1523,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                         setConfirmDeletePage(p)
                       }}
                       className="opacity-0 group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 text-slate-400 p-0.5 rounded transition ml-0.5 cursor-pointer font-bold text-sm"
-                      title="刪除此流程頁面"
+                      title={T.flow.systemFlow.tabDelete}
                     >
                       ×
                     </button>
@@ -1119,9 +1538,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           type="button"
           onClick={handleAddPage}
           className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 text-xs font-medium transition cursor-pointer shrink-0"
-          title="新增流程頁面"
+          title={T.flow.systemFlow.addPageTitle}
         >
-          <span>➕</span> 新增頁面
+          <span>➕</span> {T.flow.systemFlow.addPage}
         </button>
       </div>
 
@@ -1131,21 +1550,32 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           nodes={nodesWithHandlers}
           edges={styledEdges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
-          onPaneClick={() => setSelectedNodeId(null)}
+          onPaneClick={() => {
+            // Ref: CR-140 拖折點時不要順手清掉選取
+            if (consumeEdgeDragGuard()) return
+            setSelectedNodeId(null)
+          }}
           onEdgeClick={(_e, edge) => {
+            // Ref: CR-140 這次互動是拖折點就不要開編輯視窗
+            if (consumeEdgeDragGuard()) return
             setConfirmDeleteEdge({
               edgeId: edge.id,
               source: edge.source,
               target: edge.target,
+              text: ((edge.data as FlowEdgeData | undefined)?.text as string) || '',
             })
           }}
           onMoveEnd={handleMoveEnd}
           connectionMode={ConnectionMode.Loose}
+          // Ref: CR-140 拉線當下的預覽線也要直角
+          connectionLineType={ConnectionLineType.Step}
           defaultViewport={savedViewport}
           fitView={!savedViewport}
           fitViewOptions={{ padding: 0.2 }}
@@ -1167,10 +1597,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             showInteractive={false}
             className="!bg-white dark:!bg-slate-800 !border !border-slate-200 dark:!border-slate-700 !shadow-lg !rounded-xl overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-700 dark:[&_button]:!text-slate-200 [&_button]:!border-b [&_button]:!border-slate-100 dark:[&_button]:!border-slate-700/60 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700"
           >
-            <ControlButton onClick={() => zoomIn({ duration: 300 })} title="放大畫布" aria-label="放大畫布">
+            <ControlButton onClick={() => zoomIn({ duration: 300 })} title={T.flow.shared.zoomIn} aria-label={T.flow.shared.zoomIn}>
               <span className="text-sm font-bold select-none">➕</span>
             </ControlButton>
-            <ControlButton onClick={() => zoomOut({ duration: 300 })} title="縮小畫布" aria-label="縮小畫布">
+            <ControlButton onClick={() => zoomOut({ duration: 300 })} title={T.flow.shared.zoomOut} aria-label={T.flow.shared.zoomOut}>
               <span className="text-sm font-bold select-none">➖</span>
             </ControlButton>
             <ControlButton
@@ -1195,15 +1625,15 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 const midY = minY !== Infinity ? (minY + maxY) / 2 : 0
                 setCenter(midX, midY, { zoom: 1, duration: 300 })
               }}
-              title="置中視野 (100% 原始比例)"
-              aria-label="置中視野"
+              title={T.flow.shared.centerTitle}
+              aria-label={T.flow.shared.center}
             >
               <span className="text-sm select-none">🎯</span>
             </ControlButton>
             <ControlButton
               onClick={() => fitView({ padding: 0.12, duration: 350, minZoom: 0.05 })}
-              title="顯示全部 (縮放容納所有節點)"
-              aria-label="顯示全部"
+              title={T.flow.systemFlow.fitAllTitle}
+              aria-label={T.flow.shared.fitAll}
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -1213,8 +1643,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               onClick={() => setShowHelpTooltip((prev) => !prev)}
               onMouseEnter={() => setShowHelpTooltip(true)}
               onMouseLeave={() => setShowHelpTooltip(false)}
-              title="流程圖示說明"
-              aria-label="圖示說明"
+              title={T.flow.systemFlow.legendTitle}
+              aria-label={T.flow.shared.legend}
               className="!text-amber-500 font-bold"
             >
               ℹ️
@@ -1232,23 +1662,30 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2.5">
               <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
                 <span>ℹ️</span>
-                <span>系統流程圖示說明</span>
+                <span>{T.flow.systemFlow.help.title}</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-normal">流程圖例</span>
+              <span className="text-[10px] text-slate-400 font-normal">{T.flow.systemFlow.help.subtitle}</span>
             </div>
 
             <div className="space-y-3 leading-relaxed text-slate-600 dark:text-slate-300">
               {/* 流程節點 */}
               <div>
                 <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
-                  <span>📦</span> 節點與容器
+                  <span>📦</span> {T.flow.systemFlow.help.nodeSection}
                 </div>
                 <div className="space-y-1 pl-1 text-[11px]">
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 流程步驟</span>：代表具體系統行為、API 呼叫或操作。
+                    <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">{T.flow.systemFlow.help.step}</span>{T.flow.systemFlow.help.stepDesc}
                   </p>
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400">📦 模組容器</span>：系統子模組，可拖曳收納多個步驟。
+                    <span className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400">{T.flow.systemFlow.help.box}</span>{T.flow.systemFlow.help.boxDesc}
+                  </p>
+                  {/* Ref: CR-140 */}
+                  <p className="flex items-start gap-1.5">
+                    <span className="shrink-0 font-semibold text-slate-600 dark:text-slate-300">{T.flow.systemFlow.help.text}</span>{T.flow.systemFlow.help.textDesc}
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="shrink-0 font-semibold text-violet-600 dark:text-violet-400">{T.flow.systemFlow.help.frame}</span>{T.flow.systemFlow.help.frameDesc}
                   </p>
                 </div>
               </div>
@@ -1256,17 +1693,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               {/* 連接點與線條 */}
               <div>
                 <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
-                  <span>🔗</span> 四向接點與連線
+                  <span>🔗</span> {T.flow.systemFlow.help.edgeSection}
                 </div>
                 <div className="space-y-1 pl-1 text-[11px]">
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-blue-500">🔵 左右連接</span>：標準水平流程線，代表先後次序。
+                    <span className="shrink-0 font-semibold text-blue-500">{T.flow.systemFlow.help.horizontal}</span>{T.flow.systemFlow.help.horizontalDesc}
                   </p>
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-purple-500">🟣 上下連接</span>：模組輔助或跨層連線。
+                    <span className="shrink-0 font-semibold text-purple-500">{T.flow.systemFlow.help.vertical}</span>{T.flow.systemFlow.help.verticalDesc}
+                  </p>
+                  {/* Ref: CR-140 */}
+                  <p className="flex items-start gap-1.5">
+                    <span className="shrink-0 font-semibold">{T.flow.systemFlow.help.clickEdge}</span>{T.flow.systemFlow.help.clickEdgeDesc}
                   </p>
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold">⚙ 點擊連線</span>：點擊任一連線即可一鍵確認刪除。
+                    <span className="shrink-0 font-semibold">{T.flow.systemFlow.help.arrow}</span>{T.flow.systemFlow.help.arrowDesc}
                   </p>
                 </div>
               </div>
@@ -1280,39 +1721,65 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-              <span>✏️</span> 編輯節點內容
+              <span>✏️</span>{' '}
+              {editingNode.mode === 'text'
+                ? T.flow.shared.annotation.editTextTitle
+                : editingNode.mode === 'frame'
+                  ? T.flow.shared.annotation.editFrameTitle
+                  : T.flow.systemFlow.editNodeContent}
             </h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  節點標題
+                  {editingNode.mode === 'text'
+                    ? T.flow.shared.annotation.fieldTextContent
+                    : editingNode.mode === 'frame'
+                      ? T.flow.shared.annotation.fieldFrameLabel
+                      : T.flow.systemFlow.fieldNodeLabel}
                 </label>
-                <input
-                  type="text"
-                  value={editingNode.label}
-                  onChange={(e) => setEditingNode({ ...editingNode, label: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                  placeholder="例如：API 閘道 (Gateway)"
-                />
+                {/* Ref: CR-140 */}
+                {editingNode.mode === 'text' ? (
+                  <textarea
+                    value={editingNode.label}
+                    onChange={(e) => setEditingNode({ ...editingNode, label: e.target.value })}
+                    rows={3}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                    placeholder={T.flow.shared.annotation.textPlaceholder}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={editingNode.label}
+                    onChange={(e) => setEditingNode({ ...editingNode, label: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    placeholder={T.flow.systemFlow.nodeLabelPlaceholder}
+                  />
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  詳細說明 (選填)
-                </label>
-                <textarea
-                  value={editingNode.desc}
-                  onChange={(e) => setEditingNode({ ...editingNode, desc: e.target.value })}
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                  placeholder="補充說明此步驟或模組之功能職責…"
-                />
-              </div>
+              {(editingNode.mode === 'step' || editingNode.mode === 'box') && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    {T.flow.systemFlow.fieldDesc}
+                  </label>
+                  <textarea
+                    value={editingNode.desc}
+                    onChange={(e) => setEditingNode({ ...editingNode, desc: e.target.value })}
+                    rows={3}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                    placeholder={T.flow.systemFlow.descPlaceholder}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
-                  主題識別色
+                  {editingNode.mode === 'text'
+                    ? T.flow.shared.annotation.fieldTextColor
+                    : editingNode.mode === 'frame'
+                      ? T.flow.shared.annotation.fieldFrameColor
+                      : T.flow.systemFlow.fieldThemeColor}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {COLOR_OPTIONS.map((opt) => (
@@ -1341,14 +1808,14 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 onClick={() => setEditingNode(null)}
                 className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
               >
-                取消
+                {T.common.cancel}
               </button>
               <button
                 type="button"
                 onClick={handleSaveEdit}
                 className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition cursor-pointer"
               >
-                儲存變更
+                {T.flow.systemFlow.saveChanges}
               </button>
             </div>
           </div>
@@ -1359,20 +1826,26 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       {confirmDeleteEdge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
-              <span>🗑️</span> 刪除流程連線
+            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <span>🔗</span> {T.flow.systemFlow.edgeModalTitle}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
-              是否確定要刪除這條流程連接線？
+
+            {/* Ref: CR-140 連線文字 (留空即不顯示標籤) */}
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+              {T.flow.systemFlow.fieldEdgeText}
+            </label>
+            <input
+              type="text"
+              value={confirmDeleteEdge.text}
+              onChange={(e) => setConfirmDeleteEdge({ ...confirmDeleteEdge, text: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              placeholder={T.flow.systemFlow.edgeTextPlaceholder}
+            />
+            <p className="mt-2 mb-4 text-[11px] text-slate-500 dark:text-slate-400">
+              {T.flow.systemFlow.edgeTextHelp}
             </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteEdge(null)}
-                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
-              >
-                取消
-              </button>
+
+            <div className="flex justify-between gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1381,8 +1854,27 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 }}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
               >
-                確定刪除
+                {T.flow.systemFlow.deleteEdge}
               </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteEdge(null)}
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+                >
+                  {T.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSaveEdgeText(confirmDeleteEdge.edgeId, confirmDeleteEdge.text)
+                    setConfirmDeleteEdge(null)
+                  }}
+                  className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
+                >
+                  {T.flow.systemFlow.saveChanges}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1393,10 +1885,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
-              <span>🗑️</span> 刪除流程頁面
+              <span>🗑️</span> {T.flow.systemFlow.deletePageTitle}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
-              是否確定要刪除「<strong>{confirmDeletePage.title}</strong>」？此頁面內的全部節點與流程連線將一併移除。
+              {T.flow.systemFlow.deletePageMessage.before}<strong>{confirmDeletePage.title}</strong>{T.flow.systemFlow.deletePageMessage.after}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -1404,14 +1896,14 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 onClick={() => setConfirmDeletePage(null)}
                 className="rounded-lg border border-slate-300 dark:border-slate-600 px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
               >
-                取消
+                {T.common.cancel}
               </button>
               <button
                 type="button"
                 onClick={() => handleDeletePage(confirmDeletePage.id)}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
               >
-                確定刪除
+                {T.flow.shared.confirmDelete}
               </button>
             </div>
           </div>

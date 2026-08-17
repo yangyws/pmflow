@@ -142,8 +142,7 @@ CP=$(echo "$SCH" | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["c
 echo "── 13. 不成環的排程依賴要建得起來 ──"
 # 這一項是為了守住「只有真的成環才擋」。少了它，環偵測寫成永遠回報成環
 # 也一樣看不出來 —— 下一項本來就預期 409，兩種錯法給的結果一模一樣。
-# 掛在大項目底下開 —— 任務不能站在最上層（見 AGENTS.md「任務種類的上下關係」），
-# 少了 parentId 這兩張根本開不出來，後面全部連鎖失敗
+# Ref: CR-142 —— 種類階層限制已全數解鎖，這裡掛在大項目底下只是沿用既有的測試資料形狀
 NEWA=$(mk "{\"title\":\"環偵測用－上游\",\"parentId\":\"$T_EPIC\"}")
 NEWB=$(mk "{\"title\":\"環偵測用－下游\",\"parentId\":\"$T_EPIC\"}")
 C=$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -H 'content-type: application/json' \
@@ -476,6 +475,223 @@ chkc "自己開的任務：改標題 → 200" "200" "$JT" -X PATCH $API/tasks/$P
 chkc "專案管理者：改別人開的任務 → 200" "200" "$TOK" -X PATCH $API/tasks/$P_J -d '{"title":"管理者改的"}'
 
 del "$P_J" "$P_T" "$P_EPIC"
+
+echo "── 28. 圖的排版存進資料庫，專案共用（Ref: CR-138）──"
+# 規則：畫布排版是**專案共用**的，不是個人偏好 —— 甲排好的版，乙進來要看到同一份。
+# 所以這一段測的重點不是「存得進去」，而是三件會被人忽略的事：
+#   ① 換一個帳號讀出來是一樣的（不然就跟原本存在 localStorage 沒有差別）
+#   ② 逐節點合併時，沒送到的那些節點一個字都不會被動到（兩個人各拖各的不互蓋）
+#   ③ 整份 jsonb 的那一種擋得住覆蓋（帶過期的版本要回 409，不是默默蓋掉）
+CV_A=$(mk '{"title":"排版測試－甲"}')
+CV_B=$(mk '{"title":"排版測試－乙"}')
+
+# CVN <節點 id> <欄位> [token] [視角] —— 讀某個節點在畫布上的某個值
+CVN(){ curl -s -H "Authorization: Bearer ${3:-$TOK}" $API/projects/$PID/canvas/${4:-simple-graph} \
+  | python3 -c "
+import sys, json
+v = json.load(sys.stdin)['nodes'].get('$1', {}).get('$2', '')
+print(int(v) if isinstance(v, (int, float)) else v)" | tr -d '\r'; }
+
+chkc "整份存排版 → 200" "200" "$TOK" -X PUT $API/projects/$PID/canvas/simple-graph \
+  -d "{\"nodes\":{\"$CV_A\":{\"x\":100,\"y\":200,\"width\":300,\"height\":120,\"mode\":\"card\"},\"$CV_B\":{\"x\":500,\"y\":260}}}"
+chk "座標讀得回來" "$(CVN "$CV_A" x)" "100"
+chk "收納盒尺寸也存得下來" "$(CVN "$CV_A" width)" "300"
+# ① 這一項是整件事的重點：排版不是個人偏好
+chk "換一個帳號讀到同一份排版" "$(CVN "$CV_A" x "$JT")" "100"
+
+# ② 逐節點合併：Jack 只拖了甲，demo 排的乙不該受影響
+chkc "逐節點合併存檔 → 200" "200" "$JT" -X PATCH $API/projects/$PID/canvas/simple-graph \
+  -d "{\"nodes\":{\"$CV_A\":{\"x\":111,\"y\":222}}}"
+chk "有送到的節點被改掉" "$(CVN "$CV_A" x)" "111"
+chk "沒送到的節點位置沒被蓋掉" "$(CVN "$CV_B" x)" "500"
+
+# 欄位層級也是合併的 —— 只切換收納模式不該把座標洗成空的
+chkc "只送收納模式 → 200" "200" "$TOK" -X PATCH $API/projects/$PID/canvas/simple-graph \
+  -d "{\"nodes\":{\"$CV_A\":{\"mode\":\"box\"}}}"
+chk "收納模式存下來了" "$(CVN "$CV_A" mode)" "box"
+chk "只送模式不會把座標洗掉" "$(CVN "$CV_A" x)" "111"
+
+chkc "把某個節點的排版拿掉 → 200" "200" "$TOK" -X PATCH $API/projects/$PID/canvas/simple-graph \
+  -d "{\"nodes\":{},\"remove\":[\"$CV_B\"]}"
+chk "拿掉的節點讀不到了" "$(CVN "$CV_B" x)" ""
+
+chkc "視角代號不合法 → 400" "400" "$TOK" -X PUT $API/projects/$PID/canvas/BadKey -d '{"nodes":{}}'
+chkc "不是自己的專案 → 403" "403" "$TOK" \
+  $API/projects/00000000-0000-0000-0000-000000000000/canvas/simple-graph
+
+# ③ 系統流程圖是「整份文件」，走 jsonb 那一種
+chkc "存整份系統流程圖 → 200" "200" "$TOK" -X PUT $API/projects/$PID/canvas-docs/system-flow \
+  -d '{"data":{"pages":[{"id":"page-1","title":"主要流程","nodes":[],"edges":[]}]}}'
+DOCT(){ curl -s -H "Authorization: Bearer ${1:-$TOK}" $API/projects/$PID/canvas-docs/system-flow \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['pages'][0]['title'])" | tr -d '\r'; }
+chk "整份內容讀得回來" "$(DOCT)" "主要流程"
+chk "換一個帳號看到同一份流程圖" "$(DOCT "$JT")" "主要流程"
+
+chkc "帶過期的版本要存 → 409" "409" "$TOK" -X PUT $API/projects/$PID/canvas-docs/system-flow \
+  -d '{"data":{"pages":[]},"baseUpdatedAt":"2020-01-01T00:00:00.000Z"}'
+chk "被擋下來之後內容沒有被動到" "$(DOCT)" "主要流程"
+DOCTS=$(curl -s -H "$AUTH" $API/projects/$PID/canvas-docs/system-flow \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['updatedAt'])" | tr -d '\r')
+chkc "帶正確的版本要存 → 200" "200" "$TOK" -X PUT $API/projects/$PID/canvas-docs/system-flow \
+  -d "{\"data\":{\"pages\":[{\"id\":\"page-1\",\"title\":\"改過的流程\",\"nodes\":[],\"edges\":[]}]},\"baseUpdatedAt\":\"$DOCTS\"}"
+chk "存進去的是新的內容" "$(DOCT)" "改過的流程"
+# DELETE 沒有內容，不能沿用 chkc（它一律宣告 content-type: application/json，
+# Fastify 會先擋掉空 body，測到的就不是這支端點了）——理由同第 27 項
+chk "刪掉整份 → 204" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" \
+     -X DELETE $API/projects/$PID/canvas-docs/system-flow)" "204"
+chk "刪掉之後讀到 null" \
+  "$(curl -s -H "$AUTH" $API/projects/$PID/canvas-docs/system-flow \
+     | python3 -c "import sys,json;print(json.load(sys.stdin)['data'])" | tr -d '\r')" "None"
+
+# 關聯線兩端的接點掛在關聯線上，關聯圖要跟著邊一起帶回來
+CV_L=$(curl -s -H "$AUTH" -H 'content-type: application/json' -X POST $API/tasks/$CV_A/links \
+  -d "{\"targetId\":\"$CV_B\",\"linkType\":\"FS\"}" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
+chkc "存關聯線的接點 → 200" "200" "$TOK" -X PATCH $API/links/$CV_L/handles \
+  -d '{"sourceHandle":"right-source","targetHandle":"left-target"}'
+chk "關聯圖把接點一起帶回來" \
+  "$(curl -s -H "$AUTH" $API/projects/$PID/graph \
+     | python3 -c "import sys,json;print(([e for e in json.load(sys.stdin)['edges'] if e['id']=='$CV_L'] or [{}])[0].get('sourceHandle',''))" | tr -d '\r')" \
+  "right-source"
+
+chk "重置排版 → 204" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" \
+     -X DELETE $API/projects/$PID/canvas/simple-graph)" "204"
+chk "重置之後整個視角是空的" "$(CVN "$CV_A" x)" ""
+
+del "$CV_A" "$CV_B"
+
+echo "── 29. 非關係人不得異動別人建立的資料：關聯線與對外詢問單（Ref: CR-130）──"
+# 規則見 CR-130：角色過了還要是「關係人」（系統管理者／專案管理者／開單人／負責人／代理人）。
+# 沿用第 23 項那個 Jack（$JT）—— 他是專案 EDITOR，但下面這兩張任務跟他完全無關。
+# **關聯線只驗發起的那一端**：跨人依賴（我的任務要等你的做完）是核心用法，
+# 兩端都驗等於把它整個關掉，所以「成功面」那一項是防回歸用的，不能拿掉。
+# 任務本身的「改不動 / 只填問題可以」在第 27 項已經驗過，這裡不重複。
+S_A=$(mk '{"title":"關係人規則－demo 的任務甲"}')
+S_B=$(mk '{"title":"關係人規則－demo 的任務乙"}')
+S_J=$(curl -s -H "Authorization: Bearer $JT" -H 'content-type: application/json' \
+  -X POST $API/projects/$PID/tasks -d '{"title":"關係人規則－Jack 的任務"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
+[ -n "$S_J" ] && ok "Jack 開得了自己的任務（跨人依賴的起點）" || no "Jack 開任務" "開不出來"
+
+# ── 關聯線：建立驗發起端 ──
+chkcw "別人的任務：從它拉一條關聯線出去 → 403" "403" "關聯線" "$JT" \
+  -X POST $API/tasks/$S_A/links -d "{\"targetId\":\"$S_B\",\"linkType\":\"FS\"}"
+chkc "跨人依賴：Jack 從自己的任務拉 FS 指到 demo 的任務 → 201" "201" "$JT" \
+  -X POST $API/tasks/$S_J/links -d "{\"targetId\":\"$S_A\",\"linkType\":\"FS\"}"
+
+# ── 關聯線：刪除也驗發起端 ──
+S_L=$(curl -s -H "$AUTH" -H 'content-type: application/json' -X POST $API/tasks/$S_A/links \
+  -d "{\"targetId\":\"$S_B\",\"linkType\":\"FS\"}" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
+[ -n "$S_L" ] && ok "demo 在自己兩張任務之間建了一條關聯線" || no "建關聯線" "建不出來"
+# DELETE 沒有內容，不能沿用 chkc（理由同第 27 項）
+chk "別人任務上的關聯線：非關係人剪不掉 → 403" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $JT" -X DELETE $API/links/$S_L)" "403"
+chk "同一條線：關係人自己剪得掉 → 204" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -X DELETE $API/links/$S_L)" "204"
+
+# ── 對外詢問單：改／重開／刪要守門，登錄回覆刻意開放 ──
+S_Q=$(ASK "$S_A" "資訊部" "$SOON")
+[ -n "$S_Q" ] && ok "demo 在自己的任務上開了一筆對外詢問" || no "開詢問單" "開不出來"
+chkcw "別人開的詢問單：改題目 → 403" "403" "對外詢問單" "$JT" \
+  -X PATCH $API/inquiries/$S_Q -d '{"question":"Jack 偷改的"}'
+chkc "別人開的詢問單：抽回已回覆狀態 → 403" "403" "$JT" \
+  -X POST $API/inquiries/$S_Q/reopen -d '{}'
+chk "別人開的詢問單：刪掉 → 403" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $JT" -X DELETE $API/inquiries/$S_Q)" "403"
+chk "被擋下來之後題目沒有被改掉" \
+  "$(curl -s -H "Authorization: Bearer $JT" $API/tasks/$S_A \
+     | python3 -c "import sys,json;print(([i for i in json.load(sys.stdin)['inquiries'] if i['id']=='$S_Q'] or [{}])[0].get('question',''))" | tr -d '\r')" \
+  "e2e"
+chkc "登錄回覆刻意開放給所有專案成員 → 200" "200" "$JT" \
+  -X POST $API/inquiries/$S_Q/mark-replied -d '{"repliedByUnit":"資訊部"}'
+chk "登錄完彙總變成 REPLIED" "$(field "$S_A" inquiryState)" "REPLIED"
+chkc "開單人自己改得動題目 → 200" "200" "$TOK" \
+  -X PATCH $API/inquiries/$S_Q -d '{"question":"demo 自己改的"}'
+chkc "開單人自己刪得掉整筆詢問 → 204" "204" "$TOK" -X DELETE $API/inquiries/$S_Q -d '{}'
+
+del "$S_J" "$S_B" "$S_A"
+
+echo "── 30. 父任務不能跨專案、帳號清單與身分切換要收緊（Ref: CR-134）──"
+PID2=$(echo "$PROJ" | python3 -c 'import sys,json;d=json.load(sys.stdin)["projects"];print(([p for p in d if p["key"]!="MRG"] or [{}])[0].get("id",""))' | tr -d '\r')
+[ -n "$PID2" ] && ok "找得到第二個專案（跨專案測試用）" || no "第二個專案" "只有一個專案，下面幾項會連帶失敗"
+
+X_OUT=$(curl -s -H "$AUTH" -H 'content-type: application/json' -X POST $API/projects/$PID2/tasks \
+  -d '{"title":"跨專案規則－別的專案的任務"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
+[ -n "$X_OUT" ] && ok "在另一個專案開了一張任務" || no "開任務" "開不出來"
+X_IN=$(mk '{"title":"跨專案規則－本專案的父任務"}')
+X_CH=$(mk "{\"title\":\"跨專案規則－本專案的子任務\",\"parentId\":\"$X_IN\"}")
+
+# ── ① 建立 ──
+mkok "建立：父任務在同一個專案 → 可以" \
+  "{\"title\":\"跨專案規則－同專案子任務\",\"parentId\":\"$X_IN\"}"; X_OK=$MKID
+chkcw "建立：父任務在別的專案 → 400" "400" "父任務" "$TOK" \
+  -X POST $API/projects/$PID/tasks -d "{\"title\":\"跨專案規則－跨專案子任務\",\"parentId\":\"$X_OUT\"}"
+# ── ② 改上層 ──
+chkc "改上層：搬到同專案的父任務底下 → 200" "200" "$TOK" \
+  -X PATCH $API/tasks/$X_CH -d "{\"parentId\":\"$X_IN\"}"
+chkcw "改上層：搬到別的專案的任務底下 → 400" "400" "父任務" "$TOK" \
+  -X PATCH $API/tasks/$X_CH -d "{\"parentId\":\"$X_OUT\"}"
+# ── ③ 拖曳 ──
+chkc "拖曳：拖到同專案的父任務底下 → 200" "200" "$TOK" \
+  -X POST $API/tasks/$X_CH/move -d "{\"parentId\":\"$X_IN\"}"
+chkcw "拖曳：拖到別的專案的任務底下 → 400" "400" "父任務" "$TOK" \
+  -X POST $API/tasks/$X_CH/move -d "{\"parentId\":\"$X_OUT\"}"
+chk "三條路徑都擋住之後，上層還在原本的專案裡" "$(field "$X_CH" parentId)" "$X_IN"
+
+del "$X_OK" "$X_CH" "$X_IN" "$X_OUT"
+
+# ── 帳號清單：整份通訊錄不是任何成員都能撈的 ──
+chkcw "帳號清單：一般成員撈不走整份通訊錄 → 403" "403" "工作區管理者" "$JT" \
+  "$API/admin/users?workspaceId=$WSID"
+chkc "帳號清單：工作區擁有者看得到 → 200" "200" "$TOK" "$API/admin/users?workspaceId=$WSID"
+
+# ── 身分切換：這支端點直接發別人的權杖，只准工作區 OWNER/ADMIN 用 ──
+# 「一般使用者打不動」不管站有沒有開放都成立，所以一律驗；
+# 後面兩項要看這個站開不開放（CR-137 起正式環境預設關閉，容器裡跑的就是關的），
+# 所以先探一次再決定驗哪一組 —— 兩條路都各驗兩項，通過數在哪個環境都一樣。
+chkc "身分切換：一般使用者不能用 → 403" "403" "$JT" \
+  -X POST $API/auth/impersonate -d "{\"targetUserId\":\"$DEMOID\"}"
+IMP=$(apic "$TOK" -X POST $API/auth/impersonate -d "{\"targetUserId\":\"$JID\"}")
+IMPC=$(echo "$IMP" | tail -1); IMPB=$(echo "$IMP" | head -n -1)
+if echo "$IMPB" | grep -q "沒有開放身分切換"; then
+  # 這個站把身分切換關掉了（正式環境的預設）—— 那就連工作區擁有者也不該切得動
+  chk "身分切換：這個站關閉了這支端點，連工作區擁有者也擋 → 403" "$IMPC" "403"
+  chkcw "身分切換：關閉時要講清楚是「沒有開放」而不是權限不足" "403" "沒有開放身分切換" "$TOK" \
+    -X POST $API/auth/impersonate -d '{"targetUserId":"00000000-0000-0000-0000-000000000000"}'
+else
+  chk "身分切換：工作區擁有者切同工作區的人 → 200" "$IMPC" "200"
+  chkc "身分切換：切不到不在自己工作區的帳號 → 400" "400" "$TOK" \
+    -X POST $API/auth/impersonate -d '{"targetUserId":"00000000-0000-0000-0000-000000000000"}'
+fi
+
+echo "── 31. COMMENTER 角色已移除（Ref: CR-145）──"
+# 用隨機信箱，讓這支腳本可以對同一個資料庫重複執行；驗完就把他移出專案
+BOBMAIL="bob-$(date +%s)-$RANDOM@example.com"
+curl -s -o /dev/null -X POST $API/auth/register -H 'content-type: application/json; charset=utf-8' \
+  -d "{\"email\":\"$BOBMAIL\",\"password\":\"hunter2024\",\"displayName\":\"Bob\"}"
+BT=$(curl -s -X POST $API/auth/login -H 'content-type: application/json' \
+  -d "{\"email\":\"$BOBMAIL\",\"password\":\"hunter2024\"}" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("accessToken",""))' | tr -d '\r')
+BOBID=$(curl -s -H "Authorization: Bearer $BT" $API/auth/me \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["user"]["id"])' | tr -d '\r')
+[ -n "$BOBID" ] && ok "另外註冊一個帳號來驗角色值" || no "註冊" "$BOBMAIL 開不出來"
+
+chkc "加成員：送已移除的 COMMENTER → 400" "400" "$TOK" \
+  -X POST $API/projects/$PID/members -d "{\"userId\":\"$BOBID\",\"role\":\"COMMENTER\"}"
+chkc "加成員：送還在的檢視者 → 201" "201" "$TOK" \
+  -X POST $API/projects/$PID/members -d "{\"userId\":\"$BOBID\",\"role\":\"VIEWER\"}"
+chkc "改角色：送已移除的 COMMENTER → 400" "400" "$TOK" \
+  -X PATCH $API/projects/$PID/members/$BOBID -d '{"role":"COMMENTER"}'
+chkc "改角色：送還在的編輯者 → 200" "200" "$TOK" \
+  -X PATCH $API/projects/$PID/members/$BOBID -d '{"role":"EDITOR"}'
+# DELETE 沒有內容，不能沿用 chkc（理由同第 27 項）
+chk "把測試用的成員移出專案 → 204" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" \
+     -X DELETE $API/projects/$PID/members/$BOBID)" "204"
 
 # 前面幾項開出來的任務也一起收掉。留著的話對同一個資料庫每跑一次就多四張，
 # 到最後得靠 clean-demo-junk.bat 去撿 —— 測試自己製造的垃圾自己收。

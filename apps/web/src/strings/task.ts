@@ -155,7 +155,6 @@ export const task = {
   /** 活動紀錄的每一行 */
   activity: {
     created: '建立了這張任務',
-    comment: (text: string) => `留言：${text}`,
     linkChange: (label: string) => `調整相依（${label}）`,
     inquiryAsk: (unit: string) => `詢問 ${unit}`,
     inquiryReply: (unit: string) => `登錄回覆${unit ? `（${unit}）` : ''}`,

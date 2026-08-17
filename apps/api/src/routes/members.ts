@@ -22,7 +22,8 @@ import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
  * 待審的申請靠畫面上的數字提醒，不會有人收到信卻沒地方處理。
  */
 
-const ROLES = ['MANAGER', 'EDITOR', 'COMMENTER', 'VIEWER'] as const
+// Ref: CR-145
+const ROLES = ['MANAGER', 'EDITOR', 'VIEWER'] as const
 
 /**
  * 成員頁那兩份清單要的欄位。刻意比 tasks.ts 的 TASK_COLUMNS 少 ——

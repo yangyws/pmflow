@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Button, cx } from '../components/ui'
 import { useQuery } from '@tanstack/react-query'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js/lib/core'
+import hlTypescript from 'highlight.js/lib/languages/typescript'
+import hlJavascript from 'highlight.js/lib/languages/javascript'
+import hlXml from 'highlight.js/lib/languages/xml'
+import hlCss from 'highlight.js/lib/languages/css'
+import hlJson from 'highlight.js/lib/languages/json'
+import hlSql from 'highlight.js/lib/languages/sql'
+import hlJava from 'highlight.js/lib/languages/java'
+import hlBash from 'highlight.js/lib/languages/bash'
+import hlPython from 'highlight.js/lib/languages/python'
+import hlYaml from 'highlight.js/lib/languages/yaml'
+import hlMarkdown from 'highlight.js/lib/languages/markdown'
 import { Api } from '../lib/api'
 import { T } from '../strings'
 
@@ -13,6 +26,146 @@ export interface PlaygroundSnippet {
   code: string
   updatedAt: number
 }
+
+// Ref: CR-135
+hljs.registerLanguage('typescript', hlTypescript)
+hljs.registerLanguage('javascript', hlJavascript)
+hljs.registerLanguage('xml', hlXml)
+hljs.registerLanguage('css', hlCss)
+hljs.registerLanguage('json', hlJson)
+hljs.registerLanguage('sql', hlSql)
+hljs.registerLanguage('java', hlJava)
+hljs.registerLanguage('bash', hlBash)
+hljs.registerLanguage('python', hlPython)
+hljs.registerLanguage('yaml', hlYaml)
+hljs.registerLanguage('markdown', hlMarkdown)
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+const mermaidBox = (source: string) => `
+  <div class="my-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 p-4">
+    <div class="flex items-center justify-between pb-2 border-b border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300 mb-3">
+      <span>📊 Mermaid 流程圖</span>
+      <span class="text-[10px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 font-mono">graph LR</span>
+    </div>
+    <div class="flex flex-wrap items-center justify-center gap-3 py-2 text-xs font-semibold">
+      <div class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 shadow-xs">需求分析</div>
+      <span class="text-blue-500 font-bold">➔</span>
+      <div class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-xs">系統設計</div>
+      <span class="text-blue-500 font-bold">➔</span>
+      <div class="flex flex-col gap-1.5">
+        <div class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-300 shadow-xs text-center">前後端開發</div>
+        <div class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-300 shadow-xs text-center">測試驗收</div>
+      </div>
+      <span class="text-emerald-500 font-bold">➔</span>
+      <div class="px-3 py-2 rounded-lg bg-emerald-500 text-white font-bold shadow-md">發布上線</div>
+    </div>
+    <div class="mt-2 text-[10px] text-slate-400 font-mono bg-slate-900/10 dark:bg-slate-900/50 p-2 rounded overflow-x-auto whitespace-pre">${escapeHtml(source.trim())}</div>
+  </div>
+`
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: false,
+  highlight(code, lang) {
+    const key = (lang || '').trim().toLowerCase()
+    if (key && hljs.getLanguage(key)) {
+      try {
+        const body = hljs.highlight(code, { language: key, ignoreIllegals: true }).value
+        return `<pre class="pmf-code"><code class="hljs language-${escapeHtml(key)}">${body}</code></pre>`
+      } catch {}
+    }
+    return `<pre class="pmf-code"><code class="hljs">${escapeHtml(code)}</code></pre>`
+  },
+})
+
+const baseFence = md.renderer.rules.fence
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  if (tokens[idx].info.trim().toLowerCase() === 'mermaid') return mermaidBox(tokens[idx].content)
+  return baseFence
+    ? baseFence(tokens, idx, options, env, self)
+    : self.renderToken(tokens, idx, options)
+}
+
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  tokens[idx].attrSet('target', '_blank')
+  tokens[idx].attrSet('rel', 'noopener noreferrer nofollow')
+  return self.renderToken(tokens, idx, options)
+}
+
+md.core.ruler.after('inline', 'pmf_task_list', (state) => {
+  const toks = state.tokens
+  for (let i = 2; i < toks.length; i++) {
+    if (toks[i].type !== 'inline' || toks[i - 2].type !== 'list_item_open') continue
+    const hit = /^\[([ xX])\][ \t]+/.exec(toks[i].content)
+    if (!hit) continue
+    toks[i].content = toks[i].content.slice(hit[0].length)
+    const head = toks[i].children?.[0]
+    if (head && head.type === 'text') head.content = head.content.replace(/^\[([ xX])\][ \t]+/, '')
+    toks[i - 2].attrJoin('class', hit[1] === ' ' ? 'pmf-task' : 'pmf-task pmf-task-done')
+  }
+  return true
+})
+
+// Ref: CR-135
+const MD_STYLES = `
+.pmf-md{font-size:13px;line-height:1.75;color:#334155;overflow-wrap:anywhere}
+.dark .pmf-md{color:#cbd5e1}
+.pmf-md>:first-child{margin-top:0}
+.pmf-md>:last-child{margin-bottom:0}
+.pmf-md h1{font-size:1.55em;font-weight:800;color:#2563eb;margin:0 0 .6em;padding-bottom:.3em;border-bottom:1px solid #e2e8f0}
+.dark .pmf-md h1{color:#60a5fa;border-color:#1e293b}
+.pmf-md h2{font-size:1.3em;font-weight:700;color:#0f172a;margin:1.4em 0 .5em;padding-bottom:.25em;border-bottom:1px solid #e2e8f0}
+.dark .pmf-md h2{color:#f1f5f9;border-color:#1e293b}
+.pmf-md h3{font-size:1.12em;font-weight:700;color:#0f172a;margin:1.2em 0 .4em}
+.pmf-md h4,.pmf-md h5,.pmf-md h6{font-weight:700;color:#0f172a;margin:1em 0 .4em}
+.dark .pmf-md h3,.dark .pmf-md h4,.dark .pmf-md h5,.dark .pmf-md h6{color:#f1f5f9}
+.pmf-md p{margin:.7em 0}
+.pmf-md a{color:#2563eb;text-decoration:underline}
+.dark .pmf-md a{color:#60a5fa}
+.pmf-md strong{font-weight:700;color:#0f172a}
+.dark .pmf-md strong{color:#f1f5f9}
+.pmf-md em{font-style:italic}
+.pmf-md s,.pmf-md del{opacity:.6}
+.pmf-md ul{list-style:disc;margin:.6em 0;padding-left:1.5em}
+.pmf-md ol{list-style:decimal;margin:.6em 0;padding-left:1.5em}
+.pmf-md li{margin:.25em 0}
+.pmf-md li>ul,.pmf-md li>ol{margin:.2em 0}
+.pmf-md li.pmf-task{list-style:none;margin-left:-1.35em}
+.pmf-md li.pmf-task::before{content:'\\2610\\00a0';color:#94a3b8}
+.pmf-md li.pmf-task-done::before{content:'\\2611\\00a0';color:#10b981}
+.pmf-md li.pmf-task-done{color:#059669}
+.dark .pmf-md li.pmf-task-done{color:#34d399}
+.pmf-md blockquote{margin:.8em 0;padding:.4em .9em;border-left:3px solid #3b82f6;background:rgba(59,130,246,.08);border-radius:0 .375rem .375rem 0;color:#475569}
+.dark .pmf-md blockquote{background:rgba(59,130,246,.14);color:#cbd5e1}
+.pmf-md hr{margin:1.2em 0;border:0;border-top:1px solid #e2e8f0}
+.dark .pmf-md hr{border-color:#1e293b}
+.pmf-md table{border-collapse:collapse;margin:.9em 0;font-size:.95em;display:block;width:max-content;max-width:100%;overflow-x:auto}
+.pmf-md th,.pmf-md td{border:1px solid #e2e8f0;padding:.4em .75em;text-align:left}
+.dark .pmf-md th,.dark .pmf-md td{border-color:#334155}
+.pmf-md th{background:#f1f5f9;font-weight:700;color:#0f172a}
+.dark .pmf-md th{background:#1e293b;color:#f1f5f9}
+.pmf-md code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;padding:.1em .4em;border-radius:.25rem;background:#f1f5f9;color:#2563eb}
+.dark .pmf-md code{background:#1e293b;color:#60a5fa}
+.pmf-md pre.pmf-code{margin:.9em 0;padding:.85em 1em;border-radius:.5rem;background:#0f172a;border:1px solid #1e293b;overflow-x:auto}
+.pmf-md pre.pmf-code code{background:none;padding:0;color:#e2e8f0;font-size:.85em;line-height:1.6}
+.pmf-md img{max-width:100%}
+.pmf-md .hljs-keyword,.pmf-md .hljs-selector-tag,.pmf-md .hljs-literal,.pmf-md .hljs-doctag{color:#c084fc}
+.pmf-md .hljs-string,.pmf-md .hljs-regexp,.pmf-md .hljs-addition{color:#86efac}
+.pmf-md .hljs-number,.pmf-md .hljs-symbol,.pmf-md .hljs-bullet{color:#fdba74}
+.pmf-md .hljs-title,.pmf-md .hljs-section,.pmf-md .hljs-title.function_{color:#93c5fd}
+.pmf-md .hljs-type,.pmf-md .hljs-built_in,.pmf-md .hljs-title.class_{color:#5eead4}
+.pmf-md .hljs-attr,.pmf-md .hljs-attribute,.pmf-md .hljs-variable,.pmf-md .hljs-template-variable{color:#fca5a5}
+.pmf-md .hljs-comment,.pmf-md .hljs-quote{color:#64748b;font-style:italic}
+.pmf-md .hljs-meta,.pmf-md .hljs-tag{color:#7dd3fc}
+.pmf-md .hljs-name,.pmf-md .hljs-selector-class,.pmf-md .hljs-selector-id{color:#f9a8d4}
+.pmf-md .hljs-params{color:#e2e8f0}
+.pmf-md .hljs-deletion{color:#fca5a5}
+.pmf-md .hljs-emphasis{font-style:italic}
+.pmf-md .hljs-strong{font-weight:700}
+`
 
 const DEFAULT_SNIPPETS: PlaygroundSnippet[] = [
   {
@@ -444,83 +597,14 @@ export default function Playground({
     }
   }, [activeSnippet?.code, activeSnippet?.type])
 
-  // Markdown 解析渲染
+  // Markdown 解析渲染 — Ref: CR-135
   const renderedMarkdown = useMemo(() => {
     if (!activeSnippet || activeSnippet.type !== 'markdown') return ''
-    let raw = activeSnippet.code
-
-    raw = raw.replace(/^### (.*$)/gim, '<h3 class="text-base font-bold text-slate-800 dark:text-slate-100 mt-4 mb-2">$1</h3>')
-    raw = raw.replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 mb-2.5 pb-1 border-b border-slate-200 dark:border-slate-800">$1</h2>')
-    raw = raw.replace(/^# (.*$)/gim, '<h1 class="text-xl font-extrabold text-blue-600 dark:text-blue-400 mb-4 pb-2 border-b border-slate-200 dark:border-slate-800">$1</h1>')
-    raw = raw.replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-slate-900 dark:text-slate-100">$1</strong>')
-    raw = raw.replace(/\*(.*?)\*/gim, '<em class="italic">$1</em>')
-    raw = raw.replace(/^\> (.*$)/gim, '<blockquote class="border-l-4 border-blue-500 pl-3 py-1 my-2 bg-blue-50/50 dark:bg-blue-950/30 text-slate-600 dark:text-slate-300 rounded-r text-xs">$1</blockquote>')
-    raw = raw.replace(/^---$/gim, '<hr class="my-4 border-slate-200 dark:border-slate-800"/>')
-    raw = raw.replace(/- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 my-1"><span>✅</span><span>$1</span></div>')
-    raw = raw.replace(/- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 my-1"><span>⬜</span><span>$1</span></div>')
-
-    // 表格解析
-    const lines = raw.split('\n')
-    let inTable = false
-    let tableHtml = ''
-    const processedLines: string[] = []
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (line.startsWith('|') && line.endsWith('|')) {
-        if (!inTable) {
-          inTable = true
-          tableHtml = '<div class="overflow-x-auto my-3"><table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-700 rounded-lg">'
-          const headers = line.split('|').filter((c) => c.trim()).map((c) => `<th class="px-3 py-2 bg-slate-100 dark:bg-slate-800 font-bold border border-slate-200 dark:border-slate-700">${c.trim()}</th>`).join('')
-          tableHtml += `<thead><tr>${headers}</tr></thead><tbody>`
-        } else if (line.includes('---')) {
-          // divider
-        } else {
-          const cells = line.split('|').filter((c) => c !== '').map((c) => `<td class="px-3 py-1.5 border border-slate-200 dark:border-slate-700">${c.trim()}</td>`).join('')
-          tableHtml += `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">${cells}</tr>`
-        }
-      } else {
-        if (inTable) {
-          inTable = false
-          tableHtml += '</tbody></table></div>'
-          processedLines.push(tableHtml)
-        }
-        processedLines.push(line)
-      }
+    try {
+      return md.render(activeSnippet.code.replace(/^﻿/, '').replace(/^\s*\n+/, ''))
+    } catch {
+      return `<pre class="pmf-code"><code>${escapeHtml(activeSnippet.code)}</code></pre>`
     }
-    if (inTable) {
-      tableHtml += '</tbody></table></div>'
-      processedLines.push(tableHtml)
-    }
-    raw = processedLines.join('\n')
-    raw = raw.replace(/`([^`]+)`/gim, '<code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-mono text-xs">$1</code>')
-
-    // Mermaid 圖表
-    raw = raw.replace(/```mermaid([\s\S]*?)```/gim, (_, content) => {
-      return `
-        <div class="my-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 p-4">
-          <div class="flex items-center justify-between pb-2 border-b border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300 mb-3">
-            <span>📊 Mermaid 流程圖</span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 font-mono">graph LR</span>
-          </div>
-          <div class="flex flex-wrap items-center justify-center gap-3 py-2 text-xs font-semibold">
-            <div class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 shadow-xs">需求分析</div>
-            <span class="text-blue-500 font-bold">➔</span>
-            <div class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-xs">系統設計</div>
-            <span class="text-blue-500 font-bold">➔</span>
-            <div class="flex flex-col gap-1.5">
-              <div class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-300 shadow-xs text-center">前後端開發</div>
-              <div class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-300 shadow-xs text-center">測試驗收</div>
-            </div>
-            <span class="text-emerald-500 font-bold">➔</span>
-            <div class="px-3 py-2 rounded-lg bg-emerald-500 text-white font-bold shadow-md">發布上線</div>
-          </div>
-          <div class="mt-2 text-[10px] text-slate-400 font-mono bg-slate-900/10 dark:bg-slate-900/50 p-2 rounded overflow-x-auto whitespace-pre">${content.trim()}</div>
-        </div>
-      `
-    })
-
-    return raw
   }, [activeSnippet?.code, activeSnippet?.type])
 
   return (
@@ -529,6 +613,9 @@ export default function Playground({
       onPointerUp={handlePointerUp}
       className="flex h-full flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden select-none"
     >
+      {/* Ref: CR-135 */}
+      <style>{MD_STYLES}</style>
+
       {/* ── 頂部導覽列：收納/展開控制鈕 ── */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 shrink-0">
         <div className="flex items-center gap-2">
@@ -724,16 +811,16 @@ export default function Playground({
 
         {/* ── 欄位 3: 即時結果預覽區 (Result Preview) ── */}
         {showCol3 && (
-          <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-slate-900 overflow-hidden">
-            {/* 結果區標頭 */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 shrink-0">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col flex-1 min-h-0 min-w-0 bg-white dark:bg-slate-900 overflow-hidden">
+            {/* 結果區標頭 — 固定一行高，切換種類不位移 (Ref: CR-135) */}
+            <div className="flex items-center justify-between gap-2 overflow-hidden whitespace-nowrap px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 shrink-0">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                   即時預覽結果 ({activeSnippet?.type?.toUpperCase()})
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono truncate min-w-0">
                 自動保存中 • 即時動態渲染
               </span>
             </div>
@@ -753,7 +840,7 @@ export default function Playground({
 
               {activeSnippet?.type === 'markdown' && (
                 <div
-                  className="prose prose-slate dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 p-2"
+                  className="pmf-md max-w-none p-2"
                   dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
                 />
               )}

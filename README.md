@@ -33,6 +33,11 @@ demo1234
 
 第一次啟動會自動建立示範資料：兩個專案、八張有階層的任務、四種依賴各一條、四筆發文追蹤（含一筆逾期、一筆轉單位回覆）。
 
+> **示範帳號只出現在這條本機指令上。**（Ref: CR-137）正式部署（`docker-compose.yml`／
+> `docker-compose.synology.yml`）預設**不會**建立示範資料，第一次進去請自己註冊 ——
+> 上面那組密碼公開寫在這裡，正式站自帶一個就等於一個人人都知道密碼的後門。
+> 真的要在正式站示範，就自己設 `PMFLOW_SEED_DEMO=true`。
+
 ```bash
 docker compose -f docker-compose.dev.yml logs -f    # 看日誌
 docker compose -f docker-compose.dev.yml down       # 停止

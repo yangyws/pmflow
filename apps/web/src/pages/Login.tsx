@@ -9,8 +9,15 @@ import { Api, ApiError } from '../lib/api'
 export default function Login() {
   const { login, register } = useAuth()
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [email, setEmail] = useState('demo@pmflow.local')
-  const [password, setPassword] = useState('demo1234')
+  /*
+   * 示範帳密只在開發環境預填。Ref: CR-137
+   *
+   * `import.meta.env.DEV` 在 vite build 出來的正式包裡是常數 false，
+   * 整個三元式會被摺疊掉 —— 所以那組帳密**根本不會出現在正式包的檔案裡**，
+   * 不是「畫面上不顯示但字串還在」。
+   */
+  const [email, setEmail] = useState(import.meta.env.DEV ? 'demo@pmflow.local' : '')
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'demo1234' : '')
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

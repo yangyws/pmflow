@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { sql } from './lib/db.js'
+import { env } from './lib/env.js'
 import { hashPassword } from './lib/auth.js'
 import { rebuildClosure } from './lib/graph.js'
 import { recalcInquiryState, addWorkingDays, toISODate } from './lib/inquiry.js'
@@ -291,7 +292,14 @@ export async function seedDemo(): Promise<boolean> {
   return true
 }
 
+/**
+ * 回填示範用的「目前遇到的問題」。**只在有開示範資料時才做**。Ref: CR-137
+ *
+ * 它是照 task.number 全庫比對的，正式站上剛好開到第 2、4、6… 號的真實任務
+ * 會被塞進一段假的問題描述 —— 那是別人的資料，不能動。
+ */
 export async function seedProblemsIfEmpty(): Promise<number> {
+  if (!env.seedDemo) return 0
   const sampleProblems: Record<number, string> = {
     2: '設備規格需要重新對齊廠商',
     4: '線路頻寬限制，等待電信商升級',
@@ -311,7 +319,14 @@ export async function seedProblemsIfEmpty(): Promise<number> {
   return count
 }
 
+/**
+ * 補幾張示範用的「錯誤」任務。**只在有開示範資料時才做**。Ref: CR-137
+ *
+ * 它會把現有最前面三張真的 TASK 直接改成 BUG 並覆寫問題描述 ——
+ * 在正式站上等於把別人的任務改成別的種類，資料是救不回來的。
+ */
 export async function seedBugsIfEmpty(): Promise<number> {
+  if (!env.seedDemo) return 0
   const [{ count }] = await sql<{ count: string }[]>`SELECT count(*) FROM task WHERE type = 'BUG'`
   if (Number(count) === 0) {
     const tasks = await sql<{ id: string; number: number }[]>`SELECT id, number FROM task WHERE type = 'TASK' ORDER BY number ASC LIMIT 3`

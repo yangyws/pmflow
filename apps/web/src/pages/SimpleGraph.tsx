@@ -12,13 +12,17 @@ import {
   Handle,
   Position,
   ConnectionMode,
+  ConnectionLineType,
   NodeResizeControl,
+  BaseEdge,
+  EdgeLabelRenderer,
   type Node,
   type Edge,
   type NodeChange,
   type EdgeChange,
   type Connection,
   type NodeProps,
+  type EdgeProps,
   type Viewport,
   BackgroundVariant,
   MarkerType,
@@ -29,6 +33,7 @@ import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx, ProblemBadge, TypeBadge } from '../components/ui'
 import { rollup } from '../lib/rollup'
+import { T } from '../strings' // Ref: CR-146
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -162,12 +167,12 @@ function NodeProgressBar({ progress }: { progress: number }) {
         />
       </div>
       {progress >= 100 ? (
-        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title="已完成">
+        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm" title={T.flow.relationGraph.done}>
           ✓
         </span>
       ) : progress === 0 ? (
-        <span className="text-[10px] tabular-nums font-normal text-slate-400 dark:text-slate-500" title="未開始 (0%)">
-          未開始 (0%)
+        <span className="text-[10px] tabular-nums font-normal text-slate-400 dark:text-slate-500" title={T.flow.relationGraph.notStarted}>
+          {T.flow.relationGraph.notStarted}
         </span>
       ) : (
         <span className="text-[10px] tabular-nums font-medium text-slate-600 dark:text-slate-300">
@@ -192,8 +197,11 @@ function computeBoxDimensions(
   visited.add(boxId)
 
   const kids = childNodes.filter((cn) => cn.parentId === boxId)
-  let maxRight = 340
-  let maxBottom = 280
+  // Ref: CR-136 空收納盒回到初始尺寸（＝一張卡片大小）
+  const baseW = kids.length === 0 ? 256 : 340
+  const baseH = kids.length === 0 ? 90 : 280
+  let maxRight = baseW
+  let maxBottom = baseH
 
   kids.forEach((k) => {
     const isKBox = (k.data as SimpleGraphNodeData)?.mode === 'box'
@@ -214,8 +222,8 @@ function computeBoxDimensions(
     if (bottom > maxBottom) maxBottom = bottom
   })
 
-  const reqW = Math.max(340, Math.ceil(maxRight))
-  const reqH = Math.max(280, Math.ceil(maxBottom))
+  const reqW = Math.max(baseW, Math.ceil(maxRight))
+  const reqH = Math.max(baseH, Math.ceil(maxBottom))
 
   return {
     minWidth: reqW,
@@ -255,14 +263,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
 
       <Handle
@@ -270,14 +278,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Right}
         id="right-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
 
       <Handle
@@ -285,14 +293,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
 
       <Handle
@@ -300,14 +308,14 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
         position={Position.Bottom}
         id="bottom-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
       />
 
       {isBox ? (
@@ -331,17 +339,17 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                     type="button"
                     onClick={handleToggle}
                     className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-slate-100 text-slate-800 border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-500"
-                    title="【收納盒】點擊轉換回卡片"
+                    title={T.flow.relationGraph.boxToggleTitle}
                   >
-                    📦 收納盒
+                    {T.flow.relationGraph.boxBadge}
                   </button>
                   <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                     {data.refText || 'MRG-BOX'}
                   </span>
-                  <TypeBadge name={data.typeName || '任務單'} color={data.typeColor || '#3178c6'} />
+                  <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
-                  (移入卡片自動擴大容量)
+                  {T.flow.relationGraph.boxCapacityHint}
                 </span>
               </div>
 
@@ -361,46 +369,46 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {typeof data.childCount === 'number' && data.childCount > 0 && (
                     <span className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 font-medium pointer-events-none select-none">
-                      內含 {data.childCount} 張
+                      {T.flow.relationGraph.childCount(data.childCount)}
                     </span>
                   )}
                   <ProblemBadge problem={data.problem} count={data.problemCount} isBox={true} />
                   {((typeof data.blockedCount === 'number' && data.blockedCount > 0) || (data.blockedBy && data.blockedBy.length > 0)) && (
                     <span
-                      title={`卡住：${data.blockedBy?.join('、') || '盒內任務受阻'}`}
+                      title={T.flow.relationGraph.blockedTitle(data.blockedBy?.join('、') || T.flow.relationGraph.blockedBoxFallback)}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
-                      <span aria-hidden>⛔</span>卡住 {typeof data.blockedCount === 'number' && data.blockedCount > 0 ? data.blockedCount : ''}
+                      <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge} {typeof data.blockedCount === 'number' && data.blockedCount > 0 ? data.blockedCount : ''}
                     </span>
                   )}
                   {data.isParallel && (
                     <span
-                      title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
+                      title={T.flow.relationGraph.parallelTitle(data.parallelPeers?.join('、'))}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
                     >
-                      ⚡並行
+                      {T.flow.relationGraph.parallelBadge}
                     </span>
                   )}
                   {((typeof data.overdueCount === 'number' && data.overdueCount > 0) || data.isOverdue) && (
                     <span
-                      title={`已逾期（應到日期：${data.dueDate || ''}）`}
+                      title={T.flow.relationGraph.overdueTitle(data.dueDate || '')}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
                     >
-                      ⏰ 逾期 {typeof data.overdueCount === 'number' && data.overdueCount > 0 ? data.overdueCount : ''}
+                      {T.flow.relationGraph.overdueBadge} {typeof data.overdueCount === 'number' && data.overdueCount > 0 ? data.overdueCount : ''}
                     </span>
                   )}
                   {((typeof data.inquiryCount === 'number' && data.inquiryCount > 0) || data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
                     <span
-                      title="對外詢問待回覆"
+                      title={T.flow.relationGraph.inquiryTitle}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                     >
-                      ❓ 待回覆 {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 ? data.inquiryCount : ''}
+                      {T.flow.relationGraph.inquiryBadge} {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 ? data.inquiryCount : ''}
                     </span>
                   )}
                 </div>
               )}
               <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
-                {data.label || '無標題收納盒'}
+                {data.label || T.flow.relationGraph.untitledBox}
               </div>
               <NodeProgressBar progress={data.progress ?? 0} />
             </div>
@@ -415,7 +423,7 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
           >
             <div
               className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
-              title="按住拖曳調整收納盒尺寸"
+              title={T.flow.relationGraph.resizeBox}
             >
               ↘
             </div>
@@ -442,15 +450,15 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                   type="button"
                   onClick={handleToggle}
                   className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-                  title="【卡片】點擊轉換為收納盒"
+                  title={T.flow.relationGraph.cardToggleTitle}
                 >
-                  卡片
+                  {T.flow.relationGraph.card}
                 </button>
               )}
               <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                 {data.refText || 'MRG-1'}
               </span>
-              <TypeBadge name={data.typeName || '任務單'} color={data.typeColor || '#3178c6'} />
+              <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
             </div>
 
             {/* 第二行：警示徽章 */}
@@ -465,40 +473,40 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                 {data.taskType !== 'BUG' && <ProblemBadge problem={data.problem} />}
                 {data.blockedBy && data.blockedBy.length > 0 && (
                   <span
-                    title={`卡住：要等 ${data.blockedBy.join('、')}`}
+                    title={T.flow.relationGraph.blockedCardTitle(data.blockedBy.join('、'))}
                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                   >
-                    <span aria-hidden>⛔</span>卡住
+                    <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge}
                   </span>
                 )}
                 {data.isParallel && (
                   <span
-                    title={`並行：與 ${data.parallelPeers?.join('、')} 匯合`}
+                    title={T.flow.relationGraph.parallelTitle(data.parallelPeers?.join('、'))}
                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 pointer-events-none select-none"
                   >
-                    ⚡並行
+                    {T.flow.relationGraph.parallelBadge}
                   </span>
                 )}
                 {data.isOverdue && (
                   <span
-                    title={`已逾期（應到日期：${data.dueDate || ''}）`}
+                    title={T.flow.relationGraph.overdueTitle(data.dueDate || '')}
                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
                   >
-                    ⏰ 逾期
+                    {T.flow.relationGraph.overdueBadge}
                   </span>
                 )}
                 {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
                   <span
-                    title="對外詢問待回覆"
+                    title={T.flow.relationGraph.inquiryTitle}
                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                   >
-                    ❓ 待回覆
+                    {T.flow.relationGraph.inquiryBadge}
                   </span>
                 )}
               </div>
             )}
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
-              {data.label || '無標題任務'}
+              {data.label || T.flow.relationGraph.untitledTask}
             </div>
             {data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress ?? 0} />}
           </div>
@@ -510,6 +518,361 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
 
 const nodeTypes = {
   simpleNode: SimpleNodeView,
+  // Ref: CR-144
+  annotationText: SimpleTextNode,
+  annotationFrame: SimpleFrameNode,
+}
+
+// Ref: CR-139
+const WAYPOINT_KEY_PREFIX = 'pmflow_simple_graph_edge_waypoints_'
+
+type Waypoint = { x: number; y: number }
+type WaypointMap = Record<string, Waypoint>
+
+function loadWaypoints(projectId?: string): WaypointMap {
+  if (!projectId) return {}
+  try {
+    const raw = localStorage.getItem(`${WAYPOINT_KEY_PREFIX}${projectId}`)
+    return raw ? (JSON.parse(raw) as WaypointMap) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveWaypoints(projectId: string | undefined, map: WaypointMap) {
+  if (!projectId) return
+  try {
+    if (Object.keys(map).length > 0) {
+      localStorage.setItem(`${WAYPOINT_KEY_PREFIX}${projectId}`, JSON.stringify(map))
+    } else {
+      localStorage.removeItem(`${WAYPOINT_KEY_PREFIX}${projectId}`)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Ref: CR-139 全程只由水平/垂直線段組成，折點 (px, py) 決定在哪裡轉彎
+function buildOrthogonalPath(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  sourcePosition: Position,
+  targetPosition: Position,
+  waypoint?: Waypoint | null
+): { path: string; px: number; py: number } {
+  const px = waypoint ? waypoint.x : (sx + tx) / 2
+  const py = waypoint ? waypoint.y : (sy + ty) / 2
+  const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
+  const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
+
+  const a = srcHoriz ? { x: px, y: sy } : { x: sx, y: py }
+  const b = tgtHoriz ? { x: px, y: ty } : { x: tx, y: py }
+  const raw: Waypoint[] = [{ x: sx, y: sy }, a, { x: px, y: py }, b, { x: tx, y: ty }]
+
+  const pts: Waypoint[] = []
+  for (const p of raw) {
+    const last = pts[pts.length - 1]
+    if (!last || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.y - p.y) > 0.01) pts.push(p)
+  }
+
+  return {
+    path: pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
+    px,
+    py,
+  }
+}
+
+// Ref: CR-141 折點把手是 EdgeLabelRenderer portal，合成事件仍沿 React 樹冒泡到該條 edge 的 <g onClick>
+let waypointClickGuard = false
+let waypointGuardTimer: ReturnType<typeof setTimeout> | null = null
+
+function armWaypointClickGuard() {
+  waypointClickGuard = true
+  if (waypointGuardTimer) {
+    clearTimeout(waypointGuardTimer)
+    waypointGuardTimer = null
+  }
+}
+
+function scheduleWaypointGuardRelease() {
+  if (waypointGuardTimer) clearTimeout(waypointGuardTimer)
+  waypointGuardTimer = setTimeout(() => {
+    waypointClickGuard = false
+    waypointGuardTimer = null
+  }, 400)
+}
+
+function consumeWaypointClickGuard(): boolean {
+  if (!waypointClickGuard) return false
+  waypointClickGuard = false
+  if (waypointGuardTimer) {
+    clearTimeout(waypointGuardTimer)
+    waypointGuardTimer = null
+  }
+  return true
+}
+
+type OrthogonalEdgeData = {
+  waypoint?: Waypoint | null
+  onWaypointChange?: (key: string, p: Waypoint) => void
+  onWaypointReset?: (key: string) => void
+}
+
+// Ref: CR-139
+function OrthogonalEdge({
+  id,
+  source,
+  target,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  markerEnd,
+  data,
+}: EdgeProps) {
+  const { screenToFlowPosition } = useReactFlow()
+  const draggingRef = useRef(false)
+  const eData = data as OrthogonalEdgeData | undefined
+  const wpKey = `${source}_${target}`
+
+  const { path, px, py } = buildOrthogonalPath(
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    eData?.waypoint
+  )
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    draggingRef.current = true
+    armWaypointClickGuard() // Ref: CR-141
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return
+    e.stopPropagation()
+    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    eData?.onWaypointChange?.(wpKey, { x: Math.round(p.x), y: Math.round(p.y) })
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    e.stopPropagation()
+    scheduleWaypointGuardRelease() // Ref: CR-141
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <>
+      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={20} />
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan absolute h-2.5 w-2.5 rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 cursor-move after:absolute after:content-[''] after:-inset-[9px] after:rounded-full"
+          style={{
+            transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
+            pointerEvents: 'all',
+          }}
+          title={T.flow.relationGraph.waypointHint}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onClick={(e) => {
+            // Ref: CR-141
+            e.stopPropagation()
+          }}
+          onDoubleClick={(e) => {
+            // Ref: CR-141
+            e.stopPropagation()
+            e.preventDefault()
+            armWaypointClickGuard()
+            scheduleWaypointGuardRelease()
+            eData?.onWaypointReset?.(wpKey)
+          }}
+        />
+      </EdgeLabelRenderer>
+    </>
+  )
+}
+
+const edgeTypes = {
+  orthogonal: OrthogonalEdge,
+}
+
+// Ref: CR-146
+const ANNOTATION_STRINGS = T.flow.shared.annotation
+const ANNOTATION_COLOR_OPTIONS = T.flow.relationGraph.colorOptions
+
+// Ref: CR-144 文字註記與區域標示框都不是任務，只是畫布上的附加物
+const ANNOTATION_KEY_PREFIX = 'pmflow_simple_graph_annotations_'
+const TEXT_ID_PREFIX = 'sg-text-'
+const FRAME_ID_PREFIX = 'sg-frame-'
+
+type TextAnnotation = { id: string; x: number; y: number; text: string; color: string }
+type AreaFrame = { id: string; x: number; y: number; width: number; height: number; label: string; color: string }
+type CanvasAnnotations = { texts: TextAnnotation[]; frames: AreaFrame[] }
+
+function isAnnotationId(id: string): boolean {
+  return id.startsWith(TEXT_ID_PREFIX) || id.startsWith(FRAME_ID_PREFIX)
+}
+
+function loadCanvasAnnotations(projectId?: string): CanvasAnnotations {
+  if (!projectId) return { texts: [], frames: [] }
+  try {
+    const raw = localStorage.getItem(`${ANNOTATION_KEY_PREFIX}${projectId}`)
+    if (!raw) return { texts: [], frames: [] }
+    const parsed = JSON.parse(raw) as Partial<CanvasAnnotations>
+    return {
+      texts: Array.isArray(parsed.texts) ? parsed.texts : [],
+      frames: Array.isArray(parsed.frames) ? parsed.frames : [],
+    }
+  } catch {
+    return { texts: [], frames: [] }
+  }
+}
+
+function saveCanvasAnnotations(projectId: string | undefined, data: CanvasAnnotations) {
+  if (!projectId) return
+  try {
+    if (data.texts.length > 0 || data.frames.length > 0) {
+      localStorage.setItem(`${ANNOTATION_KEY_PREFIX}${projectId}`, JSON.stringify(data))
+    } else {
+      localStorage.removeItem(`${ANNOTATION_KEY_PREFIX}${projectId}`)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+type SimpleAnnotationNodeData = {
+  label: string
+  color: string
+  onEdit?: (id: string) => void
+  onDelete?: (id: string) => void
+}
+
+// Ref: CR-144 純文字註記：沒有外框、沒有底色、不給接點
+function SimpleTextNode({ id, data }: NodeProps) {
+  const d = data as unknown as SimpleAnnotationNodeData
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  return (
+    <div className="group relative cursor-grab select-none active:cursor-grabbing">
+      <div
+        className={cx(
+          'max-w-[420px] whitespace-pre-wrap break-words rounded px-1.5 py-1 text-sm font-semibold leading-relaxed',
+          !d.color && 'text-slate-700 dark:text-slate-200'
+        )}
+        style={d.color ? { color: d.color } : undefined}
+      >
+        {d.label || ANNOTATION_STRINGS.textFallback}
+      </div>
+
+      <div className="nodrag absolute -top-3 -right-3 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
+        <button
+          type="button"
+          onPointerDown={stop}
+          onClick={(e) => {
+            e.stopPropagation()
+            d.onEdit?.(id)
+          }}
+          title={ANNOTATION_STRINGS.editText}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+        >
+          ✏️
+        </button>
+        <button
+          type="button"
+          onPointerDown={stop}
+          onClick={(e) => {
+            e.stopPropagation()
+            d.onDelete?.(id)
+          }}
+          title={ANNOTATION_STRINGS.deleteText}
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Ref: CR-144 區域標示框：純視覺、墊最底層、框身不吃點擊
+function SimpleFrameNode({ id, data }: NodeProps) {
+  const d = data as unknown as SimpleAnnotationNodeData
+  const color = d.color || '#8b5cf6'
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  return (
+    <div className="group pointer-events-none relative h-full w-full">
+      <div
+        className="h-full w-full rounded-2xl border-2 border-dashed"
+        style={{ borderColor: color, backgroundColor: `${color}12` }}
+      />
+
+      <div
+        className="pointer-events-auto absolute -top-3 left-3 flex max-w-[85%] cursor-grab items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs active:cursor-grabbing dark:bg-slate-900"
+        style={{ borderColor: color }}
+      >
+        <span className="shrink-0 text-[11px]">🏷️</span>
+        <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+          {d.label || ANNOTATION_STRINGS.frameFallback}
+        </span>
+        <button
+          type="button"
+          onPointerDown={stop}
+          onClick={(e) => {
+            e.stopPropagation()
+            d.onEdit?.(id)
+          }}
+          title={ANNOTATION_STRINGS.editFrame}
+          className="nodrag cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          ✏️
+        </button>
+        <button
+          type="button"
+          onPointerDown={stop}
+          onClick={(e) => {
+            e.stopPropagation()
+            d.onDelete?.(id)
+          }}
+          title={ANNOTATION_STRINGS.deleteFrame}
+          className="nodrag cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400"
+        >
+          🗑️
+        </button>
+      </div>
+
+      <NodeResizeControl
+        minWidth={220}
+        minHeight={160}
+        style={{ background: 'transparent', border: 'none' }}
+        className="nodrag pointer-events-auto"
+      >
+        <div
+          title={T.flow.relationGraph.resizeFrame}
+          className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+        >
+          ↘
+        </div>
+      </NodeResizeControl>
+    </div>
+  )
 }
 
 export interface SimpleGraphProps {
@@ -550,13 +913,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [project])
 
   const typeNameOf = useCallback((typeKey?: string) => {
-    if (!typeKey) return '任務單'
+    if (!typeKey) return T.flow.relationGraph.typeTask
     const custom = project?.types?.find((p) => p.key === typeKey)?.name
     const DEFAULT_MAP: Record<string, string> = {
-      TASK: '任務單',
-      BUG: '問題單',
+      TASK: T.flow.relationGraph.typeTask,
+      BUG: T.flow.relationGraph.typeBug,
     }
-    return custom || DEFAULT_MAP[typeKey] || (typeKey === 'BUG' ? '問題單' : '任務單')
+    return custom || DEFAULT_MAP[typeKey] || (typeKey === 'BUG' ? T.flow.relationGraph.typeBug : T.flow.relationGraph.typeTask)
   }, [project])
 
   const rolledMap = useMemo(() => rollup(tasks ?? []), [tasks])
@@ -629,7 +992,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       const tId = String(e.target)
       const sTask = tasks.find((t) => t.id === sId)
       if (!sTask) return
-      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : (sTask.type === 'BUG' ? '問題單' : '任務單'))
+      const sRef = sTask.ref || (sTask.number ? `MRG-${sTask.number}` : (sTask.type === 'BUG' ? T.flow.relationGraph.typeBug : T.flow.relationGraph.typeTask))
       const list = targetMap.get(tId) || []
       list.push({ id: sTask.id, ref: sRef })
       targetMap.set(tId, list)
@@ -760,7 +1123,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       const dstTask = taskMap.get(tId)
 
       if (srcTask && dstTask && !isDone(srcTask) && !isDone(dstTask)) {
-        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : '上游任務')
+        const srcRef = srcTask.ref || (srcTask.number ? `MRG-${srcTask.number}` : T.flow.relationGraph.upstreamFallback)
         const list = map.get(dstTask.id) || []
         if (!list.includes(srcRef)) {
           list.push(srcRef)
@@ -776,6 +1139,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (isAnnotationId(node.id)) return // Ref: CR-144
       if (isDraggingRef.current) return
       setSelectedNodeId(node.id)
       onSelectTask?.(node.id)
@@ -906,8 +1270,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       setToggledModes((prev) => {
         const currentNodes = nodesRef.current
         const targetNode = currentNodes.find((n) => n.id === nodeId)
-        const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-        addLog('toggle', `${refText} 模式切換為 [${nextMode === 'box' ? '收納盒' : '卡片'}]`)
+        const refText = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+        addLog('toggle', T.flow.relationGraph.log.modeToggled(refText, nextMode === 'box' ? T.flow.relationGraph.box : T.flow.relationGraph.card))
 
         try {
           const savedBoxesStr = localStorage.getItem('pmflow_graph_container_boxes')
@@ -941,7 +1305,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         return
       }
       const currentMode = toggledModes[nodeId] ?? nodeData?.mode ?? 'card'
-      const refText = nodeData?.refText || '收納盒'
+      const refText = nodeData?.refText || T.flow.relationGraph.box
 
       if (currentMode === 'box') {
         const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
@@ -979,6 +1343,143 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       return {}
     }
   })
+
+  // Ref: CR-139
+  const [waypoints, setWaypoints] = useState<WaypointMap>(() => loadWaypoints(projectId))
+
+  useEffect(() => {
+    setWaypoints(loadWaypoints(projectId))
+  }, [projectId])
+
+  useEffect(() => {
+    saveWaypoints(projectId, waypoints)
+  }, [waypoints, projectId])
+
+  const handleWaypointChange = useCallback((key: string, p: Waypoint) => {
+    setWaypoints((prev) => ({ ...prev, [key]: p }))
+  }, [])
+
+  const handleWaypointReset = useCallback((key: string) => {
+    setWaypoints((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }, [])
+
+  // Ref: CR-144
+  const [annotations, setAnnotations] = useState<CanvasAnnotations>(() => loadCanvasAnnotations(projectId))
+  const annotationsRef = useRef(annotations)
+  annotationsRef.current = annotations
+  const [editingAnnotation, setEditingAnnotation] = useState<
+    { id: string; kind: 'text' | 'frame'; label: string; color: string } | null
+  >(null)
+
+  useEffect(() => {
+    setAnnotations(loadCanvasAnnotations(projectId))
+  }, [projectId])
+
+  useEffect(() => {
+    saveCanvasAnnotations(projectId, annotations)
+  }, [annotations, projectId])
+
+  const handleAddTextAnnotation = useCallback(() => {
+    const id = `${TEXT_ID_PREFIX}${Date.now()}`
+    setAnnotations((prev) => ({
+      ...prev,
+      texts: [
+        ...prev.texts,
+        {
+          id,
+          x: 120 + Math.round(Math.random() * 80),
+          y: 100 + Math.round(Math.random() * 80),
+          text: ANNOTATION_STRINGS.newTextDefault,
+          color: '',
+        },
+      ],
+    }))
+    setEditingAnnotation({ id, kind: 'text', label: ANNOTATION_STRINGS.newTextDefault, color: '' })
+  }, [])
+
+  const handleAddAreaFrame = useCallback(() => {
+    const id = `${FRAME_ID_PREFIX}${Date.now()}`
+    setAnnotations((prev) => ({
+      ...prev,
+      frames: [
+        ...prev.frames,
+        {
+          id,
+          x: 60 + Math.round(Math.random() * 60),
+          y: 40 + Math.round(Math.random() * 60),
+          width: 420,
+          height: 300,
+          label: ANNOTATION_STRINGS.newFrameDefault,
+          color: '#8b5cf6',
+        },
+      ],
+    }))
+  }, [])
+
+  const handleEditAnnotation = useCallback((id: string) => {
+    const cur = annotationsRef.current
+    const t = cur.texts.find((x) => x.id === id)
+    if (t) {
+      setEditingAnnotation({ id, kind: 'text', label: t.text, color: t.color })
+      return
+    }
+    const f = cur.frames.find((x) => x.id === id)
+    if (f) setEditingAnnotation({ id, kind: 'frame', label: f.label, color: f.color })
+  }, [])
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => ({
+      texts: prev.texts.filter((t) => t.id !== id),
+      frames: prev.frames.filter((f) => f.id !== id),
+    }))
+    setEditingAnnotation((prev) => (prev?.id === id ? null : prev))
+  }, [])
+
+  const handleSaveAnnotationEdit = useCallback(() => {
+    setEditingAnnotation((cur) => {
+      if (!cur) return null
+      setAnnotations((prev) =>
+        cur.kind === 'text'
+          ? { ...prev, texts: prev.texts.map((t) => (t.id === cur.id ? { ...t, text: cur.label, color: cur.color } : t)) }
+          : { ...prev, frames: prev.frames.map((f) => (f.id === cur.id ? { ...f, label: cur.label, color: cur.color } : f)) }
+      )
+      return null
+    })
+  }, [])
+
+  const annotationNodes = useMemo<Node[]>(() => {
+    const frameNodes: Node[] = annotations.frames.map((f) => ({
+      id: f.id,
+      type: 'annotationFrame',
+      position: { x: f.x, y: f.y },
+      style: { width: f.width, height: f.height, pointerEvents: 'none' },
+      width: f.width,
+      height: f.height,
+      draggable: true,
+      selectable: false,
+      connectable: false,
+      deletable: false,
+      zIndex: 0,
+      data: { label: f.label, color: f.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+    }))
+    const textNodes: Node[] = annotations.texts.map((t) => ({
+      id: t.id,
+      type: 'annotationText',
+      position: { x: t.x, y: t.y },
+      draggable: true,
+      selectable: false,
+      connectable: false,
+      deletable: false,
+      zIndex: 25,
+      data: { label: t.text, color: t.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+    }))
+    return [...frameNodes, ...textNodes]
+  }, [annotations, handleEditAnnotation, handleDeleteAnnotation])
 
   /** 使用者手動調整大小的框。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [resized, setResized] = useState<Record<string, { width: number; height: number }>>(() => {
@@ -1078,7 +1579,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               target: e.targetId,
               sourceHandle: sHandle,
               targetHandle: tHandle,
-              type: 'smoothstep',
+              type: 'orthogonal',
               animated: true,
               style,
               markerEnd,
@@ -1512,7 +2013,45 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     })
   }, [tasks, toggledModes])
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
+  const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
+    // Ref: CR-144 文字註記與區域標示框不是任務，改動只寫進 annotations，不進任務節點流程
+    const annChanges = rawChanges.filter((c) => 'id' in c && isAnnotationId((c as { id: string }).id))
+    if (annChanges.length > 0) {
+      setAnnotations((prev) => {
+        let texts = prev.texts
+        let frames = prev.frames
+        let changed = false
+        for (const ch of annChanges) {
+          if (ch.type === 'position' && ch.position) {
+            const nx = Math.round(ch.position.x)
+            const ny = Math.round(ch.position.y)
+            texts = texts.map((t) => {
+              if (t.id !== ch.id || (t.x === nx && t.y === ny)) return t
+              changed = true
+              return { ...t, x: nx, y: ny }
+            })
+            frames = frames.map((f) => {
+              if (f.id !== ch.id || (f.x === nx && f.y === ny)) return f
+              changed = true
+              return { ...f, x: nx, y: ny }
+            })
+          } else if (ch.type === 'dimensions' && ch.dimensions) {
+            const nw = Math.round(ch.dimensions.width)
+            const nh = Math.round(ch.dimensions.height)
+            frames = frames.map((f) => {
+              if (f.id !== ch.id || (f.width === nw && f.height === nh)) return f
+              changed = true
+              return { ...f, width: nw, height: nh }
+            })
+          }
+        }
+        return changed ? { texts, frames } : prev
+      })
+    }
+
+    const changes = rawChanges.filter((c) => !('id' in c) || !isAnnotationId((c as { id: string }).id))
+    if (changes.length === 0) return
+
     setNodes((nds) => {
       const next = applyNodeChanges(changes, nds)
 
@@ -1551,11 +2090,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
+      if (consumeWaypointClickGuard()) return // Ref: CR-141
       const sourceNode = nodes.find((n) => n.id === edge.source)
       const targetNode = nodes.find((n) => n.id === edge.target)
 
-      const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-      const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+      const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+      const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
 
       setConfirmDeleteEdge({
         edgeId: edge.id,
@@ -1576,23 +2116,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       const sourceParent = sourceNode?.parentId
       const targetParent = targetNode?.parentId
 
-      if (
-        (sourceNode?.data as SimpleGraphNodeData)?.taskType === 'BUG' ||
-        (targetNode?.data as SimpleGraphNodeData)?.taskType === 'BUG'
-      ) {
-        setAlertMsg('問題單無法建立前後相依連線。')
-        return
-      }
+      // Ref: CR-131
 
       if (
         (sourceParent && sourceParent !== targetParent) ||
         (targetParent && targetParent !== sourceParent)
       ) {
-        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-        setAlertMsg(
-          `收納盒內部的卡片 (${srcRef} / ${tgtRef}) 無法與外部直接建立關聯。請將關聯連線接至收納盒本體！`
-        )
+        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+        setAlertMsg(T.flow.relationGraph.alertCrossBox(srcRef, tgtRef))
         return
       }
 
@@ -1606,95 +2138,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
       )
 
       if (hasDuplicateEdge) {
-        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-        setAlertMsg(
-          `【${srcRef}】與【${tgtRef}】之間已存在關聯線，任何第二個接點皆不可重複相連！`
-        )
+        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+        setAlertMsg(T.flow.relationGraph.alertDuplicate(srcRef, tgtRef))
         return
       }
 
-      // 檢查關聯線是否會穿透其他卡片或收納盒
-      const srcAbs = getNodeAbsPos(connection.source, nodes)
-      const tgtAbs = getNodeAbsPos(connection.target, nodes)
-
-      const isSrcBox = (sourceNode?.data as SimpleGraphNodeData)?.mode === 'box'
-      const isTgtBox = (targetNode?.data as SimpleGraphNodeData)?.mode === 'box'
-      const srcW = Number(sourceNode?.style?.width ?? sourceNode?.width ?? (isSrcBox ? 340 : 256))
-      const srcH = Number(sourceNode?.style?.height ?? sourceNode?.height ?? (isSrcBox ? 280 : 90))
-      const tgtW = Number(targetNode?.style?.width ?? targetNode?.width ?? (isTgtBox ? 340 : 256))
-      const tgtH = Number(targetNode?.style?.height ?? targetNode?.height ?? (isTgtBox ? 280 : 90))
-
-      const sHandleStr = connection.sourceHandle ?? ''
-      const tHandleStr = connection.targetHandle ?? ''
-
-      const getPoint = (abs: { x: number; y: number }, w: number, h: number, handleId: string) => {
-        if (handleId.includes('top')) return { x: abs.x + w / 2, y: abs.y }
-        if (handleId.includes('bottom')) return { x: abs.x + w / 2, y: abs.y + h }
-        if (handleId.includes('left')) return { x: abs.x, y: abs.y + h / 2 }
-        if (handleId.includes('right')) return { x: abs.x + w, y: abs.y + h / 2 }
-        return { x: abs.x + w / 2, y: abs.y + h / 2 }
-      }
-
-      const p1 = getPoint(srcAbs, srcW, srcH, sHandleStr)
-      const p2 = getPoint(tgtAbs, tgtW, tgtH, tHandleStr)
-
-      const midX = (p1.x + p2.x) / 2
-      const midY = (p1.y + p2.y) / 2
-
-      const segments = [
-        { x1: p1.x, y1: p1.y, x2: midX, y2: p1.y },
-        { x1: midX, y1: p1.y, x2: midX, y2: p2.y },
-        { x1: midX, y1: p2.y, x2: p2.x, y2: p2.y },
-        { x1: p1.x, y1: p1.y, x2: p1.x, y2: midY },
-        { x1: p1.x, y1: midY, x2: p2.x, y2: midY },
-        { x1: p2.x, y1: midY, x2: p2.x, y2: p2.y },
-      ]
-
-      for (const n of nodes) {
-        if (n.id === connection.source || n.id === connection.target) continue
-        if (n.id === sourceParent || n.id === targetParent) continue
-        if (isAncestorNode(connection.source, n.id, nodes) || isAncestorNode(connection.target, n.id, nodes)) continue
-
-        const nAbs = getNodeAbsPos(n.id, nodes)
-        const isNBox = (n.data as SimpleGraphNodeData)?.mode === 'box'
-        const nW = Number(n.style?.width ?? n.width ?? (isNBox ? 340 : 256))
-        const nH = Number(n.style?.height ?? n.height ?? (isNBox ? 280 : 90))
-
-        const rLeft = nAbs.x + 8
-        const rTop = nAbs.y + 8
-        const rRight = nAbs.x + nW - 8
-        const rBottom = nAbs.y + nH - 8
-
-        for (const seg of segments) {
-          const isHoriz = Math.abs(seg.y1 - seg.y2) < 0.1
-          const isVert = Math.abs(seg.x1 - seg.x2) < 0.1
-
-          if (isHoriz) {
-            const y = seg.y1
-            const minX = Math.min(seg.x1, seg.x2)
-            const maxX = Math.max(seg.x1, seg.x2)
-            if (y > rTop && y < rBottom && maxX > rLeft && minX < rRight) {
-              const cRef = (n.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
-              const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-              const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-              setAlertMsg(`【${srcRef}】與【${tgtRef}】之間的關聯線會穿透【${cRef}】，無法建立關聯！請調整卡片位置。`)
-              return
-            }
-          } else if (isVert) {
-            const x = seg.x1
-            const minY = Math.min(seg.y1, seg.y2)
-            const maxY = Math.max(seg.y1, seg.y2)
-            if (x > rLeft && x < rRight && maxY > rTop && minY < rBottom) {
-              const cRef = (n.data as SimpleGraphNodeData)?.refText || '卡片/收納盒'
-              const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-              const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || '卡片'
-              setAlertMsg(`【${srcRef}】與【${tgtRef}】之間的關聯線會穿透【${cRef}】，無法建立關聯！請調整卡片位置。`)
-              return
-            }
-          }
-        }
-      }
+      // Ref: CR-131 穿透其他卡片不再否決建立關聯（排版問題非合法性問題）
 
       if (connection.source && connection.target) {
         const sHandle = connection.sourceHandle ?? undefined
@@ -1736,7 +2186,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                     target: e.targetId,
                     sourceHandle: sH,
                     targetHandle: tH,
-                    type: 'smoothstep',
+                    type: 'orthogonal',
                     animated: true,
                     style,
                     markerEnd,
@@ -1753,7 +2203,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         addEdge(
           {
             ...connection,
-            type: 'smoothstep',
+            type: 'orthogonal',
             animated: true,
             style,
             markerEnd,
@@ -1766,17 +2216,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    if (isAnnotationId(node.id)) return // Ref: CR-144
     isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
   }, [])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
+      // Ref: CR-144 標示框/文字純視覺，絕不進入收納盒歸屬判定，也不打任何任務 API
+      if (isAnnotationId(node.id)) return
       setTimeout(() => {
         isDraggingRef.current = false
       }, 100)
       const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
-      const cardRef = (node.data as SimpleGraphNodeData)?.refText || '卡片'
+      const cardRef = (node.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
 
       setNodes((currentNodes) => {
         // 安全的非遞迴 getAbsPos 避免死迴圈與 TypeError
@@ -1843,10 +2296,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         if (isMovingOut) {
           const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
           if (hasEdges) {
-            setAlertMsg(
-              `卡片 (${cardRef}) 在收納盒內尚存在關聯線，無法移出收納盒。請先刪除關聯線後再移動！`
-            )
-            addLog('move_out', `卡片 (${cardRef}) 移出失敗：尚存在關聯線`)
+            setAlertMsg(T.flow.relationGraph.alertMoveOutHasEdges(cardRef))
+            addLog('move_out', T.flow.relationGraph.log.moveOutFailed(cardRef))
             const startPos = dragStartPosMap.current[node.id]
             return currentNodes.map((n) =>
               n.id === node.id
@@ -1857,12 +2308,39 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         }
 
         const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
-        const nodeTypeStr = isBoxNode ? '收納盒' : '卡片'
+        const nodeTypeStr = isBoxNode ? T.flow.relationGraph.box : T.flow.relationGraph.card
         let nextNodes = currentNodes
 
+        // Ref: CR-136 卡片移出後依剩餘卡片實際佔用範圍收斂收納盒尺寸（只縮不放）
+        const shrinkBoxAfterRemoval = (boxId: string, removedId: string) => {
+          const listWithoutRemoved = currentNodes.map((n) =>
+            n.id === removedId ? { ...n, parentId: undefined } : n
+          )
+          const remaining = listWithoutRemoved.filter((n) => n.parentId === boxId)
+          if (remaining.length === 0) {
+            setResized((prev) => {
+              if (!prev[boxId]) return prev
+              const next = { ...prev }
+              delete next[boxId]
+              return next
+            })
+            return
+          }
+          const req = computeBoxDimensions(boxId, listWithoutRemoved)
+          setResized((prev) => {
+            const cur = prev[boxId]
+            if (!cur) return prev
+            const nextW = Math.min(cur.width, req.minWidth)
+            const nextH = Math.min(cur.height, req.minHeight)
+            if (nextW === cur.width && nextH === cur.height) return prev
+            return { ...prev, [boxId]: { width: nextW, height: nextH } }
+          })
+        }
+
         if (!targetBox && currentParentId) {
+          shrinkBoxAfterRemoval(currentParentId, node.id) // Ref: CR-136
           // 移出收納盒：離開巢狀結構
-          addLog('move_out', `${nodeTypeStr} (${cardRef}) 移出收納盒，離開巢狀結構 | 畫布大座標 (x: ${Math.round(cardAbsPos.x)}, y: ${Math.round(cardAbsPos.y)})`)
+          addLog('move_out', T.flow.relationGraph.log.moveOut(nodeTypeStr, cardRef, Math.round(cardAbsPos.x), Math.round(cardAbsPos.y)))
           setDragged((prev) => ({
             ...prev,
             [node.id]: cardAbsPos,
@@ -1893,8 +2371,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             return n
           })
         } else if (targetBox && targetBox.id !== currentParentId) {
+          if (currentParentId) shrinkBoxAfterRemoval(currentParentId, node.id) // Ref: CR-136
           // 移入收納盒：禁止帶有任何連線
-          const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || '收納盒'
+          const targetBoxRef = (targetBox.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.box
           const visitedSubtree = new Set<string>()
           const collectSubtreeIds = (nId: string) => {
             if (visitedSubtree.has(nId)) return
@@ -1908,10 +2387,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           )
 
           if (hasEdgesInSubtree) {
-            setAlertMsg(
-              `${nodeTypeStr} (${cardRef}) 尚存在關聯線，無法移入收納盒 (${targetBoxRef})。請先刪除關聯線後再移入！`
-            )
-            addLog('move_in', `${nodeTypeStr} (${cardRef}) 移入 (${targetBoxRef}) 失敗：尚存在關聯線`)
+            setAlertMsg(T.flow.relationGraph.alertMoveInHasEdges(nodeTypeStr, cardRef, targetBoxRef))
+            addLog('move_in', T.flow.relationGraph.log.moveInFailed(nodeTypeStr, cardRef, targetBoxRef))
             const startPos = dragStartPosMap.current[node.id]
             return currentNodes.map((n) =>
               n.id === node.id
@@ -1949,7 +2426,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
           const targetBoxAbsPos = getAbsPos(targetBox!.id)
           const realAbsX = Math.round(targetBoxAbsPos.x + targetSlotPos.x)
           const realAbsY = Math.round(targetBoxAbsPos.y + targetSlotPos.y)
-          addLog('move_in', `${nodeTypeStr} (${cardRef}) 移入 (${targetBoxRef})，進入巢狀結構 | 畫布大座標 (x: ${realAbsX}, y: ${realAbsY})`)
+          addLog('move_in', T.flow.relationGraph.log.moveIn(nodeTypeStr, cardRef, targetBoxRef, realAbsX, realAbsY))
 
           setDragged((prev) => ({
             ...prev,
@@ -2030,9 +2507,9 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         } else {
           const isChild = !!node.parentId
           if (isChild) {
-            addLog('move', `盒內卡片 (${cardRef}) 移動，槽位 (x: ${Math.round(node.position.x)}, y: ${Math.round(node.position.y)}) | 畫布大座標 (x: ${Math.round(cardAbsPos.x)}, y: ${Math.round(cardAbsPos.y)})`)
+            addLog('move', T.flow.relationGraph.log.moveInner(cardRef, Math.round(node.position.x), Math.round(node.position.y), Math.round(cardAbsPos.x), Math.round(cardAbsPos.y)))
           } else {
-            addLog('move', `節點 (${cardRef}) 移動至 (x: ${Math.round(node.position.x)}, y: ${Math.round(node.position.y)})`)
+            addLog('move', T.flow.relationGraph.log.moveNode(cardRef, Math.round(node.position.x), Math.round(node.position.y)))
           }
         setDragged((prev) => ({
           ...prev,
@@ -2133,12 +2610,27 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     )
   }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks])
 
+  // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
+  const renderedNodes = useMemo(() => {
+    const frames = annotationNodes.filter((n) => n.type === 'annotationFrame')
+    const texts = annotationNodes.filter((n) => n.type === 'annotationText')
+    return [...frames, ...nodesWithHandlers, ...texts]
+  }, [annotationNodes, nodesWithHandlers])
+
   const styledEdges = useMemo(() => {
     return edges.map((e) => {
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
       return {
         ...e,
         ...edgeStyleAndMarker,
+        // Ref: CR-139 全檔統一直角折線 + 可拖曳折點
+        type: 'orthogonal',
+        data: {
+          ...(e.data ?? {}),
+          waypoint: waypoints[`${e.source}_${e.target}`] ?? null,
+          onWaypointChange: handleWaypointChange,
+          onWaypointReset: handleWaypointReset,
+        },
         animated: false,
         style: {
           ...edgeStyleAndMarker.style,
@@ -2151,21 +2643,24 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         markerEnd: edgeStyleAndMarker.markerEnd,
       }
     })
-  }, [edges])
+  }, [edges, waypoints, handleWaypointChange, handleWaypointReset])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       <div className="relative flex-1 flex flex-row overflow-hidden">
         <div className="relative flex-1 cursor-move">
           <ReactFlow
-            nodes={nodesWithHandlers}
+            nodes={renderedNodes}
             edges={styledEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onEdgeClick={onEdgeClick}
             onNodeClick={onNodeClick}
-            onNodeDoubleClick={(_, node) => onOpenTask?.(node.id)}
+            onNodeDoubleClick={(_, node) => {
+              if (isAnnotationId(node.id)) return // Ref: CR-144
+              onOpenTask?.(node.id)
+            }}
             onPaneClick={onPaneClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}
@@ -2176,10 +2671,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             defaultViewport={savedViewport}
             fitView={!savedViewport}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
+            connectionLineType={ConnectionLineType.Step}
+            connectionRadius={30}
             proOptions={{ hideAttribution: true }}
             defaultEdgeOptions={{
-              type: 'smoothstep',
+              type: 'orthogonal',
               animated: false,
               style: { strokeWidth: 2, stroke: '#ef4444' },
             }}
@@ -2196,10 +2694,10 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               showInteractive={false}
               className="!bg-white dark:!bg-slate-800 !border !border-slate-300 dark:!border-slate-600 !shadow-md !rounded-lg overflow-hidden [&_button]:!bg-white dark:[&_button]:!bg-slate-800 [&_button]:!text-slate-800 dark:[&_button]:!text-slate-100 [&_button]:!border-b [&_button]:!border-slate-200 dark:[&_button]:!border-slate-700 hover:[&_button]:!bg-slate-100 dark:hover:[&_button]:!bg-slate-700"
             >
-              <ControlButton onClick={() => zoomIn({ duration: 250 })} title="放大畫布" aria-label="放大畫布">
+              <ControlButton onClick={() => zoomIn({ duration: 250 })} title={T.flow.shared.zoomIn} aria-label={T.flow.shared.zoomIn}>
                 <span className="text-sm font-bold select-none">➕</span>
               </ControlButton>
-              <ControlButton onClick={() => zoomOut({ duration: 250 })} title="縮小畫布" aria-label="縮小畫布">
+              <ControlButton onClick={() => zoomOut({ duration: 250 })} title={T.flow.shared.zoomOut} aria-label={T.flow.shared.zoomOut}>
                 <span className="text-sm font-bold select-none">➖</span>
               </ControlButton>
               <ControlButton
@@ -2232,8 +2730,8 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                     setCenter(midX, midY, { zoom: 1, duration: 300 })
                   }
                 }}
-                title="置中視野 (100% 原始比例)"
-                aria-label="置中視野"
+                title={T.flow.shared.centerTitle}
+                aria-label={T.flow.shared.center}
               >
                 <span className="text-sm select-none">🎯</span>
               </ControlButton>
@@ -2242,19 +2740,34 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                   onSelectTask?.(null as unknown as string)
                   fitView({ padding: 0.12, duration: 350, minZoom: 0.05 })
                 }}
-                title="顯示全部 (縮放容納所有卡片)"
-                aria-label="顯示全部"
+                title={T.flow.relationGraph.fitAllTitle}
+                aria-label={T.flow.shared.fitAll}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
                 </svg>
               </ControlButton>
+              {/* Ref: CR-144 */}
+              <ControlButton
+                onClick={handleAddTextAnnotation}
+                title={ANNOTATION_STRINGS.addTextHint}
+                aria-label={ANNOTATION_STRINGS.addText}
+              >
+                <span className="text-sm select-none">📝</span>
+              </ControlButton>
+              <ControlButton
+                onClick={handleAddAreaFrame}
+                title={T.flow.relationGraph.addFrameHint}
+                aria-label={ANNOTATION_STRINGS.addFrame}
+              >
+                <span className="text-sm select-none">🏷️</span>
+              </ControlButton>
               <ControlButton
                 onClick={() => setShowHelpTooltip((prev) => !prev)}
                 onMouseEnter={() => setShowHelpTooltip(true)}
                 onMouseLeave={() => setShowHelpTooltip(false)}
-                title="圖示說明 (警示圖示)"
-                aria-label="圖示說明"
+                title={T.flow.relationGraph.legendTitle}
+                aria-label={T.flow.shared.legend}
                 className="!text-amber-500 font-bold"
               >
                 ℹ️
@@ -2272,23 +2785,23 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2.5">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
                   <span>ℹ️</span>
-                  <span>圖表與警示圖示說明</span>
+                  <span>{T.flow.relationGraph.help.title}</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-normal">完整圖例</span>
+                <span className="text-[10px] text-slate-400 font-normal">{T.flow.relationGraph.help.subtitle}</span>
               </div>
 
               <div className="space-y-3 leading-relaxed text-slate-600 dark:text-slate-300">
                 {/* 關聯線條 */}
                 <div>
                   <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
-                    <span>🔗</span> 關聯線條
+                    <span>🔗</span> {T.flow.relationGraph.help.edgeSection}
                   </div>
                   <div className="space-y-1 pl-1 text-[11px]">
                     <p className="flex items-center gap-1.5">
-                      <span className="shrink-0 font-semibold text-red-500">🔴 紅色實線</span>：左右接點，前後相依關聯（完成後開始）。
+                      <span className="shrink-0 font-semibold text-red-500">{T.flow.relationGraph.help.solidRed}</span>{T.flow.relationGraph.help.solidRedDesc}
                     </p>
                     <p className="flex items-center gap-1.5">
-                      <span className="shrink-0 font-semibold text-purple-600 dark:text-purple-400">🟣 紫色虛線</span>：上下接點，模組與輔助關聯。
+                      <span className="shrink-0 font-semibold text-purple-600 dark:text-purple-400">{T.flow.relationGraph.help.dashedPurple}</span>{T.flow.relationGraph.help.dashedPurpleDesc}
                     </p>
                   </div>
                 </div>
@@ -2296,20 +2809,20 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 {/* 狀態與警示 */}
                 <div>
                   <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
-                    <span>🚩</span> 警示徽章
+                    <span>🚩</span> {T.flow.relationGraph.help.badgeSection}
                   </div>
                   <div className="space-y-1 pl-1 text-[11px]">
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1 py-0.5 font-semibold text-[10px]">⚑ 問題 / 問 N</span>
-                      <span>：包含未解決之問題單或遭遇問題說明。</span>
+                      <span className="shrink-0 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1 py-0.5 font-semibold text-[10px]">{T.flow.relationGraph.help.problem}</span>
+                      <span>{T.flow.relationGraph.help.problemDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 font-semibold text-[10px]">⚠️ 卡住 / 卡 N</span>
-                      <span>：任務進度受阻、等待外部資源中。</span>
+                      <span className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 font-semibold text-[10px]">{T.flow.relationGraph.help.blocked}</span>
+                      <span>{T.flow.relationGraph.help.blockedDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 px-1 py-0.5 font-semibold text-[10px]">⏰ 逾期 / 逾 N</span>
-                      <span>：已超過預定結束日且尚未達到 100%。</span>
+                      <span className="shrink-0 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 px-1 py-0.5 font-semibold text-[10px]">{T.flow.relationGraph.help.overdue}</span>
+                      <span>{T.flow.relationGraph.help.overdueDesc}</span>
                     </p>
                   </div>
                 </div>
@@ -2317,24 +2830,24 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 {/* 卡片與容器 */}
                 <div>
                   <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-1">
-                    <span>📦</span> 容器與事件類型
+                    <span>📦</span> {T.flow.relationGraph.help.typeSection}
                   </div>
                   <div className="space-y-1 pl-1 text-[11px]">
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 font-semibold">📦 收納盒</span>
-                      <span>：父層容器，內部收納子任務並自動加總內部警示。</span>
+                      <span className="shrink-0 font-semibold">{T.flow.relationGraph.boxBadge}</span>
+                      <span>{T.flow.relationGraph.help.boxDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">📄 任務單</span>
-                      <span>：標準事件卡片，支援自訂類型與顏色標籤。</span>
+                      <span className="shrink-0 font-semibold text-blue-600 dark:text-blue-400">{T.flow.relationGraph.help.taskCard}</span>
+                      <span>{T.flow.relationGraph.help.taskCardDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 font-semibold text-rose-600 dark:text-rose-400">🐛 問題單</span>
-                      <span>：系統固定類型，專門追蹤修復與解決方案。</span>
+                      <span className="shrink-0 font-semibold text-rose-600 dark:text-rose-400">{T.flow.relationGraph.help.bugCard}</span>
+                      <span>{T.flow.relationGraph.help.bugCardDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-semibold">✓ 100%</span>
-                      <span>：進度達 100% 即標示為已完成。</span>
+                      <span className="shrink-0 text-emerald-600 dark:text-emerald-400 font-semibold">{T.flow.relationGraph.help.doneMark}</span>
+                      <span>{T.flow.relationGraph.help.doneMarkDesc}</span>
                     </p>
                   </div>
                 </div>
@@ -2353,7 +2866,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                   ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
                   : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
               )}
-              title="即時 Log 視窗開關"
+              title={T.flow.relationGraph.log.toggleTitle}
             >
               📋
             </button>
@@ -2365,7 +2878,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 bg-slate-950/80">
               <div className="flex items-center gap-1.5 font-medium text-xs text-indigo-400">
                 <span>📋</span>
-                <span>動作與座標 Log 視窗</span>
+                <span>{T.flow.relationGraph.log.panelTitle}</span>
                 <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.2 text-[10px] text-indigo-300 border border-indigo-500/30">
                   {logs.length}
                 </span>
@@ -2375,15 +2888,15 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                   type="button"
                   onClick={() => setLogs([])}
                   className="rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="清空 Log 紀錄"
+                  title={T.flow.relationGraph.log.clearTitle}
                 >
-                  清空
+                  {T.flow.relationGraph.log.clear}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowLogPanel(false)}
                   className="rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="關閉視窗"
+                  title={T.flow.relationGraph.log.closeTitle}
                 >
                   ✕
                 </button>
@@ -2393,7 +2906,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             <div className="flex-1 overflow-y-auto p-2.5 space-y-2 font-mono text-[11px] leading-relaxed select-text" ref={logContainerRef}>
               {logs.length === 0 ? (
                 <div className="py-12 text-center text-slate-500 text-xs">
-                  尚未有移動或切換紀錄<br />在畫布上拖曳卡片時將在此即時顯示
+                  {T.flow.relationGraph.log.emptyLine1}<br />{T.flow.relationGraph.log.emptyLine2}
                 </div>
               ) : (
                 logs.map((log) => (
@@ -2406,10 +2919,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                         log.type === 'resize' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
                         'bg-indigo-950 text-indigo-400 border border-indigo-800/50'
                       }`}>
-                        {log.type === 'move_in' ? '📥 移入' :
-                         log.type === 'move_out' ? '📤 移出' :
-                         log.type === 'toggle' ? '📦 模式' :
-                         log.type === 'resize' ? '📐 縮放' : '📍 移動'}
+                        {T.flow.relationGraph.log.type[log.type]}
                       </span>
                       <span className="text-slate-500 text-[10px]">{log.time}</span>
                     </div>
@@ -2422,17 +2932,101 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         )}
       </div>
 
+      {/* Ref: CR-144 */}
+      {editingAnnotation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100">
+              <span>✏️</span>
+              {editingAnnotation.kind === 'text'
+                ? ANNOTATION_STRINGS.editTextTitle
+                : ANNOTATION_STRINGS.editFrameTitle}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {editingAnnotation.kind === 'text'
+                    ? ANNOTATION_STRINGS.fieldTextContent
+                    : ANNOTATION_STRINGS.fieldFrameLabel}
+                </label>
+                {editingAnnotation.kind === 'text' ? (
+                  <textarea
+                    value={editingAnnotation.label}
+                    onChange={(e) => setEditingAnnotation({ ...editingAnnotation, label: e.target.value })}
+                    rows={3}
+                    placeholder={ANNOTATION_STRINGS.textPlaceholder}
+                    className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={editingAnnotation.label}
+                    onChange={(e) => setEditingAnnotation({ ...editingAnnotation, label: e.target.value })}
+                    placeholder={T.flow.relationGraph.framePlaceholder}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {editingAnnotation.kind === 'text'
+                    ? ANNOTATION_STRINGS.fieldTextColor
+                    : ANNOTATION_STRINGS.fieldFrameColor}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {ANNOTATION_COLOR_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.color}
+                      type="button"
+                      onClick={() => setEditingAnnotation({ ...editingAnnotation, color: opt.color })}
+                      className={cx(
+                        'flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        editingAnnotation.color === opt.color
+                          ? 'border-blue-500 bg-blue-50 text-slate-800 ring-2 ring-blue-500/40 dark:bg-blue-950/40 dark:text-slate-100'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60'
+                      )}
+                    >
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: opt.color }} />
+                      <span className="truncate">{opt.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingAnnotation(null)}
+                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                {T.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAnnotationEdit}
+                className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                {T.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmDeleteEdge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
               <span className="text-xl">🗑️</span>
               <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
-                刪除關聯線
+                {T.flow.relationGraph.deleteEdgeTitle}
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              是否刪除 {confirmDeleteEdge.sourceRef} 與 {confirmDeleteEdge.targetRef} 的關聯？
+              {T.flow.relationGraph.deleteEdgeMessage(confirmDeleteEdge.sourceRef, confirmDeleteEdge.targetRef)}
             </p>
             <div className="mt-5 flex justify-end gap-2.5">
               <button
@@ -2440,7 +3034,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 onClick={() => setConfirmDeleteEdge(null)}
                 className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
               >
-                取消
+                {T.common.cancel}
               </button>
               <button
                 type="button"
@@ -2455,7 +3049,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 }}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >
-                確定刪除
+                {T.flow.shared.confirmDelete}
               </button>
             </div>
           </div>
@@ -2468,11 +3062,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
               <span className="text-xl">⚠️</span>
               <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
-                轉換為卡片提示
+                {T.flow.relationGraph.unboxTitle}
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              收納盒 <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{confirmUnboxModal.refText}</span> 轉回卡片後，內含的 <span className="font-bold text-red-600 dark:text-red-400">{confirmUnboxModal.count}</span> 張卡片將移出收納盒。是否確定轉換？
+              {T.flow.relationGraph.unboxMessage.before} <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{confirmUnboxModal.refText}</span> {T.flow.relationGraph.unboxMessage.middle} <span className="font-bold text-red-600 dark:text-red-400">{confirmUnboxModal.count}</span> {T.flow.relationGraph.unboxMessage.after}
             </p>
             <div className="mt-5 flex justify-end gap-2.5">
               <button
@@ -2480,7 +3074,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 onClick={() => setConfirmUnboxModal(null)}
                 className="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
               >
-                取消
+                {T.common.cancel}
               </button>
               <button
                 type="button"
@@ -2491,7 +3085,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 }}
                 className="rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >
-                確定轉換
+                {T.flow.relationGraph.unboxConfirm}
               </button>
             </div>
           </div>
@@ -2504,7 +3098,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
             <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
               <span className="text-xl">⚠️</span>
               <h3 className="font-semibold text-base text-slate-800 dark:text-slate-100">
-                關聯建立受限
+                {T.flow.relationGraph.alertTitle}
               </h3>
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -2516,7 +3110,7 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
                 onClick={() => setAlertMsg(null)}
                 className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >
-                我知道了
+                {T.flow.relationGraph.alertOk}
               </button>
             </div>
           </div>

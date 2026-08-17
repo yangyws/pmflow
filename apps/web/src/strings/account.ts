@@ -24,7 +24,7 @@ const userStatus: Record<AdminUser['status'], string> = {
 }
 
 const projectRole: Record<ProjectRole, string> = {
-  MANAGER: '管理者', EDITOR: '編輯者', COMMENTER: '可留言', VIEWER: '唯讀',
+  MANAGER: '管理者', EDITOR: '編輯者', VIEWER: '唯讀',
 }
 
 export const account = {

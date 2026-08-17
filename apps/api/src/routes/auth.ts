@@ -170,17 +170,31 @@ export default async function authRoutes(app: FastifyInstance) {
     const caller = await authenticate(req)
     const { targetUserId } = z.object({ targetUserId: z.string().uuid() }).parse(req.body)
 
-    const [isOwnerOrAdmin] = await sql<{ role: string }[]>`
-      SELECT role FROM workspace_member WHERE user_id = ${caller.id} AND role IN ('OWNER', 'ADMINISTRATOR')`
-    const [isProjectManager] = await sql<{ role: string }[]>`
-      SELECT role FROM project_member WHERE user_id = ${caller.id} AND role = 'MANAGER'`
+    // Ref: CR-134
+    if (!env.allowImpersonation) throw forbidden('這個站沒有開放身分切換功能')
 
-    if (!isOwnerOrAdmin && !isProjectManager) {
-      throw forbidden('只有工作區擁有者/管理者或專案管理者可以使用身份切換代理功能')
-    }
+    /*
+     * 只認工作區 OWNER/ADMIN，而且只能切成**同一個工作區裡**的人。
+     *
+     * 舊版問「你在任何一個專案是不是 MANAGER」，但產品規則是任何人都能開專案、
+     * 開的人當下就是 MANAGER —— 等於註冊完打一支建立專案就通過，
+     * 再切成工作區 OWNER 就拿到全站。舊版另一條分支寫 'ADMINISTRATOR'，
+     * 那不是有效的角色值（實際是 'ADMIN'），所以它從來沒生效過。
+     */
+    const admin = await sql<{ workspace_id: string }[]>`
+      SELECT workspace_id FROM workspace_member
+      WHERE user_id = ${caller.id} AND role IN ('OWNER', 'ADMIN')`
+    if (!admin.length) throw forbidden('只有工作區擁有者或管理者可以使用身分切換')
 
     const [targetUser] = await sql<{ id: string; email: string; display_name: string; status: string }[]>`
-      SELECT id, email, display_name, status FROM app_user WHERE id = ${targetUserId}`
+      SELECT u.id, u.email, u.display_name, u.status
+      FROM app_user u
+      WHERE u.id = ${targetUserId}
+        AND EXISTS (
+          SELECT 1 FROM workspace_member m
+          WHERE m.user_id = u.id
+            AND m.workspace_id IN ${sql(admin.map(a => a.workspace_id))}
+        )`
 
     if (!targetUser) throw badRequest('找不到目標帳號')
     if (targetUser.status !== 'ACTIVE') throw forbidden('目標帳號已被停用')
@@ -191,6 +205,16 @@ export default async function authRoutes(app: FastifyInstance) {
     await sql`
       INSERT INTO refresh_token (user_id, family_id, token_hash, expires_at)
       VALUES (${authUser.id}, uuidv7(), ${hash}, now() + ${env.refreshTtlSec + ' seconds'}::interval)`
+
+    /*
+     * 稽核只寫到伺服器日誌，沒有寫進資料庫 —— `activity` 的 `task_id` 是 NOT NULL，
+     * 這件事跟任何一張任務都無關，硬塞進去會污染任務的活動紀錄。
+     * 要做成正式的稽核軌跡得另外開一張表（migration），這次沒做。
+     */
+    req.log.warn(
+      { callerId: caller.id, callerEmail: caller.email, targetId: targetUser.id, targetEmail: targetUser.email },
+      '[impersonate] 身分切換'
+    )
 
     setRefreshCookie(reply, raw)
     return reply.send({ accessToken, user: authUser })

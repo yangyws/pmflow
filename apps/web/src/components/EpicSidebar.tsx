@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, type Project, type ProjectParam, type Task } from '../lib/api'
-import { canBeUnder, typesAllowedUnder } from '../lib/hierarchy'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
@@ -536,7 +535,12 @@ export function EpicSidebar({
     rememberCollapsed(v)
   }
 
-  const [createType, setCreateType] = useState<string>('EPIC')
+  // Ref: CR-133
+  const [createType, setCreateType] = useState<string>('')
+  const activeCreateType = useMemo(
+    () => (typeList.some(t => t.key === createType) ? createType : (typeList[0]?.key ?? 'TASK')),
+    [typeList, createType],
+  )
 
   const create = useMutation({
     mutationFn: (v: { title: string; type: string }) =>
@@ -674,8 +678,8 @@ export function EpicSidebar({
             <div className="flex gap-1.5 items-center">
               {(() => {
                 const activeColor =
-                  typeList.find(t => t.key === createType)?.color ||
-                  DEFAULT_TYPE_COLORS[createType] ||
+                  typeList.find(t => t.key === activeCreateType)?.color ||
+                  DEFAULT_TYPE_COLORS[activeCreateType] ||
                   '#3178c6'
                 return (
                   <>
@@ -685,7 +689,7 @@ export function EpicSidebar({
                     />
                     <span className="text-xs text-slate-500 shrink-0">類型：</span>
                     <Select
-                      value={createType}
+                      value={activeCreateType}
                       onChange={e => setCreateType(e.target.value)}
                       style={{ color: readableColor(activeColor, dark) }}
                       className="text-xs py-1 flex-1 font-semibold"
@@ -711,13 +715,13 @@ export function EpicSidebar({
             <Input value={title} onChange={e => setTitle(e.target.value)}
                    placeholder="事件名稱" autoFocus
                    onKeyDown={e => {
-                     if (e.key === 'Enter' && title.trim()) create.mutate({ title: title.trim(), type: createType })
+                     if (e.key === 'Enter' && title.trim()) create.mutate({ title: title.trim(), type: activeCreateType })
                      if (e.key === 'Escape') { setAdding(false); setTitle('') }
                    }} />
             <div className="flex gap-1">
               <Button variant="primary" className="flex-1 justify-center text-xs"
                       disabled={!title.trim() || create.isPending}
-                      onClick={() => create.mutate({ title: title.trim(), type: createType })}>{T.common.create}</Button>
+                      onClick={() => create.mutate({ title: title.trim(), type: activeCreateType })}>{T.common.create}</Button>
               <Button className="text-xs" onClick={() => { setAdding(false); setTitle('') }}>
                 {T.common.cancel}
               </Button>
@@ -827,21 +831,14 @@ function TreeNode({
     : inquiriesIn(task.id)
 
   /*
-   * 「＋」要建的種類 —— 合不合法一律問 `lib/hierarchy.ts`，不要在這裡自己再寫一套
-   * （後端 `apps/api/src/lib/hierarchy.ts` 才是守門員，兩邊的判斷要對得起來，
-   * 不然這顆按鈕按下去只會拿到 400）。
-   *
-   * 優先挑「任務」：掛在大項目底下就是任務，掛在任務底下就是子任務，
-   * 兩種都是這顆按鈕最常見的用途。任務不合法時退而求其次挑第一個合法的種類；
-   * 一種都不合法就整顆不畫 —— 畫一顆按下去必定被拒絕的按鈕比沒有更糟。
+   * Ref: CR-142
+   * 「＋」要建的種類 —— 優先挑「任務」，沒有的話挑清單第一個；
+   * 種類清單還沒載進來（types 是選填的）就退回 'TASK'，別讓按鈕整個消失。
    */
   const addType = useMemo(() => {
-    const allowed = typesAllowedUnder(types, task.type)
-    const pick = allowed.find(t => t.key === 'TASK') ?? allowed[0]
-    if (pick) return pick.key
-    // 種類清單還沒載進來（types 是選填的）：直接問規則本身，別讓按鈕整個消失
-    return types.length === 0 && canBeUnder('TASK', task.type) ? 'TASK' : null
-  }, [types, task.type])
+    const pick = types.find(t => t.key === 'TASK') ?? types[0]
+    return pick ? pick.key : 'TASK'
+  }, [types])
 
   const createChild = useMutation({
     mutationFn: (t: string) =>

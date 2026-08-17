@@ -198,7 +198,7 @@ apps/api/src/
 - **API Tokens**: 以 `pmflow_` 作為前綴，資料庫儲存其 SHA-256 雜湊值，權限等同於發行者。
 - **OAuth**: 支援 Google 與 Apple OIDC 流程。
 - **Workspace Roles**: OWNER / ADMIN / MEMBER。
-- **Project Roles**: MANAGER / EDITOR / COMMENTER / VIEWER。
+- **Project Roles**: MANAGER / EDITOR / VIEWER（Ref: CR-145 —— COMMENTER 已移除）。
 
 ```mermaid
 flowchart TD
@@ -304,7 +304,7 @@ erDiagram
 - `refresh_token`: 儲存 JWT refresh tokens，包含 rotation 追蹤。
 - `api_token`: 儲存 `pmflow_` API tokens (SHA-256 hash)。
 - `project`: 專案資訊，隸屬於 workspace。
-- `project_member`: 專案成員及其角色 (MANAGER, EDITOR, COMMENTER, VIEWER)。
+- `project_member`: 專案成員及其角色 (MANAGER, EDITOR, VIEWER)。
 - `project_join_request`: 使用者申請加入專案的請求紀錄。
 - `task`: 任務本體 (支援 Epic / Task / Subtask / Milestone)。
 - `task_closure`: 閉包表，用於 O(1) 查詢任務樹狀結構的所有後代/祖先。

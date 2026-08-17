@@ -84,7 +84,8 @@ export interface Project {
   isPublic?: boolean
 }
 
-export type ProjectRole = 'MANAGER' | 'EDITOR' | 'COMMENTER' | 'VIEWER'
+// Ref: CR-145
+export type ProjectRole = 'MANAGER' | 'EDITOR' | 'VIEWER'
 
 /** 假別。中文說法在 strings/calendar.ts，這裡跟後端一樣只認 key */
 export type LeaveType =

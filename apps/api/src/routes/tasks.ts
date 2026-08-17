@@ -1,12 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { sql } from '../lib/db.js'
+import { sql, type Db } from '../lib/db.js'
 import {
   authenticate, currentDeputyPrincipals, requireProjectRole, requireTaskAccess,
 } from '../lib/auth.js'
 import { rankBetween } from '../lib/rank.js'
 import { rebuildClosure, assertNotDescendant } from '../lib/graph.js'
-import { assertTypeHierarchy } from '../lib/hierarchy.js'
 import { schedule, type SchedTask, type SchedLink } from '../lib/schedule.js'
 import { notify } from '../lib/notify.js'
 import { badRequest, forbidden, notFound } from '../lib/errors.js'
@@ -86,6 +85,22 @@ async function assertCanDeleteTask(
   )) return
 
   throw forbidden('只有事件建立者、專案建立者或管理者可以刪除事件')
+}
+
+/**
+ * 換上層時，父任務一定要在同一個專案裡。Ref: CR-134
+ *
+ * 少了這個條件，知道 UUID 就能把自己的任務掛到別的專案的任務底下 ——
+ * `task_closure` 會長出跨專案的列，對方的任務詳情頁就冒出一張外來卡片。
+ */
+async function assertParentInProject(
+  tx: Db, parentId: string | null | undefined, projectId: string
+): Promise<void> {
+  if (!parentId) return
+  const [row] = await tx<{ id: string }[]>`
+    SELECT id FROM task
+    WHERE id = ${parentId} AND project_id = ${projectId} AND deleted_at IS NULL`
+  if (!row) throw badRequest('指定的父任務不存在')
 }
 
 const TASK_COLUMNS = sql`
@@ -202,18 +217,15 @@ export default async function taskRoutes(app: FastifyInstance) {
         WHERE id = ${req.params.id} RETURNING next_number - 1 AS next_number`
 
       if (body.parentId) {
+        // Ref: CR-134 —— 父任務一定要在同一個專案裡。少了這個條件，
+        // 知道 UUID 就能把任務掛到別的專案底下，closure 會長出跨專案的列。
         const [parent] = await tx<{ id: string }[]>`
-          SELECT id FROM task WHERE id = ${body.parentId} AND deleted_at IS NULL`
+          SELECT id FROM task
+          WHERE id = ${body.parentId} AND project_id = ${req.params.id} AND deleted_at IS NULL`
         if (!parent) throw badRequest('指定的父任務不存在')
       }
 
-      // 種類決定它能掛在誰底下（見 lib/hierarchy.ts）。建立時種類與上層都是
-      // 這次決定的，所以一定要檢查 —— 沒填種類時寫進去的是 TASK，跟下面的 INSERT 一致
-      await assertTypeHierarchy(tx, {
-        nextType: body.type ?? 'TASK',
-        nextParent: { id: body.parentId ?? null },
-      })
-
+      // Ref: CR-142
       const [{ rank }] = await tx<{ rank: number }[]>`
         SELECT coalesce(max(rank), 0) + 1000 AS rank FROM task WHERE project_id = ${req.params.id}`
 
@@ -336,13 +348,9 @@ export default async function taskRoutes(app: FastifyInstance) {
 
     await sql.begin(async tx => {
       if (b.parentId !== undefined) await assertNotDescendant(tx, req.params.id, b.parentId)
+      if (b.parentId !== undefined) await assertParentInProject(tx, b.parentId, projectId)
 
-      await assertTypeHierarchy(tx, {
-        taskId: req.params.id,
-        nextType: b.type,
-        nextParent: b.parentId !== undefined ? { id: b.parentId } : undefined,
-      })
-
+      // Ref: CR-142
       const [before] = await tx<{
         title: string; description: string | null; problem: string | null; type: string; status_key: string; priority: string;
         assignee_id: string | null; parent_id: string | null; start_date: string | null; due_date: string | null;
@@ -564,14 +572,9 @@ export default async function taskRoutes(app: FastifyInstance) {
 
     await sql.begin(async tx => {
       if (b.parentId !== undefined) await assertNotDescendant(tx, req.params.id, b.parentId)
+      if (b.parentId !== undefined) await assertParentInProject(tx, b.parentId, projectId) // Ref: CR-134
 
-      // 拖曳只換上層，種類不動，但一樣要過同一關（見 lib/hierarchy.ts）——
-      // 用拖的把問題拉到大項目底下，跟在詳情頁改上層是同一件事
-      await assertTypeHierarchy(tx, {
-        taskId: req.params.id,
-        nextParent: b.parentId !== undefined ? { id: b.parentId } : undefined,
-      })
-
+      // Ref: CR-142
       // UPDATE 之前先讀，理由跟 PATCH 那邊一樣：改完就查不回「本來在哪一欄」
       const [before] = await tx<{ status_key: string }[]>`
         SELECT status_key FROM task WHERE id = ${req.params.id}`
@@ -732,18 +735,7 @@ export default async function taskRoutes(app: FastifyInstance) {
     return reply.code(204).send()
   })
 
-  // ── 留言 ────────────────────────────────────────────
-  app.post<{ Params: { id: string } }>('/tasks/:id/comments', async (req, reply) => {
-    const user = await authenticate(req)
-    const { workspaceId } = await requireTaskAccess(user.id, req.params.id, 'COMMENTER')
-    const { text } = z.object({ text: z.string().min(1).max(20000) }).parse(req.body)
-    const [row] = await sql`
-      INSERT INTO activity (workspace_id, task_id, kind, body, actor_id, actor_name)
-      VALUES (${workspaceId}, ${req.params.id}, 'COMMENT', ${sql.json({ text })},
-              ${user.id}, ${user.displayName})
-      RETURNING id, kind, body, actor_name AS "actorName", created_at AS "createdAt"`
-    return reply.code(201).send(row)
-  })
+  // Ref: CR-142
 }
 
 async function loadTask(id: string) {

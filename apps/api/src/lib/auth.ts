@@ -163,8 +163,9 @@ async function authenticateApiToken(req: FastifyRequest, raw: string): Promise<A
   return user
 }
 
-export type ProjectRole = 'MANAGER' | 'EDITOR' | 'COMMENTER' | 'VIEWER'
-const RANK: Record<ProjectRole, number> = { VIEWER: 0, COMMENTER: 1, EDITOR: 2, MANAGER: 3 }
+// Ref: CR-145
+export type ProjectRole = 'MANAGER' | 'EDITOR' | 'VIEWER'
+const RANK: Record<ProjectRole, number> = { VIEWER: 0, EDITOR: 1, MANAGER: 2 }
 
 /**
  * 代理人：請假的時候可以指定一個人代他，**代理期間就是那筆請假的起訖日**

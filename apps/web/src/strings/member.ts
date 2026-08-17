@@ -8,7 +8,7 @@ export const member = {
   pickHint: '左邊點一位成員，這裡就會列出他的任務。',
   search: '搜尋成員',
   role: {
-    MANAGER: '管理者', EDITOR: '編輯者', COMMENTER: '可留言', VIEWER: '唯讀',
+    MANAGER: '管理者', EDITOR: '編輯者', VIEWER: '唯讀',
   },
   /** 名單上每個人後面掛的數字：現在手上幾張 */
   currentCount: (n: number) => `手上 ${n} 張`,

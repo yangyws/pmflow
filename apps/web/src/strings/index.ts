@@ -10,6 +10,7 @@ import { week } from './week'
 import { settings } from './settings'
 import { dashboard } from './dashboard'
 import { member } from './member'
+import { flow } from './flow'
 
 /**
  * 畫面上的文字全部集中在這裡，**不要寫死在元件裡**。
@@ -42,4 +43,5 @@ export const T = {
   settings,
   dashboard,
   member,
+  flow,
 }

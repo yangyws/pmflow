@@ -25,7 +25,6 @@ import ListView from './pages/List'
 // 不要讓只想看看板的人也付這個代價
 const GanttView = lazy(() => import('./pages/Gantt'))
 // React Flow 同理，只有關聯圖用得到
-const GraphView = lazy(() => import('./pages/Graph'))
 const SimpleGraphView = lazy(() => import('./pages/SimpleGraph'))
 const SystemFlowView = lazy(() => import('./pages/SystemFlow'))
 const PlaygroundView = lazy(() => import('./pages/Playground'))
@@ -42,7 +41,7 @@ import AdminPanel from './components/AdminPanel'
 const DashboardView = lazy(() => import('./pages/Dashboard'))
 const DeletedTasksView = lazy(() => import('./pages/DeletedTasks'))
 
-type View = 'list' | 'board' | 'calendar' | 'gantt' | 'graph' | 'simpleGraph' | 'systemFlow' | 'playground' | 'dashboard'
+type View = 'list' | 'board' | 'calendar' | 'gantt' | 'simpleGraph' | 'systemFlow' | 'playground' | 'dashboard'
   | 'inquiry' | 'members' | 'deletedTasks' | 'memberAdmin' | 'settings'
 
 /**
@@ -748,14 +747,6 @@ function ProjectWorkspace({
               {view === 'gantt' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
                   <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskEdit} onSelectTask={handleTaskSelect} focusedTaskId={focusedTaskId} />
-                </Suspense>
-              )}
-              {view === 'graph' && (
-                <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <GraphView projectId={projectId} tasks={tasks}
-                             statuses={project?.statuses ?? []} types={project?.types ?? []} onOpen={handleTaskEdit}
-                             focusedTaskId={focusedTaskId ?? epicId}
-                             onSelectTask={(id) => setFocusedTaskId(id)} />
                 </Suspense>
               )}
               {view === 'simpleGraph' && (

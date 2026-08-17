@@ -27,8 +27,9 @@
 | **週檢視** | `apps/web/src/pages/Week.tsx` | 檢視當週執行任務、單日視角切換過濾、依類型/狀態分組收合 |
 | **行事曆** | `apps/web/src/pages/Calendar.tsx` | 月曆格與跨日長條、拖拉任務改期、登記與管理請假與代理人 |
 | **甘特圖** | `apps/web/src/pages/Gantt.tsx` | 時間軸甘特圖、排程依賴箭頭、顯示關鍵路徑與時間連動 |
-| **關聯圖** | `apps/web/src/pages/Graph.tsx` | 拓撲關聯圖、卡住源頭追蹤、直線平行向右連線與併欄 |
-| **靶心關聯表** | `apps/web/src/pages/SimpleGraph.tsx` | 新版靶心關聯圖、收納盒、四向雙向 Handles、90 度避讓折線、Viewport 焦點持久化與受限提示 Modal |
+| **任務關聯圖** | `apps/web/src/pages/SimpleGraph.tsx` | 頁籤「任務關聯圖」：關聯圖、收納盒、四向雙向 Handles、90 度避讓折線、Viewport 焦點持久化與受限提示 Modal |
+| **系統流程圖** | `apps/web/src/pages/SystemFlow.tsx` | 頁籤「系統流程圖」：模組容器、流程步驟、文字註記、區域標示框、直角可拖折點的關聯線 |
+| **各語法範例** | `apps/web/src/pages/Playground.tsx` | 頁籤「各語法範例」：Markdown／SQL／Java／網頁語法範例與即時預覽 |
 | **對外詢問看板** | `apps/web/src/pages/InquiryBoard.tsx` | 追蹤專案內對外詢問單（待回覆、逾期統計與回覆紀錄） |
 | **儀表板** | `apps/web/src/pages/Dashboard.tsx` | 數據中心：手刻 SVG 燃盡圖 (Burndown) 與負載熱圖 (Workload) |
 | **專案側欄** | `apps/web/src/components/EpicSidebar.tsx` | 左側樹狀結構（大項目→任務→錯誤），可點擊 `＋` 建立合法子任務 |
@@ -119,7 +120,9 @@ pages/
   Board.tsx       203   看板拖拉
   Calendar.tsx    532   月曆，會拖拉改期
   Gantt.tsx       228
-  Graph.tsx       964   關聯圖：自己算版面（union-find 併欄）、卡住／並行標記
+  SimpleGraph.tsx 2711  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、Viewport 持久化
+  SystemFlow.tsx  1927  系統流程圖：模組容器、流程步驟、註記、區域標示框、可拖折點連線
+  Playground.tsx  953   各語法範例：Markdown／SQL／Java／網頁語法範例與即時預覽
   InquiryBoard.tsx194   跨專案發文追蹤
   Week.tsx        340   這一週有哪些任務在跑：依狀態或依類型分組，組可以收合
   Dashboard.tsx   155   儀表板：控制項 + 下面兩張圖
@@ -130,7 +133,7 @@ components/（圖表，都是手刻 SVG，沒有圖表套件）
 
 ### 幾個踩過的坑，改之前先知道
 
-- **`Graph.tsx` 的節點一定要把 `measured` 疊回去**。React Flow 每次收到新 nodes 陣列都照
+- **React Flow 的節點一定要把 `measured` 疊回去**（`SimpleGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
   `node.measured` 重建尺寸，衍生物件身上沒有它，畫面就會整片 `visibility: hidden`。
 - **佈局是自己寫的，不能引 elkjs** —— EPL-2.0 過不了 CI 的授權掃描。
 - **快取鍵裡沒有使用者**（`['projects']`、`['tasks', id]`），所以換帳號一定要 `qc.clear()`。

@@ -41,7 +41,11 @@ services:
       DATABASE_URL: postgres://pmflow:pmflow@db:5432/pmflow
       # 本機開發用固定字串就好；正式部署一定要換成 openssl rand -base64 48
       PMFLOW_JWT_SECRET: dev-only-secret-please-change-in-production-32+
+      # Ref: CR-137 —— 這一份**跑的是 NODE_ENV=production**（映像本身就設了），
+      # 所以「非正式環境才開」的預設值在這裡一律判成關閉。本機要用的就明確打開，
+      # 不要靠 NODE_ENV 猜 —— 改 NODE_ENV 會連帶影響日誌與相依套件的行為。
       PMFLOW_SEED_DEMO: "true"
+      PMFLOW_ALLOW_IMPERSONATION: "true"
       PMFLOW_ALLOW_SELF_REGISTRATION: "true"
       PMFLOW_INQUIRY_DEFAULT_DUE_DAYS: "7"
       # ── 用 Google／Apple 的帳號登入 ──
@@ -49,15 +53,17 @@ services:
       # 要在本機試的話，把值放進外層 shell 的環境變數再 up 就好，不用改這個檔。
       # ⚠️ 本機只驗得到「按鈕有沒有正確導去 Google」—— 對方要連得回 callback，
       #    而 localhost 從外面連不到（Apple 更是完全不收 localhost）。
+      # Ref: CR-137 —— 這裡以前放的是假憑證，登入頁因此會畫出按下去一定失敗的
+      # Google／Apple／Facebook 按鈕。全部改回留空（＝不啟用、不畫按鈕）。
       PMFLOW_PUBLIC_URL: ${PMFLOW_PUBLIC_URL:-http://localhost:8480}
-      PMFLOW_GOOGLE_CLIENT_ID: ${PMFLOW_GOOGLE_CLIENT_ID:-demo-google-client-id.apps.googleusercontent.com}
-      PMFLOW_GOOGLE_CLIENT_SECRET: ${PMFLOW_GOOGLE_CLIENT_SECRET:-demo-google-client-secret}
-      PMFLOW_APPLE_CLIENT_ID: ${PMFLOW_APPLE_CLIENT_ID:-com.demo.pmflow.web}
-      PMFLOW_APPLE_TEAM_ID: ${PMFLOW_APPLE_TEAM_ID:-DEMOTEAM123}
-      PMFLOW_APPLE_KEY_ID: ${PMFLOW_APPLE_KEY_ID:-DEMOKEY123}
-      PMFLOW_APPLE_PRIVATE_KEY: ${PMFLOW_APPLE_PRIVATE_KEY:-LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JR0hBZ0VBTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEJHMHdhd0lCQVFRZ1hZWlBQZFRJNDFLNm5QZmcKTEFnSVN3K21zRGFaU1A1VlhZZDZEWE1xMWdDaEF3SUtBUW1JVEFZZGdKTEZ1Mmx0UGpnS0FBPT0KLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLQo=}
-      PMFLOW_FACEBOOK_CLIENT_ID: ${PMFLOW_FACEBOOK_CLIENT_ID:-demo-facebook-app-id}
-      PMFLOW_FACEBOOK_CLIENT_SECRET: ${PMFLOW_FACEBOOK_CLIENT_SECRET:-demo-facebook-client-secret}
+      PMFLOW_GOOGLE_CLIENT_ID: ${PMFLOW_GOOGLE_CLIENT_ID:-}
+      PMFLOW_GOOGLE_CLIENT_SECRET: ${PMFLOW_GOOGLE_CLIENT_SECRET:-}
+      PMFLOW_APPLE_CLIENT_ID: ${PMFLOW_APPLE_CLIENT_ID:-}
+      PMFLOW_APPLE_TEAM_ID: ${PMFLOW_APPLE_TEAM_ID:-}
+      PMFLOW_APPLE_KEY_ID: ${PMFLOW_APPLE_KEY_ID:-}
+      PMFLOW_APPLE_PRIVATE_KEY: ${PMFLOW_APPLE_PRIVATE_KEY:-}
+      PMFLOW_FACEBOOK_CLIENT_ID: ${PMFLOW_FACEBOOK_CLIENT_ID:-}
+      PMFLOW_FACEBOOK_CLIENT_SECRET: ${PMFLOW_FACEBOOK_CLIENT_SECRET:-}
     volumes:
       - attachments:/data/attachments
     depends_on:

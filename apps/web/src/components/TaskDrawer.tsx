@@ -8,7 +8,6 @@ import { useAuth } from '../lib/auth'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { useTheme } from '../lib/theme'
 import { T } from '../strings'
-import { typesAllowedFor } from '../lib/hierarchy'
 import { DEFAULT_TYPE_COLORS } from './EpicSidebar'
 
 /**
@@ -277,15 +276,8 @@ export function TaskDrawer({
     return list
   }, [types])
 
-  /*
-   * 種類的下拉要濾掉放不進去的選項。上層與子任務都從 allTasks 找 ——
-   * `data.children` 只有 id／標題／狀態，沒有種類。
-   */
-  const typeChoices = typesAllowedFor(allAvailableTypes, {
-    current: data?.type ?? '',
-    parentType: allTasks.find(t => t.id === data?.parentId)?.type ?? null,
-    childTypes: allTasks.filter(t => t.parentId === data?.id).map(t => t.type),
-  })
+  // Ref: CR-127
+  const typeChoices = allAvailableTypes
 
   /**
    * 還有幾件對外詢問沒回。已回覆的不算 —— 那件事已經完成了。
@@ -563,12 +555,7 @@ export function TaskDrawer({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
                 <Field label={T.task.drawer.fieldTaskType}>
                   {canEdit ? (
-                    /*
-                     * 能改成哪幾種，要同時看**上層是誰**與**底下掛了什麼**：
-                     * 大項目不能放在任務底下；底下還掛著問題的話，自己就不能
-                     * 從任務變成別的（問題的上層一定要是任務）。
-                     * 判斷在 lib/hierarchy.ts，後端有同一份守門員。
-                     */
+                    /* Ref: CR-127 */
                     <Select value={form.type}
                             onChange={e => edit({ type: e.target.value as TaskDetail['type'] })}
                             style={{ color: typeChoices.find(t => t.key === form.type)?.color || DEFAULT_TYPE_COLORS[form.type] || '#3178c6' }}
@@ -1213,7 +1200,6 @@ function describeActivity(
 
   switch (kind) {
     case 'CREATED': return T.task.activity.created
-    case 'COMMENT': return T.task.activity.comment(String(body?.text ?? ''))
     case 'LINK_CHANGE': {
       const t = String(body?.linkType ?? '') as LinkType
       return T.task.activity.linkChange(LINK_CHIP[t] ?? t)

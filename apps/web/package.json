@@ -17,12 +17,15 @@
     "@tanstack/react-query": "^5.101.4",
     "@xyflow/react": "^12.11.2",
     "dhtmlx-gantt": "^10.0.0",
+    "highlight.js": "^11.12.0",
+    "markdown-it": "^14.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.1.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/markdown-it": "^14.1.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.3.4",
