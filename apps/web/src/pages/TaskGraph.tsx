@@ -3070,11 +3070,22 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const isRelated = relatedSet ? relatedSet.has(node.id) : true
       const nodeBlockedBy = blockedByMap.get(node.id)
       const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
-      const childBlockedCount = isBox
-        ? (tasks ?? []).filter((k) => k.parentId === node.id && (blockedByMap.get(k.id)?.length ?? 0) > 0).length
-        : 0
-      const blockedCount = (nodeBlockedBy?.length ? 1 : 0) + childBlockedCount
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}`
+      const childCount = (node.data as SimpleGraphNodeData)?.childCount ?? 0
+
+      // 只有收納盒非空 (childCount > 0) 時，才統計畫布上歸屬於該收納盒的未完成受阻卡片數
+      const childBlockedCount =
+        isBox && childCount > 0
+          ? nodes.filter((n) => n.parentId === node.id && (blockedByMap.get(n.id)?.length ?? 0) > 0).length
+          : 0
+
+      // 收納盒自身未連線且無盒內卡片受阻時，blockedCount 嚴格為 0；單張卡片則依自身是否被阻塞
+      const blockedCount = isBox
+        ? childBlockedCount
+        : nodeBlockedBy && nodeBlockedBy.length > 0
+          ? 1
+          : 0
+
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${isBox}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3093,7 +3104,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           isSelected,
           isRelated,
           hasSelectionActive: !!relatedSet,
-          blockedBy: nodeBlockedBy,
+          blockedBy: isBox ? undefined : nodeBlockedBy,
           blockedCount,
           onToggleMode: handleToggleMode,
         },
