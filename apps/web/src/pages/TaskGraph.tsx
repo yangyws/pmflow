@@ -1494,9 +1494,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const clean: Record<string, { x: number; y: number }> = {}
       for (const [k, v] of Object.entries(parsed)) {
         if (v && typeof (v as any).x === 'number' && typeof (v as any).y === 'number') {
-          if ((v as any).x > 0 || (v as any).y > 0) {
-            clean[k] = v as any
-          }
+          clean[k] = { x: (v as any).x, y: (v as any).y }
         }
       }
       return clean
@@ -1937,7 +1935,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   // 切換專案時自動重置對焦狀態並載入該專案的持久化位置、尺寸與模式
   useEffect(() => {
     hasFittedRef.current = false
-    isLoadedRef.current = false
     try {
       const savedD = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
       if (savedD) {
@@ -1945,9 +1942,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const clean: Record<string, { x: number; y: number }> = {}
         for (const [k, v] of Object.entries(parsed)) {
           if (v && typeof (v as any).x === 'number' && typeof (v as any).y === 'number') {
-            if ((v as any).x > 0 || (v as any).y > 0) {
-              clean[k] = v as any
-            }
+            clean[k] = { x: (v as any).x, y: (v as any).y }
           }
         }
         setDragged(clean)
@@ -1964,10 +1959,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       setResized({})
       setToggledModes({})
     }
-    const timer = setTimeout(() => {
-      isLoadedRef.current = true
-    }, 50)
-    return () => clearTimeout(timer)
+    isLoadedRef.current = true
   }, [projectId])
 
   // 卸載 (切換頁籤/專案) 前備份所有節點當前位置至 localStorage 與後端
@@ -1984,24 +1976,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             edgeTexts,
           },
         }).catch(() => {})
-      }
-      if (nodesRef.current.length > 0) {
-        try {
-          const currentDragged: Record<string, { x: number; y: number }> = {}
-          nodesRef.current.forEach((n) => {
-            if (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number') {
-              currentDragged[n.id] = { x: n.position.x, y: n.position.y }
-            }
-          })
-          if (Object.keys(currentDragged).length > 0) {
-            const saved = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
-            const existing = saved ? JSON.parse(saved) : {}
-            const merged = { ...existing, ...currentDragged }
-            localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(merged))
-          }
-        } catch {
-          // ignore
-        }
       }
       if (backendNodesSaveTimerRef.current) {
         clearTimeout(backendNodesSaveTimerRef.current)
@@ -2143,8 +2117,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       return
     }
 
-    const draggedMap = draggedRef.current
-    const resizedMap = resizedRef.current
+    const draggedMap = dragged
+    const resizedMap = resized
     const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
 
     const parentIdSet = new Set<string>()
@@ -2486,7 +2460,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       return orderParentNodesFirst(merged)
     })
-  }, [tasks, toggledModes])
+  }, [tasks, toggledModes, dragged, resized, project])
 
   const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
     /*
