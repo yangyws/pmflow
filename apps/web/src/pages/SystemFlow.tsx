@@ -139,38 +139,46 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
     <div className="relative w-full h-full group">
-      {/* 四向連接點 */}
+      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
-        id="left-in"
+        id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right-out"
+        id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
-        id="top-in"
+        id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom-out"
+        id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
 
       <div
@@ -250,38 +258,46 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
     <div className="relative group">
-      {/* 四向連接點 */}
+      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
-        id="left-in"
+        id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right-out"
+        id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
-        id="top-in"
+        id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom-out"
+        id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
 
       <div

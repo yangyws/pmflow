@@ -295,38 +295,46 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       style={isBox ? { width: boxW, height: boxH } : { width: 256 }}
       className="relative w-full h-auto cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
-      {/* 接點 (Handles) - 4 個邊各保留 1 個中央精準接點，對齊 SystemFlow 四向接點設計 */}
+      {/* 接點 (Handles) - 4 個邊各保留 1 個全功能接點，在 Loose 模式下均支援同時作為出發 (Drag) 與連入 (Drop) 接點 */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
-        id="left-in"
+        id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right-out"
+        id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
-        id="top-in"
+        id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom-out"
+        id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
         isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
 
       {isBox ? (
