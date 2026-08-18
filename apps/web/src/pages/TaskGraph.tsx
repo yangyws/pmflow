@@ -390,7 +390,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                   )}
                   {typeof data.blockedCount === 'number' && data.blockedCount > 0 && (
                     <span
-                      title={T.flow.relationGraph.blockedTitle(data.blockedBy?.join('、') || T.flow.relationGraph.blockedBoxFallback)}
+                      title={`盒內有 ${data.blockedCount} 張子任務受上游依賴阻塞`}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
                       <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge} {data.blockedCount}
@@ -1956,41 +1956,44 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
   }, [projectId, waypoints, edgeTexts, toggledModes])
 
+  const { data: graphData } = useQuery({
+    queryKey: ['graph', projectId],
+    queryFn: () => Api.graph(projectId ?? ''),
+    enabled: !!projectId,
+  })
+
   // 載入專案真實關聯線 (Edges) 並帶入正確使用者選取的接點 (sourceHandle & targetHandle)
   useEffect(() => {
-    if (!projectId) return
-    Api.graph(projectId)
-      .then((res) => {
-        if (res.edges) {
-          let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
-          try {
-            const savedStr = localStorage.getItem(`pmflow_simple_graph_edge_handles_${projectId}`)
-            if (savedStr) savedMap = JSON.parse(savedStr)
-          } catch {}
+    if (!graphData?.edges) return
+    let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
+    try {
+      const savedStr = localStorage.getItem(`pmflow_simple_graph_edge_handles_${projectId}`)
+      if (savedStr) savedMap = JSON.parse(savedStr)
+    } catch {}
 
-          const realEdges: Edge[] = res.edges.map((e) => {
-            const edgeKey = `${e.sourceId}_${e.targetId}`
-            const hData = savedMap[edgeKey] || savedMap[e.id]
-            const sHandle = hData?.sourceHandle
-            const tHandle = hData?.targetHandle
-            const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
-            return {
-              id: e.id,
-              source: e.sourceId,
-              target: e.targetId,
-              sourceHandle: sHandle,
-              targetHandle: tHandle,
-              type: 'orthogonal',
-              animated: true,
-              style,
-              markerEnd,
-            }
-          })
-          setEdges(realEdges)
+    const taskIds = new Set((tasks ?? []).map((t) => t.id))
+    const realEdges: Edge[] = graphData.edges
+      .filter((e) => taskIds.has(e.sourceId) && taskIds.has(e.targetId))
+      .map((e) => {
+        const edgeKey = `${e.sourceId}_${e.targetId}`
+        const hData = savedMap[edgeKey] || savedMap[e.id]
+        const sHandle = hData?.sourceHandle
+        const tHandle = hData?.targetHandle
+        const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
+        return {
+          id: e.id,
+          source: e.sourceId,
+          target: e.targetId,
+          sourceHandle: sHandle,
+          targetHandle: tHandle,
+          type: 'orthogonal',
+          animated: true,
+          style,
+          markerEnd,
         }
       })
-      .catch((err) => console.error('Failed to fetch graph edges:', err))
-  }, [projectId])
+    setEdges(realEdges)
+  }, [graphData, projectId, tasks])
 
   // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView
   useEffect(() => {
@@ -3563,7 +3566,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                   Api.deleteLink(confirmDeleteEdge.edgeId)
                     .then(() => {
                       setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
-                      if (projectId) queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+                      if (projectId) {
+                        queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+                        queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+                        queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
+                      }
                     })
                     .catch((err) => console.error('Failed to delete link:', err))
                   handleSaveEdgeText(confirmDeleteEdge.edgeId, '')
