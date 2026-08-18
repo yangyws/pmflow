@@ -298,48 +298,6 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         isBox ? 'w-full h-full' : 'w-max h-auto'
       )}
     >
-      {/* 接點 (Handles) - 四向全能接點，支援四向任意出發與連入，並顯示十字游標 */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-
       {isBox ? (
         <div
           className={cx(
@@ -536,6 +494,48 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
           </div>
         </div>
       )}
+
+      {/* 接點 (Handles) - 渲染在卡片本體最上層，支援四向任意出發與連入，十字標與拉線保證 100% 響應 */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-in"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-out"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top-in"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-out"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
     </div>
   )
 }
@@ -725,7 +725,7 @@ function OrthogonalEdge({
 
   return (
     <>
-      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={20} />
+      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={30} />
       <EdgeLabelRenderer>
         <div
           className="nodrag nopan absolute h-2.5 w-2.5 rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 cursor-move after:absolute after:content-[''] after:-inset-[9px] after:rounded-full"

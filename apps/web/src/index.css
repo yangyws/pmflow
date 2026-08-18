@@ -203,12 +203,26 @@ body {
   cursor: move !important;
 }
 
+/* ── React Flow 關聯線層級與點擊刪除響應 ── */
+.react-flow__edges {
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+.react-flow__edge,
+.react-flow__edge-path,
+.react-flow__edge-interaction {
+  pointer-events: stroke !important;
+  cursor: pointer !important;
+}
+
 /* ── React Flow 接點 (Handles) 強制十字游標與互動響應 ── */
 .react-flow__handle,
 .react-flow__handle.connecting,
 .react-flow__handle.connectionindicator {
   cursor: crosshair !important;
   pointer-events: all !important;
+  z-index: 50 !important;
 }
 
 .react-flow__handle::after {

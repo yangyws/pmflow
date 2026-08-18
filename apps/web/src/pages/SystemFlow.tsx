@@ -139,48 +139,6 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
     <div className="relative w-full h-full group">
-      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-
       <div
         className={cx(
           'relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border bg-indigo-50/30 dark:bg-indigo-950/20 backdrop-blur-xs shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between cursor-grab active:cursor-grabbing overflow-hidden',
@@ -249,6 +207,48 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
           </div>
         </NodeResizeControl>
       </div>
+
+      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
     </div>
   )
 }
@@ -258,48 +258,6 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
     <div className="relative group">
-      {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-
       <div
         className={cx(
           'min-w-[240px] max-w-[360px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
@@ -351,6 +309,48 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
           )}
         </div>
       </div>
+
+      {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-in"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-out"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top-in"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-out"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
     </div>
   )
 }
