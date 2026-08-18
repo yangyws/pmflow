@@ -2900,9 +2900,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               }
             })
 
-            Api.moveTask(node.id, { parentId: null }).catch((err: unknown) =>
-              console.error('Failed to moveTask in DB:', err)
-            )
+            Api.moveTask(node.id, { parentId: null })
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+              })
+              .catch((err: unknown) =>
+                console.error('Failed to moveTask in DB:', err)
+              )
           }
 
           nextNodes = currentNodes.map((n) => {
@@ -2988,9 +2993,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               }
             })
 
-            Api.moveTask(node.id, { parentId: targetBox!.id }).catch((err: unknown) =>
-              console.error('Failed to moveTask in DB:', err)
-            )
+            Api.moveTask(node.id, { parentId: targetBox!.id })
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+              })
+              .catch((err: unknown) =>
+                console.error('Failed to moveTask in DB:', err)
+              )
           }
 
           const nodeBoxDims = isBoxNode ? computeBoxDimensions(node.id, currentNodes, resized[node.id]?.width, resized[node.id]?.height) : undefined
@@ -3147,17 +3157,56 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     const prevCache = derivedNodeCacheRef.current
     const nextCache = new Map<string, { src: Node; key: string; node: Node }>()
 
+    const taskMap = new Map((tasks ?? []).map((t) => [t.id, t]))
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+
+    const isTaskUnfinishedBug = (tId: string) => {
+      const t = taskMap.get(tId)
+      if (!t || t.type !== 'BUG') return false
+      const cat = statusCatMap.get(t.statusKey)
+      return cat !== 'DONE' && t.statusKey !== 'DONE' && (t.progress ?? 0) < 100
+    }
+
+    // 建立畫布上即時的 parentId 關係（包含收納盒與巢狀子節點）
+    const nodeChildrenMap = new Map<string, string[]>()
+    for (const n of nodes) {
+      if (n.parentId) {
+        const arr = nodeChildrenMap.get(n.parentId) ?? []
+        arr.push(n.id)
+        nodeChildrenMap.set(n.parentId, arr)
+      }
+    }
+
+    // 遞迴統計畫布上目前位於該節點子樹內的所有未完成問題單 (BUG)
+    const getSubtreeProblemBugs = (rootId: string): Task[] => {
+      const result: Task[] = []
+      const visited = new Set<string>()
+      const walk = (id: string) => {
+        if (visited.has(id)) return
+        visited.add(id)
+        for (const childId of nodeChildrenMap.get(id) ?? []) {
+          if (isTaskUnfinishedBug(childId)) {
+            const t = taskMap.get(childId)
+            if (t) result.push(t)
+          }
+          walk(childId)
+        }
+      }
+      walk(rootId)
+      return result
+    }
+
     const derived = nodes.map((node) => {
       const isSelected = activeSelectedId === node.id
       const isRelated = relatedSet ? relatedSet.has(node.id) : true
       const nodeBlockedBy = blockedByMap.get(node.id)
       const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
-      const childCount = (node.data as SimpleGraphNodeData)?.childCount ?? 0
+      const liveChildCount = nodeChildrenMap.get(node.id)?.length ?? 0
 
-      // 只有收納盒非空 (childCount > 0) 時，才統計畫布上歸屬於該收納盒的未完成受阻卡片數
+      // 只有收納盒非空 (liveChildCount > 0) 時，才統計畫布上歸屬於該收納盒的未完成受阻卡片數
       const childBlockedCount =
-        isBox && childCount > 0
-          ? nodes.filter((n) => n.parentId === node.id && (blockedByMap.get(n.id)?.length ?? 0) > 0).length
+        isBox && liveChildCount > 0
+          ? (nodeChildrenMap.get(node.id) ?? []).filter((cId) => (blockedByMap.get(cId)?.length ?? 0) > 0).length
           : 0
 
       // 收納盒自身未連線且無盒內卡片受阻時，blockedCount 嚴格為 0；單張卡片則依自身是否被阻塞
@@ -3167,8 +3216,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ? 1
           : 0
 
-      const problemCount = (node.data as SimpleGraphNodeData)?.problemCount ?? 0
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${isBox}`
+      // 動態統計目前子樹內的未完成問題單，一旦移出收納盒即時歸零
+      const liveProblemBugs = getSubtreeProblemBugs(node.id)
+      const problemCount = liveProblemBugs.length
+      const problemTooltip =
+        problemCount > 0
+          ? isBox
+            ? `盒內有 ${problemCount} 張未完成問題單：${liveProblemBugs.map((k) => k.ref || k.title).join('、')}`
+            : `內有 ${problemCount} 張未完成問題單：${liveProblemBugs.map((k) => k.ref || k.title).join('、')}`
+          : null
+
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${isBox}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3197,6 +3255,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           hasSelectionActive: !!relatedSet,
           blockedBy: isBox ? undefined : nodeBlockedBy,
           blockedCount,
+          problemCount,
+          problem: problemTooltip,
+          childCount: isBox ? liveChildCount : node.data?.childCount,
           onToggleMode: handleToggleMode,
         },
       }
@@ -3206,7 +3267,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks, project?.statuses])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
