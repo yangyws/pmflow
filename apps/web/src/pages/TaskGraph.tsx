@@ -301,7 +301,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Left}
         id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -311,7 +311,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Right}
         id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -321,7 +321,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Top}
         id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -331,7 +331,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Bottom}
         id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -3178,7 +3178,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       </div>
 
       <div className="relative flex-1 flex flex-row overflow-hidden">
-        <div className="relative flex-1 cursor-move">
+        <div className="relative flex-1">
           <ReactFlow
             nodes={renderedNodes}
             edges={styledEdges}

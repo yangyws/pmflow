@@ -145,7 +145,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Left}
         id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -155,7 +155,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Right}
         id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -165,7 +165,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Top}
         id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -175,7 +175,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Bottom}
         id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -264,7 +264,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Left}
         id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -274,7 +274,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Right}
         id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -284,7 +284,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Top}
         id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -294,7 +294,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Bottom}
         id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -1797,7 +1797,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       </div>
 
       {/* 畫布主體 */}
-      <div className="relative flex-1 w-full h-full min-h-0 cursor-move">
+      <div className="relative flex-1 w-full h-full min-h-0">
         <ReactFlow
           nodes={nodesWithHandlers}
           edges={styledEdges}
