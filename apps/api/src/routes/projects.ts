@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
 import { authenticate, requireProjectRole } from '../lib/auth.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, forbidden, notFound } from '../lib/errors.js'
 import { listProjectParams, DEFAULT_PARAMS } from './parameters.js'
 
@@ -121,6 +122,16 @@ export default async function projectRoutes(app: FastifyInstance) {
              start_date AS "startDate", end_date AS "endDate", rank,
              is_public AS "isPublic", true AS "isCreator"
       FROM project WHERE id = ${project.id}`
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: project.id,
+      workspaceId: body.workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'created', project: row },
+    })
+
     return reply.code(201).send(row)
   })
 
@@ -150,7 +161,7 @@ export default async function projectRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>('/projects/:id', async req => {
     const user = await authenticate(req)
-    await requireProjectRole(user.id, req.params.id, 'MANAGER')
+    const { workspaceId } = await requireProjectRole(user.id, req.params.id, 'MANAGER')
     const body = createBody.partial().omit({ workspaceId: true }).parse(req.body)
 
     /**
@@ -203,6 +214,16 @@ export default async function projectRoutes(app: FastifyInstance) {
         }
         throw e
       })
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'updated', project: rows[0] },
+    })
+
     return rows[0]
   })
 }

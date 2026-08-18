@@ -27,7 +27,7 @@
 | **週檢視** | `apps/web/src/pages/Week.tsx` | 檢視當週執行任務、單日視角切換過濾、依類型/狀態分組收合 |
 | **行事曆** | `apps/web/src/pages/Calendar.tsx` | 月曆格與跨日長條、拖拉任務改期、登記與管理請假與代理人 |
 | **甘特圖** | `apps/web/src/pages/Gantt.tsx` | 時間軸甘特圖、排程依賴箭頭、顯示關鍵路徑與時間連動 |
-| **任務關聯圖** | `apps/web/src/pages/SimpleGraph.tsx` | 頁籤「任務關聯圖」：關聯圖、收納盒、四向雙向 Handles、90 度避讓折線、Viewport 焦點持久化與受限提示 Modal |
+| **任務關聯圖** | `apps/web/src/pages/TaskGraph.tsx` | 頁籤「任務關聯圖」：關聯圖、收納盒、四向雙向 Handles、90 度避讓折線、Viewport 焦點持久化與受限提示 Modal |
 | **系統流程圖** | `apps/web/src/pages/SystemFlow.tsx` | 頁籤「系統流程圖」：模組容器、流程步驟、文字註記、區域標示框、直角可拖折點的關聯線 |
 | **各語法範例** | `apps/web/src/pages/Playground.tsx` | 頁籤「各語法範例」：Markdown／SQL／Java／網頁語法範例與即時預覽 |
 | **對外詢問看板** | `apps/web/src/pages/InquiryBoard.tsx` | 追蹤專案內對外詢問單（待回覆、逾期統計與回覆紀錄） |
@@ -120,7 +120,7 @@ pages/
   Board.tsx       203   看板拖拉
   Calendar.tsx    532   月曆，會拖拉改期
   Gantt.tsx       228
-  SimpleGraph.tsx 2711  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、Viewport 持久化
+  TaskGraph.tsx   2711  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、Viewport 持久化
   SystemFlow.tsx  1927  系統流程圖：模組容器、流程步驟、註記、區域標示框、可拖折點連線
   Playground.tsx  953   各語法範例：Markdown／SQL／Java／網頁語法範例與即時預覽
   InquiryBoard.tsx194   跨專案發文追蹤
@@ -133,7 +133,7 @@ components/（圖表，都是手刻 SVG，沒有圖表套件）
 
 ### 幾個踩過的坑，改之前先知道
 
-- **React Flow 的節點一定要把 `measured` 疊回去**（`SimpleGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
+- **React Flow 的節點一定要把 `measured` 疊回去**（`TaskGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
   `node.measured` 重建尺寸，衍生物件身上沒有它，畫面就會整片 `visibility: hidden`。
 - **不住在 `nodes` 裡的節點，`measured` 要自己記回去**（Ref: CR-153）。上面那條的第三種變形：
   住在 `nodes` 的節點，`applyNodeChanges` 會把量到的尺寸寫進節點物件；但**自己另外管一份 state

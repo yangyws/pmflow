@@ -733,4 +733,39 @@ export const Api = {
       taskId: string; taskRef: string; taskTitle: string
       projectId: string; projectName: string; projectColor: string
     }> }>(`/workspaces/${workspaceId}/inquiry-board?state=${state}`),
+
+  // ── 畫布排版與整份文件 (Ref: CR-138) ──
+  canvasNodes: (projectId: string, viewKey: string) =>
+    api<{
+      viewKey: string
+      nodes: Record<string, { x?: number | null; y?: number | null; width?: number | null; height?: number | null; mode?: string | null }>
+      updatedAt: string | null
+      updatedBy: string | null
+      updatedByName: string | null
+    }>(`/projects/${projectId}/canvas/${viewKey}`),
+  saveCanvasNodes: (projectId: string, viewKey: string, json: {
+    nodes: Record<string, { x?: number | null; y?: number | null; width?: number | null; height?: number | null; mode?: string | null }>
+  }) => api<{ viewKey: string; nodes: Record<string, unknown> }>(`/projects/${projectId}/canvas/${viewKey}`, { method: 'PUT', json }),
+  patchCanvasNodes: (projectId: string, viewKey: string, json: {
+    nodes: Record<string, { x?: number | null; y?: number | null; width?: number | null; height?: number | null; mode?: string | null }>
+    remove?: string[]
+  }) => api<{ viewKey: string; nodes: Record<string, unknown> }>(`/projects/${projectId}/canvas/${viewKey}`, { method: 'PATCH', json }),
+  resetCanvasNodes: (projectId: string, viewKey: string) =>
+    api(`/projects/${projectId}/canvas/${viewKey}`, { method: 'DELETE' }),
+
+  canvasDoc: (projectId: string, docKey: string) =>
+    api<{
+      docKey: string
+      data: unknown
+      updatedAt: string | null
+      updatedBy: string | null
+      updatedByName: string | null
+    }>(`/projects/${projectId}/canvas-docs/${docKey}`),
+  saveCanvasDoc: (projectId: string, docKey: string, json: { data: unknown; baseUpdatedAt?: string | null }) =>
+    api<{ docKey: string; updatedAt: string; updatedBy: string }>(
+      `/projects/${projectId}/canvas-docs/${docKey}`, { method: 'PUT', json }),
+  deleteCanvasDoc: (projectId: string, docKey: string) =>
+    api(`/projects/${projectId}/canvas-docs/${docKey}`, { method: 'DELETE' }),
+  patchLinkHandles: (linkId: string, json: { sourceHandle?: string | null; targetHandle?: string | null }) =>
+    api<{ id: string; sourceHandle: string | null; targetHandle: string | null }>(`/links/${linkId}/handles`, { method: 'PATCH', json }),
 }

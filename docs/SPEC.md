@@ -98,8 +98,8 @@ PMFlow 是一套自架式專案管理系統，核心特色是「任務可以上�
 - **Tab bar**: 支援拖曳排序、隱藏/顯示頁籤，並且狀態持久化儲存於 localStorage 中。
 - **檢視模式 (Views)**: 清單、看板、行事曆（內含週檢視）、甘特圖、**任務關聯圖**、**系統流程圖**、
   **各語法範例**、儀表板、對外詢問、事件歸屬。
-  （Ref: CR-142 —— 舊的 `Graph.tsx` 已刪除，「任務關聯圖」現在是 `SimpleGraph.tsx`。）
-- **Lazy Loading**: 較為吃資源的檢視（Gantt, SimpleGraph, SystemFlow, Playground, Dashboard）採延遲載入。
+  （Ref: CR-142 —— 舊的 `Graph.tsx` 已刪除，「任務關聯圖」現在是 `TaskGraph.tsx`。）
+- **Lazy Loading**: 較為吃資源的檢視（Gantt, TaskGraph, SystemFlow, Playground, Dashboard）採延遲載入。
 - **任務詳情 (Task Detail)**: 點擊任務時，會從右側滑出 TaskDrawer 面板，**不會**跳轉到獨立的路由頁面。
 
 ### 3.2 清單視圖 (List View)
@@ -137,7 +137,7 @@ PMFlow 是一套自架式專案管理系統，核心特色是「任務可以上�
 - 支援在甘特圖上直接拖曳改變排程。
 - 技術細節：因為 dhtmlx-gantt 是 imperative API，所以將其封裝在 React ref 內部操作，而不是透過 React state 驅動。
 
-### 3.7 任務關聯圖 (`SimpleGraph.tsx`)
+### 3.7 任務關聯圖 (`TaskGraph.tsx`)
 
 > Ref: CR-142 —— 舊的 `Graph.tsx`（union-find 自動佈局的 DAG 檢視）**已於 2026-08-17 刪除**，
 > 它早就不在頁籤清單上、使用者點不到。頁籤「任務關聯圖」現在對應的是這一頁。

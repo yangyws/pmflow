@@ -8,6 +8,7 @@ import { rankBetween } from '../lib/rank.js'
 import { rebuildClosure, assertNotDescendant } from '../lib/graph.js'
 import { schedule, type SchedTask, type SchedLink } from '../lib/schedule.js'
 import { notify } from '../lib/notify.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, forbidden, notFound } from '../lib/errors.js'
 import { assertParamKey } from './parameters.js'
 import { assertNoOpenInquiries } from '../lib/inquiry.js'
@@ -261,7 +262,17 @@ export default async function taskRoutes(app: FastifyInstance) {
       return t
     })
 
-    return reply.code(201).send(await loadTask(created.id))
+    const task = await loadTask(created.id)
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId: req.params.id,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'created', taskId: created.id },
+    })
+
+    return reply.code(201).send(task)
   })
 
   // ── 單張任務 ─────────────────────────────────────────
@@ -468,7 +479,17 @@ export default async function taskRoutes(app: FastifyInstance) {
       }
     })
 
-    return loadTask(req.params.id)
+    const updated = await loadTask(req.params.id)
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'updated', taskId: req.params.id },
+    })
+
+    return updated
   })
 
   // ── 轉派：換負責人，可附一句交接說明 ────────────────────
@@ -547,7 +568,17 @@ export default async function taskRoutes(app: FastifyInstance) {
       }
     })
 
-    return loadTask(req.params.id)
+    const reassigned = await loadTask(req.params.id)
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'reassigned', taskId: req.params.id, assigneeId: b.assigneeId },
+    })
+
+    return reassigned
   })
 
   // ── 拖曳：改父層 / 排序 / 狀態欄 ───────────────────────
@@ -608,7 +639,17 @@ export default async function taskRoutes(app: FastifyInstance) {
       }
     })
 
-    return loadTask(req.params.id)
+    const moved = await loadTask(req.params.id)
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'moved', taskId: req.params.id, statusKey: b.statusKey, parentId: b.parentId },
+    })
+
+    return moved
   })
 
   // ── 拖曳甘特長條：改日期，可連動下游 ───────────────────
@@ -637,7 +678,16 @@ export default async function taskRoutes(app: FastifyInstance) {
       }
     }
 
-    return { task: await loadTask(req.params.id), schedule: result }
+    const loaded = await loadTask(req.params.id)
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'rescheduled', taskId: req.params.id },
+    })
+
+    return { task: loaded, schedule: result }
   })
 
   // ── 排程結果：甘特圖用（含關鍵路徑與衝突清單）───────────
@@ -650,9 +700,19 @@ export default async function taskRoutes(app: FastifyInstance) {
   // ── 刪除（軟刪除）────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/tasks/:id', async (req, reply) => {
     const user = await authenticate(req)
-    const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
     await sql`UPDATE task SET deleted_at = now() WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'deleted', taskId: req.params.id },
+    })
+
     return reply.code(204).send()
   })
 
@@ -673,16 +733,26 @@ export default async function taskRoutes(app: FastifyInstance) {
   // ── 還原已刪除事件 ────────────────────────────────────
   app.post<{ Params: { id: string } }>('/tasks/:id/restore', async (req, reply) => {
     const user = await authenticate(req)
-    const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
     await sql`UPDATE task SET deleted_at = NULL WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'restored', taskId: req.params.id },
+    })
+
     return reply.code(200).send({ ok: true })
   })
 
   // ── 關閉/解決遭遇問題 ──────────────────────────────────
   app.post<{ Params: { id: string } }>('/tasks/:id/resolve-problem', async (req, reply) => {
     const user = await authenticate(req)
-    const { workspaceId, role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { workspaceId, projectId, role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanEditTask(req.params.id, user.id, role)
     const { problemId, solution } = z.object({
       problemId: z.string().uuid().optional(),
@@ -723,15 +793,34 @@ export default async function taskRoutes(app: FastifyInstance) {
               ${sql.json({ problemBefore: curProblem, problem: null, solution: solution || null })},
               ${user.id}, ${user.displayName})`
 
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'problem_resolved', taskId: req.params.id },
+    })
+
     return reply.code(200).send({ ok: true })
   })
 
   // ── 永久刪除事件 ────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/tasks/:id/permanent', async (req, reply) => {
     const user = await authenticate(req)
-    const { role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
     await sql`DELETE FROM task WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'permanent_deleted', taskId: req.params.id },
+    })
+
     return reply.code(204).send()
   })
 

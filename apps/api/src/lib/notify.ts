@@ -1,4 +1,5 @@
 import { sql, type Db } from './db.js'
+import { emitRealtimeEvent } from './events.js'
 
 /**
  * 通知的產生端。所有寫入 notification 的地方都走這裡，不要在路由裡自己 INSERT ——
@@ -33,11 +34,27 @@ export async function notify(n: NotifyInput): Promise<void> {
   // 都不該跳通知。這是唯一的過濾點，所以放在這裡而不是各個呼叫端。
   if (!n.userId || n.userId === n.actorId) return
 
-  await n.db`
+  const [created] = await n.db<{ id: string }[]>`
     INSERT INTO notification
       (workspace_id, user_id, kind, actor_id, actor_name, project_id, task_id, body)
     VALUES
       (${n.workspaceId}, ${n.userId}, ${n.kind}, ${n.actorId}, ${n.actorName},
        ${n.projectId ?? null}, ${n.taskId ?? null},
-       ${sql.json((n.body ?? {}) as Record<string, never>)})`
+       ${sql.json((n.body ?? {}) as Record<string, never>)})
+    RETURNING id`
+
+  emitRealtimeEvent({
+    type: 'notification:new',
+    workspaceId: n.workspaceId,
+    projectId: n.projectId,
+    userId: n.userId,
+    actorId: n.actorId,
+    actorName: n.actorName,
+    payload: {
+      notificationId: created?.id,
+      kind: n.kind,
+      taskId: n.taskId,
+      body: n.body,
+    },
+  })
 }

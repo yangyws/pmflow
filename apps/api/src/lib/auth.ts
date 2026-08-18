@@ -110,8 +110,16 @@ declare module 'fastify' {
  */
 export async function authenticate(req: FastifyRequest): Promise<AuthUser> {
   const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) throw unauthorized()
-  const credential = header.slice(7)
+  let credential: string | undefined
+  if (header?.startsWith('Bearer ')) {
+    credential = header.slice(7)
+  } else if (typeof (req.query as Record<string, unknown> | undefined)?.token === 'string') {
+    credential = (req.query as Record<string, string>).token
+  } else if (typeof (req.query as Record<string, unknown> | undefined)?.access_token === 'string') {
+    credential = (req.query as Record<string, string>).access_token
+  }
+
+  if (!credential) throw unauthorized()
 
   if (credential.startsWith(API_TOKEN_PREFIX)) return authenticateApiToken(req, credential)
 

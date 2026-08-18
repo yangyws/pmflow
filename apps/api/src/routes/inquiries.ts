@@ -5,6 +5,7 @@ import { env } from '../lib/env.js'
 import type { ProjectRole } from '../lib/auth.js'
 import { assertTaskStakeholder, authenticate, requireTaskAccess } from '../lib/auth.js'
 import { recalcInquiryState, addWorkingDays, toISODate } from '../lib/inquiry.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { forbidden, notFound } from '../lib/errors.js'
 
 const INQUIRY_COLUMNS = sql`
@@ -65,7 +66,7 @@ export default async function inquiryRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>('/tasks/:id/inquiries', async (req, reply) => {
     const user = await authenticate(req)
-    const { workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { workspaceId, projectId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     const b = createBody.parse(req.body)
 
     const askedAt = b.askedAt ?? toISODate(new Date())
@@ -96,14 +97,24 @@ export default async function inquiryRoutes(app: FastifyInstance) {
       return row
     })
 
-    return reply.code(201).send(await loadInquiry(created.id))
+    const inquiry = await loadInquiry(created.id)
+    emitRealtimeEvent({
+      type: 'inquiry:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'created', inquiryId: created.id, taskId: req.params.id },
+    })
+
+    return reply.code(201).send(inquiry)
   })
 
   app.patch<{ Params: { id: string } }>('/inquiries/:id', async req => {
     const user = await authenticate(req)
     const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
     await assertCanEditInquiry(a, user.id) // Ref: CR-130
-    const { taskId } = a
+    const { taskId, projectId, workspaceId } = a
     const b = patchBody.parse(req.body)
 
     await sql.begin(async tx => {
@@ -119,7 +130,18 @@ export default async function inquiryRoutes(app: FastifyInstance) {
         WHERE id = ${req.params.id}`
       await recalcInquiryState(tx, taskId)
     })
-    return loadInquiry(req.params.id)
+
+    const updated = await loadInquiry(req.params.id)
+    emitRealtimeEvent({
+      type: 'inquiry:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'updated', inquiryId: req.params.id, taskId },
+    })
+
+    return updated
   })
 
   app.post<{ Params: { id: string } }>('/inquiries/:id/mark-replied', async req => {
@@ -127,7 +149,7 @@ export default async function inquiryRoutes(app: FastifyInstance) {
     // Ref: CR-145
     // 登錄回覆只要是專案成員就可以 —— 回覆是別人送回來的事實，
     // 誰收到誰登錄最快；卡在編輯權限上只會讓它留在某個人的信箱裡
-    const { taskId, workspaceId } = await accessInquiry(user.id, req.params.id, 'VIEWER')
+    const { taskId, workspaceId, projectId } = await accessInquiry(user.id, req.params.id, 'VIEWER')
     const b = markRepliedBody.parse(req.body)
 
     await sql.begin(async tx => {
@@ -146,14 +168,25 @@ export default async function inquiryRoutes(app: FastifyInstance) {
                VALUES (${workspaceId}, ${taskId}, 'INQUIRY_CHANGE', ${user.id}, ${user.displayName},
                        ${sql.json({ action: 'replied', ...b })})`
     })
-    return loadInquiry(req.params.id)
+
+    const replied = await loadInquiry(req.params.id)
+    emitRealtimeEvent({
+      type: 'inquiry:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'replied', inquiryId: req.params.id, taskId },
+    })
+
+    return replied
   })
 
   app.post<{ Params: { id: string } }>('/inquiries/:id/reopen', async req => {
     const user = await authenticate(req)
     const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
     await assertCanEditInquiry(a, user.id) // Ref: CR-130
-    const { taskId } = a
+    const { taskId, projectId, workspaceId } = a
     await sql.begin(async tx => {
       await tx`
         UPDATE task_inquiry SET is_replied = false, replied_at = NULL,
@@ -161,18 +194,39 @@ export default async function inquiryRoutes(app: FastifyInstance) {
         WHERE id = ${req.params.id}`
       await recalcInquiryState(tx, taskId)
     })
-    return loadInquiry(req.params.id)
+
+    const reopened = await loadInquiry(req.params.id)
+    emitRealtimeEvent({
+      type: 'inquiry:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'reopened', inquiryId: req.params.id, taskId },
+    })
+
+    return reopened
   })
 
   app.delete<{ Params: { id: string } }>('/inquiries/:id', async (req, reply) => {
     const user = await authenticate(req)
     const a = await accessInquiry(user.id, req.params.id, 'EDITOR')
     await assertCanEditInquiry(a, user.id) // Ref: CR-130
-    const { taskId } = a
+    const { taskId, projectId, workspaceId } = a
     await sql.begin(async tx => {
       await tx`DELETE FROM task_inquiry WHERE id = ${req.params.id}`
       await recalcInquiryState(tx, taskId)
     })
+
+    emitRealtimeEvent({
+      type: 'inquiry:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'deleted', inquiryId: req.params.id, taskId },
+    })
+
     return reply.code(204).send()
   })
 
@@ -265,7 +319,6 @@ async function loadInquiry(id: string) {
   return row ?? null
 }
 
-/** 子資源端點必須從 id 反查所屬任務再驗權限，不能因為拿得到 id 就放行 */
 async function accessInquiry(
   userId: string, inquiryId: string, min: 'EDITOR' | 'VIEWER'   // Ref: CR-145
 ) {
@@ -273,7 +326,7 @@ async function accessInquiry(
     SELECT task_id, asked_by FROM task_inquiry WHERE id = ${inquiryId}`
   if (!row) throw notFound('找不到這筆詢問單')
   const r = await requireTaskAccess(userId, row.task_id, min)
-  return { taskId: row.task_id, workspaceId: r.workspaceId, role: r.role, askedBy: row.asked_by }
+  return { taskId: row.task_id, workspaceId: r.workspaceId, projectId: r.projectId, role: r.role, askedBy: row.asked_by }
 }
 
 /**

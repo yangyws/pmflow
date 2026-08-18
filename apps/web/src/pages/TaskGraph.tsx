@@ -157,7 +157,7 @@ function orderParentNodesFirst(nodes: Node[]): Node[] {
 
 export type NodeMode = 'card' | 'box'
 
-export type SimpleGraphNodeData = {
+export type TaskGraphNodeData = {
   label: string
   refText?: string
   mode: NodeMode
@@ -186,7 +186,9 @@ export type SimpleGraphNodeData = {
   onOpenTask?: (id: string) => void
 }
 
-export type CustomSimpleNode = Node<SimpleGraphNodeData, 'simpleNode'>
+export type CustomTaskNode = Node<TaskGraphNodeData, 'simpleNode'>
+export type SimpleGraphNodeData = TaskGraphNodeData
+export type CustomSimpleNode = CustomTaskNode
 
 function NodeProgressBar({ progress }: { progress: number }) {
   const barColor = progress >= 100 ? '#10b981' : '#ef4444'
@@ -1019,7 +1021,7 @@ function SimpleFrameNode({ id, data }: NodeProps) {
   )
 }
 
-export interface SimpleGraphProps {
+export interface TaskGraphProps {
   projectId?: string
   tasks?: Task[]
   onOpenTask?: (taskId: string) => void
@@ -1027,6 +1029,7 @@ export interface SimpleGraphProps {
   menuFocusTarget?: { id: string | null; ts: number } | null
   onSelectTask?: (taskId: string) => void
 }
+export type SimpleGraphProps = TaskGraphProps
 
 type ConfirmDeleteEdgeState = {
   edgeId: string
@@ -1043,12 +1046,24 @@ type LogItem = {
   message: string
 }
 
-function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask }: SimpleGraphProps) {
+function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask }: TaskGraphProps) {
   const { fitView, setCenter, getViewport, zoomIn, zoomOut } = useReactFlow()
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId!),
+    enabled: !!projectId,
+  })
+
+  const { data: extraDocRes } = useQuery({
+    queryKey: ['canvasDoc', projectId, 'task-graph-extra'],
+    queryFn: () => Api.canvasDoc(projectId!, 'task-graph-extra'),
+    enabled: !!projectId,
+  })
+
+  const { data: canvasNodesRes } = useQuery({
+    queryKey: ['canvasNodes', projectId, 'task-graph'],
+    queryFn: () => Api.canvasNodes(projectId!, 'task-graph'),
     enabled: !!projectId,
   })
 
@@ -1493,9 +1508,181 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   // Ref: CR-139
   const [waypoints, setWaypoints] = useState<WaypointMap>(() => loadWaypoints(projectId))
 
+  // Ref: CR-150
+  const [edgeTexts, setEdgeTexts] = useState<EdgeTextMap>(() => loadEdgeTexts(projectId))
+
+  // Ref: CR-144
+  const [annotations, setAnnotations] = useState<CanvasAnnotations>(() => loadCanvasAnnotations(projectId))
+  const annotationsRef = useRef(annotations)
+  annotationsRef.current = annotations
+  const [editingAnnotation, setEditingAnnotation] = useState<
+    { id: string; kind: 'text' | 'frame'; label: string; color: string } | null
+  >(null)
+
+  const hasInitializedExtraServerRef = useRef<string | null>(null)
+  const hasInitializedNodesServerRef = useRef<string | null>(null)
+
+  // 載入後端共享註記、折點與文字 (task-graph-extra)
   useEffect(() => {
-    setWaypoints(loadWaypoints(projectId))
-  }, [projectId])
+    if (!extraDocRes?.data || hasInitializedExtraServerRef.current === projectId || !projectId) return
+    hasInitializedExtraServerRef.current = projectId
+    const extraData = extraDocRes.data as {
+      annotations?: CanvasAnnotations
+      waypoints?: WaypointMap
+      edgeTexts?: EdgeTextMap
+    }
+    if (extraData && typeof extraData === 'object') {
+      if (extraData.annotations && (Array.isArray(extraData.annotations.texts) || Array.isArray(extraData.annotations.frames))) {
+        const cleanAnn: CanvasAnnotations = {
+          texts: Array.isArray(extraData.annotations.texts) ? extraData.annotations.texts : [],
+          frames: Array.isArray(extraData.annotations.frames) ? extraData.annotations.frames : [],
+        }
+        setAnnotations(cleanAnn)
+        saveCanvasAnnotations(projectId, cleanAnn)
+      }
+      if (extraData.waypoints && typeof extraData.waypoints === 'object') {
+        setWaypoints(extraData.waypoints)
+        saveWaypoints(projectId, extraData.waypoints)
+      }
+      if (extraData.edgeTexts && typeof extraData.edgeTexts === 'object') {
+        setEdgeTexts(extraData.edgeTexts)
+        saveEdgeTexts(projectId, extraData.edgeTexts)
+      }
+    }
+  }, [extraDocRes, projectId])
+
+  // 載入後端共享節點排版與收納狀態 (canvas/task-graph)
+  useEffect(() => {
+    if (!canvasNodesRes?.nodes || hasInitializedNodesServerRef.current === projectId || !projectId) return
+    const rawNodes = canvasNodesRes.nodes
+    const nodeEntries = Object.entries(rawNodes)
+    if (nodeEntries.length === 0) return
+    hasInitializedNodesServerRef.current = projectId
+
+    const serverDragged: Record<string, { x: number; y: number }> = {}
+    const serverResized: Record<string, { width: number; height: number }> = {}
+    const serverModes: Record<string, NodeMode> = {}
+
+    for (const [nodeId, n] of nodeEntries) {
+      if (n && typeof n.x === 'number' && typeof n.y === 'number') {
+        serverDragged[nodeId] = { x: n.x, y: n.y }
+      }
+      if (n && typeof n.width === 'number' && typeof n.height === 'number') {
+        serverResized[nodeId] = { width: n.width, height: n.height }
+      }
+      if (n && (n.mode === 'box' || n.mode === 'card')) {
+        serverModes[nodeId] = n.mode
+      }
+    }
+
+    if (Object.keys(serverDragged).length > 0) {
+      setDragged((prev) => {
+        const merged = { ...prev, ...serverDragged }
+        try {
+          localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(merged))
+        } catch {}
+        return merged
+      })
+    }
+
+    if (Object.keys(serverResized).length > 0) {
+      setResized((prev) => {
+        const merged = { ...prev, ...serverResized }
+        try {
+          localStorage.setItem(`pmflow_simple_graph_resized_${projectId}`, JSON.stringify(merged))
+        } catch {}
+        return merged
+      })
+    }
+
+    if (Object.keys(serverModes).length > 0) {
+      setToggledModes((prev) => {
+        const merged = { ...prev, ...serverModes }
+        try {
+          localStorage.setItem(`pmflow_simple_graph_toggled_modes_${projectId}`, JSON.stringify(merged))
+        } catch {}
+        return merged
+      })
+    }
+  }, [canvasNodesRes, projectId])
+
+  const backendExtraSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedExtraJsonRef = useRef<string>('')
+
+  const saveExtraToBackend = useCallback(
+    (nextAnn: CanvasAnnotations, nextWp: WaypointMap, nextTexts: EdgeTextMap) => {
+      if (!projectId) return
+      const payload = { annotations: nextAnn, waypoints: nextWp, edgeTexts: nextTexts }
+      const json = JSON.stringify(payload)
+      if (json === lastSavedExtraJsonRef.current) return
+
+      if (backendExtraSaveTimerRef.current) {
+        clearTimeout(backendExtraSaveTimerRef.current)
+      }
+      backendExtraSaveTimerRef.current = setTimeout(async () => {
+        backendExtraSaveTimerRef.current = null
+        try {
+          lastSavedExtraJsonRef.current = json
+          await Api.saveCanvasDoc(projectId, 'task-graph-extra', { data: payload })
+        } catch (err) {
+          console.error('Failed to save task-graph-extra canvas doc to backend:', err)
+        }
+      }, 600)
+    },
+    [projectId]
+  )
+
+  const backendNodesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedNodesJsonRef = useRef<string>('')
+
+  const saveNodesToBackend = useCallback(
+    (
+      currentDragged: Record<string, { x: number; y: number }>,
+      currentResized: Record<string, { width: number; height: number }>,
+      currentModes: Record<string, NodeMode>
+    ) => {
+      if (!projectId) return
+
+      const allNodeIds = new Set([
+        ...Object.keys(currentDragged),
+        ...Object.keys(currentResized),
+        ...Object.keys(currentModes),
+      ])
+      if (allNodeIds.size === 0) return
+
+      const patchPayload: Record<
+        string,
+        { x?: number | null; y?: number | null; width?: number | null; height?: number | null; mode?: string | null }
+      > = {}
+
+      for (const id of allNodeIds) {
+        patchPayload[id] = {
+          x: currentDragged[id]?.x ?? null,
+          y: currentDragged[id]?.y ?? null,
+          width: currentResized[id]?.width ?? null,
+          height: currentResized[id]?.height ?? null,
+          mode: currentModes[id] ?? null,
+        }
+      }
+
+      const json = JSON.stringify(patchPayload)
+      if (json === lastSavedNodesJsonRef.current) return
+
+      if (backendNodesSaveTimerRef.current) {
+        clearTimeout(backendNodesSaveTimerRef.current)
+      }
+      backendNodesSaveTimerRef.current = setTimeout(async () => {
+        backendNodesSaveTimerRef.current = null
+        try {
+          lastSavedNodesJsonRef.current = json
+          await Api.saveCanvasNodes(projectId, 'task-graph', { nodes: patchPayload })
+        } catch (err) {
+          console.error('Failed to save task-graph canvas nodes to backend:', err)
+        }
+      }, 600)
+    },
+    [projectId]
+  )
 
   /*
    * Ref: CR-151 落盤策略改成跟 SystemFlow.tsx 同一套：拖曳／縮放進行中只把待寫的內容記起來不落盤，
@@ -1544,8 +1731,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
 
   // Ref: CR-151
   useEffect(() => {
-    queueCanvasWrite('waypoints', () => saveWaypoints(projectId, waypoints))
-  }, [waypoints, projectId, queueCanvasWrite])
+    queueCanvasWrite('waypoints', () => {
+      saveWaypoints(projectId, waypoints)
+      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts)
+    })
+  }, [waypoints, projectId, queueCanvasWrite, saveExtraToBackend, edgeTexts])
 
   const handleWaypointChange = useCallback((key: string, p: Waypoint) => {
     setWaypoints((prev) => ({ ...prev, [key]: p }))
@@ -1561,16 +1751,12 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   }, [])
 
   // Ref: CR-150
-  const [edgeTexts, setEdgeTexts] = useState<EdgeTextMap>(() => loadEdgeTexts(projectId))
-
   useEffect(() => {
-    setEdgeTexts(loadEdgeTexts(projectId))
-  }, [projectId])
-
-  // Ref: CR-151
-  useEffect(() => {
-    queueCanvasWrite('edgeTexts', () => saveEdgeTexts(projectId, edgeTexts))
-  }, [edgeTexts, projectId, queueCanvasWrite])
+    queueCanvasWrite('edgeTexts', () => {
+      saveEdgeTexts(projectId, edgeTexts)
+      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts)
+    })
+  }, [edgeTexts, projectId, queueCanvasWrite, saveExtraToBackend, waypoints])
 
   const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
     const trimmed = text.trim()
@@ -1593,22 +1779,13 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     setEdgeTexts((prev) => migrateLegacyEdgeKeys(prev, edges))
   }, [edges])
 
-  // Ref: CR-144
-  const [annotations, setAnnotations] = useState<CanvasAnnotations>(() => loadCanvasAnnotations(projectId))
-  const annotationsRef = useRef(annotations)
-  annotationsRef.current = annotations
-  const [editingAnnotation, setEditingAnnotation] = useState<
-    { id: string; kind: 'text' | 'frame'; label: string; color: string } | null
-  >(null)
-
-  useEffect(() => {
-    setAnnotations(loadCanvasAnnotations(projectId))
-  }, [projectId])
-
   // Ref: CR-151
   useEffect(() => {
-    queueCanvasWrite('annotations', () => saveCanvasAnnotations(projectId, annotations))
-  }, [annotations, projectId, queueCanvasWrite])
+    queueCanvasWrite('annotations', () => {
+      saveCanvasAnnotations(projectId, annotations)
+      saveExtraToBackend(annotations, waypoints, edgeTexts)
+    })
+  }, [annotations, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts])
 
   const handleAddTextAnnotation = useCallback(() => {
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
@@ -1793,28 +1970,61 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     return () => clearTimeout(timer)
   }, [projectId])
 
-  // 卸載 (切換頁籤) 前備份所有節點當前位置至 localStorage
+  // 卸載 (切換頁籤/專案) 前備份所有節點當前位置至 localStorage 與後端
   useEffect(() => {
     return () => {
-      if (!projectId || nodesRef.current.length === 0) return
-      try {
-        const currentDragged: Record<string, { x: number; y: number }> = {}
-        nodesRef.current.forEach((n) => {
-          if (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number') {
-            currentDragged[n.id] = { x: n.position.x, y: n.position.y }
+      if (!projectId) return
+      if (backendExtraSaveTimerRef.current) {
+        clearTimeout(backendExtraSaveTimerRef.current)
+        backendExtraSaveTimerRef.current = null
+        Api.saveCanvasDoc(projectId, 'task-graph-extra', {
+          data: {
+            annotations: annotationsRef.current,
+            waypoints,
+            edgeTexts,
+          },
+        }).catch(() => {})
+      }
+      if (nodesRef.current.length > 0) {
+        try {
+          const currentDragged: Record<string, { x: number; y: number }> = {}
+          nodesRef.current.forEach((n) => {
+            if (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number') {
+              currentDragged[n.id] = { x: n.position.x, y: n.position.y }
+            }
+          })
+          if (Object.keys(currentDragged).length > 0) {
+            const saved = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
+            const existing = saved ? JSON.parse(saved) : {}
+            const merged = { ...existing, ...currentDragged }
+            localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(merged))
           }
-        })
-        if (Object.keys(currentDragged).length > 0) {
-          const saved = localStorage.getItem(`pmflow_simple_graph_dragged_${projectId}`)
-          const existing = saved ? JSON.parse(saved) : {}
-          const merged = { ...existing, ...currentDragged }
-          localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(merged))
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
+      }
+      if (backendNodesSaveTimerRef.current) {
+        clearTimeout(backendNodesSaveTimerRef.current)
+        backendNodesSaveTimerRef.current = null
+        const patchPayload: Record<
+          string,
+          { x?: number | null; y?: number | null; width?: number | null; height?: number | null; mode?: string | null }
+        > = {}
+        for (const [id, pos] of Object.entries(draggedRef.current)) {
+          patchPayload[id] = {
+            x: pos.x,
+            y: pos.y,
+            width: resizedRef.current[id]?.width ?? null,
+            height: resizedRef.current[id]?.height ?? null,
+            mode: toggledModes[id] ?? null,
+          }
+        }
+        if (Object.keys(patchPayload).length > 0) {
+          Api.saveCanvasNodes(projectId, 'task-graph', { nodes: patchPayload }).catch(() => {})
+        }
       }
     }
-  }, [projectId])
+  }, [projectId, waypoints, edgeTexts, toggledModes])
 
   // 載入專案真實關聯線 (Edges) 並帶入正確使用者選取的接點 (sourceHandle & targetHandle)
   useEffect(() => {
@@ -1877,21 +2087,22 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
     }
   }, [nodes, fitView])
 
-  // 每次拖曳移位自動寫入 localStorage 保存 (僅在載入完成後生效)
+  // 每次拖曳移位自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   useEffect(() => {
     if (!projectId || !isLoadedRef.current) return
-    try {
-      if (Object.keys(dragged).length > 0) {
-        localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(dragged))
-      } else {
-        localStorage.removeItem(`pmflow_simple_graph_dragged_${projectId}`)
-      }
-    } catch {
-      // ignore
-    }
-  }, [dragged, projectId])
+    queueCanvasWrite('dragged', () => {
+      try {
+        if (Object.keys(dragged).length > 0) {
+          localStorage.setItem(`pmflow_simple_graph_dragged_${projectId}`, JSON.stringify(dragged))
+        } else {
+          localStorage.removeItem(`pmflow_simple_graph_dragged_${projectId}`)
+        }
+      } catch {}
+      saveNodesToBackend(dragged, resizedRef.current, toggledModes)
+    })
+  }, [dragged, projectId, queueCanvasWrite, saveNodesToBackend, toggledModes])
 
-  // 每次調整大小自動寫入 localStorage 保存 (僅在載入完成後生效)
+  // 每次調整大小自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   // Ref: CR-151
   useEffect(() => {
     if (!projectId || !isLoadedRef.current) return
@@ -1902,28 +2113,28 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
         } else {
           localStorage.removeItem(`pmflow_simple_graph_resized_${projectId}`)
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
+      saveNodesToBackend(draggedRef.current, resized, toggledModes)
     })
-  }, [resized, projectId, queueCanvasWrite])
+  }, [resized, projectId, queueCanvasWrite, saveNodesToBackend, toggledModes])
 
-  // 每次切換模式自動寫入 localStorage 保存 (僅在載入完成後生效)
+  // 每次切換模式自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   useEffect(() => {
     if (!projectId || !isLoadedRef.current) return
-    try {
-      if (Object.keys(toggledModes).length > 0) {
-        localStorage.setItem(
-          `pmflow_simple_graph_toggled_modes_${projectId}`,
-          JSON.stringify(toggledModes)
-        )
-      } else {
-        localStorage.removeItem(`pmflow_simple_graph_toggled_modes_${projectId}`)
-      }
-    } catch {
-      // ignore
-    }
-  }, [toggledModes, projectId])
+    queueCanvasWrite('toggledModes', () => {
+      try {
+        if (Object.keys(toggledModes).length > 0) {
+          localStorage.setItem(
+            `pmflow_simple_graph_toggled_modes_${projectId}`,
+            JSON.stringify(toggledModes)
+          )
+        } else {
+          localStorage.removeItem(`pmflow_simple_graph_toggled_modes_${projectId}`)
+        }
+      } catch {}
+      saveNodesToBackend(draggedRef.current, resizedRef.current, toggledModes)
+    })
+  }, [toggledModes, projectId, queueCanvasWrite, saveNodesToBackend])
 
   // 當 props.tasks 變動時，自動將 Left Menu 任務動態轉換為關聯圖節點
   useEffect(() => {
@@ -3484,10 +3695,11 @@ function SimpleGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFoc
   )
 }
 
-export default function SimpleGraph(props: SimpleGraphProps) {
+export default function TaskGraph(props: TaskGraphProps) {
   return (
     <ReactFlowProvider>
-      <SimpleGraphInner {...props} />
+      <TaskGraphInner {...props} />
     </ReactFlowProvider>
   )
 }
+export { TaskGraph as SimpleGraph }

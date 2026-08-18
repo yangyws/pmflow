@@ -5,6 +5,7 @@ import {
   authenticate, requireProjectManager, requireProjectRole, requireWorkspaceMember,
 } from '../lib/auth.js'
 import { notify } from '../lib/notify.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 
 /**
@@ -300,13 +301,23 @@ export default async function memberRoutes(app: FastifyInstance) {
         projectId: req.params.id, body: { role: body.role, direct: true },
       })
     })
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'member_added', userId: body.userId, role: body.role },
+    })
+
     return reply.code(201).send({ ok: true })
   })
 
   app.patch<{ Params: { id: string; userId: string } }>(
     '/projects/:id/members/:userId', async req => {
       const user = await authenticate(req)
-      const { createdBy } = await requireProjectManager(user.id, req.params.id)
+      const { createdBy, workspaceId } = await requireProjectManager(user.id, req.params.id)
       const { role } = z.object({ role: z.enum(ROLES) }).parse(req.body)
 
       // 建立者的角色誰都不能改（包含他自己）—— 他是專案最後一個一定管得動的人
@@ -322,13 +333,23 @@ export default async function memberRoutes(app: FastifyInstance) {
         WHERE project_id = ${req.params.id} AND user_id = ${req.params.userId}
         RETURNING user_id AS "userId", role`
       if (!rows.length) throw notFound('這個帳號不是專案成員')
+
+      emitRealtimeEvent({
+        type: 'project:changed',
+        projectId: req.params.id,
+        workspaceId,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'member_updated', userId: req.params.userId, role },
+      })
+
       return rows[0]
     })
 
   app.delete<{ Params: { id: string; userId: string } }>(
     '/projects/:id/members/:userId', async (req, reply) => {
       const user = await authenticate(req)
-      const { createdBy } = await requireProjectManager(user.id, req.params.id)
+      const { createdBy, workspaceId } = await requireProjectManager(user.id, req.params.id)
 
       // 移掉建立者等於專案有機會沒人能管成員了，擋掉
       if (createdBy === req.params.userId) {
@@ -343,6 +364,16 @@ export default async function memberRoutes(app: FastifyInstance) {
         WHERE project_id = ${req.params.id} AND user_id = ${req.params.userId}
         RETURNING user_id`
       if (!rows.length) throw notFound('這個帳號不是專案成員')
+
+      emitRealtimeEvent({
+        type: 'project:changed',
+        projectId: req.params.id,
+        workspaceId,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'member_removed', userId: req.params.userId },
+      })
+
       return reply.code(204).send()
     })
 
@@ -387,6 +418,16 @@ export default async function memberRoutes(app: FastifyInstance) {
         projectId: req.params.id, body: { message: body.message ?? null },
       })
     }
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId: p.workspace_id,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'join_requested', requestId: row.id },
+    })
+
     return reply.code(201).send(row)
   })
 
@@ -425,7 +466,7 @@ export default async function memberRoutes(app: FastifyInstance) {
       const { workspaceId } = await requireProjectManager(user.id, req.params.id)
       const body = decideBody.parse(req.body ?? {})
 
-      return sql.begin(async tx => {
+      const result = await sql.begin(async tx => {
         // FOR UPDATE：同一筆申請被連點兩次時，第二次會等第一次寫完再讀，
         // 讀到的已經是 APPROVED，就不會重覆加人
         const [r] = await tx<{ user_id: string; status: string }[]>`
@@ -450,14 +491,25 @@ export default async function memberRoutes(app: FastifyInstance) {
           kind: 'JOIN_APPROVED', actorId: user.id, actorName: user.displayName,
           projectId: req.params.id, body: { role: body.role, note: body.note ?? null },
         })
-        return { ok: true, role: body.role }
+        return { ok: true, role: body.role, userId: r.user_id }
       })
+
+      emitRealtimeEvent({
+        type: 'project:changed',
+        projectId: req.params.id,
+        workspaceId,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'join_approved', requestId: req.params.reqId, userId: result.userId, role: body.role },
+      })
+
+      return { ok: true, role: body.role }
     })
 
   app.post<{ Params: { id: string; reqId: string } }>(
     '/projects/:id/join-requests/:reqId/reject', async req => {
       const user = await authenticate(req)
-      await requireProjectManager(user.id, req.params.id)
+      const { workspaceId } = await requireProjectManager(user.id, req.params.id)
       const body = decideBody.partial().parse(req.body ?? {})
 
       const rows = await sql`
@@ -467,6 +519,16 @@ export default async function memberRoutes(app: FastifyInstance) {
         WHERE id = ${req.params.reqId} AND project_id = ${req.params.id} AND status = 'PENDING'
         RETURNING id`
       if (!rows.length) throw conflict('找不到待處理的申請，可能已經處理過了')
+
+      emitRealtimeEvent({
+        type: 'project:changed',
+        projectId: req.params.id,
+        workspaceId,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'join_rejected', requestId: req.params.reqId },
+      })
+
       return { ok: true }
     })
 
@@ -477,8 +539,17 @@ export default async function memberRoutes(app: FastifyInstance) {
       UPDATE project_join_request
       SET status = 'CANCELLED', decided_at = now()
       WHERE id = ${req.params.reqId} AND user_id = ${user.id} AND status = 'PENDING'
-      RETURNING id`
+      RETURNING id, project_id AS "projectId"`
     if (!rows.length) throw forbidden('找不到你的待審申請')
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: rows[0]?.projectId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'join_cancelled', requestId: req.params.reqId },
+    })
+
     return reply.code(204).send()
   })
 }

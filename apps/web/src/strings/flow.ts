@@ -1,5 +1,5 @@
 /**
- * 兩張「畫布」頁面的文字：關聯圖（pages/SimpleGraph.tsx）與系統流程圖（pages/SystemFlow.tsx）。
+ * 兩張「畫布」頁面的文字：關聯圖（pages/TaskGraph.tsx）與系統流程圖（pages/SystemFlow.tsx）。
  * 寫法見 strings/index.ts。
  *
  * 分成三組：
@@ -50,7 +50,7 @@ export const flow = {
     },
   },
 
-  /** 關聯圖（pages/SimpleGraph.tsx） */
+  /** 關聯圖（pages/TaskGraph.tsx） */
   relationGraph: {
     /** 收納盒／卡片這兩個模式的名字。按鈕、紀錄、提示都講同一個詞 */
     box: '收納盒',

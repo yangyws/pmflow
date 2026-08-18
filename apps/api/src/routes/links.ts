@@ -4,6 +4,7 @@ import { sql } from '../lib/db.js'
 import { assertTaskStakeholder, authenticate, requireTaskAccess } from '../lib/auth.js'
 import { assertNoCycle, isScheduling, SYMMETRIC } from '../lib/graph.js'
 import { notify } from '../lib/notify.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 
 const createBody = z.object({
@@ -100,6 +101,15 @@ export default async function linkRoutes(app: FastifyInstance) {
       return l
     })
 
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId: src.projectId,
+      workspaceId: src.workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'link_added', linkId: link.id, sourceId: req.params.id, targetId: b.targetId },
+    })
+
     const [row] = await sql`
       SELECT l.id, l.link_type AS "linkType", l.lag_days AS "lagDays",
              l.source_id AS "sourceId", l.target_id AS "targetId"
@@ -112,9 +122,19 @@ export default async function linkRoutes(app: FastifyInstance) {
     const [l] = await sql<{ source_id: string }[]>`
       SELECT source_id FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
-    const { role } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
     await assertTaskStakeholder(l.source_id, user.id, role, '關聯線') // Ref: CR-130
     await sql`DELETE FROM task_link WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'link_deleted', linkId: req.params.id },
+    })
+
     return reply.code(204).send()
   })
 

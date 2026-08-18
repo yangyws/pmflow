@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 're
 import { useQuery } from '@tanstack/react-query'
 import { Api, type AppNotification, type Task, type WorkspaceRole } from './lib/api'
 import { useAuth } from './lib/auth'
+import { useRealtimeSync } from './lib/useRealtimeSync'
 import { T } from './strings'
 import { Button, Spinner, cx } from './components/ui'
 import { useRemembered } from './lib/remember'
@@ -25,7 +26,7 @@ import ListView from './pages/List'
 // 不要讓只想看看板的人也付這個代價
 const GanttView = lazy(() => import('./pages/Gantt'))
 // React Flow 同理，只有關聯圖用得到
-const SimpleGraphView = lazy(() => import('./pages/SimpleGraph'))
+const TaskGraphView = lazy(() => import('./pages/TaskGraph'))
 const SystemFlowView = lazy(() => import('./pages/SystemFlow'))
 const PlaygroundView = lazy(() => import('./pages/Playground'))
 import CalendarView from './pages/Calendar'
@@ -87,6 +88,7 @@ const NOT_FILTERED_BY_EPIC: View[] = [
 
 export default function App() {
   const { user, workspaces, ready, logout } = useAuth()
+  useRealtimeSync()
   // projectId 為 null＝還沒選專案，顯示選擇頁。
   // 專案切換刻意只發生在這一層，側欄不再放專案清單。
   const [projectId, setProjectId] = useState<string | null>(null)
@@ -751,7 +753,7 @@ function ProjectWorkspace({
               )}
               {view === 'simpleGraph' && (
                 <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <SimpleGraphView
+                  <TaskGraphView
                     projectId={projectId}
                     tasks={tasks}
                     onOpenTask={handleTaskEdit}

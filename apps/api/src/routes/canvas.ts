@@ -3,6 +3,7 @@ import type { TransactionSql } from 'postgres'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
 import { authenticate, requireProjectRole, requireTaskAccess } from '../lib/auth.js'
+import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, conflict, notFound } from '../lib/errors.js'
 
 /*
@@ -143,6 +144,14 @@ export default async function canvasRoutes(app: FastifyInstance) {
         await linkTaskIds(tx, req.params.id, viewKey)
       })
 
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'put_nodes', viewKey },
+      })
+
       return { viewKey, nodes: toMap(await readNodes(req.params.id, viewKey)) }
     })
 
@@ -171,6 +180,14 @@ export default async function canvasRoutes(app: FastifyInstance) {
         await linkTaskIds(tx, req.params.id, viewKey)
       })
 
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'patch_nodes', viewKey },
+      })
+
       return { viewKey, nodes: toMap(await readNodes(req.params.id, viewKey)) }
     })
 
@@ -183,6 +200,15 @@ export default async function canvasRoutes(app: FastifyInstance) {
       await sql`
         DELETE FROM project_canvas_node
         WHERE project_id = ${req.params.id} AND view_key = ${viewKey}`
+
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'delete_nodes', viewKey },
+      })
+
       return reply.code(204).send()
     })
 
@@ -249,6 +275,14 @@ export default async function canvasRoutes(app: FastifyInstance) {
         return row
       })
 
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'put_doc', docKey },
+      })
+
       return { docKey, updatedAt: saved.updatedAt, updatedBy: user.id }
     })
 
@@ -260,6 +294,15 @@ export default async function canvasRoutes(app: FastifyInstance) {
       await sql`
         DELETE FROM project_canvas_doc
         WHERE project_id = ${req.params.id} AND doc_key = ${docKey}`
+
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'delete_doc', docKey },
+      })
+
       return reply.code(204).send()
     })
 
@@ -281,7 +324,7 @@ export default async function canvasRoutes(app: FastifyInstance) {
     const [l] = await sql<{ sourceId: string }[]>`
       SELECT source_id AS "sourceId" FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
-    await requireTaskAccess(user.id, l.sourceId, 'EDITOR')
+    const { projectId, workspaceId } = await requireTaskAccess(user.id, l.sourceId, 'EDITOR')
 
     const [row] = await sql`
       UPDATE task_link SET
@@ -289,6 +332,16 @@ export default async function canvasRoutes(app: FastifyInstance) {
         target_handle = ${b.targetHandle === undefined ? sql`target_handle` : b.targetHandle}
       WHERE id = ${req.params.id}
       RETURNING id, source_handle AS "sourceHandle", target_handle AS "targetHandle"`
+
+    emitRealtimeEvent({
+      type: 'canvas:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'patch_handles', linkId: req.params.id },
+    })
+
     return row
   })
 }

@@ -67,8 +67,7 @@ graph TB
 | week | 週檢視 | 📅 | No | [Week.tsx](file:///D:/NewProject/pmflow-git/src/pages/Week.tsx) |
 | calendar | 行事曆 | 🗓️ | No | [Calendar.tsx](file:///D:/NewProject/pmflow-git/src/pages/Calendar.tsx) |
 | gantt | 甘特圖 | 📈 | Yes | [Gantt.tsx](file:///D:/NewProject/pmflow-git/src/pages/Gantt.tsx) |
-| graph | 關聯圖 | 🔗 | Yes | [Graph.tsx](file:///D:/NewProject/pmflow-git/src/pages/Graph.tsx) |
-| simpleGraph | 靶心 | 🎯 | Yes | [SimpleGraph.tsx](file:///D:/NewProject/pmflow-git/src/pages/SimpleGraph.tsx) |
+| simpleGraph | 任務關聯圖 | 🔗 | Yes | [TaskGraph.tsx](file:///D:/NewProject/pmflow-git/src/pages/TaskGraph.tsx) |
 | inquiry | 發文追蹤 | 📨 | No | [InquiryBoard.tsx](file:///D:/NewProject/pmflow-git/src/pages/InquiryBoard.tsx) |
 | members | 成員 | 👥 | No | [Members.tsx](file:///D:/NewProject/pmflow-git/src/pages/Members.tsx) |
 | dashboard | 儀表板 | 📉 | Yes | [Dashboard.tsx](file:///D:/NewProject/pmflow-git/src/pages/Dashboard.tsx) |
@@ -127,7 +126,7 @@ flowchart TD
 - **Persistence**: 透過自訂 Hook `useRemembered` 存取 localStorage (如頁籤順序、視圖配置、主題設定)
 - **NO Redux, NO Zustand**: 系統不依賴全域狀態管理庫。
 
-### SimpleGraph 靶心關聯表架構 (SimpleGraph Architecture)
+### TaskGraph 任務關聯圖架構 (TaskGraph Architecture)
 - 基於 `@xyflow/react` (React Flow) 開發。
 - 單一節點類型 `simpleNode`，具備雙重模式 (Dual mode): card 或 box。
 - 每個節點擁有 8 個控制點 (handles，4 方向 × in/out)：
@@ -373,7 +372,7 @@ docker compose -f docker-compose.dev.yml up --build -d web
 - 錯誤回應遵循 RFC 7807 (Problem Details for HTTP APIs) 標準。
 
 ### 效能優化 (Performance)
-- **Code splitting**: 對於 Gantt, Graph, SimpleGraph, Dashboard 等 4 個大型視圖進行 Lazy Load。
+- **Code splitting**: 對於 Gantt, TaskGraph, SystemFlow, Dashboard 等大型視圖進行 Lazy Load。
 - **快取機制**: 前端使用 TanStack Query 進行伺服器狀態快取。
 - **連線池**: 後端透過 `postgres.js` 提供高效率連線池。
 - **重新排序效能**: 採用 Fractional ranking 演算法，拖曳排序時僅需執行單行 UPDATE。

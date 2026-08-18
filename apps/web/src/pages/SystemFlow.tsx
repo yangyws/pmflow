@@ -148,7 +148,7 @@ function buildOrthogonalPath(
   }
 }
 
-// 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 SimpleGraph / Graph: React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
+// 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 TaskGraph: React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
 function orderParentNodesFirst(nodes: Node[]): Node[] {
   const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
   const getDepth = (id: string) => {
@@ -753,7 +753,29 @@ function loadInitialPages(projectId: string): FlowPage[] {
 
 function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const storageKeyPages = `pmflow_system_flow_pages_${projectId}`
-  // Ref: CR-140 整份文件的寫入統一走這一個出口 (日後改打 API 只需改這裡)
+  const backendSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedJsonRef = useRef<string>('')
+
+  const savePagesToBackend = useCallback((next: FlowPage[]) => {
+    if (!projectId || projectId === 'default') return
+    const json = JSON.stringify(next)
+    if (json === lastSavedJsonRef.current) return
+
+    if (backendSaveTimerRef.current) {
+      clearTimeout(backendSaveTimerRef.current)
+    }
+    backendSaveTimerRef.current = setTimeout(async () => {
+      backendSaveTimerRef.current = null
+      try {
+        lastSavedJsonRef.current = json
+        await Api.saveCanvasDoc(projectId, 'system-flow', { data: next })
+      } catch (err) {
+        console.error('Failed to save system-flow canvas doc to backend:', err)
+      }
+    }, 600)
+  }, [projectId])
+
+  // Ref: CR-140 整份文件的寫入統一走這一個出口 (同時寫入 localStorage 與後端)
   const savePagesToStore = useCallback(
     (next: FlowPage[]) => {
       try {
@@ -761,14 +783,22 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       } catch {
         // ignore
       }
+      savePagesToBackend(next)
     },
-    [storageKeyPages]
+    [storageKeyPages, savePagesToBackend]
   )
+
   const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow()
   const { user } = useAuth()
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId),
+    enabled: !!projectId && projectId !== 'default',
+  })
+
+  const { data: canvasDocRes } = useQuery({
+    queryKey: ['canvasDoc', projectId, 'system-flow'],
+    queryFn: () => Api.canvasDoc(projectId, 'system-flow'),
     enabled: !!projectId && projectId !== 'default',
   })
 
@@ -808,6 +838,75 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   }, [projectId, activePageId])
 
   const hasFittedRef = useRef<boolean>(false)
+  const lastAppliedUpdatedAtRef = useRef<string | null>(null)
+
+  // 當後端有共享資料時載入並即時同步
+  useEffect(() => {
+    if (!canvasDocRes?.data) return
+    const rawData = canvasDocRes.data
+    const updatedAt = canvasDocRes.updatedAt ?? null
+
+    // 如果後端版本已套用過且內容未變則略過
+    if (updatedAt && updatedAt === lastAppliedUpdatedAtRef.current) return
+
+    if (Array.isArray(rawData) && rawData.length > 0) {
+      const incomingJson = JSON.stringify(rawData)
+      if (incomingJson === lastSavedJsonRef.current) {
+        lastAppliedUpdatedAtRef.current = updatedAt
+        return
+      }
+
+      lastAppliedUpdatedAtRef.current = updatedAt
+      const serverPages: FlowPage[] = rawData.map((p, idx) => ({
+        id: p.id || `page-${idx + 1}`,
+        title: p.title || T.flow.systemFlow.pageDefaultTitle(idx + 1),
+        createdById: p.createdById || null,
+        createdByName: p.createdByName || null,
+        nodes: Array.isArray(p.nodes) ? orderParentNodesFirst(p.nodes) : [],
+        edges: Array.isArray(p.edges)
+          ? p.edges.map((e: Edge) => ({
+              ...e,
+              ...getEdgeStyleAndMarker(e.sourceHandle),
+            }))
+          : [],
+      }))
+      lastSavedJsonRef.current = JSON.stringify(serverPages)
+      setPages(serverPages)
+      try {
+        localStorage.setItem(storageKeyPages, JSON.stringify(serverPages))
+      } catch {}
+      setActivePageId((currentId) => {
+        const found = serverPages.find((p) => p.id === currentId)
+        const nextId = found ? currentId : serverPages[0].id
+        const targetPage = serverPages.find((p) => p.id === nextId) || serverPages[0]
+        setNodes(orderParentNodesFirst(targetPage.nodes))
+        setEdges(
+          targetPage.edges.map((e: Edge) => ({
+            ...e,
+            ...getEdgeStyleAndMarker(e.sourceHandle),
+          }))
+        )
+        return nextId
+      })
+    }
+  }, [canvasDocRes, projectId, storageKeyPages])
+
+  // 當元件卸載或切換專案時，若有未送出的排程儲存則立刻寫回後端
+  useEffect(() => {
+    return () => {
+      if (backendSaveTimerRef.current) {
+        clearTimeout(backendSaveTimerRef.current)
+        backendSaveTimerRef.current = null
+        try {
+          const currentStr = localStorage.getItem(storageKeyPages)
+          if (currentStr && currentStr !== lastSavedJsonRef.current && projectId && projectId !== 'default') {
+            const parsed = JSON.parse(currentStr)
+            Api.saveCanvasDoc(projectId, 'system-flow', { data: parsed }).catch(() => {})
+          }
+        } catch {}
+      }
+    }
+  }, [projectId, storageKeyPages])
 
   // 當前畫布的 nodes 與 edges
   const activePage = useMemo(() => {
@@ -817,7 +916,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const [nodes, setNodes] = useState<Node[]>(() => activePage?.nodes ?? [])
   const [edges, setEdges] = useState<Edge[]>(() => activePage?.edges ?? [])
 
-  // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView (對齊 SimpleGraph: 確保測量就緒後再置中，避免排版亂掉或無法移動)
+  // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView (對齊 TaskGraph: 確保測量就緒後再置中，避免排版亂掉或無法移動)
   useEffect(() => {
     if (savedViewport) return
 
