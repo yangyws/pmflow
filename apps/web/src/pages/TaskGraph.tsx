@@ -2106,6 +2106,26 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       }
     })
 
+    const collectActiveProblemBugs = (rootId: string): Task[] => {
+      const result: Task[] = []
+      const visited = new Set<string>()
+      const walk = (pId: string) => {
+        if (visited.has(pId)) return
+        visited.add(pId)
+        const directKids = childrenMap.get(pId) || []
+        for (const k of directKids) {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (!isDone && k.type === 'BUG') {
+            result.push(k)
+          }
+          walk(k.id)
+        }
+      }
+      walk(rootId)
+      return result
+    }
+
     const taskMap = new Map(tasks.map((t) => [t.id, t]))
     const rootTasks = tasks.filter((t) => !t.parentId || !taskMap.has(t.parentId))
 
@@ -2197,13 +2217,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const tOverdue = !!(t.dueDate && t.dueDate < today && !tIsDone)
         const tParallelInfo = parallelMap.get(t.id)
 
-        // 統計盒內未完成之「問題單 (BUG)」數量
-        const activeProblemKids = kids.filter((k) => {
-          const kCat = statusCatMap.get(k.statusKey)
-          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
-          if (isDone) return false
-          return k.type === 'BUG'
-        })
+        // 遞迴統計盒內所有未完成之「問題單 (BUG)」數量
+        const activeProblemKids = collectActiveProblemBugs(t.id)
         const problemCount = activeProblemKids.length
         const problemTooltip =
           problemCount > 0
@@ -2290,13 +2305,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             const kOverdue = !!(k.dueDate && k.dueDate < today && !kIsDone)
             const kParallelInfo = parallelMap.get(k.id)
 
-            const kKids = childrenMap.get(k.id) || []
-            const kActiveProblemKids = kKids.filter((ck) => {
-              const ckCat = statusCatMap.get(ck.statusKey)
-              const ckDone = ckCat === 'DONE' || ck.statusKey === 'DONE' || (ck.progress ?? 0) >= 100
-              if (ckDone) return false
-              return ck.type === 'BUG'
-            })
+            const kActiveProblemKids = collectActiveProblemBugs(k.id)
             const kProblemCount = kActiveProblemKids.length
             const kProblemTooltip =
               kProblemCount > 0
@@ -3158,7 +3167,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ? 1
           : 0
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${isBox}`
+      const problemCount = (node.data as SimpleGraphNodeData)?.problemCount ?? 0
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${isBox}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
