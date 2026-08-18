@@ -22,7 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Initial Node Geometries, Bidirectional Handles, and Dynamic Problem Counting (CR-155 ~ CR-157)
+### Latest Changes: System Flow 4-Way Handles Fix (CR-158)
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx): 移除 `onConnect` 內強行覆寫接點為 `right-out`/`bottom-out` 的 `toOutHandle` / `toInHandle` 邏輯，並統一容器盒接點 ID，實現四向任意出發與連入。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-158` 條目。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-158`。
+
+### Previous Changes: Initial Node Geometries, Bidirectional Handles, and Dynamic Problem Counting (CR-155 ~ CR-157)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **卡片初始尺寸與量測綁定 (`CR-157`)**：在 `processTask` 與 `useEffect` 合併時一律給予卡片 `width: 256`, `height: 90` 及 `measured` 物件，修復首次進關聯圖卡片無法直接拉線、需拖動卡片才觸發量測的 Bug。

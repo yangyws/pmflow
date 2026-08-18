@@ -88,15 +88,6 @@ function getEdgeStyleAndMarker(sourceHandle?: string | null) {
   }
 }
 
-// Ref: CR-140 接點方向正規化：來源端一定要用「輸出接點」、終點端一定要用「輸入接點」
-function toOutHandle(handle?: string | null) {
-  return handle && (handle.includes('top') || handle.includes('bottom')) ? 'bottom-out' : 'right-out'
-}
-
-function toInHandle(handle?: string | null) {
-  return handle && (handle.includes('top') || handle.includes('bottom')) ? 'top-in' : 'left-in'
-}
-
 // Ref: CR-140 拖折點時把緊接著那次 click 吞掉 (合成事件會沿元件樹冒泡回連線本身)
 const edgeDragGuard: { active: boolean; timer: ReturnType<typeof setTimeout> | null } = {
   active: false,
@@ -212,40 +203,40 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
       <Handle
         type="target"
         position={Position.Left}
-        id="left"
+        id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
+        isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right"
+        id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
+        isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
       />
       <Handle
         type="target"
         position={Position.Top}
-        id="top"
+        id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
+        isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom"
+        id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable}
+        isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
       />
@@ -1220,32 +1211,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEdges((eds) => applyEdgeChanges(changes, eds))
   }, [])
 
-  // Ref: CR-140 記住使用者是從哪一顆接點開始拉的
-  const connectStartRef = useRef<{ handleType: string | null } | null>(null)
-
-  const onConnectStart = useCallback((_e: unknown, params: { handleType: string | null }) => {
-    connectStartRef.current = { handleType: params?.handleType ?? null }
-  }, [])
-
   const onConnect = useCallback((params: Connection) => {
     if (!params.source || !params.target) return
 
-    // Ref: CR-140 寬鬆連線模式下，從「輸入接點」起拉時 React Flow 會把兩端對調，
-    // 這裡換回來：使用者放開滑鼠的那一端才是終點，箭頭永遠掛在終點
-    const startedFromTargetHandle = connectStartRef.current?.handleType === 'target'
-    const resolved: Connection = startedFromTargetHandle
-      ? {
-          source: params.target,
-          sourceHandle: toOutHandle(params.targetHandle),
-          target: params.source,
-          targetHandle: toInHandle(params.sourceHandle),
-        }
-      : params
-    connectStartRef.current = null
-
-    const edgeStyleAndMarker = getEdgeStyleAndMarker(resolved.sourceHandle)
+    const edgeStyleAndMarker = getEdgeStyleAndMarker(params.sourceHandle)
     const newEdge: Edge = {
-      ...resolved,
+      ...params,
       id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       ...edgeStyleAndMarker,
     }
@@ -1806,7 +1777,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onConnectStart={onConnectStart}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
           onPaneClick={() => {

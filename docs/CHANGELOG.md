@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-158` | 2026-08-18 | [系統流程圖：移除 onConnect 強制改寫接點邏輯、統一容器框 Handles ID，四向接點皆可自由雙向拉線與直角避讓](#cr-158) | `SystemFlow.tsx`, `CODEMAP.md` | 已驗證 |
 | `CR-157` | 2026-08-18 | [任務關聯圖：卡片初始給定尺寸與 measured，修復初次進入無法拉線需先拖移卡片問題](#cr-157) | `TaskGraph.tsx`, `CODEMAP.md` | 已驗證 |
 | `CR-156` | 2026-08-18 | [兩張圖：接點標準化為 Left/Top 連入 (target) 與 Right/Bottom 出發 (source)，四向雙向拉線與連入](#cr-156) | `TaskGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
 | `CR-155` | 2026-08-18 | [任務關聯圖：收納盒與卡片「問 X」問題單警示依畫布節點樹即時動態遞迴計算，子卡片移出即刻歸零；接點層級升至 50 避免連線後遮蔽](#cr-155) | `TaskGraph.tsx`, `SystemFlow.tsx`, `index.css` | 已驗證 |
@@ -215,6 +216,16 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-158"></a>CR-158 (2026-08-18) — 系統流程圖：移除 onConnect 強制改寫接點邏輯、統一容器框 Handles ID
+
+- **問題症狀**：系統流程圖中無法四向自由拉線與連線。
+- **根本原因**：
+  1. `onConnect` 內部使用了 `toOutHandle` 與 `toInHandle`，將使用者拉的所有來源與目標接點強制竄改為 `right-out`/`bottom-out` 與 `top-in`/`left-in`，導致自訂四向連線被覆蓋或失效。
+  2. 模組容器盒 (`FlowBoxNode`) 上的 Handle id 為 `left`/`right`/`top`/`bottom`，與步驟節點的 `left-in`/`right-out`/`top-in`/`bottom-out` 不一致，導致容器盒接點尋找失敗。
+- **修復方式**：
+  1. 移除 `toOutHandle` 與 `toInHandle` 及 `connectStartRef`，`onConnect` 直接保留使用者點選建立的原始 `sourceHandle` 與 `targetHandle`。
+  2. 統一模組容器盒 (`FlowBoxNode`) 接點 ID 為 `left-in`、`right-out`、`top-in`、`bottom-out`，並配置 `isConnectableStart={true}` 與 `isConnectableEnd={true}`，支援四向任意互相連接。
 
 ### <a id="cr-157"></a>CR-157 (2026-08-18) — 任務關聯圖：卡片初始給定尺寸與 measured，修復初次進入無法拉線需先拖移卡片問題
 
