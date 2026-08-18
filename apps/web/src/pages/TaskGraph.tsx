@@ -1972,13 +1972,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     } catch {}
 
     const taskIds = new Set((tasks ?? []).map((t) => t.id))
-    const realEdges: Edge[] = graphData.edges
-      .filter((e) => taskIds.has(e.sourceId) && taskIds.has(e.targetId))
-      .map((e) => {
+    const linkList = (graphData as any).edges || (graphData as any).links || []
+    const realEdges: Edge[] = linkList
+      .filter((e: any) => taskIds.has(e.sourceId) && taskIds.has(e.targetId))
+      .map((e: any) => {
         const edgeKey = `${e.sourceId}_${e.targetId}`
         const hData = savedMap[edgeKey] || savedMap[e.id]
-        const sHandle = hData?.sourceHandle
-        const tHandle = hData?.targetHandle
+        const sHandle = e.sourceHandle || hData?.sourceHandle
+        const tHandle = e.targetHandle || hData?.targetHandle
         const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
         return {
           id: e.id,
@@ -2560,6 +2561,22 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     []
   )
 
+  const onEdgesDelete = useCallback(
+    (deletedEdges: Edge[]) => {
+      deletedEdges.forEach((e) => {
+        Api.deleteLink(e.id).catch((err) => console.error('Failed to delete link on edge delete:', err))
+        handleSaveEdgeText(e.id, '')
+      })
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['task'] })
+      }
+    },
+    [projectId, handleSaveEdgeText, queryClient]
+  )
+
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
       if (consumeWaypointClickGuard()) return // Ref: CR-141
@@ -2648,7 +2665,16 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           sourceHandle: sHandle ?? null,
           targetHandle: tHandle ?? null,
         })
-          .then(() => {
+          .then((newLink: any) => {
+            if (newLink?.id) {
+              setEdges((eds) =>
+                eds.map((e) =>
+                  e.source === connection.source && e.target === connection.target && e.id.startsWith('xy-edge__')
+                    ? { ...e, id: newLink.id }
+                    : e
+                )
+              )
+            }
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
             queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
@@ -2673,7 +2699,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         )
       )
     },
-    [nodes, edges, projectId]
+    [nodes, edges, projectId, queryClient]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
@@ -3204,6 +3230,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             edges={styledEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onEdgesDelete={onEdgesDelete}
             onConnect={onConnect}
             onEdgeClick={onEdgeClick}
             onNodeClick={onNodeClick}
@@ -3580,19 +3607,23 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               <button
                 type="button"
                 onClick={() => {
-                  Api.deleteLink(confirmDeleteEdge.edgeId)
-                    .then(() => {
-                      setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
-                      const key = `pmflow_simple_graph_edge_handles_${projectId}`
-                      try {
-                        const savedStr = localStorage.getItem(key)
-                        if (savedStr) {
-                          const handleMap = JSON.parse(savedStr)
-                          delete handleMap[confirmDeleteEdge.edgeId]
-                          localStorage.setItem(key, JSON.stringify(handleMap))
-                        }
-                      } catch {}
+                  const edgeIdToDelete = confirmDeleteEdge.edgeId
+                  setEdges((eds) => eds.filter((e) => e.id !== edgeIdToDelete))
+                  handleSaveEdgeText(edgeIdToDelete, '')
+                  setConfirmDeleteEdge(null)
 
+                  const key = `pmflow_simple_graph_edge_handles_${projectId}`
+                  try {
+                    const savedStr = localStorage.getItem(key)
+                    if (savedStr) {
+                      const handleMap = JSON.parse(savedStr)
+                      delete handleMap[edgeIdToDelete]
+                      localStorage.setItem(key, JSON.stringify(handleMap))
+                    }
+                  } catch {}
+
+                  Api.deleteLink(edgeIdToDelete)
+                    .then(() => {
                       if (projectId) {
                         queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
                         queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
@@ -3600,9 +3631,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                         queryClient.invalidateQueries({ queryKey: ['task'] })
                       }
                     })
-                    .catch((err) => console.error('Failed to delete link:', err))
-                  handleSaveEdgeText(confirmDeleteEdge.edgeId, '')
-                  setConfirmDeleteEdge(null)
+                    .catch((err) => {
+                      console.error('Failed to delete link:', err)
+                      if (projectId) {
+                        queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+                      }
+                    })
                 }}
                 className="rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-sm font-medium text-white transition-colors cursor-pointer shadow-sm"
               >

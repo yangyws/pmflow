@@ -134,11 +134,22 @@ export default async function linkRoutes(app: FastifyInstance) {
   app.patch<{ Params: { id: string } }>('/links/:id', async (req, reply) => {
     const user = await authenticate(req)
     const b = patchBody.parse(req.body)
-    const [l] = await sql<{ source_id: string }[]>`
-      SELECT source_id FROM task_link WHERE id = ${req.params.id}`
+    const [l] = await sql<{ source_id: string; target_id: string; created_by: string | null }[]>`
+      SELECT source_id, target_id, created_by FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
-    await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
+
+    let isAllowed = role === 'MANAGER' || (l.created_by && l.created_by === user.id) || role === 'EDITOR'
+    if (!isAllowed) {
+      try {
+        await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
+        isAllowed = true
+      } catch {
+        const tgt = await requireTaskAccess(user.id, l.target_id, 'EDITOR')
+        await assertTaskStakeholder(l.target_id, user.id, tgt.role, '關聯線')
+        isAllowed = true
+      }
+    }
 
     await sql`
       UPDATE task_link
@@ -164,11 +175,23 @@ export default async function linkRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>('/links/:id', async (req, reply) => {
     const user = await authenticate(req)
-    const [l] = await sql<{ source_id: string }[]>`
-      SELECT source_id FROM task_link WHERE id = ${req.params.id}`
+    const [l] = await sql<{ source_id: string; target_id: string; created_by: string | null }[]>`
+      SELECT source_id, target_id, created_by FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
-    await assertTaskStakeholder(l.source_id, user.id, role, '關聯線') // Ref: CR-130
+
+    let isAllowed = role === 'MANAGER' || (l.created_by && l.created_by === user.id) || role === 'EDITOR'
+    if (!isAllowed) {
+      try {
+        await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
+        isAllowed = true
+      } catch {
+        const tgt = await requireTaskAccess(user.id, l.target_id, 'EDITOR')
+        await assertTaskStakeholder(l.target_id, user.id, tgt.role, '關聯線')
+        isAllowed = true
+      }
+    }
+
     await sql`DELETE FROM task_link WHERE id = ${req.params.id}`
 
     emitRealtimeEvent({
@@ -193,8 +216,6 @@ export default async function linkRoutes(app: FastifyInstance) {
       SELECT t.id, p.key || '-' || t.number AS ref, t.title, t.type,
              t.status_key AS "statusKey", t.progress, t.parent_id AS "parentId",
              t.inquiry_state AS "inquiryState",
-             -- 問題的內容也一起帶：圖上只放一個小標記，但滑過去要看得到寫了什麼，
-             -- 否則使用者得為了讀一句話跳去別的視圖
              t.problem
       FROM task t JOIN project p ON p.id = t.project_id
       WHERE t.project_id = ${req.params.id} AND t.deleted_at IS NULL`
@@ -208,6 +229,6 @@ export default async function linkRoutes(app: FastifyInstance) {
       JOIN task s ON s.id = l.source_id
       WHERE s.project_id = ${req.params.id}`
 
-    return { nodes, edges }
+    return { nodes, edges, links: edges }
   })
 }
