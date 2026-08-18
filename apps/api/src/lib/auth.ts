@@ -321,18 +321,31 @@ export async function requireWorkspaceMember(
 export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 
 /**
- * 站台管理者與擁有者能做的事：開帳號、停用帳號、刪帳號、代設密碼。
+ * 站台管理者、擁有者與專案管理者能做的事：開帳號、停用帳號、刪帳號、代設密碼。
  *
- * 允許角色為 OWNER 或 ADMIN 的使用者皆可進行成員管理。
+ * 允許角色為 OWNER 或 ADMIN 的使用者，或在該工作區任一專案為 MANAGER 的專案管理者皆可進行成員管理。
  */
 export async function requireWorkspaceAdmin(
   userId: string, workspaceId: string
 ): Promise<{ role: WorkspaceRole }> {
   const { role } = await requireWorkspaceMember(userId, workspaceId)
-  if (role !== 'ADMIN' && role !== 'OWNER') {
-    throw forbidden('這個操作需要工作區管理者或擁有者權限')
+  if (role === 'ADMIN' || role === 'OWNER') {
+    return { role: role as WorkspaceRole }
   }
-  return { role: role as WorkspaceRole }
+
+  // 若使用者的 workspace_member.role 不是 OWNER/ADMIN，但為該工作區內任一專案的 MANAGER（專案管理者），亦放行
+  const [projectManager] = await sql<{ id: string }[]>`
+    SELECT p.id FROM project p
+    LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
+    WHERE p.workspace_id = ${workspaceId}
+      AND (pm.role = 'MANAGER' OR p.created_by = ${userId})
+    LIMIT 1`
+
+  if (projectManager) {
+    return { role: role as WorkspaceRole }
+  }
+
+  throw forbidden('這個操作需要工作區管理者、擁有者或專案管理者權限')
 }
 
 /** 擁有者專用。他唯一還能對別人的帳號做的事，就是決定誰是管理者 */

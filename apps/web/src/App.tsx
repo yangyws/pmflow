@@ -154,9 +154,8 @@ export default function App() {
   const bell = <NotificationBell onOpen={openNotification} />
 
   const workspaceId = workspaces[0]?.id ?? projects[0]?.workspaceId ?? ''
-  // 「系統管理」只給工作區的擁有者與管理者看到。後端也會再擋一次，
-  // 這裡收起來只是不要讓人按了才被拒絕
-  const isWorkspaceAdmin = ['OWNER', 'ADMIN'].includes(workspaces[0]?.role ?? '')
+  // 專案/系統管理者（ADMIN / MANAGER / OWNER）皆可看到「系統管理 / 成員停用與註銷」功能
+  const isWorkspaceAdmin = workspaces.some(w => ['OWNER', 'ADMIN', 'MANAGER'].includes(w.role?.toUpperCase() ?? '')) || projects.some(p => ['OWNER', 'ADMIN', 'MANAGER'].includes(p.role?.toUpperCase() ?? ''))
   const pendingJoins = projects.find(p => p.id === projectId)?.pendingJoinRequestCount ?? 0
   // 系統參數是「改這個專案的規則」，預設允許管理者與專案成員進行維護
   const userRole = projects.find(p => p.id === projectId)?.role

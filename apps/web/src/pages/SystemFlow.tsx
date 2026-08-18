@@ -33,7 +33,7 @@ import { useAuth } from '../lib/auth'
 import { Api } from '../lib/api'
 import { cx } from '../components/ui'
 import { T } from '../strings' // Ref: CR-146
-import { getObstaclesFromNodes, buildOrthogonalPath } from '../lib/orthogonalRouting'
+import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
 export interface SystemFlowProps {
   projectId?: string
@@ -56,6 +56,7 @@ export interface FlowNodeData extends Record<string, unknown> {
 export interface FlowEdgeData extends Record<string, unknown> {
   text?: string
   waypoint?: { x: number; y: number } | null
+  obstacles?: ObstacleRect[]
   onSaveText?: (edgeId: string, text: string) => void
   onWaypointChange?: (edgeId: string, point: { x: number; y: number }) => void
   onWaypointReset?: (edgeId: string) => void
@@ -456,8 +457,8 @@ const nodeTypes = {
 // Ref: CR-140 & CR-154 支援智慧直角避障與手動折點
 function FlowLabeledEdge({
   id,
-  source,
-  target,
+  source: _source,
+  target: _target,
   sourceX,
   sourceY,
   targetX,
@@ -469,14 +470,11 @@ function FlowLabeledEdge({
   data,
 }: EdgeProps) {
   const edgeData = data as FlowEdgeData | undefined
-  const { screenToFlowPosition, getNodes } = useReactFlow()
+  const { screenToFlowPosition } = useReactFlow()
   const draggingRef = useRef(false)
-  const nodes = getNodes()
 
-  const obstacles = useMemo(() => {
-    if (edgeData?.waypoint) return []
-    return getObstaclesFromNodes(nodes, source, target)
-  }, [nodes, source, target, edgeData?.waypoint])
+  // 障礙物資訊由父層 styledEdges 統一預算並帶入，避免在 Edge 內部呼叫 getNodes() 引發無窮重新渲染迴圈
+  const obstacles = edgeData?.waypoint ? [] : (edgeData?.obstacles ?? [])
 
   // Ref: CR-140 & CR-154 智慧避障直角路徑運算
   const { path, px, py } = buildOrthogonalPath(
@@ -1013,24 +1011,39 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   // Ref: CR-148 放開後補上這次互動唯一的一筆寫入 (拖折點沒有後續 state 變動，要在這裡收尾)
   const endInteraction = useCallback(() => {
     interactingRef.current = false
-    if (pendingSaveRef.current) commitCanvas()
+    if (pendingSaveRef.current) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null
+        if (pendingSaveRef.current) commitCanvas()
+      }, 500)
+    }
   }, [commitCanvas])
 
   // 自動同步當前畫布至 pages 狀態與 localStorage
   // Ref: CR-148 拖曳/縮放/拖折點進行中只記旗標不落盤，另留保險計時器避免收不到結束事件時漏存
+  // 加入防抖 (Debounce 500ms)，避免畫布狀態微調時造成同步 loop
   useEffect(() => {
     nodesRef.current = nodes
     edgesRef.current = edges
     pendingSaveRef.current = true
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+
     if (interactingRef.current) {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null
         if (pendingSaveRef.current) commitCanvas()
       }, 800)
       return
     }
-    commitCanvas()
+
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null
+      if (pendingSaveRef.current) commitCanvas()
+    }, 500)
   }, [nodes, edges, activePageId, commitCanvas])
 
   // Ref: CR-148 離開頁面時把還沒落盤的最後一筆補寫回去
@@ -1522,12 +1535,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const nextCache = new Map<string, { src: Edge; out: Edge }>()
 
     const mapped = edges.map((e) => {
-      const cached = prevCache.get(e.id)
-      if (cached && cached.src === e) {
-        nextCache.set(e.id, cached)
-        return cached.out
-      }
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
+      const obstacles = e.data?.waypoint ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       const out: Edge = {
         ...e,
         ...edgeStyleAndMarker,
@@ -1536,6 +1545,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         animated: false,
         data: {
           ...(e.data || {}),
+          obstacles,
           onSaveText: handleSaveEdgeText,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
@@ -1555,7 +1565,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
     edgeViewCacheRef.current = nextCache
     return mapped
-  }, [edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
+  }, [nodes, edges, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">

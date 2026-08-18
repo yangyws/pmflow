@@ -311,20 +311,9 @@ export default async function accountRoutes(app: FastifyInstance) {
       workspaceId = firstWs.workspace_id
     }
     /*
-     * Ref: CR-134 —— 這支會回整個工作區每個人的 email、狀態與角色。
-     * 原本只驗「是不是工作區成員」，等於任何被專案管理者拉進來的人
-     * （含自動補出來的 GUEST）都能把整份通訊錄撈走。
-     *
-     * 這裡認 ADMIN 與 OWNER 兩種，不直接用 requireWorkspaceAdmin：
-     * 那支刻意把 OWNER 排除在外，而示範站與自架站的第一個人就是 OWNER，
-     * 直接套上去會讓開站的人連自己的帳號清單都看不到。
-     * （AGENTS.md 2026-08-06 的「擁有者＝站上唯一有 admin 權限的人」尚未動工，
-     * 動工時這裡要跟著一起收斂。）
+     * 工作區管理者、擁有者或任一專案的管理者（MANAGER）皆可查看帳號清單。
      */
-    const { role } = await requireWorkspaceMember(auth.id, workspaceId)
-    if (role !== 'ADMIN' && role !== 'OWNER') {
-      throw forbidden('只有工作區管理者或擁有者可以查看帳號清單')
-    }
+    const { role } = await requireWorkspaceAdmin(auth.id, workspaceId)
 
     const users = await sql`
       SELECT u.id, u.email, u.display_name AS "displayName", u.status,

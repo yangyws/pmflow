@@ -36,7 +36,7 @@ import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx, ProblemBadge, TypeBadge } from '../components/ui'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
-import { getObstaclesFromNodes, buildOrthogonalPath } from '../lib/orthogonalRouting'
+import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -271,8 +271,8 @@ function computeBoxDimensions(
   }
 }
 
-// 自由切換的節點 UI (包含四向雙向 Handle 接點，允許上下左右任意拉線)
-function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>) {
+// 自由切換的節點 UI (包含四向 Handle 接點，允許上下左右任意拉線)
+function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
   const boxW = width ?? 340
   const boxH = height ?? 260
@@ -295,65 +295,38 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
       style={isBox ? { width: boxW, height: boxH } : { width: 256 }}
       className="relative w-full h-auto cursor-grab active:cursor-grabbing select-none pointer-events-auto"
     >
-      {/* 接點 (Handles) - 4 個邊各保留 1 個中央精準接點，帶 nodrag 避免拉線時誤觸卡片拖曳 */}
+      {/* 接點 (Handles) - 4 個邊各保留 1 個中央精準接點，對齊 SystemFlow 四向接點設計 */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-      />
-
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        isConnectable={isConnectable}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        isConnectable={isConnectable}
       />
-
       <Handle
         type="target"
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-      />
-
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        isConnectable={isConnectable}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag"
+        isConnectable={isConnectable}
       />
 
       {isBox ? (
@@ -647,6 +620,7 @@ function consumeWaypointClickGuard(): boolean {
 
 type OrthogonalEdgeData = {
   waypoint?: Waypoint | null
+  obstacles?: ObstacleRect[]
   onWaypointChange?: (edgeId: string, p: Waypoint) => void
   onWaypointReset?: (edgeId: string) => void
   // Ref: CR-150
@@ -660,8 +634,8 @@ type OrthogonalEdgeData = {
 // Ref: CR-139 & CR-154 支援智慧直角避障與手動折點
 function OrthogonalEdge({
   id,
-  source,
-  target,
+  source: _source,
+  target: _target,
   sourceX,
   sourceY,
   targetX,
@@ -672,17 +646,14 @@ function OrthogonalEdge({
   markerEnd,
   data,
 }: EdgeProps) {
-  const { screenToFlowPosition, getNodes } = useReactFlow()
+  const { screenToFlowPosition } = useReactFlow()
   const draggingRef = useRef(false)
   const eData = data as OrthogonalEdgeData | undefined
   // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
   const wpKey = id
-  const nodes = getNodes()
 
-  const obstacles = useMemo(() => {
-    if (eData?.waypoint) return []
-    return getObstaclesFromNodes(nodes, source, target)
-  }, [nodes, source, target, eData?.waypoint])
+  // 障礙物資訊由父層 styledEdges 統一預算並帶入，避免在 Edge 內部呼叫 getNodes() 引發無窮重新渲染迴圈
+  const obstacles = eData?.waypoint ? [] : (eData?.obstacles ?? [])
 
   // Ref: CR-150
   const edgeText = eData?.text || ''
@@ -3134,6 +3105,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const styledEdges = useMemo(() => {
     return edges.map((e) => {
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
+      const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       return {
         ...e,
         ...edgeStyleAndMarker,
@@ -3143,6 +3115,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ...(e.data ?? {}),
           // Ref: CR-151 折點與文字都用 link id 當鍵
           waypoint: waypoints[e.id] ?? null,
+          obstacles,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
           text: edgeTexts[e.id] ?? '',
@@ -3164,6 +3137,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     })
   }, [
     edges,
+    nodes,
     waypoints,
     handleWaypointChange,
     handleWaypointReset,

@@ -53,7 +53,7 @@ export function UserMenu({
   const { data: adminUsersData } = useQuery({
     queryKey: ['adminUsers', currentWsId],
     queryFn: () => Api.adminUsers(currentWsId ?? ''),
-    enabled: showSwitchModal,
+    enabled: import.meta.env.DEV && showSwitchModal,
   })
 
   // 點到外面、按 Esc 都要收起來 —— 選單蓋在內容上，關不掉會擋住畫面
@@ -151,12 +151,14 @@ export function UserMenu({
             </MenuItem>
           )}
 
-          {/* 測試身份與代理切換：隨時可無縫切換帳號 */}
-          <MenuItem onClick={go(() => setShowSwitchModal(true))}>
-            <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
-              <span>🔀</span> 測試身份與代理切換
-            </span>
-          </MenuItem>
+          {/* 測試身份與代理切換：隨時可無縫切換帳號（僅在開發環境顯示） */}
+          {import.meta.env.DEV && (
+            <MenuItem onClick={go(() => setShowSwitchModal(true))}>
+              <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+                <span>🔀</span> 測試身份與代理切換
+              </span>
+            </MenuItem>
+          )}
 
           <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
 
@@ -188,7 +190,7 @@ export function UserMenu({
         </div>
       )}
 
-      {showSwitchModal && (
+      {import.meta.env.DEV && showSwitchModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
