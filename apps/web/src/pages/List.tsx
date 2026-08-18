@@ -466,10 +466,18 @@ export default function ListView({
                         if (isTaskDone(k.statusKey, k.progress)) return false
                         return k.type === 'BUG' || (typeof k.problem === 'string' && k.problem.trim().length > 0)
                       })
-                      const tHasActiveProblem = !isTaskDone(t.statusKey, t.progress) && typeof t.problem === 'string' && t.problem.trim().length > 0
-                      const boxProblemCount = (tHasActiveProblem ? 1 : 0) + activeProblemKids.length
-                      const boxBlockedCount = (blockedByMap.get(t.id)?.length ? 1 : 0) + boxKids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length
-                      const boxOverdueCount = (overdue ? 1 : 0) + boxKids.filter(k => isTaskOverdue(k.dueDate, k.progress)).length
+                      const activeBlockedKids = boxKids.filter(k => {
+                        if (isTaskDone(k.statusKey, k.progress)) return false
+                        const b = blockedByMap.get(k.id)
+                        return b && b.length > 0
+                      })
+                      const activeOverdueKids = boxKids.filter(k => {
+                        if (isTaskDone(k.statusKey, k.progress)) return false
+                        return isTaskOverdue(k.dueDate, k.progress)
+                      })
+                      const boxProblemCount = activeProblemKids.length
+                      const boxBlockedCount = activeBlockedKids.length
+                      const boxOverdueCount = activeOverdueKids.length
                       return (
                         <>
                           {boxKids.length > 0 && (
@@ -477,7 +485,7 @@ export default function ListView({
                               內含 {boxKids.length} 張
                             </span>
                           )}
-                          {boxProblemCount > 0 && <ProblemBadge problem={tHasActiveProblem ? t.problem : (activeProblemKids[0]?.problem || '遭遇問題')} count={boxProblemCount} isBox={true} />}
+                          {boxProblemCount > 0 && <ProblemBadge problem={activeProblemKids[0]?.problem || '遭遇問題'} count={boxProblemCount} isBox={true} />}
                           {boxBlockedCount > 0 && (
                             <span
                               title="盒內含受阻卡住之任務"

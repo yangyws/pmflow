@@ -393,30 +393,26 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
 
               {/* 第二行：收納盒警示徽章 */}
               {((typeof data.childCount === 'number' && data.childCount > 0) ||
-                data.problem ||
                 (typeof data.problemCount === 'number' && data.problemCount > 0) ||
                 (typeof data.blockedCount === 'number' && data.blockedCount > 0) ||
-                (data.blockedBy && data.blockedBy.length > 0) ||
                 data.isParallel ||
                 (typeof data.overdueCount === 'number' && data.overdueCount > 0) ||
-                data.isOverdue ||
-                (typeof data.inquiryCount === 'number' && data.inquiryCount > 0) ||
-                data.inquiryState === 'AWAITING' ||
-                data.inquiryState === 'PARTIAL' ||
-                data.inquiryState === 'OVERDUE') && (
+                (typeof data.inquiryCount === 'number' && data.inquiryCount > 0)) && (
                 <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {typeof data.childCount === 'number' && data.childCount > 0 && (
                     <span className="shrink-0 whitespace-nowrap rounded px-1 text-[10px] bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 font-medium pointer-events-none select-none">
                       {T.flow.relationGraph.childCount(data.childCount)}
                     </span>
                   )}
-                  <ProblemBadge problem={data.problem} count={data.problemCount} isBox={true} />
-                  {((typeof data.blockedCount === 'number' && data.blockedCount > 0) || (data.blockedBy && data.blockedBy.length > 0)) && (
+                  {typeof data.problemCount === 'number' && data.problemCount > 0 && (
+                    <ProblemBadge problem={data.problem || '遭遇問題'} count={data.problemCount} isBox={true} />
+                  )}
+                  {typeof data.blockedCount === 'number' && data.blockedCount > 0 && (
                     <span
                       title={T.flow.relationGraph.blockedTitle(data.blockedBy?.join('、') || T.flow.relationGraph.blockedBoxFallback)}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
-                      <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge} {typeof data.blockedCount === 'number' && data.blockedCount > 0 ? data.blockedCount : ''}
+                      <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge} {data.blockedCount}
                     </span>
                   )}
                   {data.isParallel && (
@@ -427,20 +423,20 @@ function SimpleNodeView({ id, data, width, height }: NodeProps<CustomSimpleNode>
                       {T.flow.relationGraph.parallelBadge}
                     </span>
                   )}
-                  {((typeof data.overdueCount === 'number' && data.overdueCount > 0) || data.isOverdue) && (
+                  {typeof data.overdueCount === 'number' && data.overdueCount > 0 && (
                     <span
                       title={T.flow.relationGraph.overdueTitle(data.dueDate || '')}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 pointer-events-none select-none"
                     >
-                      {T.flow.relationGraph.overdueBadge} {typeof data.overdueCount === 'number' && data.overdueCount > 0 ? data.overdueCount : ''}
+                      {T.flow.relationGraph.overdueBadge} {data.overdueCount}
                     </span>
                   )}
-                  {((typeof data.inquiryCount === 'number' && data.inquiryCount > 0) || data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                  {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 && (
                     <span
                       title={T.flow.relationGraph.inquiryTitle}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                     >
-                      {T.flow.relationGraph.inquiryBadge} {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 ? data.inquiryCount : ''}
+                      {T.flow.relationGraph.inquiryBadge} {data.inquiryCount}
                     </span>
                   )}
                 </div>
@@ -2207,7 +2203,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
         const tParallelInfo = parallelMap.get(t.id)
 
-        const isTDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
         const activeProblemKids = kids.filter((k) => {
           const kCat = statusCatMap.get(k.statusKey)
           const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
@@ -2216,8 +2211,25 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           const hasProblem = typeof k.problem === 'string' && k.problem.trim().length > 0
           return isBug || hasProblem
         })
-        const tHasActiveProblem = !isTDone && typeof t.problem === 'string' && t.problem.trim().length > 0
-        const activeProblemCount = (tHasActiveProblem ? 1 : 0) + activeProblemKids.length
+        const activeBlockedKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          const b = blockedByMap.get(k.id)
+          return b && b.length > 0
+        })
+        const activeOverdueKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          return !!(k.dueDate && k.dueDate < today)
+        })
+        const activeInquiryKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          return k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL' || k.inquiryState === 'OVERDUE'
+        })
 
         newNodes.push({
           id: t.id,
@@ -2237,13 +2249,13 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: tHasActiveProblem ? t.problem : (activeProblemKids.length > 0 ? (activeProblemKids[0].problem || activeProblemKids[0].title) : null),
-            problemCount: activeProblemCount,
-            blockedCount: (blockedByMap.get(t.id)?.length ? 1 : 0) + kids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length,
-            overdueCount: (tOverdue ? 1 : 0) + kids.filter(k => !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && statusCatMap.get(k.statusKey) !== 'DONE' && k.statusKey !== 'DONE')).length,
-            inquiryCount: ((t.inquiryState === 'AWAITING' || t.inquiryState === 'PARTIAL' || t.inquiryState === 'OVERDUE') ? 1 : 0) + kids.filter(k => k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL' || k.inquiryState === 'OVERDUE').length,
+            problem: activeProblemKids.length > 0 ? (activeProblemKids[0].problem || activeProblemKids[0].title) : null,
+            problemCount: activeProblemKids.length,
+            blockedCount: activeBlockedKids.length,
+            overdueCount: activeOverdueKids.length,
+            inquiryCount: activeInquiryKids.length,
             childCount: kids.length,
-            isOverdue: tOverdue,
+            isOverdue: false,
             dueDate: t.dueDate,
             inquiryState: t.inquiryState,
             isParallel: tParallelInfo?.isParallel,
