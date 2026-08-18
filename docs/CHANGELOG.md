@@ -8,6 +8,9 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-157` | 2026-08-18 | [任務關聯圖：卡片初始給定尺寸與 measured，修復初次進入無法拉線需先拖移卡片問題](#cr-157) | `TaskGraph.tsx`, `CODEMAP.md` | 已驗證 |
+| `CR-156` | 2026-08-18 | [兩張圖：接點標準化為 Left/Top 連入 (target) 與 Right/Bottom 出發 (source)，四向雙向拉線與連入](#cr-156) | `TaskGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
+| `CR-155` | 2026-08-18 | [任務關聯圖：收納盒與卡片「問 X」問題單警示依畫布節點樹即時動態遞迴計算，子卡片移出即刻歸零；接點層級升至 50 避免連線後遮蔽](#cr-155) | `TaskGraph.tsx`, `SystemFlow.tsx`, `index.css` | 已驗證 |
 | `CR-154` | 2026-08-18 | [系統流程圖：文字註記的編輯與刪除鈕移到文字上方，不要蓋住字](#cr-154) | `SystemFlow.tsx` | 已驗證 |
 | `CR-153` | 2026-08-18 | [任務關聯圖：文字註記「按住就消失」＝節點缺 `measured` 被判定成還沒量過；編輯與刪除鈕移到文字上方](#cr-153) | `SimpleGraph.tsx`, `CODEMAP.md` | 已驗證 |
 | `CR-152` | 2026-08-18 | [兩張圖：線上文字放大、短字不再被把手擋住、區域標示框整塊可拖、拖曳時節點重繪由 N 降為 1](#cr-152) | `SimpleGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
@@ -212,6 +215,24 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-157"></a>CR-157 (2026-08-18) — 任務關聯圖：卡片初始給定尺寸與 measured，修復初次進入無法拉線需先拖移卡片問題
+
+- **問題症狀**：使用者首次進入關聯圖時，收納盒可正常拉線，但卡片上的 Handles 接點完全無法直接拖曳拉線，必須先稍微拖動卡片一次後才能拉線。
+- **根本原因**：在節點資料組裝與 `useEffect` 合併時，收納盒有給定預設尺寸與 `measured: { width, height }`，但卡片在第 0 幀缺少 `width/height` 與 `measured` 物件。React Flow 內部未在初次掛載時計算並快取卡片 handles 的 `handleBounds`，直到使用者拖曳卡片觸發 DOM 量測才補回。
+- **修復方式**：
+  1. 在 `processTask` 與 `useEffect` 節點合併時，卡片節點一律帶入初始 `width: 256`, `height: 90` 與 `measured: { width: 256, height: 90 }`。
+  2. `SimpleNodeView` 外層與卡片本體一律使用確定寬高與 `w-full h-full`，使 React Flow 在初始畫面載入完成當下即可 100% 響應十字標拉線。
+
+### <a id="cr-156"></a>CR-156 (2026-08-18) — 兩張圖：接點標準化為 Left/Top 連入 (target) 與 Right/Bottom 出發 (source)
+
+- **修復方式**：在 `TaskGraph.tsx` 與 `SystemFlow.tsx` 中，將 Left / Top 設為 `type="target"`（連入），Right / Bottom 設為 `type="source"`（出發），並同時啟用 `isConnectableStart={true}` 與 `isConnectableEnd={true}`，使 React Flow 註冊完整的雙向接點池，支援四向任意出發與連入。
+
+### <a id="cr-155"></a>CR-155 (2026-08-18) — 任務關聯圖：問題單警示依畫布節點樹即時動態遞迴計算，移出即刻歸零
+
+- **問題症狀**：將收納盒內的問題單卡片拖出收納盒後，收納盒仍持續顯示「問 X」警示，未即時消失。
+- **根本原因**：先前收納盒的 `problemCount` 與 `childCount` 僅在初次依照 prop tasks 靜態計算寫入 `node.data`，畫布拖曳節點脫離父容器時 `node.data` 仍保留舊值。
+- **修復方式**：在 `nodesWithHandlers` 中建立畫布即時 `nodeChildrenMap`，動態遞迴統計子孫 `type === 'BUG'` 且未完成的任務。子卡片一拖出收納盒（`parentId` 脫離），收納盒的 `problemCount` 毫秒級即時歸零並移除徽章，同時於拖曳結束呼叫 `invalidateQueries` 同步側欄與後端。另外將卡片層級調升至 20~50 高於線條 interaction stroke (30px)，解決連線完成後接點十字標偶發被遮蔽問題。
 
 ### <a id="cr-154"></a>CR-154 (2026-08-18) — 系統流程圖：編輯與刪除鈕移出文字範圍
 

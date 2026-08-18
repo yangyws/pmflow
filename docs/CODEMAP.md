@@ -120,8 +120,8 @@ pages/
   Board.tsx       203   看板拖拉
   Calendar.tsx    532   月曆，會拖拉改期
   Gantt.tsx       228
-  TaskGraph.tsx   2711  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、Viewport 持久化
-  SystemFlow.tsx  1927  系統流程圖：模組容器、流程步驟、註記、區域標示框、可拖折點連線
+  TaskGraph.tsx   3858  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、動態子樹計算、Viewport 持久化
+  SystemFlow.tsx  2176  系統流程圖：模組容器、流程步驟、註記、區域標示框、可拖折點連線
   Playground.tsx  953   各語法範例：Markdown／SQL／Java／網頁語法範例與即時預覽
   InquiryBoard.tsx194   跨專案發文追蹤
   Week.tsx        340   這一週有哪些任務在跑：依狀態或依類型分組，組可以收合
@@ -133,6 +133,10 @@ components/（圖表，都是手刻 SVG，沒有圖表套件）
 
 ### 幾個踩過的坑，改之前先知道
 
+- **React Flow 節點初始必須給齊尺寸與 `measured`**（`TaskGraph.tsx`，Ref: CR-157）。卡片節點初次掛載若缺 `measured` 或 `width/height`，React Flow 在第 0 幀不會計算 `handleBounds`，導致首次進入時接點無法直接拉線，需拖移才觸發量測；卡片與收納盒在初始建立與 `useEffect` 合併時一律給予確定尺寸（卡片 256x90、收納盒 340x260）與 `measured: { width, height }`。
+- **接點方向與全雙向拉線/連入配置**（`TaskGraph.tsx` / `SystemFlow.tsx`，Ref: CR-156）。左/上設為 `target`（連入），右/下設為 `source`（出發），並同時啟用 `isConnectableStart={true}` 與 `isConnectableEnd={true}`，使 React Flow 正確註冊目標接點池並支援四向任意雙向拖曳。
+- **收納盒與卡片「問 X」問題單警示依畫布節點樹即時動態遞迴計算**（`TaskGraph.tsx`，Ref: CR-155）。不要只在初次依據 prop tasks 靜態計算，在 `nodesWithHandlers` 透過即時的 `nodes`（`nodeChildrenMap`）即時遞迴統計子孫 `type === 'BUG'` 且未完成的任務，子卡片拖出收納盒時警示即刻消失，並在拖出時觸發 `invalidateQueries` 同步側欄與後端。
+- **接點 z-index 與線條互動寬度**（`TaskGraph.tsx` / `SystemFlow.tsx` / `index.css`，Ref: CR-155）。線條 interaction stroke 達 30px，卡片與接點的 z-index 需維持在 20~50 高於線條層，且 handles 設 `z-index: 50`，避免連線完成後接點十字標被線條互動區遮蔽。
 - **React Flow 的節點一定要把 `measured` 疊回去**（`TaskGraph.tsx`／`SystemFlow.tsx`）。React Flow 每次收到新 nodes 陣列都照
   `node.measured` 重建尺寸，衍生物件身上沒有它，畫面就會整片 `visibility: hidden`。
 - **不住在 `nodes` 裡的節點，`measured` 要自己記回去**（Ref: CR-153）。上面那條的第三種變形：

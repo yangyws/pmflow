@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: NAS Custom SQL Seed Directory & Sample Seed File
+### Latest Changes: Initial Node Geometries, Bidirectional Handles, and Dynamic Problem Counting (CR-155 ~ CR-157)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **卡片初始尺寸與量測綁定 (`CR-157`)**：在 `processTask` 與 `useEffect` 合併時一律給予卡片 `width: 256`, `height: 90` 及 `measured` 物件，修復首次進關聯圖卡片無法直接拉線、需拖動卡片才觸發量測的 Bug。
+    2. **接點方向標準化 (`CR-156`)**：Left/Top 設為 `target`，Right/Bottom 設為 `source`，並啟用 `isConnectableStart` 與 `isConnectableEnd`，完整註冊雙向接點池。
+    3. **即時畫布子樹問題單統計 (`CR-155`)**：在 `nodesWithHandlers` 透過即時 `nodeChildrenMap` 動態遞迴統計未完成 BUG 任務，子卡片拖出收納盒毫秒級即時歸零並移除警示徽章，並提昇卡片層級至 20~50 避免連線後十字標被 30px interaction stroke 遮蔽。
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx): 同步將模組與步驟節點接點標準化為 Left/Top target 與 Right/Bottom source 雙向配置。
+  - [`docs/CODEMAP.md`](file:///D:/github/pmflow/docs/CODEMAP.md): 更新程式地圖行數與 React Flow 節點初始量測踩坑與接點配置指引。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-155`、`CR-156` 與 `CR-157` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新開發進度至 `CR-157`。
+
+### Previous Changes: NAS Custom SQL Seed Directory & Sample Seed File
 - **變更檔案**:
   - [`01_demo_seed.sql`](file:///D:/NewProject/pmflow-git/seed/01_demo_seed.sql): 建立標準初始資料 SQL 種子範本，包含示範工作區、管理者帳號、專案參數、父子任務與 FS 依賴連線。
   - [`seed.ts`](file:///D:/NewProject/pmflow-git/apps/api/src/seed.ts): 新增 `seedFromSqlDir` 函式，讀取並執行掛載目錄下的 `.sql` 資料腳本。
