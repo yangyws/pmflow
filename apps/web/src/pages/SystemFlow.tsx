@@ -1511,12 +1511,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         zIndex: isFrame
           ? -1
           : selected
-            ? 30
-            : node.parentId
-              ? 10
-              : nodeMode === 'box'
-                ? 1
-                : 5,
+            ? 50
+            : nodeMode === 'box'
+              ? 2
+              : node.parentId
+                ? 25
+                : 20,
         data: {
           ...node.data,
           isSelected: selected,

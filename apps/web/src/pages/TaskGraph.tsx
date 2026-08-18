@@ -3170,7 +3170,15 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         ...node,
         draggable: true,
         selectable: true,
-        zIndex: isSelected ? 30 : isRelated ? 15 : node.parentId ? 10 : isBox ? 1 : 5,
+        zIndex: isSelected
+          ? 50
+          : isRelated
+            ? 35
+            : isBox
+              ? 2
+              : node.parentId
+                ? 25
+                : 20,
         extent: NODE_EXTENT,
         data: {
           ...node.data,
