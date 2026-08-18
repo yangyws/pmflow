@@ -1404,6 +1404,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           console.error('Failed to sync container box to localStorage:', e)
         }
 
+        if (projectId) {
+          Api.saveCanvasNodes(projectId, 'task-graph', {
+            nodes: { [nodeId]: { mode: nextMode } },
+          }).catch(() => {})
+        }
+
         return {
           ...prev,
           [nodeId]: nextMode,
@@ -2538,6 +2544,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                 const enforcedW = Math.max(rawW, minW)
                 const enforcedH = Math.max(rawH, minH)
                 nextResized[(dc as any).id] = { width: enforcedW, height: enforcedH }
+                if (projectId) {
+                  Api.saveCanvasNodes(projectId, 'task-graph', {
+                    nodes: { [(dc as any).id]: { width: enforcedW, height: enforcedH } },
+                  }).catch(() => {})
+                }
               }
             })
             return nextResized
@@ -2610,18 +2621,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const tHandle = connection.targetHandle ?? undefined
 
       if (existingEdge) {
-        // 如果兩節點間已有關聯，更新接點 (Handle) 方向與樣式，不再跳出已存在彈窗擋死
-        const key = `pmflow_simple_graph_edge_handles_${projectId}`
-        try {
-          const savedStr = localStorage.getItem(key)
-          const handleMap = savedStr ? JSON.parse(savedStr) : {}
-          const edgeKey = `${connection.source}_${connection.target}`
-          handleMap[edgeKey] = { sourceHandle: sHandle, targetHandle: tHandle }
-          handleMap[existingEdge.id] = { sourceHandle: sHandle, targetHandle: tHandle }
-          localStorage.setItem(key, JSON.stringify(handleMap))
-        } catch (e) {
-          console.error(e)
-        }
+        // 如果兩節點間已有關聯，更新接點 (Handle) 方向與樣式至後端資料庫
+        Api.patchLink(existingEdge.id, { sourceHandle: sHandle ?? null, targetHandle: tHandle ?? null })
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+          })
+          .catch(() => {})
 
         const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
         setEdges((eds) =>
@@ -2643,18 +2648,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       }
 
       if (connection.source && connection.target) {
-        try {
-          const key = `pmflow_simple_graph_edge_handles_${projectId}`
-          const savedStr = localStorage.getItem(key)
-          const handleMap = savedStr ? JSON.parse(savedStr) : {}
-          const edgeKey = `${connection.source}_${connection.target}`
-          handleMap[edgeKey] = { sourceHandle: sHandle, targetHandle: tHandle }
-          localStorage.setItem(key, JSON.stringify(handleMap))
-        } catch (e) {
-          console.error(e)
-        }
-
-        Api.addLink(connection.source, { targetId: connection.target, linkType: 'FS' })
+        Api.addLink(connection.source, {
+          targetId: connection.target,
+          linkType: 'FS',
+          sourceHandle: sHandle ?? null,
+          targetHandle: tHandle ?? null,
+        })
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
@@ -2982,6 +2981,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ...prev,
           [node.id]: { x: node.position.x, y: node.position.y },
         }))
+        if (projectId) {
+          Api.saveCanvasNodes(projectId, 'task-graph', {
+            nodes: { [node.id]: { x: Math.round(node.position.x), y: Math.round(node.position.y) } },
+          }).catch(() => {})
+        }
         nextNodes = currentNodes.map((n) =>
           n.id === node.id ? { ...n, position: node.position } : n
         )

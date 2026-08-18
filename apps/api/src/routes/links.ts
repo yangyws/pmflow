@@ -11,6 +11,15 @@ const createBody = z.object({
   targetId: z.string().uuid(),
   linkType: z.enum(['FS', 'SS', 'FF', 'SF', 'RELATES', 'BLOCKS', 'DUPLICATES', 'REQUIRES']),
   lagDays: z.number().int().min(-365).max(365).optional(),
+  sourceHandle: z.string().max(80).nullable().optional(),
+  targetHandle: z.string().max(80).nullable().optional(),
+})
+
+const patchBody = z.object({
+  linkType: z.enum(['FS', 'SS', 'FF', 'SF', 'RELATES', 'BLOCKS', 'DUPLICATES', 'REQUIRES']).optional(),
+  lagDays: z.number().int().min(-365).max(365).optional(),
+  sourceHandle: z.string().max(80).nullable().optional(),
+  targetHandle: z.string().max(80).nullable().optional(),
 })
 
 export default async function linkRoutes(app: FastifyInstance) {
@@ -36,8 +45,11 @@ export default async function linkRoutes(app: FastifyInstance) {
     // 對稱型只存一列，用字典序決定方向，從資料層杜絕重複
     let sourceId = req.params.id
     let targetId = b.targetId
+    let sHandle = b.sourceHandle ?? null
+    let tHandle = b.targetHandle ?? null
     if (SYMMETRIC.has(b.linkType) && sourceId > targetId) {
-      [sourceId, targetId] = [targetId, sourceId]
+      [sourceId, targetId] = [targetId, sourceId];
+      [sHandle, tHandle] = [tHandle, sHandle]
     }
 
     const link = await sql.begin(async tx => {
@@ -56,9 +68,11 @@ export default async function linkRoutes(app: FastifyInstance) {
       }
 
       const [l] = await tx<{ id: string }[]>`
-        INSERT INTO task_link (workspace_id, source_id, target_id, link_type, lag_days, created_by)
+        INSERT INTO task_link (workspace_id, source_id, target_id, link_type, lag_days, source_handle, target_handle, created_by)
         VALUES (${src.workspaceId}, ${sourceId}, ${targetId}, ${b.linkType},
-                ${b.lagDays ?? 0}, ${user.id})
+                ${b.lagDays ?? 0}, ${sHandle}, ${tHandle}, ${user.id})
+        ON CONFLICT (workspace_id, source_id, target_id, link_type)
+        DO UPDATE SET source_handle = EXCLUDED.source_handle, target_handle = EXCLUDED.target_handle
         RETURNING id`
 
       // 當建立關聯時，將 target 的 rank 設為 source.rank + 1 (緊跟在 source 正下方/正後方)，確保 Menu 順序緊密相連
@@ -115,6 +129,37 @@ export default async function linkRoutes(app: FastifyInstance) {
              l.source_id AS "sourceId", l.target_id AS "targetId"
       FROM task_link l WHERE l.id = ${link.id}`
     return reply.code(201).send(row)
+  })
+
+  app.patch<{ Params: { id: string } }>('/links/:id', async (req, reply) => {
+    const user = await authenticate(req)
+    const b = patchBody.parse(req.body)
+    const [l] = await sql<{ source_id: string }[]>`
+      SELECT source_id FROM task_link WHERE id = ${req.params.id}`
+    if (!l) throw notFound('找不到這條關聯')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
+    await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
+
+    await sql`
+      UPDATE task_link
+      SET ${sql(b, 'linkType', 'lagDays', 'sourceHandle', 'targetHandle')}
+      WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'link_updated', linkId: req.params.id },
+    })
+
+    const [row] = await sql`
+      SELECT l.id, l.link_type AS "linkType", l.lag_days AS "lagDays",
+             l.source_id AS "sourceId", l.target_id AS "targetId",
+             l.source_handle AS "sourceHandle", l.target_handle AS "targetHandle"
+      FROM task_link l WHERE l.id = ${req.params.id}`
+    return row
   })
 
   app.delete<{ Params: { id: string } }>('/links/:id', async (req, reply) => {

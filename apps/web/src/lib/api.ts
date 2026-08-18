@@ -709,8 +709,10 @@ export const Api = {
     edges: Array<{ id: string; sourceId: string; targetId: string
                    linkType: LinkType; lagDays: number }>
   }>(`/projects/${projectId}/graph`),
-  addLink: (taskId: string, json: { targetId: string; linkType: LinkType; lagDays?: number }) =>
+  addLink: (taskId: string, json: { targetId: string; linkType: LinkType; lagDays?: number; sourceHandle?: string | null; targetHandle?: string | null }) =>
     api(`/tasks/${taskId}/links`, { method: 'POST', json }),
+  patchLink: (id: string, json: { linkType?: LinkType; lagDays?: number; sourceHandle?: string | null; targetHandle?: string | null }) =>
+    api(`/links/${id}`, { method: 'PATCH', json }),
   deleteLink: (id: string) => api(`/links/${id}`, { method: 'DELETE' }),
 
   /** 期望回覆日的預設工作天數（後端環境變數），前端算日期時要跟它一致 */
