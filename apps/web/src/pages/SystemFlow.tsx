@@ -33,6 +33,7 @@ import { useAuth } from '../lib/auth'
 import { Api } from '../lib/api'
 import { cx } from '../components/ui'
 import { T } from '../strings' // Ref: CR-146
+import { getObstaclesFromNodes, buildOrthogonalPath } from '../lib/orthogonalRouting'
 
 export interface SystemFlowProps {
   projectId?: string
@@ -116,37 +117,6 @@ function consumeEdgeDragGuard(): boolean {
   return true
 }
 
-// Ref: CR-140 全程只由水平/垂直線段組成，折點 (px, py) 決定在哪裡轉彎
-function buildOrthogonalPath(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  sourcePosition: Position,
-  targetPosition: Position,
-  waypoint?: { x: number; y: number } | null
-): { path: string; px: number; py: number } {
-  const px = waypoint ? waypoint.x : (sx + tx) / 2
-  const py = waypoint ? waypoint.y : (sy + ty) / 2
-  const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
-  const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
-
-  const a = srcHoriz ? { x: px, y: sy } : { x: sx, y: py }
-  const b = tgtHoriz ? { x: px, y: ty } : { x: tx, y: py }
-  const raw = [{ x: sx, y: sy }, a, { x: px, y: py }, b, { x: tx, y: ty }]
-
-  const pts: { x: number; y: number }[] = []
-  for (const p of raw) {
-    const last = pts[pts.length - 1]
-    if (!last || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.y - p.y) > 0.01) pts.push(p)
-  }
-
-  return {
-    path: pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
-    px,
-    py,
-  }
-}
 
 // 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 TaskGraph: React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
 function orderParentNodesFirst(nodes: Node[]): Node[] {
@@ -413,22 +383,24 @@ function FlowTextNode({ id, data }: NodeProps) {
   )
 }
 
-// Ref: CR-140
+// Ref: CR-140 & CR-154 區域標示框：背景穿透點擊，標頭/縮放控制保留操作
 function FlowFrameNode({ id, data }: NodeProps) {
   const nodeData = data as FlowNodeData
   const color = nodeData.color || '#8b5cf6'
   return (
-    <div className="relative h-full w-full group cursor-grab active:cursor-grabbing">
-      {/* Ref: CR-152 */}
+    <div className="relative h-full w-full group pointer-events-none select-none">
+      {/* 框身背景 (pointer-events-none，點擊可穿透選取線與畫布) */}
       <div
         className={cx(
-          'h-full w-full rounded-2xl border-2 border-dashed',
+          'h-full w-full rounded-2xl border-2 border-dashed pointer-events-none',
           nodeData.isSelected && 'ring-2 ring-blue-500/50'
         )}
         style={{ borderColor: color, backgroundColor: `${color}12` }}
       />
 
-      <div className="absolute -top-3 left-3 flex max-w-[85%] items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs dark:bg-slate-900 cursor-grab active:cursor-grabbing"
+      {/* 標籤標題列 (保留 pointer-events-auto 可抓取拖曳與點擊操作) */}
+      <div
+        className="absolute -top-3 left-3 flex max-w-[85%] items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs dark:bg-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto"
         style={{ borderColor: color }}
       >
         <span className="shrink-0 text-[11px]">🏷️</span>
@@ -442,7 +414,7 @@ function FlowFrameNode({ id, data }: NodeProps) {
             nodeData.onEdit?.(id)
           }}
           title={T.flow.shared.annotation.editFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-blue-600 group-hover:opacity-100 dark:hover:text-blue-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-blue-600 group-hover:opacity-100 dark:hover:text-blue-400 pointer-events-auto"
         >
           ✏️
         </button>
@@ -453,19 +425,20 @@ function FlowFrameNode({ id, data }: NodeProps) {
             nodeData.onDelete?.(id)
           }}
           title={T.flow.shared.annotation.deleteFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-400 pointer-events-auto"
         >
           🗑️
         </button>
       </div>
 
+      {/* 縮放控制點 (保留 pointer-events-auto) */}
       <NodeResizeControl
         minWidth={220}
         minHeight={160}
         style={{ background: 'transparent', border: 'none' }}
-        className="nodrag"
+        className="nodrag pointer-events-auto"
       >
-        <div className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+        <div className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto">
           ↘
         </div>
       </NodeResizeControl>
@@ -480,9 +453,11 @@ const nodeTypes = {
   frame: FlowFrameNode,
 }
 
-// Ref: CR-140
+// Ref: CR-140 & CR-154 支援智慧直角避障與手動折點
 function FlowLabeledEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -494,9 +469,16 @@ function FlowLabeledEdge({
   data,
 }: EdgeProps) {
   const edgeData = data as FlowEdgeData | undefined
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getNodes } = useReactFlow()
   const draggingRef = useRef(false)
-  // Ref: CR-140 全程直角，折點可拖曳
+  const nodes = getNodes()
+
+  const obstacles = useMemo(() => {
+    if (edgeData?.waypoint) return []
+    return getObstaclesFromNodes(nodes, source, target)
+  }, [nodes, source, target, edgeData?.waypoint])
+
+  // Ref: CR-140 & CR-154 智慧避障直角路徑運算
   const { path, px, py } = buildOrthogonalPath(
     sourceX,
     sourceY,
@@ -504,7 +486,8 @@ function FlowLabeledEdge({
     targetY,
     sourcePosition,
     targetPosition,
-    edgeData?.waypoint
+    edgeData?.waypoint,
+    obstacles
   )
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -1497,7 +1480,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         // Ref: CR-152
         selected: isFrame ? false : node.selected,
         zIndex: isFrame
-          ? 0
+          ? -1
           : selected
             ? 30
             : node.parentId
@@ -1831,6 +1814,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           zoomOnPinch={true}
           panOnScroll={false}
           preventScrolling={true}
+          elevateEdgesOnSelect={true}
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} color="#cbd5e1" className="dark:opacity-30" />

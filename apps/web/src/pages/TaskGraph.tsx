@@ -36,6 +36,7 @@ import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx, ProblemBadge, TypeBadge } from '../components/ui'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
+import { getObstaclesFromNodes, buildOrthogonalPath } from '../lib/orthogonalRouting'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null) {
@@ -617,37 +618,6 @@ function saveEdgeTexts(projectId: string | undefined, map: EdgeTextMap) {
   }
 }
 
-// Ref: CR-139 全程只由水平/垂直線段組成，折點 (px, py) 決定在哪裡轉彎
-function buildOrthogonalPath(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  sourcePosition: Position,
-  targetPosition: Position,
-  waypoint?: Waypoint | null
-): { path: string; px: number; py: number } {
-  const px = waypoint ? waypoint.x : (sx + tx) / 2
-  const py = waypoint ? waypoint.y : (sy + ty) / 2
-  const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
-  const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
-
-  const a = srcHoriz ? { x: px, y: sy } : { x: sx, y: py }
-  const b = tgtHoriz ? { x: px, y: ty } : { x: tx, y: py }
-  const raw: Waypoint[] = [{ x: sx, y: sy }, a, { x: px, y: py }, b, { x: tx, y: ty }]
-
-  const pts: Waypoint[] = []
-  for (const p of raw) {
-    const last = pts[pts.length - 1]
-    if (!last || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.y - p.y) > 0.01) pts.push(p)
-  }
-
-  return {
-    path: pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
-    px,
-    py,
-  }
-}
 
 // Ref: CR-141 折點把手是 EdgeLabelRenderer portal，合成事件仍沿 React 樹冒泡到該條 edge 的 <g onClick>
 let waypointClickGuard = false
@@ -691,9 +661,11 @@ type OrthogonalEdgeData = {
   onWaypointDragEnd?: () => void
 }
 
-// Ref: CR-139
+// Ref: CR-139 & CR-154 支援智慧直角避障與手動折點
 function OrthogonalEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -704,11 +676,17 @@ function OrthogonalEdge({
   markerEnd,
   data,
 }: EdgeProps) {
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getNodes } = useReactFlow()
   const draggingRef = useRef(false)
   const eData = data as OrthogonalEdgeData | undefined
   // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
   const wpKey = id
+  const nodes = getNodes()
+
+  const obstacles = useMemo(() => {
+    if (eData?.waypoint) return []
+    return getObstaclesFromNodes(nodes, source, target)
+  }, [nodes, source, target, eData?.waypoint])
 
   // Ref: CR-150
   const edgeText = eData?.text || ''
@@ -720,6 +698,7 @@ function OrthogonalEdge({
     setIsEditingText(false)
   }
 
+  // Ref: CR-139 & CR-154 智慧避障直角路徑運算
   const { path, px, py } = buildOrthogonalPath(
     sourceX,
     sourceY,
@@ -727,7 +706,8 @@ function OrthogonalEdge({
     targetY,
     sourcePosition,
     targetPosition,
-    eData?.waypoint
+    eData?.waypoint,
+    obstacles
   )
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -959,21 +939,21 @@ function SimpleTextNode({ id, data }: NodeProps) {
   )
 }
 
-// Ref: CR-144 區域標示框：純視覺、墊最底層、框身不吃點擊
+// Ref: CR-144 & CR-154 區域標示框：背景穿透點擊，標頭/縮放控制保留操作
 function SimpleFrameNode({ id, data }: NodeProps) {
   const d = data as unknown as SimpleAnnotationNodeData
   const color = d.color || '#8b5cf6'
   return (
-    // Ref: CR-152 整塊都能拖：框身恢復接收事件，卡片與線靠 zIndex 仍在框之上
-    <div className="group relative h-full w-full cursor-grab active:cursor-grabbing">
+    <div className="group relative h-full w-full pointer-events-none select-none">
+      {/* 框身背景 (pointer-events-none，點擊可穿透選取線與畫布) */}
       <div
-        className="h-full w-full rounded-2xl border-2 border-dashed"
+        className="h-full w-full rounded-2xl border-2 border-dashed pointer-events-none"
         style={{ borderColor: color, backgroundColor: `${color}12` }}
       />
 
-      {/* Ref: CR-153 版面與互動逐項對齊 SystemFlow.tsx 的 FlowFrameNode */}
+      {/* Ref: CR-153 & CR-154 版面與互動逐項對齊 SystemFlow.tsx 的 FlowFrameNode */}
       <div
-        className="absolute -top-3 left-3 flex max-w-[85%] cursor-grab items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs active:cursor-grabbing dark:bg-slate-900"
+        className="absolute -top-3 left-3 flex max-w-[85%] cursor-grab items-center gap-1 rounded-lg border bg-white px-2 py-0.5 shadow-xs active:cursor-grabbing dark:bg-slate-900 pointer-events-auto"
         style={{ borderColor: color }}
       >
         <span className="shrink-0 text-[11px]">🏷️</span>
@@ -987,7 +967,7 @@ function SimpleFrameNode({ id, data }: NodeProps) {
             d.onEdit?.(id)
           }}
           title={ANNOTATION_STRINGS.editFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 pointer-events-auto"
         >
           ✏️
         </button>
@@ -998,21 +978,22 @@ function SimpleFrameNode({ id, data }: NodeProps) {
             d.onDelete?.(id)
           }}
           title={ANNOTATION_STRINGS.deleteFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400"
+          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 pointer-events-auto"
         >
           🗑️
         </button>
       </div>
 
+      {/* 縮放控制點 (保留 pointer-events-auto) */}
       <NodeResizeControl
         minWidth={220}
         minHeight={160}
         style={{ background: 'transparent', border: 'none' }}
-        className="nodrag"
+        className="nodrag pointer-events-auto"
       >
         <div
           title={T.flow.relationGraph.resizeFrame}
-          className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+          className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto"
         >
           ↘
         </div>
@@ -3237,6 +3218,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             zoomOnPinch={true}
             panOnScroll={false}
             preventScrolling={true}
+            elevateEdgesOnSelect={true}
           >
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
             <Controls
