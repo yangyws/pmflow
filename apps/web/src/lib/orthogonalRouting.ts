@@ -394,7 +394,7 @@ function findGridAStarPath(
   }
   openSet.set(toKey(startXi, startYi, 0), startNode)
 
-  let maxIterations = 1000
+  let maxIterations = 3000
   let bestEndNode: AStarNode | null = null
 
   while (openSet.size > 0 && maxIterations-- > 0) {
@@ -449,7 +449,8 @@ function findGridAStarPath(
       }
 
       const dist = Math.abs(nX - curX) + Math.abs(nY - curY)
-      const bendCost = current.dir !== 0 && current.dir !== n.dir ? 50 : 0
+      // 降低直角轉彎權重 (20)，允許路徑在複雜障礙物間多次轉直角靈活避開
+      const bendCost = current.dir !== 0 && current.dir !== n.dir ? 20 : 0
       const collisionCost = segmentCollisions * 1000000
 
       const tentativeG = current.g + dist + bendCost + collisionCost
@@ -746,7 +747,8 @@ export function buildOrthogonalPath(
     const collisions = countPolylineCollisions(points, relevantObstacles)
     const bends = Math.max(0, points.length - 2)
     const len = polylineLength(points)
-    const score = collisions * 1000000 + bends * 50 + len
+    // 優先保證 0 碰撞 (零穿透)，同時允許靈活多次直角折線繞道
+    const score = collisions * 1000000 + bends * 20 + len
 
     if (score < bestScore) {
       bestScore = score

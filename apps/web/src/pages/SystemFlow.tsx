@@ -258,46 +258,38 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
     <div className="relative group">
-      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
+      {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
       <Handle
-        type="source"
+        type="target"
         position={Position.Left}
-        id="left"
+        id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right"
+        id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
       />
       <Handle
-        type="source"
+        type="target"
         position={Position.Top}
-        id="top"
+        id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom"
+        id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
-        isConnectable={isConnectable}
-        isConnectableStart={true}
-        isConnectableEnd={true}
+        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
       />
 
       <div
