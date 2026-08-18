@@ -492,11 +492,31 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         </div>
       )}
 
-      {/* 接點 (Handles) - 渲染在卡片本體最上層，左/上為 target (連入)，右/下為 source (出發)，四向皆支援雙向拖曳拉線與連入 */}
+      {/* 接點 (Handles) - 渲染在卡片本體最上層，四向皆同時支援出發 (source) 與連入 (target) */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-out"
+        style={{ top: '50%', backgroundColor: '#ef4444' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
@@ -517,6 +537,26 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         type="target"
         position={Position.Top}
         id="top-in"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top-out"
+        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
         className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}

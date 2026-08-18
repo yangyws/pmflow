@@ -68,15 +68,14 @@ export interface FlowEdgeData extends Record<string, unknown> {
 // Ref: CR-146
 const COLOR_OPTIONS = T.flow.systemFlow.colorOptions
 
-function getEdgeStyleAndMarker(sourceHandle?: string | null) {
-  const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
-  const strokeColor = isLeftRight ? '#ef4444' : '#8b5cf6'
+function getEdgeStyleAndMarker(_sourceHandle?: string | null) {
+  const strokeColor = '#4f46e5'
   return {
     animated: false,
     style: {
       strokeWidth: 2,
       stroke: strokeColor,
-      strokeDasharray: isLeftRight ? 'none' : '5 5',
+      strokeDasharray: 'none',
       opacity: 1,
     },
     markerEnd: {
@@ -123,6 +122,117 @@ function orderParentNodesFirst(nodes: Node[]): Node[] {
     return d
   }
   return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
+}
+
+// 四向全功能雙向接點元件 (每個方向同時掛載 in 與 out Handles，支援任意方向 16 種組合起拉與連入)
+function FourWayHandles({
+  isConnectable = true,
+  color = '#4f46e5',
+  sizeClass = '!w-4 !h-4',
+  extraHandleClass = '',
+}: {
+  isConnectable?: boolean
+  color?: string
+  sizeClass?: string
+  extraHandleClass?: string
+}) {
+  const commonClass = cx(
+    sizeClass,
+    '!border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag pointer-events-auto after:absolute after:content-[\'\'] after:-inset-3 after:rounded-full after:cursor-crosshair',
+    extraHandleClass
+  )
+
+  return (
+    <>
+      {/* Left Handles */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-in"
+        style={{ top: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-out"
+        style={{ top: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+
+      {/* Right Handles */}
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-in"
+        style={{ top: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-out"
+        style={{ top: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+
+      {/* Top Handles */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-in"
+        style={{ left: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top-out"
+        style={{ left: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+
+      {/* Bottom Handles */}
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-in"
+        style={{ left: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-out"
+        style={{ left: '50%', backgroundColor: color }}
+        className={commonClass}
+        isConnectable={isConnectable}
+        isConnectableStart={true}
+        isConnectableEnd={true}
+      />
+    </>
+  )
 }
 
 // 系統流程圖：模組/收納盒節點
@@ -200,46 +310,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
       </div>
 
       {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
+      <FourWayHandles isConnectable={isConnectable ?? true} color="#4f46e5" />
     </div>
   )
 }
@@ -302,53 +373,15 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
       </div>
 
       {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
+      <FourWayHandles isConnectable={isConnectable ?? true} color="#4f46e5" />
     </div>
   )
 }
 
 // Ref: CR-140
-function FlowTextNode({ id, data }: NodeProps) {
+function FlowTextNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
+  const color = nodeData.color || '#4f46e5'
   return (
     <div className="group relative cursor-grab active:cursor-grabbing select-none">
       <div
@@ -362,7 +395,7 @@ function FlowTextNode({ id, data }: NodeProps) {
         {nodeData.label || T.flow.shared.annotation.textFallback}
       </div>
 
-      {/* Ref: CR-154 —— 按鈕列擺在文字上緣之外。壓在右上角的話，文字一短，按鈕列就比文字還寬，整段字被蓋住 */}
+      {/* Ref: CR-154 —— 按鈕列擺在文字上緣之外 */}
       <div className="absolute bottom-full right-0 mb-1 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
         <button
           type="button"
@@ -387,12 +420,20 @@ function FlowTextNode({ id, data }: NodeProps) {
           🗑️
         </button>
       </div>
+
+      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
+      <FourWayHandles
+        isConnectable={isConnectable ?? true}
+        color={color}
+        sizeClass="!w-3 !h-3"
+        extraHandleClass="opacity-0 group-hover:opacity-100 transition-opacity"
+      />
     </div>
   )
 }
 
-// Ref: CR-140 & CR-154 區域標示框：背景穿透點擊，標頭/縮放控制保留操作
-function FlowFrameNode({ id, data }: NodeProps) {
+// Ref: CR-140 & CR-154 區域標示框：背景穿透點擊，標頭/縮放控制/接點保留操作
+function FlowFrameNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   const color = nodeData.color || '#8b5cf6'
   return (
@@ -450,6 +491,9 @@ function FlowFrameNode({ id, data }: NodeProps) {
           ↘
         </div>
       </NodeResizeControl>
+
+      {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
+      <FourWayHandles isConnectable={isConnectable ?? true} color={color} />
     </div>
   )
 }
@@ -1526,7 +1570,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         // Ref: CR-152
         selected: isFrame ? false : node.selected,
         zIndex: isFrame
-          ? -1
+          ? 0
           : selected
             ? 50
             : nodeMode === 'box'
