@@ -192,6 +192,8 @@ export const flow = {
       `【${source}】與【${target}】之間已存在關聯線，任何第二個接點皆不可重複相連！`,
     alertMoveOutHasEdges: (ref: string) =>
       `卡片 (${ref}) 在收納盒內尚存在關聯線，無法移出收納盒。請先刪除關聯線後再移動！`,
+    alertUnboxBoxHasEdges: (boxRef: string) =>
+      `收納盒 (${boxRef}) 內部的卡片尚存在關聯線，無法轉換為普通卡片。請先刪除關聯線後再轉換！`,
     alertMoveInHasEdges: (kind: string, ref: string, box: string) =>
       `${kind} (${ref}) 尚存在關聯線，無法移入收納盒 (${box})。請先刪除關聯線後再移入！`,
   },

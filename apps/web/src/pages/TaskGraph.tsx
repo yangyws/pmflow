@@ -1312,28 +1312,13 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const currentMode = toggledModes[nodeId] ?? (targetNode?.data as SimpleGraphNodeData)?.mode ?? 'card'
       const nextMode: NodeMode = currentMode === 'box' ? 'card' : 'box'
 
-      // 若從收納盒轉回卡片，將盒內所有子卡片移出，並移除它們的所有相關關聯線
+      // 若從收納盒轉回卡片，將盒內所有子卡片移出
       if (currentMode === 'box' && nextMode === 'card') {
         const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
         if (childKids.length > 0) {
           const childIds = new Set(childKids.map((k) => k.id))
 
-          // 1. 找出所有與移出卡片相連的關聯線，呼叫 API 刪除並從前端即時移除
-          const currentEdges = edgesRef.current
-          const affectedEdges = currentEdges.filter(
-            (e) => childIds.has(String(e.source)) || childIds.has(String(e.target))
-          )
-          const affectedEdgeIds = new Set(affectedEdges.map((e) => e.id))
-
-          affectedEdges.forEach((e) => {
-            Api.deleteLink(e.id).catch((err) => console.error('Failed to delete link on unbox:', err))
-          })
-
-          if (affectedEdgeIds.size > 0) {
-            setEdges((eds) => eds.filter((e) => !affectedEdgeIds.has(e.id)))
-          }
-
-          // 2. 呼叫 API 將子卡片的 parentId 設為 null，並即時更新 react-query tasks 快取
+          // 1. 呼叫 API 將子卡片的 parentId 設為 null，並即時更新 react-query tasks 快取
           childKids.forEach((k) => {
             Api.moveTask(k.id, { parentId: null }).catch((err) =>
               console.error('Failed to move task out of box:', err)
@@ -1350,7 +1335,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             })
           }
 
-          // 3. 計算移出後的畫布絕對座標，同步更新 dragged 狀態避免後續切換時卡片重新跑進去
+          // 2. 計算移出後的畫布絕對座標，同步更新 dragged 狀態避免後續切換時卡片重新跑進去
           const boxX = targetNode?.position.x ?? 0
           const boxY = targetNode?.position.y ?? 0
 
@@ -1433,6 +1418,15 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       if (currentMode === 'box') {
         const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
         if (childKids.length > 0) {
+          const childIds = new Set(childKids.map((k) => k.id))
+          const currentEdges = edgesRef.current
+          const affectedEdges = currentEdges.filter(
+            (e) => childIds.has(String(e.source)) || childIds.has(String(e.target))
+          )
+          if (affectedEdges.length > 0) {
+            setAlertMsg(T.flow.relationGraph.alertUnboxBoxHasEdges(refText))
+            return
+          }
           setConfirmUnboxModal({
             boxId: nodeId,
             refText,
@@ -2789,19 +2783,28 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         if (!targetBox && currentParentId) {
-          // 移出收納盒：自動移除該卡片在後端與前端的所有關聯線，確保任務關聯完全解除乾淨
-          const attachedEdges = edges.filter((e) => e.source === node.id || e.target === node.id)
-          if (attachedEdges.length > 0) {
-            attachedEdges.forEach((e) => {
-              Api.deleteLink(e.id).catch(() => {})
-            })
-            setEdges((prev) => prev.filter((e) => e.source !== node.id && e.target !== node.id))
-            if (projectId) {
-              queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
-              queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
-              queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
-              queryClient.invalidateQueries({ queryKey: ['task', node.id] })
-            }
+          // 移出收納盒：檢查是否有關聯線連著，若有則跳出提示禁止移出並彈回原位，絕不刪除使用者的關聯線
+          const visitedSubtree = new Set<string>()
+          const collectSubtreeIds = (nId: string) => {
+            if (visitedSubtree.has(nId)) return
+            visitedSubtree.add(nId)
+            currentNodes.filter((cn) => cn.parentId === nId).forEach((cn) => collectSubtreeIds(cn.id))
+          }
+          collectSubtreeIds(node.id)
+
+          const hasEdgesInSubtree = edges.some(
+            (e) => visitedSubtree.has(String(e.source)) || visitedSubtree.has(String(e.target))
+          )
+
+          if (hasEdgesInSubtree) {
+            setAlertMsg(T.flow.relationGraph.alertMoveOutHasEdges(cardRef))
+            addLog('move_out', T.flow.relationGraph.log.moveOutFailed(cardRef))
+            const startPos = dragStartPosMap.current[node.id]
+            return currentNodes.map((n) =>
+              n.id === node.id
+                ? { ...n, parentId: currentParentId, position: startPos || n.position }
+                : n
+            )
           }
 
           shrinkBoxAfterRemoval(currentParentId, node.id) // Ref: CR-136
