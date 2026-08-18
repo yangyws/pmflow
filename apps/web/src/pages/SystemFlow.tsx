@@ -145,7 +145,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Left}
         id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -155,7 +155,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Right}
         id="right"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -165,7 +165,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Top}
         id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -175,7 +175,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         position={Position.Bottom}
         id="bottom"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-30 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2 after:rounded-full"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -260,36 +260,44 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
     <div className="relative group">
       {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
 
       <div

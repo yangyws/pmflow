@@ -298,38 +298,46 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         isBox ? 'w-full h-full' : 'w-max h-auto'
       )}
     >
-      {/* 接點 (Handles) - 四向清晰接點，支援十字游標與滑鼠直接點擊拉線 */}
+      {/* 接點 (Handles) - 四向全能接點，支援四向任意出發與連入，並顯示十字游標 */}
       <Handle
-        type="target"
+        type="source"
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-3.5 !h-3.5 !border-2 !border-white dark:!border-slate-900 !z-40 cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-2.5 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
+        isConnectableStart={true}
+        isConnectableEnd={true}
       />
 
       {isBox ? (

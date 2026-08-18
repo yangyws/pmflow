@@ -202,3 +202,15 @@ body {
 .react-flow__pane.dragging {
   cursor: move !important;
 }
+
+/* ── React Flow 接點 (Handles) 強制十字游標與互動響應 ── */
+.react-flow__handle,
+.react-flow__handle.connecting,
+.react-flow__handle.connectionindicator {
+  cursor: crosshair !important;
+  pointer-events: all !important;
+}
+
+.react-flow__handle::after {
+  cursor: crosshair !important;
+}
