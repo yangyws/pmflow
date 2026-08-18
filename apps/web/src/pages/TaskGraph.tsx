@@ -2183,16 +2183,18 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const tOverdue = !!(t.dueDate && t.dueDate < today && !tIsDone)
         const tParallelInfo = parallelMap.get(t.id)
 
+        // 統計盒內未完成之「問題單 (BUG)」數量
         const activeProblemKids = kids.filter((k) => {
           const kCat = statusCatMap.get(k.statusKey)
           const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
           if (isDone) return false
-          const hasProblem = typeof k.problem === 'string' && k.problem.trim().length > 0
-          return hasProblem
+          return k.type === 'BUG'
         })
-        const tHasActiveProblem = !tIsDone && typeof t.problem === 'string' && t.problem.trim().length > 0
-        const totalProblemCount = activeProblemKids.length + (tHasActiveProblem ? 1 : 0)
-        const activeProblemText = activeProblemKids.length > 0 ? activeProblemKids[0].problem : tHasActiveProblem ? t.problem : null
+        const problemCount = activeProblemKids.length
+        const problemTooltip =
+          problemCount > 0
+            ? `盒內有 ${problemCount} 張未完成問題單：${activeProblemKids.map((k) => k.ref || k.title).join('、')}`
+            : null
 
         const activeBlockedKids = kids.filter((k) => {
           const kCat = statusCatMap.get(k.statusKey)
@@ -2232,8 +2234,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: activeProblemText,
-            problemCount: totalProblemCount,
+            problem: problemTooltip,
+            problemCount,
             blockedCount: activeBlockedKids.length,
             overdueCount: activeOverdueKids.length,
             inquiryCount: activeInquiryKids.length,
