@@ -495,9 +495,9 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         </div>
       )}
 
-      {/* 接點 (Handles) - 渲染在卡片本體最上層，支援四向任意出發與連入，十字標與拉線保證 100% 響應 */}
+      {/* 接點 (Handles) - 渲染在卡片本體最上層，左/上為 target (連入)，右/下為 source (出發)，四向皆支援雙向拖曳拉線與連入 */}
       <Handle
-        type="source"
+        type="target"
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
@@ -517,7 +517,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         isConnectableEnd={true}
       />
       <Handle
-        type="source"
+        type="target"
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}

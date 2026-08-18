@@ -210,7 +210,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
 
       {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
       <Handle
-        type="source"
+        type="target"
         position={Position.Left}
         id="left"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
@@ -230,7 +230,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         isConnectableEnd={true}
       />
       <Handle
-        type="source"
+        type="target"
         position={Position.Top}
         id="top"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
@@ -312,7 +312,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
 
       {/* 四向連接點 (清晰 4 向接點，支援十字游標與滑鼠直接點擊拉線) */}
       <Handle
-        type="source"
+        type="target"
         position={Position.Left}
         id="left-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
@@ -332,7 +332,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
         isConnectableEnd={true}
       />
       <Handle
-        type="source"
+        type="target"
         position={Position.Top}
         id="top-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
