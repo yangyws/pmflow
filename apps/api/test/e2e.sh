@@ -693,6 +693,19 @@ chk "把測試用的成員移出專案 → 204" \
   "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" \
      -X DELETE $API/projects/$PID/members/$BOBID)" "204"
 
+# ── 32. 即時推播與 SSE 串流端點（Ref: CR-155）──
+echo "── 32. 即時推播與 SSE 串流端點（Ref: CR-155）──"
+chk "未帶 Token 連線 SSE 串流 → 401" \
+  "$(curl -s -o /dev/null -w '%{http_code}' $API/events)" "401"
+chk "帶錯誤 Token 連線 SSE 串流 → 401" \
+  "$(curl -s -o /dev/null -w '%{http_code}' "$API/events?token=invalid_token")" "401"
+chk "Query 帶有效 Token 連線 SSE 串流 → 200" \
+  "$(curl -s -o /dev/null -m 2 -w '%{http_code}' "$API/events?token=$TOK" || true)" "200"
+chk "Header 帶 Bearer Token 連線 SSE 串流 → 200" \
+  "$(curl -s -o /dev/null -m 2 -w '%{http_code}' -H "$AUTH" $API/events || true)" "200"
+chk "帶專案 ID 連線特定專案頻道 → 200" \
+  "$(curl -s -o /dev/null -m 2 -w '%{http_code}' -H "$AUTH" "$API/events?projectId=$PID" || true)" "200"
+
 # 前面幾項開出來的任務也一起收掉。留著的話對同一個資料庫每跑一次就多四張，
 # 到最後得靠 clean-demo-junk.bat 去撿 —— 測試自己製造的垃圾自己收。
 del "$NEWA" "$NEWB" "$NT_A" "$NT_B"

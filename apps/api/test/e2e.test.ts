@@ -187,6 +187,22 @@ async function run() {
     }
   }
 
+  // 11. 即時推播與 SSE 串流 (Realtime SSE)
+  console.log('\n── 4. 即時推播與串流 (Realtime SSE) ──')
+  const resNoAuthEvents = await request('/events')
+  if (resNoAuthEvents.status === 401) {
+    ok('未授權 SSE 請求攔截 (401 Unauthorized)')
+  } else {
+    fail('未授權 SSE 請求攔截', `期望 401，實得 ${resNoAuthEvents.status}`)
+  }
+
+  const resWrongToken = await request('/events?token=invalid_token')
+  if (resWrongToken.status === 401) {
+    ok('錯誤 Token 攔截 (401 Unauthorized)')
+  } else {
+    fail('錯誤 Token 攔截', `期望 401，實得 ${resWrongToken.status}`)
+  }
+
   // 總結報告
   console.log(`\n════════ 測試結果：通過 ${passCount}，失敗 ${failCount} ════════\n`)
   if (failCount > 0) {
