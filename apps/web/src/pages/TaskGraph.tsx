@@ -2226,6 +2226,18 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
         const tParallelInfo = parallelMap.get(t.id)
 
+        const isTDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+        const activeProblemKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          const isBug = k.type === 'BUG'
+          const hasProblem = typeof k.problem === 'string' && k.problem.trim().length > 0
+          return isBug || hasProblem
+        })
+        const tHasActiveProblem = !isTDone && typeof t.problem === 'string' && t.problem.trim().length > 0
+        const activeProblemCount = (tHasActiveProblem ? 1 : 0) + activeProblemKids.length
+
         newNodes.push({
           id: t.id,
           type: 'simpleNode',
@@ -2244,8 +2256,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: t.problem,
-            problemCount: (t.problem ? 1 : 0) + kids.filter(k => k.type === 'BUG' || k.problem).length,
+            problem: tHasActiveProblem ? t.problem : (activeProblemKids.length > 0 ? (activeProblemKids[0].problem || activeProblemKids[0].title) : null),
+            problemCount: activeProblemCount,
             blockedCount: (blockedByMap.get(t.id)?.length ? 1 : 0) + kids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length,
             overdueCount: (tOverdue ? 1 : 0) + kids.filter(k => !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && statusCatMap.get(k.statusKey) !== 'DONE' && k.statusKey !== 'DONE')).length,
             inquiryCount: ((t.inquiryState === 'AWAITING' || t.inquiryState === 'PARTIAL' || t.inquiryState === 'OVERDUE') ? 1 : 0) + kids.filter(k => k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL' || k.inquiryState === 'OVERDUE').length,
@@ -2284,6 +2296,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             const kStatusCat = statusCatMap.get(k.statusKey)
             const kOverdue = !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && kStatusCat !== 'DONE' && k.statusKey !== 'DONE')
             const kParallelInfo = parallelMap.get(k.id)
+            const kIsDone = kStatusCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+            const kHasActiveProblem = !kIsDone && typeof k.problem === 'string' && k.problem.trim().length > 0
 
             newNodes.push({
               id: k.id,
@@ -2299,7 +2313,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                 typeColor: typeColorOf(k.type),
                 typeName: typeNameOf(k.type),
                 taskType: k.type,
-                problem: k.problem,
+                problem: kHasActiveProblem ? k.problem : null,
                 isOverdue: kOverdue,
                 dueDate: k.dueDate,
                 inquiryState: k.inquiryState,
@@ -2318,6 +2332,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const tStatusCat = statusCatMap.get(t.statusKey)
         const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
         const tParallelInfo = parallelMap.get(t.id)
+        const tIsDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+        const tHasActiveProblem = !tIsDone && typeof t.problem === 'string' && t.problem.trim().length > 0
 
         newNodes.push({
           id: t.id,
@@ -2333,7 +2349,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: t.problem,
+            problem: tHasActiveProblem ? t.problem : null,
             isOverdue: tOverdue,
             dueDate: t.dueDate,
             inquiryState: t.inquiryState,

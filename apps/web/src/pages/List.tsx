@@ -42,6 +42,10 @@ export default function ListView({
   const { data: project } = useQuery({
     queryKey: ['project', projectId], queryFn: () => Api.project(projectId),
   })
+  const statusCatMap = useMemo(
+    () => new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? []),
+    [project?.statuses]
+  )
   const { data: graph } = useQuery({
     queryKey: ['graph', projectId], queryFn: () => Api.graph(projectId),
   })
@@ -281,7 +285,6 @@ export default function ListView({
     if (!tasks.length || !edges.length) return map
 
     const taskMap = new Map(tasks.map((t) => [t.id, t]))
-    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
 
     const isDone = (t?: Task) => {
       if (!t) return false
@@ -457,7 +460,14 @@ export default function ListView({
                   <div className="flex flex-wrap items-center gap-1">
                     {t.isBox ? (() => {
                       const boxKids = tasks.filter(k => k.parentId === t.id)
-                      const boxProblemCount = (t.problem ? 1 : 0) + boxKids.filter(k => k.type === 'BUG' || k.problem).length
+                      const isTaskDone = (sKey: string, prog?: number | null) =>
+                        statusCatMap.get(sKey) === 'DONE' || sKey === 'DONE' || (prog ?? 0) >= 100
+                      const activeProblemKids = boxKids.filter(k => {
+                        if (isTaskDone(k.statusKey, k.progress)) return false
+                        return k.type === 'BUG' || (typeof k.problem === 'string' && k.problem.trim().length > 0)
+                      })
+                      const tHasActiveProblem = !isTaskDone(t.statusKey, t.progress) && typeof t.problem === 'string' && t.problem.trim().length > 0
+                      const boxProblemCount = (tHasActiveProblem ? 1 : 0) + activeProblemKids.length
                       const boxBlockedCount = (blockedByMap.get(t.id)?.length ? 1 : 0) + boxKids.filter(k => blockedByMap.get(k.id) && blockedByMap.get(k.id)!.length > 0).length
                       const boxOverdueCount = (overdue ? 1 : 0) + boxKids.filter(k => isTaskOverdue(k.dueDate, k.progress)).length
                       return (
@@ -467,7 +477,7 @@ export default function ListView({
                               內含 {boxKids.length} 張
                             </span>
                           )}
-                          {boxProblemCount > 0 && <ProblemBadge problem={t.problem || '遭遇問題'} />}
+                          {boxProblemCount > 0 && <ProblemBadge problem={tHasActiveProblem ? t.problem : (activeProblemKids[0]?.problem || '遭遇問題')} count={boxProblemCount} isBox={true} />}
                           {boxBlockedCount > 0 && (
                             <span
                               title="盒內含受阻卡住之任務"
