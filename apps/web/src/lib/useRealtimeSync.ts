@@ -68,6 +68,15 @@ export function useRealtimeSync() {
           window.dispatchEvent(new CustomEvent('pmflow_realtime_event', { detail: ev }))
         } catch {}
 
+        // 【關鍵防抖防回彈】：過濾使用者自己發出的即時事件
+        // 當前使用者本機已經擁有最新記憶體狀態與座標，若被自己發出的 SSE 廣播回彈作廢快取，
+        // 會引發 React Query 重新打 API 取得舊座標並觸發整個畫布重算與閃爍。
+        if (ev.actorId && user?.id && ev.actorId === user.id) {
+          if (ev.type === 'canvas:changed' || ev.type === 'task:changed' || ev.type === 'inquiry:changed') {
+            continue
+          }
+        }
+
         switch (ev.type) {
           case 'notification:new': {
             invalidate(['notifications'])

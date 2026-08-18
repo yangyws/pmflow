@@ -1993,7 +1993,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
       })
     setEdges(realEdges)
-  }, [graphData, projectId, tasks])
+  }, [graphData, projectId])
 
   // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView
   useEffect(() => {
@@ -2071,6 +2071,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   // 當 props.tasks 變動時，自動將 Left Menu 任務動態轉換為關聯圖節點
   useEffect(() => {
+    if (interactingRef.current || isDraggingRef.current) return
     if (!tasks || tasks.length === 0) {
       setNodes([])
       return
