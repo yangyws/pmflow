@@ -1211,12 +1211,44 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEdges((eds) => applyEdgeChanges(changes, eds))
   }, [])
 
+  // 記住使用者是從哪一顆節點與接點開始拉線的
+  const connectStartRef = useRef<{ nodeId: string | null; handleId: string | null; handleType: string | null } | null>(null)
+
+  const onConnectStart = useCallback(
+    (_e: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
+      connectStartRef.current = {
+        nodeId: params?.nodeId ?? null,
+        handleId: params?.handleId ?? null,
+        handleType: params?.handleType ?? null,
+      }
+    },
+    []
+  )
+
   const onConnect = useCallback((params: Connection) => {
     if (!params.source || !params.target) return
 
-    const edgeStyleAndMarker = getEdgeStyleAndMarker(params.sourceHandle)
+    // 如果使用者是從被 React Flow 標為 target 的接點起拉，React Flow 會將 source 與 target 顛倒
+    // 依據實際按下滑鼠的起點節點換回正確方向，確保箭頭永遠位於滑鼠放開的終點端（支援右到左、下到上等任意方向）
+    const startInfo = connectStartRef.current
+    const startedAtTarget =
+      startInfo?.nodeId === params.target &&
+      (!startInfo.handleId || startInfo.handleId === params.targetHandle)
+
+    const resolved: Connection = startedAtTarget
+      ? {
+          source: params.target,
+          sourceHandle: params.targetHandle,
+          target: params.source,
+          targetHandle: params.sourceHandle,
+        }
+      : params
+
+    connectStartRef.current = null
+
+    const edgeStyleAndMarker = getEdgeStyleAndMarker(resolved.sourceHandle)
     const newEdge: Edge = {
-      ...params,
+      ...resolved,
       id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       ...edgeStyleAndMarker,
     }
@@ -1777,6 +1809,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
           onPaneClick={() => {

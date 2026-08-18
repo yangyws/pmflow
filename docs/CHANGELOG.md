@@ -217,15 +217,17 @@
 
 ## 詳細條目
 
-### <a id="cr-158"></a>CR-158 (2026-08-18) — 系統流程圖：移除 onConnect 強制改寫接點邏輯、統一容器框 Handles ID
+### <a id="cr-158"></a>CR-158 (2026-08-18) — 系統流程圖：移除 onConnect 強制改寫接點邏輯、統一容器框 Handles ID、支援四向任意連線方向
 
-- **問題症狀**：系統流程圖中無法四向自由拉線與連線。
+- **問題症狀**：系統流程圖中無法四向自由拉線，且箭頭只能從左到右，無法由右往左或由下往上。
 - **根本原因**：
-  1. `onConnect` 內部使用了 `toOutHandle` 與 `toInHandle`，將使用者拉的所有來源與目標接點強制竄改為 `right-out`/`bottom-out` 與 `top-in`/`left-in`，導致自訂四向連線被覆蓋或失效。
-  2. 模組容器盒 (`FlowBoxNode`) 上的 Handle id 為 `left`/`right`/`top`/`bottom`，與步驟節點的 `left-in`/`right-out`/`top-in`/`bottom-out` 不一致，導致容器盒接點尋找失敗。
+  1. `onConnect` 內部使用了 `toOutHandle` 與 `toInHandle`，將使用者拉的所有來源與目標接點強制竄改為 `right-out`/`bottom-out` 與 `top-in`/`left-in`。
+  2. 模組容器盒 (`FlowBoxNode`) 上的 Handle id 為 `left`/`right`/`top`/`bottom`，與步驟節點不一致。
+  3. React Flow 在寬鬆連線模式下，當起點為 `type="target"`（如 `left-in` 或 `top-in`）而終點為 `type="source"`（如 `right-out` 或 `bottom-out`）時，內部會強制將 `source` 與 `target` 對調，導致箭頭永遠釘在左到右或上到下。
 - **修復方式**：
-  1. 移除 `toOutHandle` 與 `toInHandle` 及 `connectStartRef`，`onConnect` 直接保留使用者點選建立的原始 `sourceHandle` 與 `targetHandle`。
-  2. 統一模組容器盒 (`FlowBoxNode`) 接點 ID 為 `left-in`、`right-out`、`top-in`、`bottom-out`，並配置 `isConnectableStart={true}` 與 `isConnectableEnd={true}`，支援四向任意互相連接。
+  1. 移除 `toOutHandle` 與 `toInHandle`。
+  2. 統一模組容器盒 (`FlowBoxNode`) 接點 ID 為 `left-in`、`right-out`、`top-in`、`bottom-out`。
+  3. 加入 `onConnectStart` 記錄實際滑鼠按下的起點節點；當 React Flow 顛倒方向時，依據實際起點校正 `source`/`target`，確保箭頭永遠正確落在使用者放開滑鼠的終點端（完美支援右到左、下到上、左到左、右到右等 16 種任意四向組合）。
 
 ### <a id="cr-157"></a>CR-157 (2026-08-18) — 任務關聯圖：卡片初始給定尺寸與 measured，修復初次進入無法拉線需先拖移卡片問題
 
