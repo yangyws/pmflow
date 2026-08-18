@@ -1802,7 +1802,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
       ],
     }))
-    setEditingAnnotation({ id, kind: 'text', label: ANNOTATION_STRINGS.newTextDefault, color: '' })
   }, [])
 
   const handleAddAreaFrame = useCallback(() => {
