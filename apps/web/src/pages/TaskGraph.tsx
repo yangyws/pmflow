@@ -472,7 +472,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             </div>
 
             {/* 第二行：警示徽章 */}
-            {((data.taskType !== 'BUG' && data.problem) ||
+            {((data.taskType !== 'BUG' && typeof data.problemCount === 'number' && data.problemCount > 0) ||
               (data.blockedBy && data.blockedBy.length > 0) ||
               data.isParallel ||
               data.isOverdue ||
@@ -480,7 +480,13 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
               data.inquiryState === 'PARTIAL' ||
               data.inquiryState === 'OVERDUE') && (
               <div className="flex flex-wrap items-center gap-1 min-w-0">
-                {data.taskType !== 'BUG' && <ProblemBadge problem={data.problem} />}
+                {data.taskType !== 'BUG' && typeof data.problemCount === 'number' && data.problemCount > 0 && (
+                  <ProblemBadge
+                    problem={data.problem || `內有 ${data.problemCount} 張未完成問題單`}
+                    count={data.problemCount}
+                    isShort={true}
+                  />
+                )}
                 {data.blockedBy && data.blockedBy.length > 0 && (
                   <span
                     title={T.flow.relationGraph.blockedCardTitle(data.blockedBy.join('、'))}
@@ -2272,10 +2278,22 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               rawPos.y <= dims.height - 30
             const kPos = isValidChildPos ? rawPos : defaultSlotPos
             const kStatusCat = statusCatMap.get(k.statusKey)
-            const kOverdue = !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && kStatusCat !== 'DONE' && k.statusKey !== 'DONE')
-            const kParallelInfo = parallelMap.get(k.id)
             const kIsDone = kStatusCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
-            const kHasActiveProblem = !kIsDone && typeof k.problem === 'string' && k.problem.trim().length > 0
+            const kOverdue = !!(k.dueDate && k.dueDate < today && !kIsDone)
+            const kParallelInfo = parallelMap.get(k.id)
+
+            const kKids = childrenMap.get(k.id) || []
+            const kActiveProblemKids = kKids.filter((ck) => {
+              const ckCat = statusCatMap.get(ck.statusKey)
+              const ckDone = ckCat === 'DONE' || ck.statusKey === 'DONE' || (ck.progress ?? 0) >= 100
+              if (ckDone) return false
+              return ck.type === 'BUG'
+            })
+            const kProblemCount = kActiveProblemKids.length
+            const kProblemTooltip =
+              kProblemCount > 0
+                ? `內有 ${kProblemCount} 張未完成問題單：${kActiveProblemKids.map((ck) => ck.ref || ck.title).join('、')}`
+                : null
 
             newNodes.push({
               id: k.id,
@@ -2291,7 +2309,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                 typeColor: typeColorOf(k.type),
                 typeName: typeNameOf(k.type),
                 taskType: k.type,
-                problem: kHasActiveProblem ? k.problem : null,
+                problem: kProblemTooltip,
+                problemCount: kProblemCount,
                 isOverdue: kOverdue,
                 dueDate: k.dueDate,
                 inquiryState: k.inquiryState,
@@ -2308,10 +2327,22 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       } else {
         const cardPos = draggedMap[t.id] ?? (!parentBoxId ? { x: rootX, y: rootY } : { x: 24, y: 110 })
         const tStatusCat = statusCatMap.get(t.statusKey)
-        const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
-        const tParallelInfo = parallelMap.get(t.id)
         const tIsDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
-        const tHasActiveProblem = !tIsDone && typeof t.problem === 'string' && t.problem.trim().length > 0
+        const tOverdue = !!(t.dueDate && t.dueDate < today && !tIsDone)
+        const tParallelInfo = parallelMap.get(t.id)
+
+        const tKids = childrenMap.get(t.id) || []
+        const tActiveProblemKids = tKids.filter((ck) => {
+          const ckCat = statusCatMap.get(ck.statusKey)
+          const ckDone = ckCat === 'DONE' || ck.statusKey === 'DONE' || (ck.progress ?? 0) >= 100
+          if (ckDone) return false
+          return ck.type === 'BUG'
+        })
+        const tProblemCount = tActiveProblemKids.length
+        const tProblemTooltip =
+          tProblemCount > 0
+            ? `內有 ${tProblemCount} 張未完成問題單：${tActiveProblemKids.map((ck) => ck.ref || ck.title).join('、')}`
+            : null
 
         newNodes.push({
           id: t.id,
@@ -2327,7 +2358,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: tHasActiveProblem ? t.problem : null,
+            problem: tProblemTooltip,
+            problemCount: tProblemCount,
             isOverdue: tOverdue,
             dueDate: t.dueDate,
             inquiryState: t.inquiryState,

@@ -464,7 +464,7 @@ export default function ListView({
                         statusCatMap.get(sKey) === 'DONE' || sKey === 'DONE' || (prog ?? 0) >= 100
                       const activeProblemKids = boxKids.filter(k => {
                         if (isTaskDone(k.statusKey, k.progress)) return false
-                        return k.type === 'BUG' || (typeof k.problem === 'string' && k.problem.trim().length > 0)
+                        return k.type === 'BUG'
                       })
                       const activeBlockedKids = boxKids.filter(k => {
                         if (isTaskDone(k.statusKey, k.progress)) return false
@@ -485,7 +485,7 @@ export default function ListView({
                               內含 {boxKids.length} 張
                             </span>
                           )}
-                          {boxProblemCount > 0 && <ProblemBadge problem={activeProblemKids[0]?.problem || '遭遇問題'} count={boxProblemCount} isBox={true} />}
+                          {boxProblemCount > 0 && <ProblemBadge problem={`盒內有 ${boxProblemCount} 張未完成問題單`} count={boxProblemCount} isBox={true} />}
                           {boxBlockedCount > 0 && (
                             <span
                               title="盒內含受阻卡住之任務"
@@ -504,20 +504,36 @@ export default function ListView({
                           )}
                         </>
                       )
-                    })() : (
-                      <>
-                        {t.type !== 'BUG' && <ProblemBadge problem={t.problem} />}
-                        {!t.problem && blockedByMap.get(t.id) && blockedByMap.get(t.id)!.length > 0 && (
-                          <span
-                            title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
-                            className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                          >
-                            ⛔ 卡住
-                          </span>
-                        )}
-                        {parallelMap.get(t.id)?.isParallel && (
-                          <span
-                            title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
+                    })() : (() => {
+                      const isTaskDone = (sKey: string, prog?: number | null) =>
+                        statusCatMap.get(sKey) === 'DONE' || sKey === 'DONE' || (prog ?? 0) >= 100
+                      const cardKids = tasks.filter(k => k.parentId === t.id)
+                      const activeProblemCardKids = cardKids.filter(k => {
+                        if (isTaskDone(k.statusKey, k.progress)) return false
+                        return k.type === 'BUG'
+                      })
+                      const cardProblemCount = activeProblemCardKids.length
+                      const isBlocked = !isTaskDone(t.statusKey, t.progress) && (blockedByMap.get(t.id)?.length ?? 0) > 0
+                      return (
+                        <>
+                          {t.type !== 'BUG' && cardProblemCount > 0 && (
+                            <ProblemBadge
+                              count={cardProblemCount}
+                              isShort={true}
+                              problem={`內有 ${cardProblemCount} 張未完成問題單`}
+                            />
+                          )}
+                          {isBlocked && (
+                            <span
+                              title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
+                              className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                            >
+                              ⛔ 卡住
+                            </span>
+                          )}
+                          {parallelMap.get(t.id)?.isParallel && (
+                            <span
+                              title={`與 [${parallelMap.get(t.id)?.peers.join(', ')}] 連至同一個對象（並行執行）`}
                             className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
                           >
                             ⚡並行
@@ -532,7 +548,7 @@ export default function ListView({
                           </span>
                         )}
                       </>
-                    )}
+                    )})()}
                   </div>
                 </td>
                 {/* 點在下拉上不要順便把任務打開 */}

@@ -98,7 +98,23 @@ export default function Board({
       }
     }
     return map
-  }, [graph, tasks, project?.statuses])
+  }, [tasks, graph?.edges, project?.statuses])
+
+  const problemCountMap = useMemo(() => {
+    const map = new Map<string, number>()
+    const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
+    tasks.forEach((t) => {
+      if (t.parentId) {
+        const cat = statusCatMap.get(t.statusKey)
+        const isDone = cat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+        if (!isDone && t.type === 'BUG') {
+          map.set(t.parentId, (map.get(t.parentId) ?? 0) + 1)
+        }
+      }
+    })
+    return map
+  }, [tasks, project?.statuses])
+
   /*
    * 我的角色要從成員名單裡撈自己那一列 —— GET /projects/:id 只回成員名單，
    * 沒有「我是什麼角色」這個欄位（回那個欄位的是專案清單 GET /projects）。
@@ -238,12 +254,14 @@ export default function Board({
           {columns.map(col => (
             <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
                     topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap}
+                    problemCountMap={problemCountMap}
                     types={project?.types ?? []} />
           ))}
         </div>
         <DragOverlay>
           {dragging && <Card task={dragging} overlay draggable onOpen={() => {}}
-                               topPriority={topPriority} types={project?.types ?? []} />}
+                                topPriority={topPriority} types={project?.types ?? []}
+                                problemCount={problemCountMap.get(dragging.id) ?? 0} />}
         </DragOverlay>
       </DndContext>
     </div>
@@ -251,7 +269,7 @@ export default function Board({
 }
 
 function Column({
-  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedByMap, types,
+  column, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedByMap, problemCountMap, types,
 }: {
   column: TaskStatus & { tasks: Task[] }
   onOpen: (id: string) => void
@@ -261,6 +279,7 @@ function Column({
   canDrag: (t: Task) => boolean
   focusedTaskId?: string | null
   blockedByMap?: Map<string, string[]>
+  problemCountMap?: Map<string, number>
   types?: ProjectParam[]
 }) {
   const { setNodeRef, isOver } = useSortable({ id: column.key, data: { type: 'column' } })
@@ -290,6 +309,7 @@ function Column({
           {column.tasks.map(task => (
             <SortableCard key={task.id} task={task} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag(task)}
                           topPriority={topPriority} focusedTaskId={focusedTaskId} blockedBy={blockedByMap?.get(task.id)}
+                          problemCount={problemCountMap?.get(task.id) ?? 0}
                           types={types} />
           ))}
           {column.tasks.length === 0 && (
@@ -304,11 +324,12 @@ function Column({
   )
 }
 
-function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedBy, types }: {
+function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskId, blockedBy, problemCount, types }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; canDrag: boolean
   topPriority?: { key: string; name: string; color: string }
   focusedTaskId?: string | null
   blockedBy?: string[]
+  problemCount?: number
   types?: ProjectParam[]
 }) {
   // disabled 讓 dnd-kit 連感應器都不掛上去，滑鼠與鍵盤兩條路徑一起擋掉
@@ -326,13 +347,13 @@ function SortableCard({ task, onOpen, onEdit, canDrag, topPriority, focusedTaskI
          {...attributes} {...listeners}
          style={{ transform: CSS.Transform.toString(transform), transition }}
          className={isDragging ? 'opacity-30' : ''}>
-      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} blockedBy={blockedBy} types={types} />
+      <Card task={task} onOpen={onOpen} onEdit={onEdit} draggable={canDrag} topPriority={topPriority} isFocused={isFocused} blockedBy={blockedBy} problemCount={problemCount} types={types} />
     </div>
   )
 }
 
 function Card({
-  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused, blockedBy, types = [],
+  task, onOpen, onEdit, overlay, draggable, topPriority, isFocused, blockedBy, problemCount = 0, types = [],
 }: {
   task: Task; onOpen: (id: string) => void; onEdit?: (id: string) => void; overlay?: boolean
   /** 拖不動的卡片不要長成「可以拖」的樣子 —— 手形游標本身就是一種承諾 */
@@ -340,6 +361,7 @@ function Card({
   topPriority?: { key: string; name: string; color: string }
   isFocused?: boolean
   blockedBy?: string[]
+  problemCount?: number
   types?: ProjectParam[]
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
@@ -388,10 +410,16 @@ function Card({
       </div>
 
       {/* 警示徽章放置於標題下方獨立一行 */}
-      {(task.inquiryState !== 'NONE' || task.problem || (blockedBy && blockedBy.length > 0)) && (
+      {(task.inquiryState !== 'NONE' || (task.type !== 'BUG' && problemCount > 0) || (blockedBy && blockedBy.length > 0)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <InquiryBadge state={task.inquiryState} />
-          {task.type !== 'BUG' && <ProblemBadge problem={task.problem} isShort={true} />}
+          {task.type !== 'BUG' && problemCount > 0 && (
+            <ProblemBadge
+              count={problemCount}
+              isShort={true}
+              problem={`內有 ${problemCount} 張未完成問題單`}
+            />
+          )}
           {blockedBy && blockedBy.length > 0 && (
             <span
               title={`卡住：要等 ${blockedBy.join('、')}`}
