@@ -15,7 +15,10 @@ export interface ObstacleRect {
 }
 
 /**
- * 從畫布上的節點陣列中提取收納盒中介障礙物（排除起點、終點及其各自的父容器收納盒）
+ * 從畫布上的節點陣列中提取障礙物：
+ * 1. 允許在同一個收納盒內部的卡片之間連線，以及自然出入自身父層收納盒
+ * 2. 盒內的其他卡片、畫布上的其他卡片、非自身所屬的第三方收納盒皆為不能穿透之障礙物
+ * 3. 區域標示框 (Frame) 為純視覺背景，不阻擋連線
  */
 export function getObstaclesFromNodes(
   nodes: Node[],
@@ -37,22 +40,46 @@ export function getObstaclesFromNodes(
   const obstacles: ObstacleRect[] = []
 
   for (const n of nodes) {
-    // 排除起點、終點及它們所在的父層收納盒
+    // 排除起點、終點自身
     if (n.id === sourceId || n.id === targetId) continue
-    if (n.id === sourceParentId || n.id === targetParentId) continue
 
     const nodeData = n.data as Record<string, unknown> | undefined
+    const isFrame = Boolean(
+      nodeData?.mode === 'frame' ||
+      n.type === 'frame' ||
+      n.type === 'annotationFrame'
+    )
+
+    // 標示框為純視覺背景，不視為阻擋障礙物
+    if (isFrame) continue
+
     const isBox = Boolean(
       nodeData?.mode === 'box' ||
       n.type === 'box' ||
       (n.style && typeof n.style.width === 'number' && n.style.width >= 340)
     )
 
-    // 只有收納盒 (Box) 會被視為不能穿透的障礙框，一般卡片不阻擋連線
-    if (!isBox) continue
+    // 若為收納盒，若屬於起點或終點的父容器，則允許線在該收納盒內穿透通行（不列為障礙物）
+    if (isBox && (n.id === sourceParentId || n.id === targetParentId)) {
+      continue
+    }
 
-    const absX = n.position?.x ?? 0
-    const absY = n.position?.y ?? 0
+    // 計算節點在畫布上的絕對座標（累加所有父層相對位移）
+    let absX = n.position?.x ?? 0
+    let absY = n.position?.y ?? 0
+    let curParentId = n.parentId
+    const visited = new Set<string>()
+    while (curParentId && !visited.has(curParentId)) {
+      visited.add(curParentId)
+      const p = nodeMap.get(curParentId)
+      if (p) {
+        absX += p.position?.x ?? 0
+        absY += p.position?.y ?? 0
+        curParentId = p.parentId
+      } else {
+        break
+      }
+    }
 
     const width =
       n.measured?.width ??
@@ -60,14 +87,18 @@ export function getObstaclesFromNodes(
         ? n.style.width
         : typeof n.width === 'number'
         ? n.width
-        : 340)
+        : isBox
+        ? 340
+        : 256)
     const height =
       n.measured?.height ??
       (typeof n.style?.height === 'number'
         ? n.style.height
         : typeof n.height === 'number'
         ? n.height
-        : 260)
+        : isBox
+        ? 260
+        : 100)
 
     obstacles.push({
       id: n.id,
@@ -75,7 +106,7 @@ export function getObstaclesFromNodes(
       top: absY,
       right: absX + width,
       bottom: absY + height,
-      isBox: true,
+      isBox,
     })
   }
 
@@ -105,6 +136,26 @@ function isSegmentCrossingBox(
   return false
 }
 
+function countPolylineCollisions(points: Point[], obstacles: ObstacleRect[]): number {
+  let count = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    for (const b of obstacles) {
+      if (isSegmentCrossingBox(points[i], points[i + 1], b)) {
+        count++
+      }
+    }
+  }
+  return count
+}
+
+function polylineLength(points: Point[]): number {
+  let len = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    len += Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y)
+  }
+  return len
+}
+
 /**
  * 簡化同線段連續共線座標點
  */
@@ -117,10 +168,12 @@ export function simplifyPoints(points: Point[]): Point[] {
     const cur = points[i]
     const next = i + 1 < points.length ? points[i + 1] : null
 
+    // 去除重疊點
     if (Math.abs(cur.x - prev.x) < 0.01 && Math.abs(cur.y - prev.y) < 0.01) {
       continue
     }
 
+    // 去除同向共線的中介點
     if (next) {
       const isCollinearX = Math.abs(prev.x - cur.x) < 0.01 && Math.abs(cur.x - next.x) < 0.01
       const isCollinearY = Math.abs(prev.y - cur.y) < 0.01 && Math.abs(cur.y - next.y) < 0.01
@@ -172,7 +225,8 @@ export function toSvgPath(
 /**
  * 智慧直角避障路徑演算法 (極速、零抖動、幾何推移繞道)
  * 1. 使用者自訂 waypoint 享最高優先權
- * 2. 未自訂折點時，若預設路徑穿透收納盒，自動計算外圍繞道座標 (帶 28px 安全邊界)
+ * 2. 檢測路徑是否穿透盒內其他卡片、畫布其他卡片或第三方收納盒
+ * 3. 若碰撞障礙物，自動以安全邊界 (margin = 20) 計算最短無碰撞繞道折線
  */
 export function buildOrthogonalPath(
   sx: number,
@@ -183,7 +237,7 @@ export function buildOrthogonalPath(
   targetPosition: Position,
   waypoint?: Point | null,
   obstacles: ObstacleRect[] = [],
-  margin = 28
+  margin = 20
 ): { path: string; px: number; py: number } {
   const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
   const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
@@ -201,6 +255,7 @@ export function buildOrthogonalPath(
   const px = (sx + tx) / 2
   const py = (sy + ty) / 2
 
+  // 構建標準預設直角折線路徑
   let basePoints: Point[]
   if (srcHoriz && tgtHoriz) {
     basePoints = [{ x: sx, y: sy }, { x: px, y: sy }, { x: px, y: ty }, { x: tx, y: ty }]
@@ -216,8 +271,23 @@ export function buildOrthogonalPath(
     return toSvgPath(basePoints, px, py)
   }
 
-  // 檢測基本路徑是否穿越任何收納盒
-  const crossingBoxes = obstacles.filter((b) => {
+  // 快速過濾與當前起訖點連線區域相關的障礙物 (包含卡片與收納盒)
+  const minZoneX = Math.min(sx, tx) - margin - 40
+  const maxZoneX = Math.max(sx, tx) + margin + 40
+  const minZoneY = Math.min(sy, ty) - margin - 40
+  const maxZoneY = Math.max(sy, ty) + margin + 40
+
+  const relevantObstacles = obstacles.filter(
+    (b) => !(b.right < minZoneX || b.left > maxZoneX || b.bottom < minZoneY || b.top > maxZoneY)
+  )
+
+  if (relevantObstacles.length === 0 || countPolylineCollisions(basePoints, relevantObstacles) === 0) {
+    return toSvgPath(basePoints, px, py)
+  }
+
+  // 【規則二：多通道幾何推移繞道 (Multi-Corridor Geometric Detour)】
+  // 找出所有碰撞障礙物的複合範圍
+  const hittingObstacles = relevantObstacles.filter((b) => {
     for (let i = 0; i < basePoints.length - 1; i++) {
       if (isSegmentCrossingBox(basePoints[i], basePoints[i + 1], b)) {
         return true
@@ -226,56 +296,129 @@ export function buildOrthogonalPath(
     return false
   })
 
-  if (crossingBoxes.length === 0) {
-    return toSvgPath(basePoints, px, py)
-  }
-
-  // 【規則二：幾何推移繞道避開收納盒】
   let minLeft = Infinity
   let maxRight = -Infinity
   let minTop = Infinity
   let maxBottom = -Infinity
 
-  for (const b of crossingBoxes) {
+  for (const b of (hittingObstacles.length > 0 ? hittingObstacles : relevantObstacles)) {
     if (b.left < minLeft) minLeft = b.left
     if (b.right > maxRight) maxRight = b.right
     if (b.top < minTop) minTop = b.top
     if (b.bottom > maxBottom) maxBottom = b.bottom
   }
 
+  const candidatePaths: Array<{ points: Point[]; px: number; py: number }> = []
+
   if (srcHoriz && tgtHoriz) {
-    const detourTopY = minTop - margin
-    const detourBottomY = maxBottom + margin
-    const avgY = (sy + ty) / 2
-    const chosenDetourY =
-      Math.abs(avgY - detourTopY) <= Math.abs(avgY - detourBottomY) ? detourTopY : detourBottomY
+    const topY = minTop - margin
+    const bottomY = maxBottom + margin
+    const sStubX = sx + (sourcePosition === Position.Left ? -margin : margin)
+    const tStubX = tx + (targetPosition === Position.Left ? -margin : margin)
 
-    const midX = (sx + tx) / 2
-    const detourPoints: Point[] = [
-      { x: sx, y: sy },
-      { x: sx + (sourcePosition === Position.Left ? -margin : margin), y: sy },
-      { x: sx + (sourcePosition === Position.Left ? -margin : margin), y: chosenDetourY },
-      { x: tx + (targetPosition === Position.Left ? -margin : margin), y: chosenDetourY },
-      { x: tx + (targetPosition === Position.Left ? -margin : margin), y: ty },
-      { x: tx, y: ty },
-    ]
-    return toSvgPath(detourPoints, midX, chosenDetourY)
+    // 候選通道 1：上方繞道
+    candidatePaths.push({
+      points: [
+        { x: sx, y: sy },
+        { x: sStubX, y: sy },
+        { x: sStubX, y: topY },
+        { x: tStubX, y: topY },
+        { x: tStubX, y: ty },
+        { x: tx, y: ty },
+      ],
+      px: (sx + tx) / 2,
+      py: topY,
+    })
+
+    // 候選通道 2：下方繞道
+    candidatePaths.push({
+      points: [
+        { x: sx, y: sy },
+        { x: sStubX, y: sy },
+        { x: sStubX, y: bottomY },
+        { x: tStubX, y: bottomY },
+        { x: tStubX, y: ty },
+        { x: tx, y: ty },
+      ],
+      px: (sx + tx) / 2,
+      py: bottomY,
+    })
+  } else if (!srcHoriz && !tgtHoriz) {
+    const leftX = minLeft - margin
+    const rightX = maxRight + margin
+    const sStubY = sy + (sourcePosition === Position.Top ? -margin : margin)
+    const tStubY = ty + (targetPosition === Position.Top ? -margin : margin)
+
+    // 候選通道 1：左側繞道
+    candidatePaths.push({
+      points: [
+        { x: sx, y: sy },
+        { x: sx, y: sStubY },
+        { x: leftX, y: sStubY },
+        { x: leftX, y: tStubY },
+        { x: tx, y: tStubY },
+        { x: tx, y: ty },
+      ],
+      px: leftX,
+      py: (sy + ty) / 2,
+    })
+
+    // 候選通道 2：右側繞道
+    candidatePaths.push({
+      points: [
+        { x: sx, y: sy },
+        { x: sx, y: sStubY },
+        { x: rightX, y: sStubY },
+        { x: rightX, y: tStubY },
+        { x: tx, y: tStubY },
+        { x: tx, y: ty },
+      ],
+      px: rightX,
+      py: (sy + ty) / 2,
+    })
   } else {
-    const detourLeftX = minLeft - margin
-    const detourRightX = maxRight + margin
-    const avgX = (sx + tx) / 2
-    const chosenDetourX =
-      Math.abs(avgX - detourLeftX) <= Math.abs(avgX - detourRightX) ? detourLeftX : detourRightX
+    const topY = minTop - margin
+    const bottomY = maxBottom + margin
+    const leftX = minLeft - margin
+    const rightX = maxRight + margin
 
-    const midY = (sy + ty) / 2
-    const detourPoints: Point[] = [
-      { x: sx, y: sy },
-      { x: sx, y: sy + (sourcePosition === Position.Top ? -margin : margin) },
-      { x: chosenDetourX, y: sy + (sourcePosition === Position.Top ? -margin : margin) },
-      { x: chosenDetourX, y: ty + (targetPosition === Position.Top ? -margin : margin) },
-      { x: tx, y: ty + (targetPosition === Position.Top ? -margin : margin) },
-      { x: tx, y: ty },
-    ]
-    return toSvgPath(detourPoints, chosenDetourX, midY)
+    candidatePaths.push(
+      {
+        points: [{ x: sx, y: sy }, { x: leftX, y: sy }, { x: leftX, y: ty }, { x: tx, y: ty }],
+        px: leftX,
+        py: (sy + ty) / 2,
+      },
+      {
+        points: [{ x: sx, y: sy }, { x: rightX, y: sy }, { x: rightX, y: ty }, { x: tx, y: ty }],
+        px: rightX,
+        py: (sy + ty) / 2,
+      },
+      {
+        points: [{ x: sx, y: sy }, { x: sx, y: topY }, { x: tx, y: topY }, { x: tx, y: ty }],
+        px: (sx + tx) / 2,
+        py: topY,
+      },
+      {
+        points: [{ x: sx, y: sy }, { x: sx, y: bottomY }, { x: tx, y: bottomY }, { x: tx, y: ty }],
+        px: (sx + tx) / 2,
+        py: bottomY,
+      }
+    )
   }
+
+  let bestPath = candidatePaths[0]
+  let bestScore = Infinity
+
+  for (const cand of candidatePaths) {
+    const collisions = countPolylineCollisions(cand.points, relevantObstacles)
+    const len = polylineLength(cand.points)
+    const score = collisions * 100000 + len
+
+    if (score < bestScore) {
+      bestScore = score
+      bestPath = cand
+    }
+  }
+
+  return toSvgPath(bestPath.points, bestPath.px, bestPath.py)
 }
