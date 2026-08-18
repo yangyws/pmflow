@@ -2179,17 +2179,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const dims = computeBoxDimensions(t.id, childNodesList, resizedMap[t.id]?.width, resizedMap[t.id]?.height)
 
         const tStatusCat = statusCatMap.get(t.statusKey)
-        const tOverdue = !!(t.dueDate && t.dueDate < today && (t.progress ?? 0) < 100 && tStatusCat !== 'DONE' && t.statusKey !== 'DONE')
+        const tIsDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+        const tOverdue = !!(t.dueDate && t.dueDate < today && !tIsDone)
         const tParallelInfo = parallelMap.get(t.id)
 
         const activeProblemKids = kids.filter((k) => {
           const kCat = statusCatMap.get(k.statusKey)
           const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
           if (isDone) return false
-          const isBug = k.type === 'BUG'
           const hasProblem = typeof k.problem === 'string' && k.problem.trim().length > 0
-          return isBug || hasProblem
+          return hasProblem
         })
+        const tHasActiveProblem = !tIsDone && typeof t.problem === 'string' && t.problem.trim().length > 0
+        const totalProblemCount = activeProblemKids.length + (tHasActiveProblem ? 1 : 0)
+        const activeProblemText = activeProblemKids.length > 0 ? activeProblemKids[0].problem : tHasActiveProblem ? t.problem : null
+
         const activeBlockedKids = kids.filter((k) => {
           const kCat = statusCatMap.get(k.statusKey)
           const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
@@ -2228,8 +2232,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,
-            problem: activeProblemKids.length > 0 ? (activeProblemKids[0].problem || activeProblemKids[0].title) : null,
-            problemCount: activeProblemKids.length,
+            problem: activeProblemText,
+            problemCount: totalProblemCount,
             blockedCount: activeBlockedKids.length,
             overdueCount: activeOverdueKids.length,
             inquiryCount: activeInquiryKids.length,
