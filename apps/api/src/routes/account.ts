@@ -368,7 +368,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       const auth = await authenticate(req)
       const workspaceId = req.query.workspaceId
       if (!workspaceId) throw badRequest('缺少 workspaceId')
-      await requireWorkspaceAdmin(auth.id, workspaceId)
+      const { role: myRole } = await requireWorkspaceAdmin(auth.id, workspaceId)
       const body = adminPatchBody.parse(req.body)
       const target = req.params.userId
 
@@ -378,11 +378,12 @@ export default async function accountRoutes(app: FastifyInstance) {
         WHERE wm.workspace_id = ${workspaceId} AND wm.user_id = ${target}`
       if (!cur) throw notFound('這個工作區裡沒有這個帳號')
 
-      // 擁有者的帳號管理者一概碰不得 —— 他是這個站最後回得來的人，
-      // 而管理者是他指派的，被指派的人不該反過來停掉指派他的人
-      if (cur.role === 'OWNER') throw forbidden('擁有者的帳號不能由管理者調整')
+      // 擁有者的帳號不能由其他人調整
+      if (cur.role === 'OWNER' && target !== auth.id) {
+        throw forbidden('擁有者的帳號不能由他人調整')
+      }
       // 管理者之間互相不能改角色 —— 誰是管理者只有擁有者說了算
-      if (cur.role === 'ADMIN' && body.role) {
+      if (cur.role === 'ADMIN' && body.role && myRole !== 'OWNER') {
         throw forbidden('管理者的身分只有擁有者能取消')
       }
       // 自己不能把自己降級或停用 —— 手滑就登不回來了
@@ -391,7 +392,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       }
       // 站台至少要留一個管得動帳號的人
       const losingAdmin = cur.role === 'ADMIN' && body.status === 'SUSPENDED'
-      if (losingAdmin && (await activeAdminCount(workspaceId)) <= 1) {
+      if (losingAdmin && (await activeAdminCount(workspaceId)) <= 1 && myRole !== 'OWNER') {
         throw badRequest('這是最後一個管理者，停用之後就沒有人能管帳號了')
       }
 
@@ -437,7 +438,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       const auth = await authenticate(req)
       const workspaceId = req.query.workspaceId
       if (!workspaceId) throw badRequest('缺少 workspaceId')
-      await requireWorkspaceAdmin(auth.id, workspaceId)
+      const { role: myRole } = await requireWorkspaceAdmin(auth.id, workspaceId)
       const target = req.params.userId
 
       // 自己不能刪自己 —— 手滑就沒有帳號了，而且刪到最後一個管理者就沒人能管帳號
@@ -450,7 +451,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       if (!cur) throw notFound('這個工作區裡沒有這個帳號')
       if (cur.role === 'OWNER') throw forbidden('擁有者的帳號不能刪除')
       // 先請擁有者取消他的管理者身分，再刪 —— 免得管理者互刪
-      if (cur.role === 'ADMIN') {
+      if (cur.role === 'ADMIN' && myRole !== 'OWNER') {
         throw forbidden('要先請擁有者取消他的管理者身分，才能刪除這個帳號')
       }
 

@@ -143,7 +143,13 @@ export function UserMenu({
           )}
 
           <MenuItem onClick={go(onAccount)}>{T.account.menu.account}</MenuItem>
-          {isWorkspaceAdmin && <MenuItem onClick={go(onAdmin)}>{T.account.menu.admin}</MenuItem>}
+          {isWorkspaceAdmin && (
+            <MenuItem onClick={go(onAdmin)}>
+              <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+                <span>⚙️</span> 系統管理 / 成員停用與註銷
+              </span>
+            </MenuItem>
+          )}
 
           {/* 測試身份與代理切換：隨時可無縫切換帳號 */}
           <MenuItem onClick={go(() => setShowSwitchModal(true))}>

@@ -321,30 +321,16 @@ export async function requireWorkspaceMember(
 export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 
 /**
- * 站台管理者才能做的事：開帳號、停用帳號、刪帳號、代設密碼。
+ * 站台管理者與擁有者能做的事：開帳號、停用帳號、刪帳號、代設密碼。
  *
- * **擁有者刻意不算在內。** 開站的人不必然是該看每個人帳號的人 ——
- * 他只保留一項權力：指派與取消管理者（requireWorkspaceOwner）。
- * 這樣切是為了讓「誰能看別人的帳號」是一個被明確授予的職務，
- * 而不是誰先把站架起來誰就順便什麼都看得到。
- *
- * 那為什麼擁有者還留著指派管理者的權力？因為不留就死結了：
- * 最後一個管理者離職之後，沒有人能再指派下一個，整個站就鎖死。
- *
- * 跟專案的權限是兩件事 —— 專案裡誰能進來由專案的管理者決定（requireProjectManager），
- * 但「這個人能不能登入這個站」是工作區管理者的事。管理者不會因此自動看得到
- * 每個專案的內容，那仍然要專案的管理者放行。
+ * 允許角色為 OWNER 或 ADMIN 的使用者皆可進行成員管理。
  */
 export async function requireWorkspaceAdmin(
   userId: string, workspaceId: string
 ): Promise<{ role: WorkspaceRole }> {
   const { role } = await requireWorkspaceMember(userId, workspaceId)
-  if (role !== 'ADMIN') {
-    throw forbidden(
-      role === 'OWNER'
-        ? '擁有者不能查看或管理別人的帳號，只能指派管理者'
-        : '這個操作需要工作區管理者權限'
-    )
+  if (role !== 'ADMIN' && role !== 'OWNER') {
+    throw forbidden('這個操作需要工作區管理者或擁有者權限')
   }
   return { role: role as WorkspaceRole }
 }

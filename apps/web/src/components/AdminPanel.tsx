@@ -40,9 +40,46 @@ const errText = (e: unknown) =>
 export default function AdminPanel(
   { workspaceId, myRole }: { workspaceId: string; myRole: WorkspaceRole }
 ) {
-  // 擁有者連帳號清單都拿不到（後端會擋），所以連問都不要問
-  if (myRole === 'OWNER') return <OwnerPanel workspaceId={workspaceId} />
-  return <UserAdminPanel workspaceId={workspaceId} />
+  const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users')
+
+  return (
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
+      {myRole === 'OWNER' && (
+        <div className="border-b border-slate-200 bg-white px-6 pt-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto flex max-w-4xl gap-2">
+            <button
+              onClick={() => setActiveTab('users')}
+              className={cx(
+                'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                activeTab === 'users'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              )}>
+              👥 成員帳號管理（停用/註銷/密碼）
+            </button>
+            <button
+              onClick={() => setActiveTab('admins')}
+              className={cx(
+                'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                activeTab === 'admins'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              )}>
+              🛡️ 指派管理者（Owner 專屬權限）
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        {activeTab === 'admins' && myRole === 'OWNER' ? (
+          <OwnerPanel workspaceId={workspaceId} />
+        ) : (
+          <UserAdminPanel workspaceId={workspaceId} />
+        )}
+      </div>
+    </div>
+  )
 }
 
 function UserAdminPanel({ workspaceId }: { workspaceId: string }) {
@@ -94,7 +131,8 @@ function UserAdminPanel({ workspaceId }: { workspaceId: string }) {
   // 擁有者的帳號誰都動不了；管理者的身分只有擁有者能取消，所以管理者之間
   // 不互相改角色、也不互刪，但還是可以幫對方停用或重設密碼
   const canEdit = (u: AdminUser) => u.id !== user?.id && u.role !== 'OWNER'
-  const canChangeRole = (u: AdminUser) => canEdit(u) && u.role !== 'ADMIN'
+  const canChangeRole = (u: AdminUser) => canEdit(u) && (data.myRole === 'OWNER' || u.role !== 'ADMIN')
+  const canDelete = (u: AdminUser) => canEdit(u) && (data.myRole === 'OWNER' || u.role !== 'ADMIN')
 
   return (
     <div className="h-full overflow-auto bg-slate-50 dark:bg-slate-950">
@@ -185,7 +223,7 @@ function UserAdminPanel({ workspaceId }: { workspaceId: string }) {
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {users.map(u => (
               <UserRow key={u.id} user={u} isMe={u.id === user?.id} editable={canEdit(u)}
-                       roleEditable={canChangeRole(u)} roles={data.roles}
+                       roleEditable={canChangeRole(u)} canDelete={canDelete(u)} roles={data.roles}
                        busy={patch.isPending || remove.isPending}
                        onPatch={json => patch.mutate({ userId: u.id, json })}
                        onDelete={() => remove.mutate(u)} />
@@ -200,12 +238,13 @@ function UserAdminPanel({ workspaceId }: { workspaceId: string }) {
 }
 
 function UserRow({
-  user: u, isMe, editable, roleEditable, roles, busy, onPatch, onDelete,
+  user: u, isMe, editable, roleEditable, canDelete, roles, busy, onPatch, onDelete,
 }: {
   user: AdminUser
   isMe: boolean
   editable: boolean
   roleEditable: boolean
+  canDelete: boolean
   roles: WorkspaceRole[]
   busy: boolean
   onPatch: (json: Parameters<typeof Api.adminPatchUser>[2]) => void
@@ -290,8 +329,8 @@ function UserRow({
                                 + 'dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400')}>
               {suspended ? A.resume : A.suspend}
             </button>
-            {/* 刪除只給成員與訪客 —— 管理者要先請擁有者取消他的身分，這是後端的規則 */}
-            {roleEditable && (
+            {/* 刪除：擁有者可刪除所有非擁有者帳號；管理者可刪除非管理者與非擁有者 */}
+            {canDelete && (
               <button
                 onClick={() => {
                   const created = Number(u.createdCount)
@@ -376,6 +415,7 @@ function OwnerPanel({ workspaceId }: { workspaceId: string }) {
     onSuccess: () => {
       setErr(null)
       qc.invalidateQueries({ queryKey: ['adminAdministrators', workspaceId] })
+      qc.invalidateQueries({ queryKey: ['adminUsers', workspaceId] })
     },
     onError: e => setErr(errText(e)),
   })
