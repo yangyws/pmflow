@@ -2759,22 +2759,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         const currentParentId = node.parentId
-        const isMovingOut = currentParentId && (!targetBox || targetBox.id !== currentParentId)
-
-        if (isMovingOut) {
-          const hasEdges = edges.some((e) => e.source === node.id || e.target === node.id)
-          if (hasEdges) {
-            setAlertMsg(T.flow.relationGraph.alertMoveOutHasEdges(cardRef))
-            addLog('move_out', T.flow.relationGraph.log.moveOutFailed(cardRef))
-            const startPos = dragStartPosMap.current[node.id]
-            return currentNodes.map((n) =>
-              n.id === node.id
-                ? { ...n, parentId: currentParentId, position: startPos || n.position }
-                : n
-            )
-          }
-        }
-
         const isBoxNode = (node.data as SimpleGraphNodeData)?.mode === 'box'
         const nodeTypeStr = isBoxNode ? T.flow.relationGraph.box : T.flow.relationGraph.card
         let nextNodes = currentNodes
@@ -2806,6 +2790,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         if (!targetBox && currentParentId) {
+          // 移出收納盒：自動移除該卡片在後端與前端的所有關聯線，確保任務關聯完全解除乾淨
+          const attachedEdges = edges.filter((e) => e.source === node.id || e.target === node.id)
+          if (attachedEdges.length > 0) {
+            attachedEdges.forEach((e) => {
+              Api.deleteLink(e.id).catch(() => {})
+            })
+            setEdges((prev) => prev.filter((e) => e.source !== node.id && e.target !== node.id))
+            if (projectId) {
+              queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+              queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+              queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
+              queryClient.invalidateQueries({ queryKey: ['task', node.id] })
+            }
+          }
+
           shrinkBoxAfterRemoval(currentParentId, node.id) // Ref: CR-136
           // 移出收納盒：離開巢狀結構
           addLog('move_out', T.flow.relationGraph.log.moveOut(nodeTypeStr, cardRef, Math.round(cardAbsPos.x), Math.round(cardAbsPos.y)))
@@ -3577,10 +3576,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                   Api.deleteLink(confirmDeleteEdge.edgeId)
                     .then(() => {
                       setEdges((eds) => eds.filter((e) => e.id !== confirmDeleteEdge.edgeId))
+                      const key = `pmflow_simple_graph_edge_handles_${projectId}`
+                      try {
+                        const savedStr = localStorage.getItem(key)
+                        if (savedStr) {
+                          const handleMap = JSON.parse(savedStr)
+                          delete handleMap[confirmDeleteEdge.edgeId]
+                          localStorage.setItem(key, JSON.stringify(handleMap))
+                        }
+                      } catch {}
+
                       if (projectId) {
                         queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
                         queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
                         queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
+                        queryClient.invalidateQueries({ queryKey: ['task'] })
                       }
                     })
                     .catch((err) => console.error('Failed to delete link:', err))
