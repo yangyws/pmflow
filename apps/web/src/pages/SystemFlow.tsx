@@ -248,10 +248,10 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
 function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
   return (
-    <div className="relative group">
+    <div className="relative group w-full h-full">
       <div
         className={cx(
-          'min-w-[240px] max-w-[360px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
+          'w-full h-full min-w-[240px] max-w-[360px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
           nodeData.isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-xl' : 'border-slate-200 dark:border-slate-800'
         )}
       >
@@ -1496,6 +1496,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       // Ref: CR-140 區域標示框永遠墊在最底層
       const nodeMode = (node.data as FlowNodeData)?.mode || node.type
       const isFrame = nodeMode === 'frame'
+      const isBox = nodeMode === 'box'
+      const defaultW = isFrame ? 320 : isBox ? 360 : 260
+      const defaultH = isFrame ? 220 : isBox ? 260 : 96
+      const nodeW = (node.style?.width as number) || node.width || defaultW
+      const nodeH = (node.style?.height as number) || node.height || defaultH
+      const dimObj = node.measured || { width: nodeW, height: nodeH }
       // Ref: CR-152
       const style =
         isFrame && node.style && 'pointerEvents' in node.style
@@ -1504,11 +1510,19 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               return rest as Node['style']
             })()
           : node.style
+      const finalStyle = {
+        ...style,
+        ...(nodeMode !== 'text' ? { width: nodeW, height: nodeH } : {}),
+      }
       const out: Node = {
         ...node,
-        style,
+        style: finalStyle,
+        width: nodeMode !== 'text' ? nodeW : node.width,
+        height: nodeMode !== 'text' ? nodeH : node.height,
+        measured: dimObj,
         draggable: true,
         selectable: true,
+        connectable: true,
         // Ref: CR-152
         selected: isFrame ? false : node.selected,
         zIndex: isFrame
@@ -1831,6 +1845,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           connectionMode={ConnectionMode.Loose}
           // Ref: CR-140 拉線當下的預覽線也要直角
           connectionLineType={ConnectionLineType.Step}
+          connectionRadius={30}
           defaultViewport={savedViewport}
           fitView={!savedViewport}
           fitViewOptions={{ padding: 0.2 }}
