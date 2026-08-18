@@ -274,8 +274,8 @@ function computeBoxDimensions(
 // 自由切換的節點 UI (包含四向 Handle 接點，允許上下左右任意拉線)
 function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
-  const boxW = width ?? 340
-  const boxH = height ?? 260
+  const nodeW = width ?? (isBox ? 340 : 256)
+  const nodeH = height ?? (isBox ? 260 : 90)
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -292,11 +292,8 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      style={isBox ? { width: boxW, height: boxH } : undefined}
-      className={cx(
-        'relative select-none pointer-events-auto',
-        isBox ? 'w-full h-full' : 'w-max h-auto'
-      )}
+      style={{ width: nodeW, height: nodeH }}
+      className="relative select-none pointer-events-auto w-full h-full"
     >
       {isBox ? (
         <div
@@ -408,7 +405,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       ) : (
         <div
           className={cx(
-            'min-w-[256px] w-max max-w-[480px] min-h-[90px] h-auto rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden opacity-100',
+            'w-full h-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden opacity-100',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-200 dark:border-slate-800'
@@ -2318,6 +2315,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               parentId: t.id,
               position: kPos,
               zIndex: 10,
+              width: 256,
+              height: 90,
+              style: { width: 256, height: 90 },
+              measured: { width: 256, height: 90 },
               data: {
                 label: k.title,
                 refText: k.ref,
@@ -2367,6 +2368,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           parentId: parentBoxId,
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
+          width: 256,
+          height: 90,
+          style: { width: 256, height: 90 },
+          measured: { width: 256, height: 90 },
           data: {
             label: t.title,
             refText: t.ref,
@@ -2463,33 +2468,20 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         const isBoxNode = (newNode.data as SimpleGraphNodeData)?.mode === 'box'
-        const defaultBoxW = 340
-        const defaultBoxH = 260
+        const defaultW = isBoxNode ? 340 : 256
+        const defaultH = isBoxNode ? 260 : 90
 
         const targetPos = savedPos ?? existing?.position ?? newNode.position
-        const targetW = isBoxNode
-          ? Math.max(defaultBoxW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultBoxW)
-          : (existing?.width ?? savedSize?.width ?? newNode.width)
+        const targetW = Math.max(defaultW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultW)
+        const targetH = Math.max(defaultH, existing?.height ?? savedSize?.height ?? newNode.height ?? defaultH)
 
-        const targetH = isBoxNode
-          ? Math.max(defaultBoxH, existing?.height ?? savedSize?.height ?? newNode.height ?? defaultBoxH)
-          : (existing?.height ?? savedSize?.height ?? newNode.height)
+        const styleObj = {
+          ...(existing?.style || newNode.style),
+          width: targetW,
+          height: targetH,
+        }
 
-        const styleObj = isBoxNode
-          ? {
-              ...(existing?.style || newNode.style),
-              width: targetW,
-              height: targetH,
-            }
-          : {
-              ...(existing?.style || newNode.style),
-              ...(targetW ? { width: targetW } : {}),
-              ...(targetH ? { height: targetH } : {}),
-            }
-
-        const dimObj = isBoxNode
-          ? { width: targetW!, height: targetH! }
-          : (targetW && targetH ? { width: targetW, height: targetH } : undefined)
+        const dimObj = { width: targetW, height: targetH }
 
         return {
           ...newNode,
