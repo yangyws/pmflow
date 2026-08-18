@@ -2600,25 +2600,49 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const sId = String(connection.source)
       const tId = String(connection.target)
 
-      const hasDuplicateEdge = edges.some(
+      const existingEdge = edges.find(
         (e) =>
           (String(e.source) === sId && String(e.target) === tId) ||
           (String(e.source) === tId && String(e.target) === sId)
       )
 
-      if (hasDuplicateEdge) {
-        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-        setAlertMsg(T.flow.relationGraph.alertDuplicate(srcRef, tgtRef))
+      const sHandle = connection.sourceHandle ?? undefined
+      const tHandle = connection.targetHandle ?? undefined
+
+      if (existingEdge) {
+        // 如果兩節點間已有關聯，更新接點 (Handle) 方向與樣式，不再跳出已存在彈窗擋死
+        const key = `pmflow_simple_graph_edge_handles_${projectId}`
+        try {
+          const savedStr = localStorage.getItem(key)
+          const handleMap = savedStr ? JSON.parse(savedStr) : {}
+          const edgeKey = `${connection.source}_${connection.target}`
+          handleMap[edgeKey] = { sourceHandle: sHandle, targetHandle: tHandle }
+          handleMap[existingEdge.id] = { sourceHandle: sHandle, targetHandle: tHandle }
+          localStorage.setItem(key, JSON.stringify(handleMap))
+        } catch (e) {
+          console.error(e)
+        }
+
+        const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === existingEdge.id
+              ? {
+                  ...e,
+                  source: connection.source!,
+                  target: connection.target!,
+                  sourceHandle: sHandle,
+                  targetHandle: tHandle,
+                  style,
+                  markerEnd,
+                }
+              : e
+          )
+        )
         return
       }
 
-      // Ref: CR-131 穿透其他卡片不再否決建立關聯（排版問題非合法性問題）
-
       if (connection.source && connection.target) {
-        const sHandle = connection.sourceHandle ?? undefined
-        const tHandle = connection.targetHandle ?? undefined
-
         try {
           const key = `pmflow_simple_graph_edge_handles_${projectId}`
           const savedStr = localStorage.getItem(key)
@@ -2635,39 +2659,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
             queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
-            if (projectId) Api.graph(projectId).then((res) => {
-              if (res.edges) {
-                let savedMap: Record<string, { sourceHandle?: string; targetHandle?: string }> = {}
-                try {
-                  const savedStr = localStorage.getItem(`pmflow_simple_graph_edge_handles_${projectId}`)
-                  if (savedStr) savedMap = JSON.parse(savedStr)
-                } catch {}
-
-                setEdges(res.edges.map((e) => {
-                  const edgeKey = `${e.sourceId}_${e.targetId}`
-                  const hData = savedMap[edgeKey] || savedMap[e.id]
-                  const sH = hData?.sourceHandle
-                  const tH = hData?.targetHandle
-                  const { style, markerEnd } = getEdgeStyleAndMarker(sH)
-                  return {
-                    id: e.id,
-                    source: e.sourceId,
-                    target: e.targetId,
-                    sourceHandle: sH,
-                    targetHandle: tH,
-                    type: 'orthogonal',
-                    animated: true,
-                    style,
-                    markerEnd,
-                  }
-                }))
-              }
-            })
           })
-          .catch((err) => console.error('Failed to add link in DB:', err))
+          .catch((err) => {
+            console.error('Failed to add link in DB:', err)
+            queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+          })
       }
 
-      const { style, markerEnd } = getEdgeStyleAndMarker(connection.sourceHandle)
+      const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
       setEdges((eds) =>
         addEdge(
           {
