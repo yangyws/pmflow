@@ -2679,9 +2679,49 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     [nodes, edgeTexts]
   )
 
+  const isValidConnection = useCallback(
+    (connection: Edge | Connection) => {
+      if (!connection.source || !connection.target || connection.source === connection.target) return false
+
+      const sHandle = connection.sourceHandle ?? ''
+      const tHandle = connection.targetHandle ?? ''
+
+      const sIsHoriz = !sHandle || sHandle.includes('left') || sHandle.includes('right')
+      const tIsHoriz = !tHandle || tHandle.includes('left') || tHandle.includes('right')
+
+      // 任務關聯圖：左右接點只能連左右接點，上下接點只能連上下接點
+      if (sIsHoriz !== tIsHoriz) return false
+
+      const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
+
+      const sourceParent = sourceNode?.parentId
+      const targetParent = targetNode?.parentId
+
+      if (
+        (sourceParent && sourceParent !== targetParent) ||
+        (targetParent && targetParent !== sourceParent)
+      ) {
+        return false
+      }
+
+      return true
+    },
+    [nodes]
+  )
+
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target || connection.source === connection.target) return
+
+      const sHandle = connection.sourceHandle ?? undefined
+      const tHandle = connection.targetHandle ?? undefined
+
+      const sIsHoriz = !sHandle || sHandle.includes('left') || sHandle.includes('right')
+      const tIsHoriz = !tHandle || tHandle.includes('left') || tHandle.includes('right')
+
+      // 任務關聯圖：左右接點只能連左右接點，上下接點只能連上下接點
+      if (sIsHoriz !== tIsHoriz) return
 
       const sourceNode = nodes.find((n) => n.id === connection.source)
       const targetNode = nodes.find((n) => n.id === connection.target)
@@ -2709,9 +2749,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           (String(e.source) === sId && String(e.target) === tId) ||
           (String(e.source) === tId && String(e.target) === sId)
       )
-
-      const sHandle = connection.sourceHandle ?? undefined
-      const tHandle = connection.targetHandle ?? undefined
 
       if (existingEdge) {
         // 如果兩節點間已有關聯，更新接點 (Handle) 方向與樣式至後端資料庫
@@ -3404,6 +3441,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             connectionMode={ConnectionMode.Loose}
             connectionLineType={ConnectionLineType.Step}
             connectionRadius={30}
+            isValidConnection={isValidConnection}
             proOptions={PRO_OPTIONS}
             defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
             minZoom={0.05}
