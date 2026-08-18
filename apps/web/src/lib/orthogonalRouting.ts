@@ -12,12 +12,14 @@ export interface ObstacleRect {
   right: number
   bottom: number
   isBox?: boolean
+  isSource?: boolean
+  isTarget?: boolean
 }
 
 /**
  * 從畫布上的節點陣列中提取障礙物：
  * 1. 遞迴取得 sourceId 與 targetId 的所有祖先節點 ID (包含自身父收納盒與更上層收納盒)。
- * 2. 排除 sourceId、targetId 自身。
+ * 2. 保留 sourceId 與 targetId 本體作為障礙物 (分別標記 isSource 與 isTarget)，確保連線在出發 stub 之外絕不切穿自身卡片本體。
  * 3. 排除所有 frame / annotationFrame（標示框，純視覺附加元件）。
  * 4. 排除所有 text / annotationText（純文字註記，純視覺附加元件）。
  * 5. 排除屬於 sourceId 或 targetId 之父容器/祖先容器的收納盒（當下收納盒），允許線在內部穿行或進出該盒。
@@ -60,9 +62,6 @@ export function getObstaclesFromNodes(
 
   for (const n of nodes) {
     if (!n || !n.id) continue
-
-    // 排除起點、終點自身
-    if (n.id === sourceId || n.id === targetId) continue
 
     // 排除隱藏節點
     if (n.hidden) continue
@@ -142,6 +141,8 @@ export function getObstaclesFromNodes(
       right: absX + width,
       bottom: absY + height,
       isBox,
+      isSource: n.id === sourceId,
+      isTarget: n.id === targetId,
     })
   }
 
@@ -194,11 +195,26 @@ function isSegmentCrossingBox(
   )
 }
 
-function countPolylineCollisions(points: Point[], obstacles: ObstacleRect[]): number {
+/**
+ * 計算折線與障礙物群之碰撞數：
+ * 1. 起點接點延伸 Stub (s0 -> sStub) 連接自身起點，向外延伸時忽略自身 sourceRect 的貼齊。
+ * 2. 終點接點延伸 Stub (tStub -> t0) 連入自身終點，向內進入時忽略自身 targetRect 的貼齊。
+ * 3. 其餘所有中介折線段（包含從 Stub 出發的所有繞道折線）一律將 sourceRect 與 targetRect 及其他所有障礙物視為不可穿透之固體。
+ */
+function countPathCollisions(points: Point[], obstacles: ObstacleRect[]): number {
+  if (points.length < 2) return 0
   let count = 0
   for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const isFirstSeg = points.length >= 4 && i === 0
+    const isLastSeg = points.length >= 4 && i === points.length - 2
+
     for (const b of obstacles) {
-      if (isSegmentCrossingBox(points[i], points[i + 1], b)) {
+      if (isFirstSeg && b.isSource) continue
+      if (isLastSeg && b.isTarget) continue
+
+      if (isSegmentCrossingBox(p1, p2, b)) {
         count++
       }
     }
@@ -340,7 +356,7 @@ function findGridAStarPath(
     const sorted = [...arr].sort((a, b) => a - b)
     const res: number[] = []
     for (const val of sorted) {
-      if (res.length === 0 || Math.abs(val - res[res.length - 1]) > 4) {
+      if (res.length === 0 || Math.abs(val - res[res.length - 1]) > 3) {
         res.push(val)
       }
     }
@@ -484,10 +500,10 @@ function findGridAStarPath(
 }
 
 /**
- * 智慧直角避障路徑演算法 (極速、零抖動、幾何推移繞道與正交網格搜尋)
+ * 智慧直角避障路徑演算法 (極速、零抖動、自身卡片不可穿透、幾何推移繞道與正交網格搜尋)
  * 1. 使用者自訂 waypoint 享最高優先權
- * 2. 檢測路徑是否穿透盒內其他卡片、畫布其他卡片或第三方收納盒
- * 3. 若碰撞障礙物，精準生成 20px 接點延伸 Stub，並在多通道候選與正交 Steiner Grid 中選取 0 碰撞的最短折線路徑
+ * 2. 檢測路徑是否穿透起點卡片本體、終點卡片本體、盒內其他卡片、畫布其他卡片或第三方收納盒
+ * 3. 精準生成 20px 接點延伸 Stub，並在多通道候選與正交 Steiner Grid 中選取 0 碰撞的最短折線路徑
  */
 export function buildOrthogonalPath(
   sx: number,
@@ -556,36 +572,40 @@ export function buildOrthogonalPath(
     return toSvgPath(basePoints)
   }
 
-  // 快速過濾與當前起訖點連線區域相關的障礙物 (包含卡片與第三方收納盒)
+  // 確保標記 sourceRect 與 targetRect (若尚未標記)
+  const normalizedObstacles: ObstacleRect[] = obstacles.map((obs) => {
+    let isSource = obs.isSource
+    let isTarget = obs.isTarget
+    if (isSource === undefined) {
+      isSource = sx >= obs.left - 4 && sx <= obs.right + 4 && sy >= obs.top - 4 && sy <= obs.bottom + 4
+    }
+    if (isTarget === undefined) {
+      isTarget = tx >= obs.left - 4 && tx <= obs.right + 4 && ty >= obs.top - 4 && ty <= obs.bottom + 4
+    }
+    return { ...obs, isSource, isTarget }
+  })
+
+  // 快速過濾與當前起訖點連線區域相關的障礙物 (包含起點、終點卡片本體、其它卡片與第三方收納盒)
   const zoneMinX = Math.min(sx, tx, sStub.x, tStub.x) - margin * 3 - 60
   const zoneMaxX = Math.max(sx, tx, sStub.x, tStub.x) + margin * 3 + 60
   const zoneMinY = Math.min(sy, ty, sStub.y, tStub.y) - margin * 3 - 60
   const zoneMaxY = Math.max(sy, ty, sStub.y, tStub.y) + margin * 3 + 60
 
-  const relevantObstacles = obstacles.filter(
-    (b) => !(b.right < zoneMinX || b.left > zoneMaxX || b.bottom < zoneMinY || b.top > zoneMaxY)
+  const relevantObstacles = normalizedObstacles.filter(
+    (b) => b.isSource || b.isTarget || !(b.right < zoneMinX || b.left > zoneMaxX || b.bottom < zoneMinY || b.top > zoneMaxY)
   )
 
-  if (relevantObstacles.length === 0 || countPolylineCollisions(basePoints, relevantObstacles) === 0) {
+  if (relevantObstacles.length === 0 || countPathCollisions(basePoints, relevantObstacles) === 0) {
     return toSvgPath(basePoints)
   }
 
   // 【規則二：多通道幾何推移繞道 (Multi-Corridor Geometric Detour) & 正交網格求解】
-  const hittingObstacles = relevantObstacles.filter((b) => {
-    for (let i = 0; i < basePoints.length - 1; i++) {
-      if (isSegmentCrossingBox(basePoints[i], basePoints[i + 1], b)) {
-        return true
-      }
-    }
-    return false
-  })
+  const obsList = relevantObstacles
 
-  const obsList = hittingObstacles.length > 0 ? hittingObstacles : relevantObstacles
-
-  let minLeft = Infinity
-  let maxRight = -Infinity
-  let minTop = Infinity
-  let maxBottom = -Infinity
+  let minLeft = Math.min(sx, tx, sStub.x, tStub.x)
+  let maxRight = Math.max(sx, tx, sStub.x, tStub.x)
+  let minTop = Math.min(sy, ty, sStub.y, tStub.y)
+  let maxBottom = Math.max(sy, ty, sStub.y, tStub.y)
 
   for (const b of obsList) {
     if (b.left < minLeft) minLeft = b.left
@@ -699,7 +719,7 @@ export function buildOrthogonalPath(
   }
 
   // 雙軸通道候選
-  for (const xCorr of [minLeft - margin, maxRight + margin]) {
+  for (const xCorr of [minLeft - margin, maxRight + margin, ...Array.from(xLevels)]) {
     for (const yCorr of [minTop - margin, maxBottom + margin]) {
       candidatePaths.push(
         simplifyPoints([
@@ -744,7 +764,7 @@ export function buildOrthogonalPath(
   let bestScore = Infinity
 
   for (const points of candidatePaths) {
-    const collisions = countPolylineCollisions(points, relevantObstacles)
+    const collisions = countPathCollisions(points, relevantObstacles)
     const bends = Math.max(0, points.length - 2)
     const len = polylineLength(points)
     // 優先保證 0 碰撞 (零穿透)，同時允許靈活多次直角折線繞道
@@ -758,3 +778,4 @@ export function buildOrthogonalPath(
 
   return toSvgPath(bestPoints)
 }
+

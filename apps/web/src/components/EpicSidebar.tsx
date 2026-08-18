@@ -359,14 +359,15 @@ export function EpicSidebar({
       return n
     }
 
+    const isTaskDone = (t?: Task) => {
+      if (!t) return false
+      return (t.progress ?? 0) >= 100 || t.statusKey === 'DONE'
+    }
+
     /**
-     * 這個節點**底下**有幾張問題（不含自己）。
+     * 這個節點**底下**有幾張未完成的問題單（不含自己）。
      *
-     * 收著的大項目顯示整棵子樹的總數，展開之後每張任務再各自顯示自己底下的 ——
-     * 所以要走完整棵子樹，不能只看直屬子任務，不然收合前後看到的數字會對不上。
-     *
-     * 不含自己是刻意的：一張問題自己就掛著「問題」的種類徽章了，
-     * 旁邊再標一個「1」只會讓人以為它底下還有東西。
+     * 走完整棵子樹，統計未完成之問題單 (BUG) 數量。
      */
     const bugsUnder = (rootId: string): number => {
       let n = 0
@@ -374,7 +375,7 @@ export function EpicSidebar({
         if (seen.has(id)) return
         seen.add(id)
         for (const k of kids.get(id) ?? []) {
-          if (k.type === 'BUG') n++
+          if (k.type === 'BUG' && !isTaskDone(k)) n++
           walk(k.id, seen)
         }
       }
@@ -910,16 +911,16 @@ function TreeNode({
 
               {/* 警示徽章區域 */}
               <div className="flex flex-wrap items-center gap-1 shrink-0">
-                {((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs) === 0 && blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
+                {bugs === 0 && blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
                   <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
                         className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
                     ⛔卡住
                   </span>
                 )}
-                {((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs) > 0 && (
-                  <span title={task.problem || T.nav.sidebar.bugsUnder((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs)}
+                {bugs > 0 && (
+                  <span title={T.nav.sidebar.bugsUnder(bugs)}
                         className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                    {T.nav.sidebar.bugBadge((task.type !== 'BUG' && task.problem ? 1 : 0) + bugs)}
+                    {T.nav.sidebar.bugBadge(bugs)}
                   </span>
                 )}
                 {asked > 0 && (
