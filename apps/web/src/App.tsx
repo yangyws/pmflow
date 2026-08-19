@@ -19,6 +19,7 @@ import { TaskDrawer } from './components/TaskDrawer'
 import { EpicSidebar } from './components/EpicSidebar'
 import { NotificationBell } from './components/NotificationBell'
 import { UserMenu } from './components/UserMenu'
+import { AiSkillModal } from './components/AiSkillModal'
 import Login from './pages/Login'
 import Board from './pages/Board'
 import ListView from './pages/List'
@@ -106,6 +107,7 @@ export default function App() {
    */
   const [flashTask, setFlashTask] = useState<string | null>(null)
   const [account, setAccount] = useState<AccountView>(null)
+  const [showAiSkillModal, setShowAiSkillModal] = useState(false)
 
   /**
    * 換人登入就回到選擇頁。
@@ -178,6 +180,7 @@ export default function App() {
         ? () => { setAccount(null); setView('settings'); setOpenTask(null) }
         : undefined}
       onSwitchProject={projectId ? () => setProjectId(null) : undefined}
+      onAiSkill={() => setShowAiSkillModal(true)}
       pendingJoins={pendingJoins}
     />
   )
@@ -204,6 +207,11 @@ export default function App() {
             : <AdminPanel workspaceId={workspaceId}
                           myRole={(workspaces[0]?.role ?? 'MEMBER') as WorkspaceRole} />}
         </div>
+        <AiSkillModal
+          open={showAiSkillModal}
+          onClose={() => setShowAiSkillModal(false)}
+          currentProjectId={projectId}
+        />
       </div>
     )
   }
@@ -212,29 +220,43 @@ export default function App() {
   // 發文追蹤不再是這一頁的入口：它是專案裡的頁籤，要進到專案才看得到
   if (!projectId) {
     return (
-      <ProjectPicker
-        projects={projects}
-        workspaceId={workspaceId}
-        onPick={id => { setProjectId(id); setView('list') }}
-        bell={bell}
-        menu={userMenu}
-      />
+      <>
+        <ProjectPicker
+          projects={projects}
+          workspaceId={workspaceId}
+          onPick={id => { setProjectId(id); setView('list') }}
+          bell={bell}
+          menu={userMenu}
+        />
+        <AiSkillModal
+          open={showAiSkillModal}
+          onClose={() => setShowAiSkillModal(false)}
+          currentProjectId={projectId}
+        />
+      </>
     )
   }
 
   return (
-    <ProjectWorkspace
-      key={projectId}
-      projectId={projectId}
-      workspaceId={workspaceId}
-      view={view} setView={setView}
-      openTask={openTask} setOpenTask={setOpenTask}
-      flashTask={flashTask}
-      onFlashSeen={() => setFlashTask(null)}
-      onSwitchProject={() => { setProjectId(null); setView('list'); setOpenTask(null) }}
-      bell={bell}
-      menu={userMenu}
-    />
+    <>
+      <ProjectWorkspace
+        key={projectId}
+        projectId={projectId}
+        workspaceId={workspaceId}
+        view={view} setView={setView}
+        openTask={openTask} setOpenTask={setOpenTask}
+        flashTask={flashTask}
+        onFlashSeen={() => setFlashTask(null)}
+        onSwitchProject={() => { setProjectId(null); setView('list'); setOpenTask(null) }}
+        bell={bell}
+        menu={userMenu}
+      />
+      <AiSkillModal
+        open={showAiSkillModal}
+        onClose={() => setShowAiSkillModal(false)}
+        currentProjectId={projectId}
+      />
+    </>
   )
 }
 

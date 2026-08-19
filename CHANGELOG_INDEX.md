@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Super Admin Env Var & Project Ownership Transfer (CR-164)
+### Latest Changes: AI Skill Discovery Endpoint & One-Click Prompt Modal (CR-165)
+- **變更檔案**:
+  - [`skills.ts`](file:///D:/github/pmflow/apps/api/src/routes/skills.ts), [`index.ts`](file:///D:/github/pmflow/apps/api/src/index.ts):
+    1. **AI 技能探索端點 (`GET /api/v1/skills`, `CR-165`)**：新增 AI Agent 規格探索路由，自動回傳使用者可操作之所有專案、自訂狀態、自訂任務種類 (types)、優先度 (priorities)、成員與完整 CRUD / Link / Inquiry / Ownership API 規格與 JSON Schema。
+  - [`AiSkillModal.tsx`](file:///D:/github/pmflow/apps/web/src/components/AiSkillModal.tsx), [`UserMenu.tsx`](file:///D:/github/pmflow/apps/web/src/components/UserMenu.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx), [`AccountPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AccountPanel.tsx):
+    1. **右上角選單 AI 串接指令彈窗 (`CR-165`)**：在 UserMenu 新增「🤖 AI 串接指令 (Skill / API)」入口與互動式 Modal，自動組合當前目標專案 ID、API 網址與 Token，提供一鍵複製「提示詞 + 清單插槽」功能。
+    2. **帳號設定權杖產生一鍵複製 Prompt (`CR-165`)**：在建立 API 權杖明文展示區下方同步提供一鍵複製包含該權杖之完整 AI Prompt。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-165` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-165`。
+
+### Previous Changes: Super Admin Env Var & Project Ownership Transfer (CR-164)
 - **變更檔案**:
   - [`env.ts`](file:///D:/github/pmflow/apps/api/src/lib/env.ts), [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`account.ts`](file:///D:/github/pmflow/apps/api/src/routes/account.ts), [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts), [`members.ts`](file:///D:/github/pmflow/apps/api/src/routes/members.ts):
     1. **超級管理者環境變數 (`PMFLOW_ADMIN_EMAIL`, `CR-164`)**：支援透過 `PMFLOW_ADMIN_EMAIL` / `PMFLOW_ADMIN_EMAILS` 指定全域最高管理者信箱，具備最高權限可停用、註銷、重設任何帳號並管理所有專案。

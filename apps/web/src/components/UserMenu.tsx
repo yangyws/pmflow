@@ -27,6 +27,7 @@ const THEME_OPTIONS: Array<{ value: ThemeChoice; label: string; icon: string }> 
 
 export function UserMenu({
   userName, isWorkspaceAdmin, onAccount, onAdmin, onLogout, onMembers, onSettings, onSwitchProject,
+  onAiSkill,
   pendingJoins = 0,
 }: {
   userName: string
@@ -37,6 +38,7 @@ export function UserMenu({
   onMembers?: () => void
   onSettings?: () => void
   onSwitchProject?: () => void
+  onAiSkill?: () => void
   pendingJoins?: number
 }) {
   const [open, setOpen] = useState(false)
@@ -143,6 +145,13 @@ export function UserMenu({
           )}
 
           <MenuItem onClick={go(onAccount)}>{T.account.menu.account}</MenuItem>
+          {onAiSkill && (
+            <MenuItem onClick={go(onAiSkill)}>
+              <span className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400">
+                <span>🤖</span> AI 串接指令 (Skill / API)
+              </span>
+            </MenuItem>
+          )}
           {isWorkspaceAdmin && (
             <MenuItem onClick={go(onAdmin)}>
               <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">

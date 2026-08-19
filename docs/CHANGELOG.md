@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-165` | 2026-08-19 | [AI 技能與自動化：實作 GET /api/v1/skills 端點與右上角「AI 串接指令」一鍵複製 Prompt 彈窗](#cr-165) | `skills.ts`, `index.ts`, `AiSkillModal.tsx`, `UserMenu.tsx`, `App.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-164` | 2026-08-19 | [權限與專案管理：支援 PMFLOW_ADMIN_EMAIL 指定全域超級管理者，開放專案擁有者轉移與帳號註銷管理最高權限](#cr-164) | `env.ts`, `auth.ts`, `account.ts`, `projects.ts`, `members.ts`, `MembersPanel.tsx`, `AdminPanel.tsx`, `api.ts`, `.env.example`, `docker-compose*.yml` | 已驗證 |
 | `CR-163` | 2026-08-19 | [任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章](#cr-163) | `TaskGraph.tsx` | 已驗證 |
 | `CR-162` | 2026-08-19 | [全域警示徽章同步刷新：收納盒連線受阻即時警示、卡住/問題/逾期/逾回同時顯示、問題單免設起訖日](#cr-162) | `TaskGraph.tsx`, `EpicSidebar.tsx`, `TaskDrawer.tsx`, `Board.tsx`, `List.tsx`, `ui.tsx`, `strings/inquiry.ts`, `strings/flow.ts` | 已驗證 |
@@ -222,6 +223,20 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-165"></a>CR-165 (2026-08-19) — AI 技能與自動化：實作 GET /api/v1/skills 端點與右上角「AI 串接指令」一鍵複製 Prompt 彈窗
+
+- **需求背景**：
+  使用者希望將需求清單或會議紀錄直接交由 AI（如 Claude / Gemini / ChatGPT / Cursor 等）處理，由 AI 自動探索 PMFlow 專案自訂欄位、種類與 API 規格，並自主呼叫對應 API 建立任務、設定前後相依關聯線、掛載子項目階層或登錄詢問單。
+- **根本原因與調整**：
+  1. **後端 AI Agent 技能探索路由 (`GET /api/v1/skills`, `routes/skills.ts`, `index.ts`)**：
+     - 新增 `GET /api/v1/skills` 端點（需要 Bearer Token 驗證），自動回傳使用者可操作之所有專案、自訂狀態 (statuses)、自訂種類 (types)、優先度 (priorities)、專案成員與完整可操作 API 規格（`list_tasks`, `create_task`, `update_task`, `create_link`, `delete_link`, `create_inquiry`, `transfer_ownership`）。
+  2. **前端 AI 串接指令 Modal 彈窗 (`AiSkillModal.tsx`, `UserMenu.tsx`, `App.tsx`)**：
+     - 在右上角頭像選單新增「`🤖 AI 串接指令 (Skill / API)`」選項，點擊開啟 `AiSkillModal`。
+     - 自動帶入當前目標專案 ID、名稱、API Base URL 與 API Token，組裝出核心 Prompt 提示詞 + 清單插槽。
+     - 提供「📋 一鍵複製 Prompt」與快速建立 API 權杖功能。
+  3. **帳號設定權杖產生整合 (`AccountPanel.tsx`)**：
+     - 在使用者建立 API 權杖成功時，於明文下方同步顯示「🤖 給 AI 的一鍵串接指令 (Prompt)」，一鍵複製帶有新 Token 的完整指令。
 
 ### <a id="cr-164"></a>CR-164 (2026-08-19) — 權限與專案管理：支援 PMFLOW_ADMIN_EMAIL 指定全域超級管理者，開放專案擁有者轉移與帳號註銷管理最高權限
 

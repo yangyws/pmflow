@@ -583,6 +583,28 @@ function ApiTokenSection() {
               </span>
             )}
           </div>
+
+          {/* 一鍵複製給 AI 的完整 Prompt */}
+          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/80 p-2.5 dark:border-blue-500/30 dark:bg-blue-500/10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                🤖 給 AI 的一鍵串接指令 (Prompt)
+              </span>
+              <Button
+                variant="primary"
+                className="px-2.5 py-1 text-xs"
+                onClick={() => {
+                  const base = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : 'http://localhost:8480/api/v1'
+                  const aiPrompt = `你現在是我的 PMFlow 專案助理。請先呼叫 GET ${base}/skills（附帶 Authorization: Bearer ${plaintext} 標頭）取得專案資訊與所有可用 API 操作清單。\n\n接著請根據我提供的清單或需求，自動解析內容並呼叫對應的 API（如建立任務、建立排程/並行關聯線、掛載父子階層或登錄詢問單）發送至 PMFlow。\n\n我的清單／需求如下：\n[請在此貼上你的清單或需求]`
+                  copy(aiPrompt)
+                }}>
+                📋 複製 AI 指令
+              </Button>
+            </div>
+            <p className="mt-1 text-[11px] text-blue-700 dark:text-blue-300">
+              複製此指令連同您的需求清單直接貼給 AI（Claude / Gemini / ChatGPT / Cursor），AI 將自動讀取 API 規格並發送資料。
+            </p>
+          </div>
         </div>
       )}
 

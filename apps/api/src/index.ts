@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notifications.js'
 import leaveRoutes from './routes/leaves.js'
 import dashboardRoutes from './routes/dashboard.js'
 import eventRoutes from './routes/events.js'
+import skillRoutes from './routes/skills.js'
 import { seedDemo, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
 
 const app = Fastify({
@@ -57,6 +58,7 @@ await app.register(async api => {
   await api.register(leaveRoutes)
   await api.register(dashboardRoutes)
   await api.register(eventRoutes)
+  await api.register(skillRoutes)
 }, { prefix: '/api/v1' })
 
 // ── 啟動：先跑 migration，再備妥簽章金鑰，最後才是示範資料 ──
