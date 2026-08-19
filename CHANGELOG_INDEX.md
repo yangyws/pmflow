@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fix Dependency Line Loss on Multi-Card Connections (CR-169)
+### Latest Changes: Cleanup Legacy EPIC and Milestone Types (CR-170)
+- **變更檔案**:
+  - [`seed.ts`](file:///D:/github/pmflow/apps/api/src/seed.ts), [`0026_cleanup_legacy_epic_milestone_types.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0026_cleanup_legacy_epic_milestone_types.sql):
+    1. **全面清理歷史 EPIC / 里程碑類型 (`CR-170`)**：將資料庫與示範專案中舊有的 `EPIC` / `MILESTONE` 類型全面統一收斂為標準的 `TASK`（任務單），消除卡片與抽屜上殘留的非預期標籤。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-170` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-170`。
+
+### Previous Changes: Fix Dependency Line Loss on Multi-Card Connections (CR-169)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **關聯線連續接入防消失 (`CR-169`)**：

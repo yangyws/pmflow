@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-170` | 2026-08-19 | [資料清理：全面清理資料庫與示範專案中殘留之舊版 EPIC 與里程碑類型，統一收斂為任務單](#cr-170) | `seed.ts`, `0026_cleanup_legacy_epic_milestone_types.sql` | 已驗證 |
 | `CR-169` | 2026-08-19 | [關聯圖修正：修復連續拉線/多卡連線時舊連線被覆蓋或快取覆寫消失 Bug](#cr-169) | `TaskGraph.tsx` | 已驗證 |
 | `CR-168` | 2026-08-19 | [權限校正：嚴格劃分環境變數超級管理者、專案擁有者（建立者）與專案管理者之權限邊界](#cr-168) | `lib/auth.ts`, `routes/auth.ts`, `routes/projects.ts`, `routes/members.ts`, `App.tsx` | 已驗證 |
 | `CR-167` | 2026-08-19 | [介面排版：所有視圖（側欄、成員、週檢視、詳情子任務）之警示徽章統一折行置於下一行，避免橫向變長與溢出](#cr-167) | `EpicSidebar.tsx`, `Members.tsx`, `Week.tsx`, `TaskDrawer.tsx` | 已驗證 |
@@ -227,6 +228,14 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-170"></a>CR-170 (2026-08-19) — 資料清理：全面清理資料庫與示範專案中殘留之舊版 EPIC 與里程碑類型，統一收斂為任務單
+
+- **使用者需求**：排查並清理舊專案任務單上出現之 `EPIC` 歷史標籤。
+- **清理與重構作業**：
+  1. **資料庫全面洗淨**：新增遷移 `0026_cleanup_legacy_epic_milestone_types.sql`，並於正式/開發庫將所有非 `BUG`（問題單）之舊 `EPIC` / `MILESTONE` 統一收斂轉為標準 `TASK`（任務單）。
+  2. **示範種子更新**：更新 `seed.ts` 中示範專案任務清單，全面使用標準 `TASK` 與 `BUG`。
+- **異動模組**：`apps/api/src/seed.ts`, `apps/api/src/migrations/0026_cleanup_legacy_epic_milestone_types.sql`。
 
 ### <a id="cr-169"></a>CR-169 (2026-08-19) — 關聯圖修正：修復連續拉線/多卡連線時舊連線被覆蓋或快取覆寫消失 Bug
 

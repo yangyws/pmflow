@@ -96,8 +96,8 @@ export async function seedDemo(): Promise<boolean> {
         c: number; mine?: boolean; est?: number | null; problem?: string
         hist?: Array<[number, string, string]>
       }> = [
-        // 大項目一：已經做掉一大半的前置作業，燃盡線的下坡就是這一段
-        { n: 1, title: '前置準備',       type: 'EPIC',      st: 'doing', s: -28, d: 3,  parent: null, prog: 55, c: -28 },
+        // 收納盒一：已經做掉一大半的前置作業，燃盡線的下坡就是這一段
+        { n: 1, title: '前置準備',       type: 'TASK',      st: 'doing', s: -28, d: 3,  parent: null, prog: 55, c: -28 },
         { n: 2, title: '需求確認與盤點', type: 'TASK',      st: 'doing', s: -7, d: 3,  parent: 1,    prog: 60, c: -28, mine: true, problem: '設備規格需要重新對齊廠商',
           hist: [[-6, 'todo', 'doing']] },
         { n: 3, title: '設備清冊建立',   type: 'TASK',      st: 'done',  s: -7, d: -2, parent: 1,    prog: 100, c: -28, mine: true,
@@ -120,14 +120,14 @@ export async function seedDemo(): Promise<boolean> {
         { n: 17, title: '備援方案評估',   type: 'TASK',     st: 'doing', s: -10, d: 2,  parent: 1,   prog: 30, c: -10, mine: true,
           est: null,
           hist: [[-9, 'todo', 'doing']] },
-        // 大項目二
-        { n: 5, title: '採購與施工',     type: 'EPIC',      st: 'todo',  s: 5,  d: 30, parent: null, prog: 0, c: -28 },
+        // 收納盒二
+        { n: 5, title: '採購與施工',     type: 'TASK',      st: 'todo',  s: 5,  d: 30, parent: null, prog: 0, c: -28 },
         { n: 6, title: '採購與到貨',     type: 'TASK',      st: 'todo',  s: 5,  d: 20, parent: 5,    prog: 0, c: -28, mine: true, problem: '零組件缺貨，預計延遲交貨' },
         { n: 7, title: '機櫃配置施工',   type: 'TASK',      st: 'todo',  s: 21, d: 30, parent: 5,    prog: 0, c: -28, problem: '機櫃空間不足，等待廠商擴充' },
-        // 大項目三
-        { n: 8, title: '遷移與切換',     type: 'EPIC',      st: 'todo',  s: 21, d: 38, parent: null, prog: 0, c: -28 },
+        // 收納盒三
+        { n: 8, title: '遷移與切換',     type: 'TASK',      st: 'todo',  s: 21, d: 38, parent: null, prog: 0, c: -28 },
         { n: 9, title: '系統遷移測試',   type: 'TASK',      st: 'todo',  s: 21, d: 34, parent: 8,    prog: 0, c: -28, problem: '資料庫相容性測試異常，等待修補程式' },
-        { n: 10, title: '正式切換',      type: 'MILESTONE', st: 'todo',  s: 38, d: 38, parent: 8,    prog: 0, c: -28 },
+        { n: 10, title: '正式切換',      type: 'TASK',      st: 'todo',  s: 38, d: 38, parent: 8,    prog: 0, c: -28 },
         /*
          * 「同時完成」那個匯合點的下游。
          *
@@ -137,11 +137,11 @@ export async function seedDemo(): Promise<boolean> {
          * 有了它，畫面上才會出現「兩張任務 → 匯合點 → 一張任務」的完整形狀。
          */
         { n: 18, title: '切換後驗收',   type: 'TASK',      st: 'todo',  s: 39, d: 42, parent: 8,    prog: 0, c: -28 },
-        // 大項目四：資安與合規
-        { n: 19, title: '資安與合規',   type: 'EPIC',      st: 'doing', s: 5,  d: 36, parent: null, prog: 40, c: -28 },
+        // 收納盒四：資安與合規
+        { n: 19, title: '資安與合規',   type: 'TASK',      st: 'doing', s: 5,  d: 36, parent: null, prog: 40, c: -28 },
         { n: 20, title: '資安架構複審', type: 'TASK',      st: 'doing', s: 5,  d: 20, parent: 19,   prog: 50, c: -28, mine: true, problem: '資安規範更新，需重新審查證照' },
         { n: 21, title: '防火牆規則套用', type: 'TASK',    st: 'todo',  s: 15, d: 25, parent: 19,   prog: 0, c: -28 },
-        { n: 22, title: '資安合規稽核', type: 'MILESTONE', st: 'todo',  s: 34, d: 34, parent: 19,   prog: 0, c: -28 },
+        { n: 22, title: '資安合規稽核', type: 'TASK',      st: 'todo',  s: 34, d: 34, parent: 19,   prog: 0, c: -28 },
         { n: 23, title: 'UPS 備援電池自我檢測異常', type: 'BUG', st: 'doing', s: -5, d: 5, parent: 19, prog: 30, c: -5, mine: true, problem: '電池電壓低於標準值，需辦理保固更換' },
         { n: 24, title: '光纖模組訊號衰減過大', type: 'BUG', st: 'todo', s: 1, d: 10, parent: 19, prog: 0, c: -2, problem: '接頭清潔後改善有限，待原廠換修' },
       ]
