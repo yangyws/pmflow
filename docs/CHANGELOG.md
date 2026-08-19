@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-164` | 2026-08-19 | [權限與專案管理：支援 PMFLOW_ADMIN_EMAIL 指定全域超級管理者，開放專案擁有者轉移與帳號註銷管理最高權限](#cr-164) | `env.ts`, `auth.ts`, `account.ts`, `projects.ts`, `members.ts`, `MembersPanel.tsx`, `AdminPanel.tsx`, `api.ts`, `.env.example`, `docker-compose*.yml` | 已驗證 |
 | `CR-163` | 2026-08-19 | [任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章](#cr-163) | `TaskGraph.tsx` | 已驗證 |
 | `CR-162` | 2026-08-19 | [全域警示徽章同步刷新：收納盒連線受阻即時警示、卡住/問題/逾期/逾回同時顯示、問題單免設起訖日](#cr-162) | `TaskGraph.tsx`, `EpicSidebar.tsx`, `TaskDrawer.tsx`, `Board.tsx`, `List.tsx`, `ui.tsx`, `strings/inquiry.ts`, `strings/flow.ts` | 已驗證 |
 | `CR-161` | 2026-08-18 | [任務關聯圖：點擊「新增文字」直接在畫布生成文字註記，不再主動彈出色票/編輯視窗（對齊流程圖行為）](#cr-161) | `TaskGraph.tsx`, `CODEMAP.md` | 已驗證 |
@@ -221,6 +222,27 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-164"></a>CR-164 (2026-08-19) — 權限與專案管理：支援 PMFLOW_ADMIN_EMAIL 指定全域超級管理者，開放專案擁有者轉移與帳號註銷管理最高權限
+
+- **需求背景**：
+  1. 使用者身為系統管理者，需要擁有全域最高權限，可停用、註銷（刪除）、重設任何成員與專案擁有者帳號。
+  2. 專案建立者（擁有者）應可被轉移給專案中的其他成員，避免因人員異動無法調整專案建立者角色。
+  3. 支援透過環境變數直接指定超級管理員信箱。
+- **根本原因與調整**：
+  1. **後端環境變數與超級管理員識別 (`lib/env.ts`, `lib/auth.ts`)**：
+     - 新增 `PMFLOW_ADMIN_EMAIL` / `PMFLOW_ADMIN_EMAILS` 環境變數，支援多個 email 逗號分隔。
+     - 實作 `isSuperAdmin` 輔助函式，符合超級管理員之使用者在所有工作區與專案中自動具備全域最高權限。
+  2. **專案擁有權轉移 API (`routes/projects.ts`, `routes/members.ts`)**：
+     - 新增 `POST /projects/:id/transfer-ownership` 端點，允許超級管理者、專案管理者或原建立者將 `created_by` 轉移給專案成員，並確保新擁有者設定為 `MANAGER` 角色。
+     - `GET /projects/:id/members` 補齊 `canTransferOwnership` 權限回傳。
+  3. **帳號管理與註銷權限解鎖 (`routes/account.ts`, `AdminPanel.tsx`)**：
+     - 放行超級管理者與工作區擁有者對包含其他管理者與專案建立者在內之所有帳號進行停用（`SUSPENDED`）、復權（`ACTIVE`）、註銷/刪除（`DELETE`）、重設密碼與角色調整。
+     - 優化 `UserRow` 之操作按鈕樣式與可見度。
+  4. **專案成員頁轉移擁有者 UI (`MembersPanel.tsx`, `strings/account.ts`)**：
+     - 在成員名單中加入「👑 轉移擁有者」按鈕與二次確認對話框，轉移後即時刷新專案資料與建立者標籤。
+  5. **容器配置與文件更新 (`.env.example`, `docker-compose*.yml`)**：
+     - 補齊 `PMFLOW_ADMIN_EMAIL` 範例與 Docker Compose 注入設定。
 
 ### <a id="cr-163"></a>CR-163 (2026-08-19) — 任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章
 

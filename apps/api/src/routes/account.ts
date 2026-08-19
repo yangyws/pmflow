@@ -4,7 +4,7 @@ import { sql } from '../lib/db.js'
 import {
   authenticate, hashPassword, verifyPassword,
   requireWorkspaceMember, requireWorkspaceAdmin, requireWorkspaceOwner,
-  newApiToken, type WorkspaceRole,
+  newApiToken, isSuperAdmin, type WorkspaceRole,
 } from '../lib/auth.js'
 import { saveAvatar, readAvatar, removeAvatar } from '../lib/avatar.js'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
@@ -49,18 +49,18 @@ const MAX_ACTIVE_TOKENS = 20
  * 管理者身分只有擁有者給得起（見 /admin/administrators），
  * 擁有者身分誰都給不了 —— 開站的人就是開站的人。
  */
-const ROLES: WorkspaceRole[] = ['MEMBER', 'GUEST']
+const ROLES: WorkspaceRole[] = ['ADMIN', 'MEMBER', 'GUEST']
 
 const adminCreateBody = z.object({
   workspaceId: z.string().uuid(),
   email: z.string().email('email 格式不正確').max(254),
   displayName: z.string().min(1, '請填寫顯示名稱').max(80),
   password: z.string().min(8, '密碼至少 8 個字元').max(200),
-  role: z.enum(['MEMBER', 'GUEST']).default('MEMBER'),
+  role: z.enum(['ADMIN', 'MEMBER', 'GUEST']).default('MEMBER'),
 })
 
 const adminPatchBody = z.object({
-  role: z.enum(['MEMBER', 'GUEST']).optional(),
+  role: z.enum(['ADMIN', 'MEMBER', 'GUEST']).optional(),
   status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
   displayName: z.string().min(1).max(80).optional(),
   /** 管理者代設的新密碼。使用者下次登入就用這組 */
@@ -313,7 +313,9 @@ export default async function accountRoutes(app: FastifyInstance) {
     /*
      * 工作區管理者、擁有者或任一專案的管理者（MANAGER）皆可查看帳號清單。
      */
+    const isSuper = await isSuperAdmin(auth)
     const { role } = await requireWorkspaceAdmin(auth.id, workspaceId)
+    const effectiveRole = isSuper ? 'OWNER' : role
 
     const users = await sql`
       SELECT u.id, u.email, u.display_name AS "displayName", u.status,
@@ -327,7 +329,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       WHERE wm.workspace_id = ${workspaceId}
       ORDER BY CASE wm.role WHEN 'OWNER' THEN 0 WHEN 'ADMIN' THEN 1
                             WHEN 'MEMBER' THEN 2 ELSE 3 END, u.display_name`
-    return { users, myRole: role, roles: ROLES }
+    return { users, myRole: effectiveRole, roles: ROLES }
   })
 
   app.post('/admin/users', async (req, reply) => {
@@ -358,6 +360,8 @@ export default async function accountRoutes(app: FastifyInstance) {
       const workspaceId = req.query.workspaceId
       if (!workspaceId) throw badRequest('缺少 workspaceId')
       const { role: myRole } = await requireWorkspaceAdmin(auth.id, workspaceId)
+      const isSuper = await isSuperAdmin(auth)
+      const isOwner = isSuper || myRole === 'OWNER'
       const body = adminPatchBody.parse(req.body)
       const target = req.params.userId
 
@@ -367,12 +371,12 @@ export default async function accountRoutes(app: FastifyInstance) {
         WHERE wm.workspace_id = ${workspaceId} AND wm.user_id = ${target}`
       if (!cur) throw notFound('這個工作區裡沒有這個帳號')
 
-      // 擁有者的帳號不能由其他人調整
-      if (cur.role === 'OWNER' && target !== auth.id) {
+      // 擁有者的帳號只能由超級管理者或擁有者本人調整
+      if (cur.role === 'OWNER' && !isSuper && target !== auth.id) {
         throw forbidden('擁有者的帳號不能由他人調整')
       }
-      // 管理者之間互相不能改角色 —— 誰是管理者只有擁有者說了算
-      if (cur.role === 'ADMIN' && body.role && myRole !== 'OWNER') {
+      // 管理者之間互相不能改角色 —— 誰是管理者只有擁有者/超級管理者說了算
+      if (cur.role === 'ADMIN' && body.role && !isOwner) {
         throw forbidden('管理者的身分只有擁有者能取消')
       }
       // 自己不能把自己降級或停用 —— 手滑就登不回來了
@@ -381,7 +385,7 @@ export default async function accountRoutes(app: FastifyInstance) {
       }
       // 站台至少要留一個管得動帳號的人
       const losingAdmin = cur.role === 'ADMIN' && body.status === 'SUSPENDED'
-      if (losingAdmin && (await activeAdminCount(workspaceId)) <= 1 && myRole !== 'OWNER') {
+      if (losingAdmin && (await activeAdminCount(workspaceId)) <= 1 && !isOwner) {
         throw badRequest('這是最後一個管理者，停用之後就沒有人能管帳號了')
       }
 
@@ -428,6 +432,8 @@ export default async function accountRoutes(app: FastifyInstance) {
       const workspaceId = req.query.workspaceId
       if (!workspaceId) throw badRequest('缺少 workspaceId')
       const { role: myRole } = await requireWorkspaceAdmin(auth.id, workspaceId)
+      const isSuper = await isSuperAdmin(auth)
+      const isOwner = isSuper || myRole === 'OWNER'
       const target = req.params.userId
 
       // 自己不能刪自己 —— 手滑就沒有帳號了，而且刪到最後一個管理者就沒人能管帳號
@@ -438,9 +444,9 @@ export default async function accountRoutes(app: FastifyInstance) {
         FROM workspace_member wm JOIN app_user u ON u.id = wm.user_id
         WHERE wm.workspace_id = ${workspaceId} AND wm.user_id = ${target}`
       if (!cur) throw notFound('這個工作區裡沒有這個帳號')
-      if (cur.role === 'OWNER') throw forbidden('擁有者的帳號不能刪除')
+      if (cur.role === 'OWNER' && !isSuper) throw forbidden('擁有者的帳號不能刪除')
       // 先請擁有者取消他的管理者身分，再刪 —— 免得管理者互刪
-      if (cur.role === 'ADMIN' && myRole !== 'OWNER') {
+      if (cur.role === 'ADMIN' && !isOwner) {
         throw forbidden('要先請擁有者取消他的管理者身分，才能刪除這個帳號')
       }
 

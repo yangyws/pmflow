@@ -170,9 +170,25 @@ async function authenticateApiToken(req: FastifyRequest, raw: string): Promise<A
   return user
 }
 
-// Ref: CR-145
 export type ProjectRole = 'MANAGER' | 'EDITOR' | 'VIEWER'
 const RANK: Record<ProjectRole, number> = { VIEWER: 0, EDITOR: 1, MANAGER: 2 }
+
+/**
+ * 檢查使用者是否為環境變數指定的超級管理者 (Super Admin)。
+ * 超級管理者在全系統任何工作區與專案皆具備全域最高權限。
+ */
+export async function isSuperAdmin(userOrId: AuthUser | string | null | undefined): Promise<boolean> {
+  if (!userOrId) return false
+  if (!env.adminEmails.length) return false
+  if (typeof userOrId === 'object' && userOrId.email) {
+    return env.adminEmails.includes(userOrId.email.toLowerCase())
+  }
+  const userId = typeof userOrId === 'string' ? userOrId : (userOrId as AuthUser).id
+  if (!userId) return false
+  const [row] = await sql<{ email: string }[]>`SELECT email FROM app_user WHERE id = ${userId}`
+  if (!row?.email) return false
+  return env.adminEmails.includes(row.email.toLowerCase())
+}
 
 /**
  * 代理人：請假的時候可以指定一個人代他，**代理期間就是那筆請假的起訖日**
@@ -222,10 +238,10 @@ export async function requireProjectRole(
       ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
-  // Ref: CR-130 —— 系統管理者（工作區 OWNER/ADMIN）在任何專案裡都當成管理者，
-  // 不必先被加進成員名單。其餘人一律照專案角色。
+  // 超級管理者或系統管理者（工作區 OWNER/ADMIN）在任何專案裡都具備最高管理者 (MANAGER) 權限
+  const isSuper = await isSuperAdmin(userId)
   const candidates = rows.map(r => r.role).filter((r): r is ProjectRole => !!r)
-  if (rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN')) candidates.push('MANAGER')
+  if (isSuper || rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN')) candidates.push('MANAGER')
   if (!candidates.length) throw forbidden('你不是這個專案的成員')
   const role = candidates.reduce((a, b) => (RANK[b] > RANK[a] ? b : a))
   if (RANK[role] < RANK[min]) throw forbidden(`這個操作需要 ${min} 以上權限，你目前是 ${role}`)
@@ -257,7 +273,7 @@ export async function currentDeputyPrincipals(deputyId: string): Promise<string[
 export async function assertTaskStakeholder(
   taskId: string, userId: string, role: ProjectRole, what = '這筆資料'
 ): Promise<void> {
-  if (role === 'MANAGER') return
+  if (role === 'MANAGER' || (await isSuperAdmin(userId))) return
   const [row] = await sql<{ taskCreator: string | null; assigneeId: string | null; projectCreator: string | null }[]>`
     SELECT t.created_by AS "taskCreator", t.assignee_id AS "assigneeId",
            p.created_by AS "projectCreator"
@@ -297,10 +313,11 @@ export async function requireProjectManager(
     LEFT JOIN workspace_member wm ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
+  const isSuper = await isSuperAdmin(userId)
   const isCreator = rows[0].created_by === userId
   const isOwner = rows[0].ws_role === 'OWNER' || rows[0].ws_role === 'ADMIN'
   const isManager = rows[0].role === 'MANAGER'
-  if (!isCreator && !isOwner && !isManager) {
+  if (!isSuper && !isCreator && !isOwner && !isManager) {
     throw forbidden('只有專案建立者或管理者以上可以更改與保存系統參數')
   }
   return { workspaceId: rows[0].workspace_id, createdBy: rows[0].created_by }
@@ -313,7 +330,10 @@ export async function requireWorkspaceMember(
   const rows = await sql<{ role: string }[]>`
     SELECT role FROM workspace_member
     WHERE workspace_id = ${workspaceId} AND user_id = ${userId}`
-  if (!rows.length) throw forbidden('你不是這個工作區的成員')
+  if (!rows.length) {
+    if (await isSuperAdmin(userId)) return { role: 'OWNER' }
+    throw forbidden('你不是這個工作區的成員')
+  }
   return rows[0]
 }
 
@@ -328,6 +348,7 @@ export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 export async function requireWorkspaceAdmin(
   userId: string, workspaceId: string
 ): Promise<{ role: WorkspaceRole }> {
+  if (await isSuperAdmin(userId)) return { role: 'OWNER' }
   const { role } = await requireWorkspaceMember(userId, workspaceId)
   if (role === 'ADMIN' || role === 'OWNER') {
     return { role: role as WorkspaceRole }
@@ -352,6 +373,7 @@ export async function requireWorkspaceAdmin(
 export async function requireWorkspaceOwner(
   userId: string, workspaceId: string
 ): Promise<{ role: WorkspaceRole }> {
+  if (await isSuperAdmin(userId)) return { role: 'OWNER' }
   const { role } = await requireWorkspaceMember(userId, workspaceId)
   if (role !== 'OWNER') throw forbidden('只有工作區的擁有者可以指派管理者')
   return { role: role as WorkspaceRole }

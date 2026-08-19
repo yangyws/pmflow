@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
 import {
-  authenticate, requireProjectManager, requireProjectRole, requireWorkspaceMember,
+  authenticate, requireProjectManager, requireProjectRole, requireWorkspaceMember, isSuperAdmin,
 } from '../lib/auth.js'
 import { notify } from '../lib/notify.js'
 import { emitRealtimeEvent } from '../lib/events.js'
@@ -188,10 +188,12 @@ export default async function memberRoutes(app: FastifyInstance) {
       JOIN app_user u ON u.id = pm.user_id
       WHERE pm.project_id = ${req.params.id}
       ORDER BY u.display_name`
+    const isSuper = await isSuperAdmin(user)
     return {
       members: members.map(m => ({ ...m, isCreator: m.id === p.created_by })),
       createdBy: p.created_by,
-      canManage: role === 'MANAGER',
+      canManage: isSuper || role === 'MANAGER',
+      canTransferOwnership: isSuper || role === 'MANAGER' || user.id === p.created_by,
     }
   })
 

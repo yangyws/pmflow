@@ -127,12 +127,11 @@ function UserAdminPanel({ workspaceId }: { workspaceId: string }) {
   if (isLoading || !data) return <Spinner label={A.loading} />
 
   const users = data.users
-  // 這些都是後端的規則，前端把按鈕收起來只是不要讓人按了才被拒絕：
-  // 擁有者的帳號誰都動不了；管理者的身分只有擁有者能取消，所以管理者之間
-  // 不互相改角色、也不互刪，但還是可以幫對方停用或重設密碼
-  const canEdit = (u: AdminUser) => u.id !== user?.id && u.role !== 'OWNER'
-  const canChangeRole = (u: AdminUser) => canEdit(u) && (data.myRole === 'OWNER' || u.role !== 'ADMIN')
-  const canDelete = (u: AdminUser) => canEdit(u) && (data.myRole === 'OWNER' || u.role !== 'ADMIN')
+  // 擁有者或超級管理者可以管理所有帳號；管理者可管理非擁有者帳號
+  const isSuperOrOwner = data.myRole === 'OWNER'
+  const canEdit = (u: AdminUser) => u.id !== user?.id && (isSuperOrOwner || u.role !== 'OWNER')
+  const canChangeRole = (u: AdminUser) => canEdit(u) && (isSuperOrOwner || u.role !== 'ADMIN')
+  const canDelete = (u: AdminUser) => canEdit(u) && (isSuperOrOwner || u.role !== 'ADMIN')
 
   return (
     <div className="h-full overflow-auto bg-slate-50 dark:bg-slate-950">
@@ -305,7 +304,7 @@ function UserRow({
                 if (pw && pw.length >= 8) onPatch({ newPassword: pw })
                 else if (pw) window.alert(A.passwordTooShort)
               }}
-              className="rounded px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700
+              className="rounded px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700
                          dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">
               {A.resetPassword}
             </button>
@@ -321,12 +320,12 @@ function UserRow({
                   onConfirm: () => onPatch({ status: next }),
                 })
               }}
-              className={cx('rounded px-1.5 py-1 text-xs',
+              className={cx('rounded px-1.5 py-1 text-xs font-medium',
                             suspended
                               ? 'text-emerald-600 hover:bg-emerald-50 '
                                 + 'dark:text-emerald-400 dark:hover:bg-emerald-500/10'
-                              : 'text-slate-400 hover:bg-red-50 hover:text-red-600 '
-                                + 'dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400')}>
+                              : 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 '
+                                + 'dark:text-amber-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-300')}>
               {suspended ? A.resume : A.suspend}
             </button>
             {/* 刪除：擁有者可刪除所有非擁有者帳號；管理者可刪除非管理者與非擁有者 */}
@@ -341,16 +340,16 @@ function UserRow({
                     A.confirmDeleteSuspendInstead,
                   ].filter(Boolean).join('\n')
                   setConfirmActionModal({
-                    title: '刪除帳號確認',
+                    title: '註銷 / 刪除帳號確認',
                     message: ask,
                     onConfirm: () => onDelete(),
                   })
                 }}
                 disabled={busy}
-                className="rounded px-1.5 py-1 text-xs text-slate-400
-                           hover:bg-red-50 hover:text-red-600 disabled:opacity-50
-                           dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
-                {T.common.delete}
+                className="rounded px-1.5 py-1 text-xs font-medium text-red-500
+                           hover:bg-red-50 hover:text-red-700 disabled:opacity-50
+                           dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+                註銷
               </button>
             )}
           </>

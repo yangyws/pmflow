@@ -30,6 +30,7 @@ export default function MembersPanel({
   workspaceId: string
 }) {
   const [confirmRemoveUser, setConfirmRemoveUser] = useState<{ id: string; name: string } | null>(null)
+  const [confirmTransferUser, setConfirmTransferUser] = useState<{ id: string; name: string } | null>(null)
   const qc = useQueryClient()
   const { user: me } = useAuth()
   const [err, setErr] = useState<string | null>(null)
@@ -51,6 +52,7 @@ export default function MembersPanel({
     queryKey: ['members', projectId], queryFn: () => Api.members(projectId),
   })
   const canManage = !!data?.canManage
+  const canTransferOwnership = !!data?.canTransferOwnership || canManage
 
   const { data: reqData } = useQuery({
     queryKey: ['joinRequests', projectId], queryFn: () => Api.joinRequests(projectId),
@@ -71,8 +73,8 @@ export default function MembersPanel({
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['members', projectId] })
     qc.invalidateQueries({ queryKey: ['joinRequests', projectId] })
-    // 專案清單上的待審紅點也要跟著減
     qc.invalidateQueries({ queryKey: ['projects'] })
+    qc.invalidateQueries({ queryKey: ['project', projectId] })
   }
   const fail = (e: unknown) => setErr(
     e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : T.common.failed
@@ -96,6 +98,11 @@ export default function MembersPanel({
   const remove = useMutation({
     mutationFn: (userId: string) => Api.removeMember(projectId, userId),
     onSuccess: ok, onError: fail,
+  })
+  const transfer = useMutation({
+    mutationFn: (newOwnerId: string) => Api.transferProjectOwnership(projectId, newOwnerId),
+    onSuccess: () => { setConfirmTransferUser(null); ok() },
+    onError: fail,
   })
   const add = useMutation({
     mutationFn: () => Api.addMember(projectId, { userId: picked!.id, role: pickRole }),
@@ -224,29 +231,36 @@ export default function MembersPanel({
                     <div className="truncate text-xs text-slate-400 dark:text-slate-400">{m.email}</div>
                   </div>
 
-                  {/*
-                    建立者的角色不能改、也不能被移除 —— 不然專案就沒人管成員了。
-                    自己那一列也一樣：管理者把自己降級或移出去之後就再也救不回來，
-                    所以連按鈕都不給（後端一樣擋著，這裡只是不要讓人白按一次）。
-                  */}
-                  {canManage && !m.isCreator && m.id !== me?.id ? (
-                    <>
-                      <Select value={m.role} disabled={setRole.isPending}
-                              onChange={e => setRole.mutate({
-                                userId: m.id, role: e.target.value as ProjectRole,
-                              })}>
-                        {ROLES.map(v => <option key={v} value={v}>{ROLE_LABEL[v]}</option>)}
-                      </Select>
+                  <div className="flex items-center gap-2">
+                    {/* 轉移專案擁有者：管理者或建立者可將擁有權移交給其他成員 */}
+                    {canTransferOwnership && !m.isCreator && (
                       <button
-                        onClick={() => setConfirmRemoveUser({ id: m.id, name: m.displayName })}
-                        className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600
-                                   dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
-                        {T.common.remove}
+                        onClick={() => setConfirmTransferUser({ id: m.id, name: m.displayName })}
+                        title={M.transferOwnership}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10">
+                        👑 {M.transferOwnership}
                       </button>
-                    </>
-                  ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{ROLE_LABEL[m.role]}</span>
-                  )}
+                    )}
+
+                    {canManage && !m.isCreator && m.id !== me?.id ? (
+                      <>
+                        <Select value={m.role} disabled={setRole.isPending}
+                                onChange={e => setRole.mutate({
+                                  userId: m.id, role: e.target.value as ProjectRole,
+                                })}>
+                          {ROLES.map(v => <option key={v} value={v}>{ROLE_LABEL[v]}</option>)}
+                        </Select>
+                        <button
+                          onClick={() => setConfirmRemoveUser({ id: m.id, name: m.displayName })}
+                          className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600
+                                     dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
+                          {T.common.remove}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{ROLE_LABEL[m.role]}</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -344,12 +358,43 @@ export default function MembersPanel({
               </Button>
               <Button
                 variant="danger"
+                disabled={remove.isPending}
                 onClick={() => {
                   remove.mutate(confirmRemoveUser.id)
                   setConfirmRemoveUser(null)
                 }}
               >
                 確定移除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmTransferUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/20 text-lg">
+                👑
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {M.transferOwnership}
+              </h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              {M.confirmTransfer(confirmTransferUser.name)}
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <Button variant="ghost" onClick={() => setConfirmTransferUser(null)}>
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                disabled={transfer.isPending}
+                onClick={() => transfer.mutate(confirmTransferUser.id)}
+              >
+                確定轉移
               </Button>
             </div>
           </div>

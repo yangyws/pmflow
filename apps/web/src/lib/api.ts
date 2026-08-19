@@ -543,8 +543,11 @@ export const Api = {
     api<{ users: WorkspaceUser[] }>(
       `/workspace-users?${new URLSearchParams({ workspaceId, q, projectId })}`),
   members: (projectId: string) =>
-    api<{ members: ProjectMember[]; createdBy: string | null; canManage: boolean }>(
+    api<{ members: ProjectMember[]; createdBy: string | null; canManage: boolean; canTransferOwnership?: boolean }>(
       `/projects/${projectId}/members`),
+  transferProjectOwnership: (projectId: string, newOwnerId: string) =>
+    api<{ ok: boolean; newOwnerId: string; newOwnerName: string }>(
+      `/projects/${projectId}/transfer-ownership`, { method: 'POST', json: { newOwnerId } }),
   addMember: (projectId: string, json: { userId: string; role?: ProjectRole }) =>
     api(`/projects/${projectId}/members`, { method: 'POST', json }),
   setMemberRole: (projectId: string, userId: string, role: ProjectRole) =>

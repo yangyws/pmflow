@@ -240,6 +240,9 @@ export const account = {
     creator: '建立者',
     me: '你',
     confirmRemove: (name: string) => `要把 ${name} 移出這個專案嗎？`,
+    transferOwnership: '轉移擁有者',
+    confirmTransfer: (name: string) => `確定要將此專案的擁有者（建立者）轉移給 ${name} 嗎？轉移後對方將成為專案建立者。`,
+    transferSuccess: '專案擁有者已成功轉移',
 
     addTitle: '直接加入成員',
     searchPlaceholder: '打名字或 email 找人…',

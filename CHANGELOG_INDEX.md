@@ -22,7 +22,20 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Parallel Badge Real-Time Clear on Edge Deletion (CR-163)
+### Latest Changes: Super Admin Env Var & Project Ownership Transfer (CR-164)
+- **變更檔案**:
+  - [`env.ts`](file:///D:/github/pmflow/apps/api/src/lib/env.ts), [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`account.ts`](file:///D:/github/pmflow/apps/api/src/routes/account.ts), [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts), [`members.ts`](file:///D:/github/pmflow/apps/api/src/routes/members.ts):
+    1. **超級管理者環境變數 (`PMFLOW_ADMIN_EMAIL`, `CR-164`)**：支援透過 `PMFLOW_ADMIN_EMAIL` / `PMFLOW_ADMIN_EMAILS` 指定全域最高管理者信箱，具備最高權限可停用、註銷、重設任何帳號並管理所有專案。
+    2. **專案擁有者轉移端點 (`transfer-ownership`, `CR-164`)**：新增 `POST /projects/:id/transfer-ownership` API，允許管理者或原建立者將專案擁有權（`created_by`）轉移給專案中的其他成員。
+  - [`MembersPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/MembersPanel.tsx), [`AdminPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AdminPanel.tsx), [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts), [`strings/account.ts`](file:///D:/github/pmflow/apps/web/src/strings/account.ts):
+    1. **成員名單轉移專案擁有者 UI (`CR-164`)**：在成員名單中提供「👑 轉移擁有者」按鈕與二次確認對話框，轉移後即時更新建立者標籤與權限。
+    2. **系統管理介面權限解鎖與按鈕優化 (`CR-164`)**：全域管理者可操作包含專案建立者在內之所有帳號的停用與註銷，優化按鈕樣式與可見度。
+  - [`.env.example`](file:///D:/github/pmflow/.env.example), [`docker-compose.dev.yml`](file:///D:/github/pmflow/docker-compose.dev.yml), [`docker-compose.yml`](file:///D:/github/pmflow/docker-compose.yml):
+    1. **環境變數配置與文件 (`CR-164`)**：補齊 `PMFLOW_ADMIN_EMAIL` 範例與容器設定。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-164` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-164`。
+
+### Previous Changes: Parallel Badge Real-Time Clear on Edge Deletion (CR-163)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **並行狀態動態綁定與即時清除 (`CR-163`)**：在 `nodesWithHandlers` 中即時從 `parallelMap` 取得最新 `parallelInfo`，並將 `isParallel` 與 `parallelPeers` 納入快取鍵比對與依賴陣列。當刪除其中一條並行關聯線（已無多線匯合）時，卡片與收納盒上的「⚡並行」警示徽章即時自動清除。

@@ -226,4 +226,41 @@ export default async function projectRoutes(app: FastifyInstance) {
 
     return rows[0]
   })
+
+  // ── 轉移專案擁有者（建立者）──
+  app.post<{ Params: { id: string } }>('/projects/:id/transfer-ownership', async (req, reply) => {
+    const user = await authenticate(req)
+    const { newOwnerId } = z.object({ newOwnerId: z.string().uuid() }).parse(req.body)
+    const [p] = await sql<{ workspace_id: string; created_by: string | null }[]>`
+      SELECT workspace_id, created_by FROM project WHERE id = ${req.params.id}`
+    if (!p) throw notFound('找不到專案')
+
+    const { role } = await requireProjectRole(user.id, req.params.id, 'MANAGER')
+
+    const [targetUser] = await sql<{ id: string; display_name: string }[]>`
+      SELECT id, display_name FROM app_user WHERE id = ${newOwnerId} AND status = 'ACTIVE'`
+    if (!targetUser) throw notFound('找不到目標成員帳號或該帳號已停用')
+
+    await sql.begin(async tx => {
+      await tx`
+        INSERT INTO project_member (project_id, user_id, role, added_by)
+        VALUES (${req.params.id}, ${newOwnerId}, 'MANAGER', ${user.id})
+        ON CONFLICT (project_id, user_id) DO UPDATE SET role = 'MANAGER'`
+
+      await tx`
+        UPDATE project SET created_by = ${newOwnerId}
+        WHERE id = ${req.params.id}`
+    })
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId: p.workspace_id,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'ownership_transferred', newOwnerId, newOwnerName: targetUser.display_name },
+    })
+
+    return reply.send({ ok: true, newOwnerId, newOwnerName: targetUser.display_name })
+  })
 }
