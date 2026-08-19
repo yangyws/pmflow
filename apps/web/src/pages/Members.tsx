@@ -459,20 +459,26 @@ function TaskTable({ groups, statusOf, onOpenTask, onEditTask, focusedTaskId, is
                   )}
                 >
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono text-[11px] text-slate-400 dark:text-slate-400">
-                        {t.ref}
-                      </span>
-                      <span className="text-slate-800 dark:text-slate-100">{t.title}</span>
-                      {t.type !== 'BUG' && <ProblemBadge problem={t.problem} isShort={true} />}
-                      <InquiryBadge state={t.inquiryState} />
-                      {isTaskOverdue(t.dueDate, t.progress) && (
-                        <span
-                          title={`預計完成日: ${t.dueDate}`}
-                          className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                        >
-                          ⏰ 逾期
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-[11px] text-slate-400 dark:text-slate-400 shrink-0">
+                          {t.ref}
                         </span>
+                        <span className="truncate text-slate-800 dark:text-slate-100 font-medium">{t.title}</span>
+                      </div>
+                      {((t.type !== 'BUG' && t.problem) || t.inquiryState !== 'NONE' || isTaskOverdue(t.dueDate, t.progress)) && (
+                        <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                          {t.type !== 'BUG' && <ProblemBadge problem={t.problem} isShort={true} />}
+                          <InquiryBadge state={t.inquiryState} />
+                          {isTaskOverdue(t.dueDate, t.progress) && (
+                            <span
+                              title={`預計完成日: ${t.dueDate}`}
+                              className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                            >
+                              ⏰ 逾期
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                     {extra?.(t)}

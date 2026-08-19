@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Effective Admin & Owner Role Resolution for Creators (CR-166)
+### Latest Changes: Uniform Dedicated Row for Alert Badges Across All Views (CR-167)
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx), [`Members.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Members.tsx), [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx), [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **警示徽章獨立折行呈現 (`CR-167`)**：所有視圖（側欄、成員視圖、週檢視、詳情抽屜子任務清單）之警示圖示（⛔卡住、⚑問題、⏰逾期、📨逾回、⏳待回、⚡並行）統一獨立放置於標題/種類下方獨立一行，徹底杜絕橫向擠壓變長與版面溢出問題。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-167` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-167`。
+
+### Previous Changes: Effective Admin & Owner Role Resolution for Creators (CR-166)
 - **變更檔案**:
   - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`auth.ts (routes)`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts), [`account.ts`](file:///D:/github/pmflow/apps/api/src/routes/account.ts):
     1. **工作區與專案管理者角色升級 (`CR-166`)**：在 `requireWorkspaceAdmin`、`requireWorkspaceOwner` 與 `GET /auth/me` 中，自動將超級管理員、專案建立者（擁有者）與專案管理者識別為 `OWNER` / `ADMIN`，不再誤回傳 `MEMBER`。

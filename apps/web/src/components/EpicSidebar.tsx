@@ -958,8 +958,21 @@ function TreeNode({
               </span>
               <TypeBadge name={kindName} color={kindColor} />
 
-              {/* 警示徽章區域：卡住、問題單、逾期、詢問全數並存不遮蔽 */}
-              <div className="flex flex-wrap items-center gap-1 shrink-0">
+              {/* 完成打勾：進度 100% 才能打勾 */}
+              {task.type !== 'BUG' && isTaskDone && (
+                <span aria-hidden title={T.nav.sidebar.doneDot}
+                      className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
+              )}
+            </div>
+
+            {/* 警示徽章專屬行（統一往下放，避免第一行橫向無限變長）：卡住、問題單、逾期、詢問全數並存 */}
+            {((blockedSelf && blockedSelf.length > 0) ||
+              childBlocked > 0 ||
+              bugs > 0 ||
+              taskOverdue > 0 ||
+              inqOverdue > 0 ||
+              inqAwaiting > 0) && (
+              <div className="flex flex-wrap items-center gap-1 min-w-0">
                 {blockedSelf && blockedSelf.length > 0 && (
                   <span title={`卡住：要等 ${blockedSelf.join('、')}`}
                         className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none">
@@ -997,13 +1010,7 @@ function TreeNode({
                   </span>
                 )}
               </div>
-
-              {/* 完成打勾：進度 100% 才能打勾 */}
-              {task.type !== 'BUG' && isTaskDone && (
-                <span aria-hidden title={T.nav.sidebar.doneDot}
-                      className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
-              )}
-            </div>
+            )}
 
             {/* 第二行：任務標題 */}
             <div className={cx('min-w-0 truncate text-xs leading-snug',

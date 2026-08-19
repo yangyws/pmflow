@@ -511,13 +511,19 @@ function TaskRow({ row, onOpen, onEdit, typeName, typeColor, isFocused }: {
       {/* 類型、任務編號與標題。
           類型色是使用者自己挑的，只當左邊那條細槓，不當底色也不當文字色 ——
           深淺不受控，拿去當底色在深色模式下會有一半讀不到 */}
-      <div className="flex min-w-0 items-center gap-2">
-        <TypeBadge name={typeName} color={typeColor} />
-        <span className="shrink-0 font-mono text-[11px] text-slate-400 dark:text-slate-400">
-          {t.ref}
-        </span>
-        <span className="truncate text-slate-800 dark:text-slate-200">{t.title}</span>
-        {t.type !== 'BUG' && <ProblemBadge problem={t.problem} />}
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <TypeBadge name={typeName} color={typeColor} />
+          <span className="shrink-0 font-mono text-[11px] text-slate-400 dark:text-slate-400">
+            {t.ref}
+          </span>
+          <span className="truncate text-slate-800 dark:text-slate-200">{t.title}</span>
+        </div>
+        {t.type !== 'BUG' && t.problem && (
+          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+            <ProblemBadge problem={t.problem} />
+          </div>
+        )}
       </div>
 
       {/* 負責人 */}

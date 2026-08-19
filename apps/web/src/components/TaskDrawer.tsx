@@ -978,11 +978,19 @@ export function TaskDrawer({
                             className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
                             title="點擊打開該子任務事件詳情頁"
                           >
-                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
-                            <span className="flex-1 truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>
-                            {c.problem && <ProblemBadge problem={c.problem} />}
-                            <span className="text-xs text-slate-400 dark:text-slate-400">{c.progress}%</span>
-                            <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
+                                <span className="truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>
+                              </div>
+                              {c.problem && (
+                                <div className="mt-1 flex items-center">
+                                  <ProblemBadge problem={c.problem} />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-xs text-slate-400 dark:text-slate-400 shrink-0">{c.progress}%</span>
+                            <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">→</span>
                           </button>
                         ))}
                       </div>
