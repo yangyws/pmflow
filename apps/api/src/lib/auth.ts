@@ -218,8 +218,8 @@ export async function isSuperAdmin(userOrId: AuthUser | string | null | undefine
 export async function requireProjectRole(
   userId: string, projectId: string, min: ProjectRole
 ): Promise<{ role: ProjectRole; workspaceId: string }> {
-  const rows = await sql<{ role: ProjectRole | null; workspace_id: string; ws_role: string | null }[]>`
-    SELECT pm.role, p.workspace_id, wm.role AS ws_role
+  const rows = await sql<{ role: ProjectRole | null; workspace_id: string; ws_role: string | null; created_by: string | null }[]>`
+    SELECT pm.role, p.workspace_id, wm.role AS ws_role, p.created_by
     FROM project p
     LEFT JOIN project_member pm ON pm.project_id = p.id
       AND (
@@ -238,10 +238,12 @@ export async function requireProjectRole(
       ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
-  // 超級管理者或系統管理者（工作區 OWNER/ADMIN）在任何專案裡都具備最高管理者 (MANAGER) 權限
+  // 超級管理者、工作區管理者、或該專案的建立者（擁有者）在專案裡具備最高管理者 (MANAGER) 權限
   const isSuper = await isSuperAdmin(userId)
   const candidates = rows.map(r => r.role).filter((r): r is ProjectRole => !!r)
-  if (isSuper || rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN')) candidates.push('MANAGER')
+  if (isSuper || rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN' || r.created_by === userId)) {
+    candidates.push('MANAGER')
+  }
   if (!candidates.length) throw forbidden('你不是這個專案的成員')
   const role = candidates.reduce((a, b) => (RANK[b] > RANK[a] ? b : a))
   if (RANK[role] < RANK[min]) throw forbidden(`這個操作需要 ${min} 以上權限，你目前是 ${role}`)
@@ -267,7 +269,7 @@ export async function currentDeputyPrincipals(deputyId: string): Promise<string[
  * 這個人動不動得了「掛在某張任務底下」的資料（關聯線、對外詢問單…）。
  * Ref: CR-130
  *
- * 判準跟任務本身一致：**系統管理者／專案管理者／開單人／負責人／上面那些人的代理人**。
+ * 判準跟任務本身一致：**超級管理者／專案建立者／專案管理者／開單人／負責人／上面那些人的代理人**。
  * 只有專案角色是不夠的 —— 光看 EDITOR 會讓任何編輯者去動別人任務的關聯線。
  */
 export async function assertTaskStakeholder(
@@ -293,13 +295,7 @@ export async function assertTaskStakeholder(
 /**
  * 管理成員能做的事：放人進來、核准或婉拒申請、改角色、把人移出去。
  *
- * 原本只認「開專案的那個人」，現在放寬成**這個專案的管理者**。
- * 開專案的人建立時就被寫成 MANAGER，所以舊的行為完全包含在新規則裡，
- * 沒有人因此少掉權限；差別只在於他可以再指定幾個人一起管。
- *
- * 不用 requireProjectRole(..., 'MANAGER') 是為了訊息 —— 那條路會把
- * 角色代碼原封不動吐進畫面，而成員頁的錯誤是直接顯示給人看的。
- * 順便回報他是不是建立者，成員頁有幾條保護要靠這個判斷。
+ * 專案建立者（擁有者）、專案管理者（MANAGER）、超級管理者皆可管理。
  */
 export async function requireProjectManager(
   userId: string, projectId: string
@@ -327,11 +323,11 @@ export async function requireProjectManager(
 export async function requireWorkspaceMember(
   userId: string, workspaceId: string
 ): Promise<{ role: string }> {
+  if (await isSuperAdmin(userId)) return { role: 'OWNER' }
   const rows = await sql<{ role: string }[]>`
     SELECT role FROM workspace_member
     WHERE workspace_id = ${workspaceId} AND user_id = ${userId}`
   if (!rows.length) {
-    if (await isSuperAdmin(userId)) return { role: 'OWNER' }
     throw forbidden('你不是這個工作區的成員')
   }
   return rows[0]
@@ -341,9 +337,8 @@ export async function requireWorkspaceMember(
 export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 
 /**
- * 站台管理者、擁有者與專案管理者能做的事：開帳號、停用帳號、刪帳號、代設密碼。
- *
- * 允許角色為 OWNER 或 ADMIN 的使用者，或在該工作區任一專案為 MANAGER 的專案管理者皆可進行成員管理。
+ * 站台管理者與超級管理者能做的事：開帳號、停用帳號、刪帳號、代設密碼。
+ * 專案管理者/建立者亦可列出工作區成員以供加人。
  */
 export async function requireWorkspaceAdmin(
   userId: string, workspaceId: string
@@ -353,19 +348,12 @@ export async function requireWorkspaceAdmin(
   if (role === 'OWNER') return { role: 'OWNER' }
   if (role === 'ADMIN') return { role: 'ADMIN' }
 
-  // 若使用者的 workspace_member.role 不是 OWNER/ADMIN，但為該工作區內專案的建立者（擁有者）或管理者，亦賦予相應角色
-  const [projectOwner] = await sql<{ id: string }[]>`
-    SELECT p.id FROM project p
-    WHERE p.workspace_id = ${workspaceId} AND p.created_by = ${userId}
-    LIMIT 1`
-  if (projectOwner) {
-    return { role: 'OWNER' }
-  }
-
+  // 若使用者在該工作區內任一專案為建立者或管理者，放行其進行成員指派查詢
   const [projectManager] = await sql<{ id: string }[]>`
     SELECT p.id FROM project p
-    JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
-    WHERE p.workspace_id = ${workspaceId} AND pm.role = 'MANAGER'
+    LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
+    WHERE p.workspace_id = ${workspaceId}
+      AND (p.created_by = ${userId} OR pm.role = 'MANAGER')
     LIMIT 1`
 
   if (projectManager) {
@@ -375,7 +363,7 @@ export async function requireWorkspaceAdmin(
   throw forbidden('這個操作需要工作區管理者、擁有者或專案管理者權限')
 }
 
-/** 擁有者專用。他唯一還能對別人的帳號做的事，就是決定誰是管理者 */
+/** 擁有者專用：只有全域超級管理者或工作區 OWNER 可以指派管理者 */
 export async function requireWorkspaceOwner(
   userId: string, workspaceId: string
 ): Promise<{ role: WorkspaceRole }> {
@@ -383,16 +371,7 @@ export async function requireWorkspaceOwner(
   const { role } = await requireWorkspaceMember(userId, workspaceId)
   if (role === 'OWNER') return { role: 'OWNER' }
 
-  // 專案建立者亦視同專案層級之擁有者
-  const [projectOwner] = await sql<{ id: string }[]>`
-    SELECT p.id FROM project p
-    WHERE p.workspace_id = ${workspaceId} AND p.created_by = ${userId}
-    LIMIT 1`
-  if (projectOwner) {
-    return { role: 'OWNER' }
-  }
-
-  throw forbidden('只有工作區的擁有者可以指派管理者')
+  throw forbidden('只有工作區的擁有者或超級管理者可以指派管理者')
 }
 
 /**

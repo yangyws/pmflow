@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Uniform Dedicated Row for Alert Badges Across All Views (CR-167)
+### Latest Changes: Strict Role Hierarchy Calibration — Super Admin vs Project Owner/Manager (CR-168)
+- **變更檔案**:
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`auth.ts (routes)`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts), [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts), [`members.ts`](file:///D:/github/pmflow/apps/api/src/routes/members.ts), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **權限層級嚴格校正 (`CR-168`)**：明確切分全域超級管理者（僅由環境變數指定，具備全站與全專案最高權限）、專案擁有者（專案建立者 `p.created_by`，具備該專案 `MANAGER` 與轉移擁有權特權，不可被踢出）、專案管理者（`MANAGER`，可維護該專案參數與成員）與專案一般成員。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-168` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-168`。
+
+### Previous Changes: Uniform Dedicated Row for Alert Badges Across All Views (CR-167)
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx), [`Members.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Members.tsx), [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx), [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **警示徽章獨立折行呈現 (`CR-167`)**：所有視圖（側欄、成員視圖、週檢視、詳情抽屜子任務清單）之警示圖示（⛔卡住、⚑問題、⏰逾期、📨逾回、⏳待回、⚡並行）統一獨立放置於標題/種類下方獨立一行，徹底杜絕橫向擠壓變長與版面溢出問題。

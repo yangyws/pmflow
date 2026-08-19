@@ -156,14 +156,17 @@ export default function App() {
   const bell = <NotificationBell onOpen={openNotification} />
 
   const workspaceId = workspaces[0]?.id ?? projects[0]?.workspaceId ?? ''
-  // 專案/系統管理者（ADMIN / MANAGER / OWNER）皆可看到「系統管理 / 成員停用與註銷」功能
-  const isOwner = workspaces.some(w => w.role?.toUpperCase() === 'OWNER') || projects.some(p => p.role?.toUpperCase() === 'OWNER')
-  const isWorkspaceAdmin = isOwner || workspaces.some(w => ['ADMIN', 'MANAGER'].includes(w.role?.toUpperCase() ?? '')) || projects.some(p => ['OWNER', 'ADMIN', 'MANAGER'].includes(p.role?.toUpperCase() ?? ''))
-  const myAdminRole: WorkspaceRole = isOwner ? 'OWNER' : (isWorkspaceAdmin ? 'ADMIN' : ((workspaces[0]?.role ?? 'MEMBER') as WorkspaceRole))
-  const pendingJoins = projects.find(p => p.id === projectId)?.pendingJoinRequestCount ?? 0
-  // 系統參數是「改這個專案的規則」，預設允許管理者與專案成員進行維護
-  const userRole = projects.find(p => p.id === projectId)?.role
-  const canManageProject = !userRole || ['MANAGER', 'ADMIN', 'OWNER', 'MEMBER'].includes(userRole.toUpperCase())
+  // 系統管理（帳號與工作區）：只有全域超級管理者或工作區 OWNER / ADMIN 具備權限
+  const isSuperOrWorkspaceOwner = workspaces.some(w => w.role?.toUpperCase() === 'OWNER')
+  const isWorkspaceAdmin = isSuperOrWorkspaceOwner || workspaces.some(w => w.role?.toUpperCase() === 'ADMIN')
+  const myAdminRole: WorkspaceRole = isSuperOrWorkspaceOwner ? 'OWNER' : (isWorkspaceAdmin ? 'ADMIN' : ((workspaces[0]?.role ?? 'MEMBER') as WorkspaceRole))
+
+  const curProject = projects.find(p => p.id === projectId)
+  const pendingJoins = curProject?.pendingJoinRequestCount ?? 0
+  // 專案管理（成員與系統參數）：超級管理者、工作區管理者、專案建立者（擁有者）或專案管理者 (MANAGER)
+  const userRole = curProject?.role
+  const isProjectCreator = curProject?.isCreator ?? false
+  const canManageProject = isWorkspaceAdmin || isProjectCreator || userRole === 'MANAGER'
 
   // 成員、系統參數、帳號設定、系統管理、外觀、登出都收在右上角的頭像底下
   // （見 components/UserMenu.tsx）。前兩項只有人在專案裡的時候才給 ——

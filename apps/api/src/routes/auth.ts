@@ -160,22 +160,16 @@ export default async function authRoutes(app: FastifyInstance) {
     const user = await authenticate(req)
     const isSuper = await isSuperAdmin(user)
     const rawWorkspaces = await sql<{
-      id: string; name: string; slug: string; role: string; hasCreatedProject: boolean; hasManagedProject: boolean
+      id: string; name: string; slug: string; role: string
     }[]>`
-      SELECT w.id, w.name, w.slug, m.role,
-             EXISTS (SELECT 1 FROM project p WHERE p.workspace_id = w.id AND p.created_by = ${user.id}) AS "hasCreatedProject",
-             EXISTS (SELECT 1 FROM project p JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${user.id} WHERE p.workspace_id = w.id AND pm.role = 'MANAGER') AS "hasManagedProject"
+      SELECT w.id, w.name, w.slug, m.role
       FROM workspace w
       JOIN workspace_member m ON m.workspace_id = w.id AND m.user_id = ${user.id}
       ORDER BY w.created_at`
 
     const workspaces = rawWorkspaces.map(w => {
-      let role = w.role
-      if (isSuper || w.role === 'OWNER' || w.hasCreatedProject) {
-        role = 'OWNER'
-      } else if (w.role === 'ADMIN' || w.hasManagedProject) {
-        role = 'ADMIN'
-      }
+      // 只有全域超級管理者或真正的工作區 OWNER/ADMIN 享有系統級最高角色
+      const role = isSuper ? 'OWNER' : w.role
       return { id: w.id, name: w.name, slug: w.slug, role }
     })
     return { user, workspaces }

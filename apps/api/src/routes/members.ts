@@ -190,10 +190,14 @@ export default async function memberRoutes(app: FastifyInstance) {
       ORDER BY u.display_name`
     const isSuper = await isSuperAdmin(user)
     return {
-      members: members.map(m => ({ ...m, isCreator: m.id === p.created_by })),
+      members: members.map(m => ({
+        ...m,
+        isCreator: m.id === p.created_by,
+        role: m.id === p.created_by ? 'MANAGER' : m.role,
+      })),
       createdBy: p.created_by,
-      canManage: isSuper || role === 'MANAGER',
-      canTransferOwnership: isSuper || role === 'MANAGER' || user.id === p.created_by,
+      canManage: isSuper || role === 'MANAGER' || user.id === p.created_by,
+      canTransferOwnership: isSuper || user.id === p.created_by,
     }
   })
 

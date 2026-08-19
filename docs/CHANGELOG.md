@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-168` | 2026-08-19 | [權限校正：嚴格劃分環境變數超級管理者、專案擁有者（建立者）與專案管理者之權限邊界](#cr-168) | `lib/auth.ts`, `routes/auth.ts`, `routes/projects.ts`, `routes/members.ts`, `App.tsx` | 已驗證 |
 | `CR-167` | 2026-08-19 | [介面排版：所有視圖（側欄、成員、週檢視、詳情子任務）之警示徽章統一折行置於下一行，避免橫向變長與溢出](#cr-167) | `EpicSidebar.tsx`, `Members.tsx`, `Week.tsx`, `TaskDrawer.tsx` | 已驗證 |
 | `CR-166` | 2026-08-19 | [帳號權限：修復專案建立者與管理者於系統管理頁誤顯為成員 Bug，全面升級回傳正確擁有者/管理者身分](#cr-166) | `lib/auth.ts`, `routes/auth.ts`, `routes/account.ts`, `AdminPanel.tsx`, `App.tsx` | 已驗證 |
 | `CR-165` | 2026-08-19 | [AI 技能與自動化：實作 GET /api/v1/skills 端點與右上角「AI 串接指令」一鍵複製 Prompt 彈窗](#cr-165) | `skills.ts`, `index.ts`, `AiSkillModal.tsx`, `UserMenu.tsx`, `App.tsx`, `AccountPanel.tsx` | 已驗證 |
@@ -225,6 +226,16 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-168"></a>CR-168 (2026-08-19) — 權限校正：嚴格劃分環境變數超級管理者、專案擁有者（建立者）與專案管理者之權限邊界
+
+- **使用者需求**：明確區分環境變數（`PMFLOW_ADMIN_EMAIL`）指定的**超級管理者**與一般專案之**專案擁有者（建立者）/ 管理者**，禁止將一般專案建立者誤提升為全域工作區擁有者。
+- **權限邊界校正**：
+  1. **全域超級管理者（Super Admin）**：僅當使用者 email 符合 `PMFLOW_ADMIN_EMAIL` / `PMFLOW_ADMIN_EMAILS` 時，在工作區層級享有 `OWNER`，在全系統所有專案自動享有 `MANAGER` 最高權限。
+  2. **專案擁有者（Project Owner / Creator）**：專案建立者（`p.created_by`），在該專案內享有最高管理權（`MANAGER`）與專屬「👑 轉移專案擁有權」特權，不可被踢出或降級；在工作區層級維持一般成員。
+  3. **專案管理者（Project Manager）**：在該專案內角色為 `MANAGER`，可維護參數、審核加入申請與管理專案成員，但不能轉移專案擁有權。
+  4. **專案成員（Editor / Viewer）**：一般編輯與唯讀成員。
+- **異動模組**：`lib/auth.ts`, `routes/auth.ts`, `routes/projects.ts`, `routes/members.ts`, `App.tsx`。
 
 ### <a id="cr-167"></a>CR-167 (2026-08-19) — 介面排版：所有視圖（側欄、成員、週檢視、詳情子任務）之警示徽章統一折行置於下一行，避免橫向變長與溢出
 

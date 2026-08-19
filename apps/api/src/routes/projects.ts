@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
-import { authenticate, requireProjectRole } from '../lib/auth.js'
+import { authenticate, requireProjectRole, isSuperAdmin } from '../lib/auth.js'
 import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, forbidden, notFound } from '../lib/errors.js'
 import { listProjectParams, DEFAULT_PARAMS } from './parameters.js'
@@ -57,24 +57,31 @@ export default async function projectRoutes(app: FastifyInstance) {
 
   app.get('/projects', async req => {
     const user = await authenticate(req)
+    const isSuper = await isSuperAdmin(user)
     const rows = await sql`
       SELECT p.id, p.workspace_id AS "workspaceId", p.key, p.name, p.description,
              p.color, p.status, p.start_date AS "startDate", p.end_date AS "endDate",
-             p.rank, pm.role, p.is_public AS "isPublic",
+             p.rank,
+             CASE
+               WHEN ${isSuper} = true OR p.created_by = ${user.id} OR pm.role = 'MANAGER' THEN 'MANAGER'
+               ELSE coalesce(pm.role, 'VIEWER')
+             END AS role,
+             p.is_public AS "isPublic",
              (p.created_by = ${user.id}) AS "isCreator",
              (SELECT count(*) FROM task t
                WHERE t.project_id = p.id AND t.deleted_at IS NULL)::int AS "taskCount",
              (SELECT count(*) FROM task t
                WHERE t.project_id = p.id AND t.deleted_at IS NULL
                  AND t.inquiry_state = 'OVERDUE')::int AS "overdueInquiryCount",
-             -- 待審的加入申請。不是這個專案的管理者就一律 0，
-             -- 免得別人也看到有人在敲門（能處理的人才需要被提醒）
+             -- 待審的加入申請。專案建立者（擁有者）、專案管理者或超級管理者可看見申請提醒
              (SELECT count(*) FROM project_join_request r
                WHERE r.project_id = p.id AND r.status = 'PENDING'
-                 AND pm.role = 'MANAGER')::int AS "pendingJoinRequestCount"
+                 AND (${isSuper} = true OR p.created_by = ${user.id} OR pm.role = 'MANAGER'))::int AS "pendingJoinRequestCount"
       FROM project p
-      JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${user.id}
+      LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${user.id}
+      LEFT JOIN workspace_member wm ON wm.workspace_id = p.workspace_id AND wm.user_id = ${user.id}
       WHERE p.archived_at IS NULL
+        AND (${isSuper} = true OR wm.role IN ('OWNER', 'ADMIN') OR p.created_by = ${user.id} OR pm.user_id IS NOT NULL)
       ORDER BY p.rank, p.created_at`
     return { projects: rows }
   })
@@ -235,7 +242,10 @@ export default async function projectRoutes(app: FastifyInstance) {
       SELECT workspace_id, created_by FROM project WHERE id = ${req.params.id}`
     if (!p) throw notFound('找不到專案')
 
-    const { role } = await requireProjectRole(user.id, req.params.id, 'MANAGER')
+    const isSuper = await isSuperAdmin(user)
+    if (!isSuper && p.created_by !== user.id) {
+      throw forbidden('只有專案擁有者（建立者）或超級管理者可以轉移專案擁有權')
+    }
 
     const [targetUser] = await sql<{ id: string; display_name: string }[]>`
       SELECT id, display_name FROM app_user WHERE id = ${newOwnerId} AND status = 'ACTIVE'`
