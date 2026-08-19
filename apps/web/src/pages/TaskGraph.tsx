@@ -1127,6 +1127,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const lastFocusedTsRef = useRef<number>(0)
+  const connectStartRef = useRef<{ nodeId: string | null; handleId: string | null; handleType: string | null } | null>(null)
 
   // 僅限於從左側 Menu 點擊項目時，才觸發關聯圖鏡頭平滑移動並聚焦至該目標；點擊「全部任務」時觸發顯示全部
   useEffect(() => {
@@ -2046,7 +2047,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       if (savedStr) savedMap = JSON.parse(savedStr)
     } catch {}
 
-    const taskIds = new Set((tasks ?? []).map((t) => t.id))
+    const taskIds = new Set(((graphData as any).nodes ?? tasks ?? []).map((t: any) => t.id))
     const linkList = (graphData as any).edges || (graphData as any).links || []
     const realEdges: Edge[] = linkList
       .filter((e: any) => taskIds.has(e.sourceId) && taskIds.has(e.targetId))
@@ -2068,8 +2069,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           markerEnd,
         }
       })
-    setEdges(realEdges)
-  }, [graphData, projectId])
+
+    setEdges((prevEds) => {
+      // 保留正在連線或尚未包含在本次 graphData 中的樂觀連線 (xy-edge__)，防止連續連線時被舊的 queryData 衝掉
+      const pendingOptimistic = prevEds.filter((e) =>
+        e.id.startsWith('xy-edge__') &&
+        !realEdges.some((re) =>
+          re.source === e.source && re.target === e.target &&
+          re.sourceHandle === e.sourceHandle && re.targetHandle === e.targetHandle
+        )
+      )
+      return [...realEdges, ...pendingOptimistic]
+    })
+  }, [graphData, projectId, tasks])
 
   // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView
   useEffect(() => {
@@ -2754,9 +2766,38 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     [nodes]
   )
 
+  const onConnectStart = useCallback(
+    (_e: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
+      connectStartRef.current = {
+        nodeId: params?.nodeId ?? null,
+        handleId: params?.handleId ?? null,
+        handleType: params?.handleType ?? null,
+      }
+    },
+    []
+  )
+
   const onConnect = useCallback(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target || connection.source === connection.target) return
+    (params: Connection) => {
+      if (!params.source || !params.target || params.source === params.target) return
+
+      // 若使用者是從 target 類型接點起拉，React Flow 會將 source 與 target 顛倒
+      // 依據實際按下滑鼠的起點換回正確方向，確保箭頭永遠位於滑鼠放開的終點端（支援右到左、下到上等任意方向）
+      const startInfo = connectStartRef.current
+      const startedAtTarget =
+        startInfo?.nodeId === params.target &&
+        (!startInfo.handleId || startInfo.handleId === params.targetHandle)
+
+      const connection: Connection = startedAtTarget
+        ? {
+            source: params.target,
+            sourceHandle: params.targetHandle,
+            target: params.source,
+            targetHandle: params.sourceHandle,
+          }
+        : params
+
+      connectStartRef.current = null
 
       const sHandle = connection.sourceHandle ?? undefined
       const tHandle = connection.targetHandle ?? undefined
@@ -2774,7 +2815,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const targetParent = targetNode?.parentId
 
       // Ref: CR-131
-
       if (
         (sourceParent && sourceParent !== targetParent) ||
         (targetParent && targetParent !== sourceParent)
@@ -2790,36 +2830,27 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const existingEdge = edges.find(
         (e) =>
-          (String(e.source) === sId && String(e.target) === tId) ||
-          (String(e.source) === tId && String(e.target) === sId)
+          String(e.source) === sId && String(e.target) === tId &&
+          e.sourceHandle === sHandle && e.targetHandle === tHandle
       )
 
-      if (existingEdge) {
-        // 如果兩節點間已有關聯，更新接點 (Handle) 方向與樣式至後端資料庫
-        Api.patchLink(existingEdge.id, { sourceHandle: sHandle ?? null, targetHandle: tHandle ?? null })
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
-          })
-          .catch(() => {})
+      if (existingEdge) return
 
-        const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
-        setEdges((eds) =>
-          eds.map((e) =>
-            e.id === existingEdge.id
-              ? {
-                  ...e,
-                  source: connection.source!,
-                  target: connection.target!,
-                  sourceHandle: sHandle,
-                  targetHandle: tHandle,
-                  style,
-                  markerEnd,
-                }
-              : e
-          )
+      const tempId = `xy-edge__${sId}${sHandle ?? ''}-${tId}${tHandle ?? ''}`
+      const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            id: tempId,
+            type: 'orthogonal',
+            animated: true,
+            style,
+            markerEnd,
+          },
+          eds
         )
-        return
-      }
+      )
 
       if (connection.source && connection.target) {
         Api.addLink(connection.source, {
@@ -2832,7 +2863,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             if (newLink?.id) {
               setEdges((eds) =>
                 eds.map((e) =>
-                  e.source === connection.source && e.target === connection.target && e.id.startsWith('xy-edge__')
+                  (e.id === tempId || (e.source === connection.source && e.target === connection.target && e.id.startsWith('xy-edge__')))
                     ? { ...e, id: newLink.id }
                     : e
                 )
@@ -2844,23 +2875,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           })
           .catch((err) => {
             console.error('Failed to add link in DB:', err)
+            setEdges((eds) => eds.filter((e) => e.id !== tempId))
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
           })
       }
-
-      const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...connection,
-            type: 'orthogonal',
-            animated: true,
-            style,
-            markerEnd,
-          },
-          eds
-        )
-      )
     },
     [nodes, edges, projectId, queryClient]
   )
@@ -3544,6 +3562,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             onEdgesChange={onEdgesChange}
             onEdgesDelete={onEdgesDelete}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
             onEdgeClick={onEdgeClick}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={(_, node) => {

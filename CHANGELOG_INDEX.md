@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Strict Role Hierarchy Calibration — Super Admin vs Project Owner/Manager (CR-168)
+### Latest Changes: Fix Dependency Line Loss on Multi-Card Connections (CR-169)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **關聯線連續接入防消失 (`CR-169`)**：
+       - 補齊 `onConnectStart` 接點追蹤與方向換回，防止從 Target 接點起拉時方向反轉觸發循環依賴或錯誤覆蓋。
+       - 修復 `realEdges` 狀態更新時樂觀連線 (`pendingOptimistic`) 被查詢快取提前抹除問題。
+       - 修復節點存在判定直接使用 `graphData.nodes`，避免因外部 `tasks` 刷新時差過濾掉有效連線。
+       - 精確化既有連線判定，不再誤判或覆蓋不同接點之獨立連線。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-169` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-169`。
+
+### Previous Changes: Strict Role Hierarchy Calibration — Super Admin vs Project Owner/Manager (CR-168)
 - **變更檔案**:
   - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`auth.ts (routes)`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts), [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts), [`members.ts`](file:///D:/github/pmflow/apps/api/src/routes/members.ts), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
     1. **權限層級嚴格校正 (`CR-168`)**：明確切分全域超級管理者（僅由環境變數指定，具備全站與全專案最高權限）、專案擁有者（專案建立者 `p.created_by`，具備該專案 `MANAGER` 與轉移擁有權特權，不可被踢出）、專案管理者（`MANAGER`，可維護該專案參數與成員）與專案一般成員。
