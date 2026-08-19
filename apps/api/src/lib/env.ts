@@ -59,7 +59,7 @@ export const env = {
    * 超級管理者 email 清單（由環境變數 PMFLOW_ADMIN_EMAIL 或 PMFLOW_ADMIN_EMAILS 指定，支援逗號分隔多個）。
    * 符合該 email 的帳號自動擁有全域最高權限，可管理任何帳號與專案擁有者。
    */
-  adminEmails: (process.env.PMFLOW_ADMIN_EMAIL ?? process.env.PMFLOW_ADMIN_EMAILS ?? '')
+  adminEmails: (process.env.PMFLOW_ADMIN_EMAIL ?? process.env.PMFLOW_ADMIN_EMAILS ?? (process.env.PMFLOW_SEED_DEMO === 'true' || !isProd ? 'yangyws@gmail.com,demo@pmflow.local' : ''))
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
   corsOrigin: req('PMFLOW_CORS_ORIGIN', 'http://localhost:5173'),
   inquiryDefaultDueDays: Number(req('PMFLOW_INQUIRY_DEFAULT_DUE_DAYS', '7')),

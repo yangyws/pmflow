@@ -47,7 +47,7 @@ services:
       PMFLOW_SEED_DEMO: "true"
       PMFLOW_ALLOW_IMPERSONATION: "true"
       PMFLOW_ALLOW_SELF_REGISTRATION: "true"
-      PMFLOW_ADMIN_EMAIL: ${PMFLOW_ADMIN_EMAIL:-}
+      PMFLOW_ADMIN_EMAIL: ${PMFLOW_ADMIN_EMAIL:-yangyws@gmail.com}
       PMFLOW_INQUIRY_DEFAULT_DUE_DAYS: "7"
       # ── 用 Google／Apple 的帳號登入 ──
       # 預設全空 = 不啟用，登入頁不會畫那兩顆按鈕（這是正常狀態）。
