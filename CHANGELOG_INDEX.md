@@ -22,7 +22,19 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: System Flow 4-Way Handles Fix (CR-158)
+### Latest Changes: Direct Text Creation, Horizontal/Vertical Axis Constraints, and 4-Way Dual Handles (CR-159 ~ CR-161)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **新增文字直接生成不彈窗 (`CR-161`)**：點擊「新增文字」直接在畫布座標生成文字註記，移除自動呼叫 `setEditingAnnotation`，對齊流程圖簡潔體驗。
+    2. **同軸連線嚴格約束 (`CR-160`)**：透過 `isValidConnection` 嚴格限制左右接點只能連左右（排程相依）、上下接點只能連上下（階層關係），拖曳時跨軸接點即時變紅且無法放置。
+    3. **四向雙向接點池 (`CR-159`)**：四向同時註冊 in / out 雙向接點，徹底消除端點角色不匹配問題。
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **全框體四向雙向接點元件 (`FourWayHandles`, `CR-159`)**：為步驟卡片、模組容器盒、區域標示框、文字註記全數配置四向雙向接點。
+    2. **區域標示框層級與穿透事件修復 (`CR-159`)**：`frame` 的接點啟用 `pointer-events-auto` 與 `zIndex: 0`，支援四向自由互相拉線。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-159`、`CR-160` 與 `CR-161` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-161`。
+
+### Previous Changes: System Flow 4-Way Handles Fix (CR-158)
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx): 移除 `onConnect` 內強行覆寫接點為 `right-out`/`bottom-out` 的 `toOutHandle` / `toInHandle` 邏輯，並統一容器盒接點 ID，實現四向任意出發與連入。
   - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-158` 條目。
