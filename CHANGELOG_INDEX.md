@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Global Warning Badges Real-Time Sync & Bug Ticket Date Exemption (CR-162)
+### Latest Changes: Parallel Badge Real-Time Clear on Edge Deletion (CR-163)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **並行狀態動態綁定與即時清除 (`CR-163`)**：在 `nodesWithHandlers` 中即時從 `parallelMap` 取得最新 `parallelInfo`，並將 `isParallel` 與 `parallelPeers` 納入快取鍵比對與依賴陣列。當刪除其中一條並行關聯線（已無多線匯合）時，卡片與收納盒上的「⚡並行」警示徽章即時自動清除。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-163` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-163`。
+
+### Previous Changes: Global Warning Badges Real-Time Sync & Bug Ticket Date Exemption (CR-162)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **收納盒受阻與各類警示即時同步刷新 (`CR-162`)**：保留收納盒自身 `blockedBy` 依賴關係，建立連線受阻時即時亮起「⛔ 卡住」；盒內子卡片受阻時即時刷新「⛔ 卡住 N」計數。

@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-163` | 2026-08-19 | [任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章](#cr-163) | `TaskGraph.tsx` | 已驗證 |
 | `CR-162` | 2026-08-19 | [全域警示徽章同步刷新：收納盒連線受阻即時警示、卡住/問題/逾期/逾回同時顯示、問題單免設起訖日](#cr-162) | `TaskGraph.tsx`, `EpicSidebar.tsx`, `TaskDrawer.tsx`, `Board.tsx`, `List.tsx`, `ui.tsx`, `strings/inquiry.ts`, `strings/flow.ts` | 已驗證 |
 | `CR-161` | 2026-08-18 | [任務關聯圖：點擊「新增文字」直接在畫布生成文字註記，不再主動彈出色票/編輯視窗（對齊流程圖行為）](#cr-161) | `TaskGraph.tsx`, `CODEMAP.md` | 已驗證 |
 | `CR-160` | 2026-08-18 | [任務關聯圖：嚴格限制左右接點只能連左右（排程相依）、上下接點只能連上下（階層關係），透過 isValidConnection 即時約束](#cr-160) | `TaskGraph.tsx`, `CODEMAP.md` | 已驗證 |
@@ -220,6 +221,16 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-163"></a>CR-163 (2026-08-19) — 任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章
+
+- **問題症狀**：多條並行關聯線匯入同一目標卡片或收納盒時，卡片會顯示「⚡並行」徽章；當使用者刪除其中一條關聯線（僅剩 1 條或 0 條連線，已無並行匯合）時，卡片上的「⚡並行」警示徽章仍殘留未被清除。
+- **根本原因**：
+  1. `TaskGraph.tsx` 中 `parallelMap` 雖會隨 `edges` 變化重新計算，但節點衍生函式 `nodesWithHandlers` 內部未將 `parallelMap.get(node.id)` 動態注入節點資料（`built.data.isParallel` 與 `parallelPeers`）。
+  2. 節點快取比對鍵（`derivedNodeCacheRef` key）中未包含 `isParallel` 與 `parallelPeers`，且 `nodesWithHandlers` 依賴項未包含 `parallelMap`，導致刪線後命中舊快取殘留初始並行狀態。
+- **修復方式**：
+  1. 在 `TaskGraph.tsx` 的 `nodesWithHandlers` 中，即時從 `parallelMap` 取得最新 `parallelInfo`，動態綁定 `isParallel` 與 `parallelPeers`。
+  2. 將 `isParallel`、`parallelPeers` 與 `parallelMap` 完整納入快取鍵比對與 `useMemo` 依賴陣列，刪線或加線時即時重新計算並清除或添加「⚡並行」徽章。
 
 ### <a id="cr-162"></a>CR-162 (2026-08-19) — 全域警示徽章同步刷新：收納盒連線受阻即時警示、卡住/問題/逾期/逾回同時顯示、問題單免設起訖日
 

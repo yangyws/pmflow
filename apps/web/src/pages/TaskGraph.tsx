@@ -3407,7 +3407,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const liveInquiryAwaitingCount = isBox ? getSubtreeInquiryAwaitingCount(node.id) : 0
       const liveInquiryCount = liveInquiryOverdueCount + liveInquiryAwaitingCount
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isBox}`
+      // 動態由 parallelMap 取得最新並行狀態，連線刪除時即時歸零並移除徽章
+      const parallelInfo = parallelMap.get(node.id)
+      const isParallel = !!parallelInfo?.isParallel
+      const parallelPeers = parallelInfo?.peers
+
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${isBox}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3443,6 +3448,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           inquiryOverdueCount: isBox ? liveInquiryOverdueCount : (node.data?.inquiryState === 'OVERDUE' ? 1 : 0),
           inquiryAwaitingCount: isBox ? liveInquiryAwaitingCount : (node.data?.inquiryState === 'AWAITING' || node.data?.inquiryState === 'PARTIAL' ? 1 : 0),
           inquiryCount: isBox ? liveInquiryCount : node.data?.inquiryCount,
+          isParallel,
+          parallelPeers,
           onToggleMode: handleToggleMode,
         },
       }
@@ -3452,7 +3459,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
