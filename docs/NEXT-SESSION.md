@@ -41,6 +41,12 @@ docker compose -f docker-compose.dev.yml up -d
 
 ## 最近完成的項目（最新進度）
 
+- **AI 技能探索端點與一鍵複製 Prompt 彈窗 (`CR-165`)**：新增 `GET /api/v1/skills` 端點回傳專案結構與完整 API 規格；在右上角選單加入「🤖 AI 串接指令」Modal，支援一鍵複製自動帶入 Token 與專案 ID 之 Prompt。
+- **超級管理者環境變數與擁有者轉移 (`CR-164`)**：支援透過 `PMFLOW_ADMIN_EMAIL` 指定全域最高管理員，開放專案擁有者轉移 (`transfer-ownership`) 與帳號停用/註銷最高權限。
+- **任務關聯圖並行警示即時解除 (`CR-163`)**：刪除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章。
+- **全域警示徽章同步刷新 (`CR-162`)**：收納盒連線受阻即時警示、卡住/問題/逾期/逾回同時並存顯示、問題單免設起訖日。
+- **任務關聯圖文字註記直接生成 (`CR-161`)**：點擊「新增文字」直接在畫布生成文字註記，不再彈出全螢幕對話框。
+- **同軸連線約束 (`CR-160`)**：嚴格限制左右接點連左右（排程相依）、上下接點連上下（階層關係）。
 - **系統流程圖接點自由連線與 Handles 統一 (`CR-158`)**：移除 `onConnect` 內部 `toOutHandle` / `toInHandle` 的強制重寫邏輯，並統一容器盒接點 ID，支援四向任意互相出發與連入。
 - **任務關聯圖卡片初始給定尺寸與 measured (`CR-157`)**：卡片在第 0 幀缺少 `width/height` 與 `measured` 物件導致 React Flow 未預先計算 `handleBounds`，修復為卡片一律帶入初始 `width: 256`, `height: 90` 與 `measured`，首次進入關聯圖十字標拉線 100% 立即響應。
 - **兩張圖接點標準化為 Left/Top target 與 Right/Bottom source (`CR-156`)**：設定 `isConnectableStart={true}` 與 `isConnectableEnd={true}`，註冊完整雙向接點池，支援四向任意出發與連入。
