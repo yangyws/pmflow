@@ -157,7 +157,9 @@ export default function App() {
 
   const workspaceId = workspaces[0]?.id ?? projects[0]?.workspaceId ?? ''
   // 專案/系統管理者（ADMIN / MANAGER / OWNER）皆可看到「系統管理 / 成員停用與註銷」功能
-  const isWorkspaceAdmin = workspaces.some(w => ['OWNER', 'ADMIN', 'MANAGER'].includes(w.role?.toUpperCase() ?? '')) || projects.some(p => ['OWNER', 'ADMIN', 'MANAGER'].includes(p.role?.toUpperCase() ?? ''))
+  const isOwner = workspaces.some(w => w.role?.toUpperCase() === 'OWNER') || projects.some(p => p.role?.toUpperCase() === 'OWNER')
+  const isWorkspaceAdmin = isOwner || workspaces.some(w => ['ADMIN', 'MANAGER'].includes(w.role?.toUpperCase() ?? '')) || projects.some(p => ['OWNER', 'ADMIN', 'MANAGER'].includes(p.role?.toUpperCase() ?? ''))
+  const myAdminRole: WorkspaceRole = isOwner ? 'OWNER' : (isWorkspaceAdmin ? 'ADMIN' : ((workspaces[0]?.role ?? 'MEMBER') as WorkspaceRole))
   const pendingJoins = projects.find(p => p.id === projectId)?.pendingJoinRequestCount ?? 0
   // 系統參數是「改這個專案的規則」，預設允許管理者與專案成員進行維護
   const userRole = projects.find(p => p.id === projectId)?.role
@@ -205,7 +207,7 @@ export default function App() {
           {account === 'profile'
             ? <AccountPanel />
             : <AdminPanel workspaceId={workspaceId}
-                          myRole={(workspaces[0]?.role ?? 'MEMBER') as WorkspaceRole} />}
+                          myRole={myAdminRole} />}
         </div>
         <AiSkillModal
           open={showAiSkillModal}

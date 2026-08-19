@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-166` | 2026-08-19 | [帳號權限：修復專案建立者與管理者於系統管理頁誤顯為成員 Bug，全面升級回傳正確擁有者/管理者身分](#cr-166) | `lib/auth.ts`, `routes/auth.ts`, `routes/account.ts`, `AdminPanel.tsx`, `App.tsx` | 已驗證 |
 | `CR-165` | 2026-08-19 | [AI 技能與自動化：實作 GET /api/v1/skills 端點與右上角「AI 串接指令」一鍵複製 Prompt 彈窗](#cr-165) | `skills.ts`, `index.ts`, `AiSkillModal.tsx`, `UserMenu.tsx`, `App.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-164` | 2026-08-19 | [權限與專案管理：支援 PMFLOW_ADMIN_EMAIL 指定全域超級管理者，開放專案擁有者轉移與帳號註銷管理最高權限](#cr-164) | `env.ts`, `auth.ts`, `account.ts`, `projects.ts`, `members.ts`, `MembersPanel.tsx`, `AdminPanel.tsx`, `api.ts`, `.env.example`, `docker-compose*.yml` | 已驗證 |
 | `CR-163` | 2026-08-19 | [任務關聯圖：移除同時關聯線時，卡片與收納盒即時解除「⚡並行」警示徽章](#cr-163) | `TaskGraph.tsx` | 已驗證 |
@@ -223,6 +224,20 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-166"></a>CR-166 (2026-08-19) — 帳號權限：修復專案建立者與管理者於系統管理頁誤顯為成員 Bug，全面升級回傳正確擁有者/管理者身分
+
+- **問題症狀**：使用者身為超級管理員或專案建立者（擁有者）/ 專案管理者，進入「系統管理」面板時，頂部身分徽章卻顯示「你的身分：成員」，且「🛡️ 指派管理者」標籤頁被隱藏。
+- **根本原因**：
+  1. 後端 `requireWorkspaceAdmin` 先前對專案建立者或管理者放行時，仍回傳使用者在 `workspace_member` 的原始角色（`MEMBER`），導致 `GET /admin/users` 的 `myRole` 為 `MEMBER`。
+  2. `GET /auth/me` 在查詢使用者的 `workspaces` 時未檢查 `hasCreatedProject` / `hasManagedProject` 與 `isSuperAdmin`，回傳了舊的 `MEMBER` 角色，導致前端 `App.tsx` 傳給 `AdminPanel` 的 `myRole` 亦為 `MEMBER`。
+- **修復方式**：
+  1. **後端角色智慧升級 (`lib/auth.ts`, `routes/auth.ts`, `routes/account.ts`)**：
+     - 在 `requireWorkspaceAdmin` 與 `requireWorkspaceOwner` 中，專案建立者與超級管理者一律解析為 `OWNER`，專案管理者解析為 `ADMIN`。
+     - 在 `GET /auth/me` 中，自動依據 `hasCreatedProject` / `hasManagedProject` / `isSuperAdmin` 映射出 `OWNER` / `ADMIN` 之正確工作區角色。
+  2. **前端身分計算與面板解鎖 (`App.tsx`, `AdminPanel.tsx`)**：
+     - `App.tsx` 正確計算使用者的最高有效角色（`myAdminRole`）傳入 `AdminPanel`。
+     - 系統管理標頭即時呈現 `你的身分：擁有者` 或 `你的身分：管理者`，並解鎖擁有者專屬管理標籤與完整帳號管理操作。
 
 ### <a id="cr-165"></a>CR-165 (2026-08-19) — AI 技能與自動化：實作 GET /api/v1/skills 端點與右上角「AI 串接指令」一鍵複製 Prompt 彈窗
 

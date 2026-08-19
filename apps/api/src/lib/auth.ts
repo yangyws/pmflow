@@ -350,20 +350,26 @@ export async function requireWorkspaceAdmin(
 ): Promise<{ role: WorkspaceRole }> {
   if (await isSuperAdmin(userId)) return { role: 'OWNER' }
   const { role } = await requireWorkspaceMember(userId, workspaceId)
-  if (role === 'ADMIN' || role === 'OWNER') {
-    return { role: role as WorkspaceRole }
+  if (role === 'OWNER') return { role: 'OWNER' }
+  if (role === 'ADMIN') return { role: 'ADMIN' }
+
+  // 若使用者的 workspace_member.role 不是 OWNER/ADMIN，但為該工作區內專案的建立者（擁有者）或管理者，亦賦予相應角色
+  const [projectOwner] = await sql<{ id: string }[]>`
+    SELECT p.id FROM project p
+    WHERE p.workspace_id = ${workspaceId} AND p.created_by = ${userId}
+    LIMIT 1`
+  if (projectOwner) {
+    return { role: 'OWNER' }
   }
 
-  // 若使用者的 workspace_member.role 不是 OWNER/ADMIN，但為該工作區內任一專案的 MANAGER（專案管理者），亦放行
   const [projectManager] = await sql<{ id: string }[]>`
     SELECT p.id FROM project p
-    LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
-    WHERE p.workspace_id = ${workspaceId}
-      AND (pm.role = 'MANAGER' OR p.created_by = ${userId})
+    JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
+    WHERE p.workspace_id = ${workspaceId} AND pm.role = 'MANAGER'
     LIMIT 1`
 
   if (projectManager) {
-    return { role: role as WorkspaceRole }
+    return { role: 'ADMIN' }
   }
 
   throw forbidden('這個操作需要工作區管理者、擁有者或專案管理者權限')
@@ -375,8 +381,18 @@ export async function requireWorkspaceOwner(
 ): Promise<{ role: WorkspaceRole }> {
   if (await isSuperAdmin(userId)) return { role: 'OWNER' }
   const { role } = await requireWorkspaceMember(userId, workspaceId)
-  if (role !== 'OWNER') throw forbidden('只有工作區的擁有者可以指派管理者')
-  return { role: role as WorkspaceRole }
+  if (role === 'OWNER') return { role: 'OWNER' }
+
+  // 專案建立者亦視同專案層級之擁有者
+  const [projectOwner] = await sql<{ id: string }[]>`
+    SELECT p.id FROM project p
+    WHERE p.workspace_id = ${workspaceId} AND p.created_by = ${userId}
+    LIMIT 1`
+  if (projectOwner) {
+    return { role: 'OWNER' }
+  }
+
+  throw forbidden('只有工作區的擁有者可以指派管理者')
 }
 
 /**

@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: AI Skill Discovery Endpoint & One-Click Prompt Modal (CR-165)
+### Latest Changes: Effective Admin & Owner Role Resolution for Creators (CR-166)
+- **變更檔案**:
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts), [`auth.ts (routes)`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts), [`account.ts`](file:///D:/github/pmflow/apps/api/src/routes/account.ts):
+    1. **工作區與專案管理者角色升級 (`CR-166`)**：在 `requireWorkspaceAdmin`、`requireWorkspaceOwner` 與 `GET /auth/me` 中，自動將超級管理員、專案建立者（擁有者）與專案管理者識別為 `OWNER` / `ADMIN`，不再誤回傳 `MEMBER`。
+  - [`AdminPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AdminPanel.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **系統管理身分徽章與功能解鎖 (`CR-166`)**：正確計算最高管理者身分，系統管理標頭即時顯示 `你的身分：擁有者` 或 `你的身分：管理者`，並解鎖「🛡️ 指派管理者」與帳號停用/註銷權限。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-166` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-166`。
+
+### Previous Changes: AI Skill Discovery Endpoint & One-Click Prompt Modal (CR-165)
 - **變更檔案**:
   - [`skills.ts`](file:///D:/github/pmflow/apps/api/src/routes/skills.ts), [`index.ts`](file:///D:/github/pmflow/apps/api/src/index.ts):
     1. **AI 技能探索端點 (`GET /api/v1/skills`, `CR-165`)**：新增 AI Agent 規格探索路由，自動回傳使用者可操作之所有專案、自訂狀態、自訂任務種類 (types)、優先度 (priorities)、成員與完整 CRUD / Link / Inquiry / Ownership API 規格與 JSON Schema。
