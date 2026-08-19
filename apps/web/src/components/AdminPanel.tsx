@@ -400,6 +400,7 @@ function UserRow({
  * 後端也不會回那些欄位，不是前端自己藏起來的。
  */
 function OwnerPanel({ workspaceId }: { workspaceId: string }) {
+  const { user } = useAuth()
   const qc = useQueryClient()
   const [err, setErr] = useState<string | null>(null)
 
@@ -462,7 +463,13 @@ function OwnerPanel({ workspaceId }: { workspaceId: string }) {
                   {u.isOwner && (
                     <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700
                                      dark:bg-blue-500/15 dark:text-blue-300">
-                      {O.meOwner}
+                      {u.id === user?.id ? O.meOwner : '擁有者'}
+                    </span>
+                  )}
+                  {u.id === user?.id && !u.isOwner && (
+                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700
+                                     dark:bg-blue-500/15 dark:text-blue-300">
+                      {A.me}
                     </span>
                   )}
                   {u.isAdmin && (
