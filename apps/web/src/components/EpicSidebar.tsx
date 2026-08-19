@@ -265,7 +265,20 @@ export function EpicSidebar({
     return map
   }, [tasks, graphData])
 
-  const { epics, lastContainerBoxId, stat, looseCount, childrenOf, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet } = useMemo(() => {
+  const {
+    epics,
+    lastContainerBoxId,
+    stat,
+    looseCount,
+    childrenOf,
+    bugsUnder,
+    taskOverdueIn,
+    inquiryOverdueIn,
+    inquiriesAwaitingIn,
+    blockedIn,
+    dividerAfterTaskIdSet,
+    today,
+  } = useMemo(() => {
     const edges = graphData?.edges ?? []
     const ids = new Set(tasks.map(t => t.id))
     const containerBoxSet = (() => {
@@ -322,53 +335,73 @@ export function EpicSidebar({
       const { linkedTasks: kLinked, unlinkedTasks: kUnlinked } = divideAndSortLinked(list, edges, tasks)
       kids.set(pId, [...kLinked, ...kUnlinked])
     }
-    const overdueIn = (rootId: string): number => {
-      let n = 0
-      const walk = (id: string, seen = new Set<string>()) => {
-        if (seen.has(id)) return
-        seen.add(id)
-        const self = tasks.find(t => t.id === id)
-        if (self?.inquiryState === 'OVERDUE') n++
-        for (const k of kids.get(id) ?? []) walk(k.id, seen)
-      }
-      walk(rootId)
-      return n
-    }
-
-    /**
-     * 這一支有幾件**還沒逾期**的對外詢問（含自己）。
-     *
-     * 刻意扣掉逾期的：逾期已經有自己的徽章了，兩邊都算的話同一件事會被數兩次，
-     * 而「外 3 逾 1」也會被讀成「總共四件」。分開之後兩個數字加起來
-     * 才剛好是「這一支發出去的對外詢問」的總數。
-     *
-     * **已回覆的不算**：那件事已經完成了。這兩顆徽章同時是「還能不能結案」的
-     * 儀表板（見 AGENTS.md「還有對外詢問沒回，就不能完成」）——
-     * 把已回覆的算進來的話，任務只要問過一次就永遠有數字、永遠結不了案。
-     */
-    const inquiriesIn = (rootId: string): number => {
-      let n = 0
-      const walk = (id: string, seen = new Set<string>()) => {
-        if (seen.has(id)) return
-        seen.add(id)
-        const self = tasks.find(t => t.id === id)
-        if (self?.inquiryState === 'AWAITING' || self?.inquiryState === 'PARTIAL') n++
-        for (const k of kids.get(id) ?? []) walk(k.id, seen)
-      }
-      walk(rootId)
-      return n
-    }
+    const today = new Date().toISOString().slice(0, 10)
 
     const isTaskDone = (t?: Task) => {
       if (!t) return false
       return (t.progress ?? 0) >= 100 || t.statusKey === 'DONE'
     }
 
-    /**
-     * 這個節點**底下**有幾張未完成的問題單（不含自己）。
-     *
-     * 走完整棵子樹，統計未完成之問題單 (BUG) 數量。
-     */
+    /** 該單排程逾期 (dueDate < today 且未完成) 統計 */
+    const taskOverdueIn = (rootId: string): number => {
+      let n = 0
+      const walk = (id: string, seen = new Set<string>()) => {
+        if (seen.has(id)) return
+        seen.add(id)
+        const self = tasks.find(t => t.id === id)
+        if (self && self.dueDate && self.dueDate < today && !isTaskDone(self)) n++
+        for (const k of kids.get(id) ?? []) walk(k.id, seen)
+      }
+      walk(rootId)
+      return n
+    }
+
+    /** 對外詢問逾期 (OVERDUE 且未完成) 統計 */
+    const inquiryOverdueIn = (rootId: string): number => {
+      let n = 0
+      const walk = (id: string, seen = new Set<string>()) => {
+        if (seen.has(id)) return
+        seen.add(id)
+        const self = tasks.find(t => t.id === id)
+        if (self?.inquiryState === 'OVERDUE' && !isTaskDone(self)) n++
+        for (const k of kids.get(id) ?? []) walk(k.id, seen)
+      }
+      walk(rootId)
+      return n
+    }
+
+    /** 對外詢問待回覆 (AWAITING/PARTIAL 且未完成) 統計 */
+    const inquiriesAwaitingIn = (rootId: string): number => {
+      let n = 0
+      const walk = (id: string, seen = new Set<string>()) => {
+        if (seen.has(id)) return
+        seen.add(id)
+        const self = tasks.find(t => t.id === id)
+        if ((self?.inquiryState === 'AWAITING' || self?.inquiryState === 'PARTIAL') && !isTaskDone(self)) n++
+        for (const k of kids.get(id) ?? []) walk(k.id, seen)
+      }
+      walk(rootId)
+      return n
+    }
+
+    /** 盒內子任務受阻統計 (不含自身) */
+    const blockedIn = (rootId: string): number => {
+      let n = 0
+      const walk = (id: string, seen = new Set<string>()) => {
+        if (seen.has(id)) return
+        seen.add(id)
+        if (id !== rootId) {
+          const b = blockedByMap.get(id)
+          const self = tasks.find(t => t.id === id)
+          if (b && b.length > 0 && !isTaskDone(self)) n++
+        }
+        for (const k of kids.get(id) ?? []) walk(k.id, seen)
+      }
+      walk(rootId)
+      return n
+    }
+
+    /** 子樹未完成問題單 (BUG) 數量 (不含自身) */
     const bugsUnder = (rootId: string): number => {
       let n = 0
       const walk = (id: string, seen = new Set<string>()) => {
@@ -388,19 +421,31 @@ export function EpicSidebar({
       const prog = r?.progress ?? e.progress
       return [e.id, {
         progress: prog,
-        // 葉節點的 totalCount 是 1（自己），對大項目沒有意義，一律以子任務數為準
         done: r?.derived ? r.doneCount : (prog >= 100 ? 1 : 0),
         total: r?.derived ? r.totalCount : 1,
         hasChildren: !!r?.derived,
-        overdue: overdueIn(e.id),
+        overdue: taskOverdueIn(e.id),
         bugs: bugsUnder(e.id),
       }]
     }))
 
     const looseCount = tasks.filter(t => t.parentId && !ids.has(t.parentId)).length
 
-    return { epics, lastContainerBoxId, stat, looseCount, childrenOf: kids, bugsUnder, overdueIn, inquiriesIn, dividerAfterTaskIdSet }
-  }, [tasks, graphData, containerBoxTick])
+    return {
+      epics,
+      lastContainerBoxId,
+      stat,
+      looseCount,
+      childrenOf: kids,
+      bugsUnder,
+      taskOverdueIn,
+      inquiryOverdueIn,
+      inquiriesAwaitingIn,
+      blockedIn,
+      dividerAfterTaskIdSet,
+      today,
+    }
+  }, [tasks, graphData, containerBoxTick, blockedByMap])
 
   const relatedTaskIds = useMemo(() => {
     const activeId = selectedTaskId || selectedEpicId
@@ -654,8 +699,11 @@ export function EpicSidebar({
               statMap={stat}
               blockedByMap={blockedByMap}
               bugsUnder={bugsUnder}
-              overdueIn={overdueIn}
-              inquiriesIn={inquiriesIn}
+              taskOverdueIn={taskOverdueIn}
+              inquiryOverdueIn={inquiryOverdueIn}
+              inquiriesAwaitingIn={inquiriesAwaitingIn}
+              blockedIn={blockedIn}
+              today={today}
               types={typeList}
               expanded={expanded}
               toggle={toggle}
@@ -753,7 +801,8 @@ export function EpicSidebar({
  * 底下每一層都是同一種緊湊的樣子，再深也不會多出新花樣。
  */
 function TreeNode({
-  task, depth, projectId, childrenOf, stat, statMap, blockedByMap, bugsUnder, overdueIn, inquiriesIn, types,
+  task, depth, projectId, childrenOf, stat, statMap, blockedByMap, bugsUnder,
+  taskOverdueIn, inquiryOverdueIn, inquiriesAwaitingIn, blockedIn, today, types,
   expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
@@ -766,8 +815,11 @@ function TreeNode({
   statMap?: Map<string, { progress: number; done: number; total: number; hasChildren: boolean }>
   blockedByMap?: Map<string, string[]>
   bugsUnder: (id: string) => number
-  overdueIn: (id: string) => number
-  inquiriesIn: (id: string) => number
+  taskOverdueIn: (id: string) => number
+  inquiryOverdueIn: (id: string) => number
+  inquiriesAwaitingIn: (id: string) => number
+  blockedIn: (id: string) => number
+  today: string
   expanded: Set<string>
   toggle: (id: string) => void
   /** 新增完子任務要把這一列展開，不然看不到剛剛建的那張 */
@@ -814,22 +866,19 @@ function TreeNode({
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
 
-  /*
-   * 收著的時候標整支子樹的量，展開之後只標「這一列自己」的 ——
-   * 底下每一列都各自標著自己的數字了，上面再留一個總數，
-   * 同一個畫面就有兩層數字在互相解釋。
-   *
-   * 錯誤**不含自己**：一張錯誤本來就長得像錯誤（種類徽章、縮排位置都看得到），
-   * 旁邊再標一個「錯 1」只會讓人以為它底下還有東西。
-   * 逾期含自己 —— 那是狀態不是身分，不標就看不出來。
-   */
+  const isTaskDone = (stat ? stat.progress >= 100 : (task.progress ?? 0) >= 100) || task.statusKey === 'DONE'
+  const blockedSelf = blockedByMap?.get(task.id)
+  const childBlocked = open ? 0 : blockedIn(task.id)
   const bugs = open ? 0 : bugsUnder(task.id)
-  const overdue = open
-    ? (task.inquiryState === 'OVERDUE' ? 1 : 0)
-    : overdueIn(task.id)
-  const asked = open
-    ? (task.inquiryState === 'AWAITING' || task.inquiryState === 'PARTIAL' ? 1 : 0)
-    : inquiriesIn(task.id)
+  const taskOverdue = open
+    ? (task.dueDate && task.dueDate < today && !isTaskDone ? 1 : 0)
+    : taskOverdueIn(task.id)
+  const inqOverdue = open
+    ? (task.inquiryState === 'OVERDUE' && !isTaskDone ? 1 : 0)
+    : inquiryOverdueIn(task.id)
+  const inqAwaiting = open
+    ? ((task.inquiryState === 'AWAITING' || task.inquiryState === 'PARTIAL') && !isTaskDone ? 1 : 0)
+    : inquiriesAwaitingIn(task.id)
 
   /*
    * Ref: CR-142
@@ -909,36 +958,48 @@ function TreeNode({
               </span>
               <TypeBadge name={kindName} color={kindColor} />
 
-              {/* 警示徽章區域 */}
+              {/* 警示徽章區域：卡住、問題單、逾期、詢問全數並存不遮蔽 */}
               <div className="flex flex-wrap items-center gap-1 shrink-0">
-                {bugs === 0 && blockedByMap?.get(task.id) && blockedByMap.get(task.id)!.length > 0 && (
-                  <span title={`卡住：要等 ${blockedByMap.get(task.id)!.join('、')}`}
-                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300">
+                {blockedSelf && blockedSelf.length > 0 && (
+                  <span title={`卡住：要等 ${blockedSelf.join('、')}`}
+                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none">
                     ⛔卡住
+                  </span>
+                )}
+                {childBlocked > 0 && !blockedSelf?.length && (
+                  <span title={`盒內有 ${childBlocked} 張子任務受上游依賴阻塞`}
+                        className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none">
+                    ⛔卡住 {childBlocked}
                   </span>
                 )}
                 {bugs > 0 && (
                   <span title={T.nav.sidebar.bugsUnder(bugs)}
-                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300 select-none">
                     {T.nav.sidebar.bugBadge(bugs)}
                   </span>
                 )}
-                {asked > 0 && (
-                  <span title={T.nav.sidebar.askedUnder(asked)}
-                        className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
-                    {T.nav.sidebar.askedBadge(asked)}
+                {taskOverdue > 0 && (
+                  <span title={kids.length ? `盒內有 ${taskOverdue} 張逾期任務` : `已逾期（應到日期：${task.dueDate}）`}
+                        className="shrink-0 rounded bg-rose-100 px-1 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 select-none">
+                    ⏰逾期{kids.length && !open && taskOverdue > 1 ? ` ${taskOverdue}` : ''}
                   </span>
                 )}
-                {overdue > 0 && (
-                  <span title={T.nav.sidebar.overdueUnder(overdue)}
-                        className="shrink-0 rounded bg-red-100 px-1 text-[10px] font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">
-                    {T.nav.sidebar.overdueBadge(overdue)}
+                {inqOverdue > 0 && (
+                  <span title={kids.length ? `盒內有 ${inqOverdue} 筆對外詢問逾期未回` : '對外詢問逾期未回'}
+                        className="shrink-0 rounded bg-indigo-50 px-1 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/15 dark:text-indigo-300 select-none">
+                    📨逾回{kids.length && !open && inqOverdue > 1 ? ` ${inqOverdue}` : ''}
+                  </span>
+                )}
+                {inqAwaiting > 0 && (
+                  <span title={kids.length ? `盒內有 ${inqAwaiting} 筆對外詢問待回覆` : '對外詢問待回覆'}
+                        className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 select-none">
+                    ⏳待回{kids.length && !open && inqAwaiting > 1 ? ` ${inqAwaiting}` : ''}
                   </span>
                 )}
               </div>
 
               {/* 完成打勾：進度 100% 才能打勾 */}
-              {task.type !== 'BUG' && (stat ? stat.progress >= 100 : task.progress >= 100) && (
+              {task.type !== 'BUG' && isTaskDone && (
                 <span aria-hidden title={T.nav.sidebar.doneDot}
                       className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
               )}
@@ -1041,8 +1102,11 @@ function TreeNode({
           statMap={statMap}
           blockedByMap={blockedByMap}
           bugsUnder={bugsUnder}
-          overdueIn={overdueIn}
-          inquiriesIn={inquiriesIn}
+          taskOverdueIn={taskOverdueIn}
+          inquiryOverdueIn={inquiryOverdueIn}
+          inquiriesAwaitingIn={inquiriesAwaitingIn}
+          blockedIn={blockedIn}
+          today={today}
           types={types}
           expanded={expanded}
           toggle={toggle}

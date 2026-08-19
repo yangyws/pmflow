@@ -158,8 +158,8 @@ const INQUIRY_META: Record<InquiryState, { label: string; cls: string; icon: str
   NONE:     { label: '',                     cls: '',                                  icon: '' },
   AWAITING: { label: T.inquiry.badge.awaiting, cls: 'bg-blue-50 text-blue-700 ring-blue-600/20 '
     + 'dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30',                   icon: '⏳' },
-  OVERDUE:  { label: T.inquiry.badge.overdue, cls: 'bg-red-50 text-red-700 ring-red-600/20 '
-    + 'dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30',                      icon: '⚠️' },
+  OVERDUE:  { label: T.inquiry.badge.overdue, cls: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20 '
+    + 'dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/30',            icon: '📨' },
   PARTIAL:  { label: T.inquiry.badge.partial, cls: 'bg-amber-50 text-amber-800 ring-amber-600/20 '
     + 'dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30',                icon: '◐' },
   REPLIED:  { label: T.inquiry.badge.replied, cls: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 '

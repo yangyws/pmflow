@@ -680,28 +680,30 @@ export function TaskDrawer({
                     </Field>
                   </div>
                 )}
-                {/* 開始與結束擺在同一格，中間一個破折號 —— 它們是一段期間，不是兩個欄位 */}
-                <div className="sm:col-span-4">
-                  <Field label={`${T.task.drawer.fieldStart} – ${T.task.drawer.fieldDue}`}>
-                    {canEdit ? (
-                      <div className="flex items-center gap-2">
-                        <Input type="date" className="min-w-0 flex-1"
-                               value={form.startDate?.slice(0, 10) ?? ''}
-                               aria-label={T.task.drawer.fieldStart}
-                               onChange={e => edit({ startDate: e.target.value || null })} />
-                        <span aria-hidden className="text-slate-400 dark:text-slate-400">–</span>
-                        <Input type="date" className="min-w-0 flex-1"
-                               value={form.dueDate?.slice(0, 10) ?? ''}
-                               aria-label={T.task.drawer.fieldDue}
-                               onChange={e => edit({ dueDate: e.target.value || null })} />
-                      </div>
-                    ) : (
-                      <ReadOnlyValue>
-                        {fmtDate(form.startDate)} – {fmtDate(form.dueDate)}
-                      </ReadOnlyValue>
-                    )}
-                  </Field>
-                </div>
+                {/* 開始與結束擺在同一格，中間一個破折號 —— 問題單免設起訖日 */}
+                {form.type !== 'BUG' && data.type !== 'BUG' && (
+                  <div className="sm:col-span-4">
+                    <Field label={`${T.task.drawer.fieldStart} – ${T.task.drawer.fieldDue}`}>
+                      {canEdit ? (
+                        <div className="flex items-center gap-2">
+                          <Input type="date" className="min-w-0 flex-1"
+                                 value={form.startDate?.slice(0, 10) ?? ''}
+                                 aria-label={T.task.drawer.fieldStart}
+                                 onChange={e => edit({ startDate: e.target.value || null })} />
+                          <span aria-hidden className="text-slate-400 dark:text-slate-400">–</span>
+                          <Input type="date" className="min-w-0 flex-1"
+                                 value={form.dueDate?.slice(0, 10) ?? ''}
+                                 aria-label={T.task.drawer.fieldDue}
+                                 onChange={e => edit({ dueDate: e.target.value || null })} />
+                        </div>
+                      ) : (
+                        <ReadOnlyValue>
+                          {fmtDate(form.startDate)} – {fmtDate(form.dueDate)}
+                        </ReadOnlyValue>
+                      )}
+                    </Field>
+                  </div>
+                )}
               </div>
 
               {/* ── 轉派的交接說明 ──

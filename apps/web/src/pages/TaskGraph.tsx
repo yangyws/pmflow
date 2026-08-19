@@ -171,6 +171,8 @@ export type TaskGraphNodeData = {
   blockedCount?: number
   overdueCount?: number
   inquiryCount?: number
+  inquiryOverdueCount?: number
+  inquiryAwaitingCount?: number
   blockedBy?: string[]
   isParallel?: boolean
   parallelPeers?: string[]
@@ -334,8 +336,11 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
               {((typeof data.childCount === 'number' && data.childCount > 0) ||
                 (typeof data.problemCount === 'number' && data.problemCount > 0) ||
                 (typeof data.blockedCount === 'number' && data.blockedCount > 0) ||
+                (data.blockedBy && data.blockedBy.length > 0) ||
                 data.isParallel ||
                 (typeof data.overdueCount === 'number' && data.overdueCount > 0) ||
+                (typeof data.inquiryOverdueCount === 'number' && data.inquiryOverdueCount > 0) ||
+                (typeof data.inquiryAwaitingCount === 'number' && data.inquiryAwaitingCount > 0) ||
                 (typeof data.inquiryCount === 'number' && data.inquiryCount > 0)) && (
                 <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {typeof data.childCount === 'number' && data.childCount > 0 && (
@@ -346,14 +351,23 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                   {typeof data.problemCount === 'number' && data.problemCount > 0 && (
                     <ProblemBadge problem={data.problem || '遭遇問題'} count={data.problemCount} isBox={true} />
                   )}
-                  {typeof data.blockedCount === 'number' && data.blockedCount > 0 && (
+                  {typeof data.blockedCount === 'number' && data.blockedCount > 0 ? (
                     <span
-                      title={`盒內有 ${data.blockedCount} 張子任務受上游依賴阻塞`}
+                      title={data.blockedBy && data.blockedBy.length > 0
+                        ? `收納盒受 ${data.blockedBy.join('、')} 依賴阻塞，且盒內有 ${data.blockedCount} 張子任務受阻`
+                        : `盒內有 ${data.blockedCount} 張子任務受上游依賴阻塞`}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
                     >
                       <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge} {data.blockedCount}
                     </span>
-                  )}
+                  ) : (data.blockedBy && data.blockedBy.length > 0 && (
+                    <span
+                      title={T.flow.relationGraph.blockedCardTitle(data.blockedBy.join('、'))}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 pointer-events-none select-none"
+                    >
+                      <span aria-hidden>⛔</span>{T.flow.relationGraph.blockedBadge}
+                    </span>
+                  ))}
                   {data.isParallel && (
                     <span
                       title={T.flow.relationGraph.parallelTitle(data.parallelPeers?.join('、'))}
@@ -370,12 +384,20 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                       {T.flow.relationGraph.overdueBadge} {data.overdueCount}
                     </span>
                   )}
-                  {typeof data.inquiryCount === 'number' && data.inquiryCount > 0 && (
+                  {typeof data.inquiryOverdueCount === 'number' && data.inquiryOverdueCount > 0 && (
                     <span
-                      title={T.flow.relationGraph.inquiryTitle}
+                      title={`盒內有 ${data.inquiryOverdueCount} 筆對外詢問逾期未回`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-indigo-700 bg-indigo-50 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/15 dark:text-indigo-300 pointer-events-none select-none"
+                    >
+                      <span aria-hidden>📨</span>{T.inquiry.badge.overdue} {data.inquiryOverdueCount}
+                    </span>
+                  )}
+                  {typeof data.inquiryAwaitingCount === 'number' && data.inquiryAwaitingCount > 0 && (
+                    <span
+                      title={`盒內有 ${data.inquiryAwaitingCount} 筆對外詢問待回覆`}
                       className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                     >
-                      {T.flow.relationGraph.inquiryBadge} {data.inquiryCount}
+                      <span aria-hidden>⏳</span>{T.inquiry.badge.awaiting} {data.inquiryAwaitingCount}
                     </span>
                   )}
                 </div>
@@ -474,12 +496,20 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                     {T.flow.relationGraph.overdueBadge}
                   </span>
                 )}
-                {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL' || data.inquiryState === 'OVERDUE') && (
+                {data.inquiryState === 'OVERDUE' && (
+                  <span
+                    title={T.flow.relationGraph.inquiryOverdueTitle}
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-indigo-700 bg-indigo-50 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/15 dark:text-indigo-300 pointer-events-none select-none"
+                  >
+                    <span aria-hidden>📨</span>{T.inquiry.badge.overdue}
+                  </span>
+                )}
+                {(data.inquiryState === 'AWAITING' || data.inquiryState === 'PARTIAL') && (
                   <span
                     title={T.flow.relationGraph.inquiryTitle}
                     className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.2 text-[10px] font-medium text-blue-700 bg-blue-50 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 pointer-events-none select-none"
                   >
-                    {T.flow.relationGraph.inquiryBadge}
+                    <span aria-hidden>{data.inquiryState === 'PARTIAL' ? '◐' : '⏳'}</span>{data.inquiryState === 'PARTIAL' ? T.inquiry.badge.partial : T.inquiry.badge.awaiting}
                   </span>
                 )}
               </div>
@@ -2280,6 +2310,18 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           if (isDone) return false
           return k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL' || k.inquiryState === 'OVERDUE'
         })
+        const activeInquiryOverdueKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          return k.inquiryState === 'OVERDUE'
+        })
+        const activeInquiryAwaitingKids = kids.filter((k) => {
+          const kCat = statusCatMap.get(k.statusKey)
+          const isDone = kCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          if (isDone) return false
+          return k.inquiryState === 'AWAITING' || k.inquiryState === 'PARTIAL'
+        })
 
         newNodes.push({
           id: t.id,
@@ -2301,9 +2343,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             taskType: t.type,
             problem: problemTooltip,
             problemCount,
+            blockedBy: blockedByMap.get(t.id),
             blockedCount: activeBlockedKids.length,
             overdueCount: activeOverdueKids.length,
             inquiryCount: activeInquiryKids.length,
+            inquiryOverdueCount: activeInquiryOverdueKids.length,
+            inquiryAwaitingCount: activeInquiryAwaitingKids.length,
             childCount: kids.length,
             isOverdue: false,
             dueDate: t.dueDate,
@@ -3264,6 +3309,69 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       return result
     }
 
+    // 遞迴統計畫布上目前位於該節點子樹內的所有未完成逾期任務數量
+    const getSubtreeOverdueCount = (rootId: string): number => {
+      let count = 0
+      const visited = new Set<string>()
+      const walk = (id: string) => {
+        if (visited.has(id)) return
+        visited.add(id)
+        for (const childId of nodeChildrenMap.get(id) ?? []) {
+          const t = taskMap.get(childId)
+          if (t && t.dueDate && t.dueDate < today) {
+            const cat = statusCatMap.get(t.statusKey)
+            const isDone = cat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+            if (!isDone) count++
+          }
+          walk(childId)
+        }
+      }
+      walk(rootId)
+      return count
+    }
+
+    // 遞迴統計畫布上目前位於該節點子樹內的所有對外詢問逾期 (OVERDUE) 數量
+    const getSubtreeInquiryOverdueCount = (rootId: string): number => {
+      let count = 0
+      const visited = new Set<string>()
+      const walk = (id: string) => {
+        if (visited.has(id)) return
+        visited.add(id)
+        for (const childId of nodeChildrenMap.get(id) ?? []) {
+          const t = taskMap.get(childId)
+          if (t && t.inquiryState === 'OVERDUE') {
+            const cat = statusCatMap.get(t.statusKey)
+            const isDone = cat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+            if (!isDone) count++
+          }
+          walk(childId)
+        }
+      }
+      walk(rootId)
+      return count
+    }
+
+    // 遞迴統計畫布上目前位於該節點子樹內的所有對外詢問待回覆 (AWAITING/PARTIAL) 數量
+    const getSubtreeInquiryAwaitingCount = (rootId: string): number => {
+      let count = 0
+      const visited = new Set<string>()
+      const walk = (id: string) => {
+        if (visited.has(id)) return
+        visited.add(id)
+        for (const childId of nodeChildrenMap.get(id) ?? []) {
+          const t = taskMap.get(childId)
+          if (t && (t.inquiryState === 'AWAITING' || t.inquiryState === 'PARTIAL')) {
+            const cat = statusCatMap.get(t.statusKey)
+            const isDone = cat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
+            if (!isDone) count++
+          }
+          walk(childId)
+        }
+      }
+      walk(rootId)
+      return count
+    }
+
     const derived = nodes.map((node) => {
       const isSelected = activeSelectedId === node.id
       const isRelated = relatedSet ? relatedSet.has(node.id) : true
@@ -3277,7 +3385,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ? (nodeChildrenMap.get(node.id) ?? []).filter((cId) => (blockedByMap.get(cId)?.length ?? 0) > 0).length
           : 0
 
-      // 收納盒自身未連線且無盒內卡片受阻時，blockedCount 嚴格為 0；單張卡片則依自身是否被阻塞
+      // 收納盒自身受阻或盒內卡片受阻時皆計算 blockedCount
       const blockedCount = isBox
         ? childBlockedCount
         : nodeBlockedBy && nodeBlockedBy.length > 0
@@ -3294,7 +3402,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             : `內有 ${problemCount} 張未完成問題單：${liveProblemBugs.map((k) => k.ref || k.title).join('、')}`
           : null
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${isBox}`
+      const liveOverdueCount = isBox ? getSubtreeOverdueCount(node.id) : 0
+      const liveInquiryOverdueCount = isBox ? getSubtreeInquiryOverdueCount(node.id) : 0
+      const liveInquiryAwaitingCount = isBox ? getSubtreeInquiryAwaitingCount(node.id) : 0
+      const liveInquiryCount = liveInquiryOverdueCount + liveInquiryAwaitingCount
+
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isBox}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3321,11 +3434,15 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           isSelected,
           isRelated,
           hasSelectionActive: !!relatedSet,
-          blockedBy: isBox ? undefined : nodeBlockedBy,
+          blockedBy: nodeBlockedBy,
           blockedCount,
           problemCount,
           problem: problemTooltip,
           childCount: isBox ? liveChildCount : node.data?.childCount,
+          overdueCount: isBox ? liveOverdueCount : node.data?.overdueCount,
+          inquiryOverdueCount: isBox ? liveInquiryOverdueCount : (node.data?.inquiryState === 'OVERDUE' ? 1 : 0),
+          inquiryAwaitingCount: isBox ? liveInquiryAwaitingCount : (node.data?.inquiryState === 'AWAITING' || node.data?.inquiryState === 'PARTIAL' ? 1 : 0),
+          inquiryCount: isBox ? liveInquiryCount : node.data?.inquiryCount,
           onToggleMode: handleToggleMode,
         },
       }
@@ -3335,7 +3452,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks, project?.statuses])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, handleToggleMode, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {

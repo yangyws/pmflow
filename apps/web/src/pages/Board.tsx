@@ -370,6 +370,9 @@ function Card({
   const typeName = typeObj?.name || (task.type === 'BUG' ? '問題單' : '任務單')
   const typeColor = typeObj?.color || DEFAULT_TYPE_COLORS[task.type] || '#3178c6'
 
+  const today = new Date().toISOString().slice(0, 10)
+  const isOverdue = !!(task.dueDate && task.dueDate < today && (task.progress ?? 0) < 100 && task.statusKey !== 'DONE')
+
   return (
     <div
       onClick={() => {
@@ -410,7 +413,7 @@ function Card({
       </div>
 
       {/* 警示徽章放置於標題下方獨立一行 */}
-      {(task.inquiryState !== 'NONE' || (task.type !== 'BUG' && problemCount > 0) || (blockedBy && blockedBy.length > 0)) && (
+      {(task.inquiryState !== 'NONE' || (task.type !== 'BUG' && problemCount > 0) || (blockedBy && blockedBy.length > 0) || isOverdue) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <InquiryBadge state={task.inquiryState} />
           {task.type !== 'BUG' && problemCount > 0 && (
@@ -426,6 +429,14 @@ function Card({
               className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 select-none"
             >
               ⛔ 卡住
+            </span>
+          )}
+          {isOverdue && (
+            <span
+              title={`已逾期（應到日期：${task.dueDate}）`}
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-rose-700 bg-rose-50 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 select-none"
+            >
+              ⏰ 逾期
             </span>
           )}
         </div>

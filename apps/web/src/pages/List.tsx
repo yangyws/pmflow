@@ -486,12 +486,19 @@ export default function ListView({
                             </span>
                           )}
                           {boxProblemCount > 0 && <ProblemBadge problem={`盒內有 ${boxProblemCount} 張未完成問題單`} count={boxProblemCount} isBox={true} />}
-                          {boxBlockedCount > 0 && (
+                          {boxBlockedCount > 0 ? (
                             <span
                               title="盒內含受阻卡住之任務"
                               className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
                             >
                               ⛔ 卡住 {boxBlockedCount}
+                            </span>
+                          ) : (blockedByMap.get(t.id)?.length ?? 0) > 0 && (
+                            <span
+                              title={`卡住：要等 ${blockedByMap.get(t.id)!.join('、')}`}
+                              className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                            >
+                              ⛔ 卡住
                             </span>
                           )}
                           {boxOverdueCount > 0 && (

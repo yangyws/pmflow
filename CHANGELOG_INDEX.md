@@ -22,7 +22,23 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Direct Text Creation, Horizontal/Vertical Axis Constraints, and 4-Way Dual Handles (CR-159 ~ CR-161)
+### Latest Changes: Global Warning Badges Real-Time Sync & Bug Ticket Date Exemption (CR-162)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒受阻與各類警示即時同步刷新 (`CR-162`)**：保留收納盒自身 `blockedBy` 依賴關係，建立連線受阻時即時亮起「⛔ 卡住」；盒內子卡片受阻時即時刷新「⛔ 卡住 N」計數。
+    2. **盒內全域指標動態聚合 (`CR-162`)**：在 `nodesWithHandlers` 依即時節點樹動態統計盒內未完成問題單（`⚑ 問題 N`）、排程逾期（`⏰ 逾期 N`）、對外詢問逾期（`📨 逾回 N`）與待回覆（`⏳ 待回 N`），卡片移入移出或連線異動毫秒級刷新。
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **解除問題單遮蔽卡住徽章限制 (`CR-162`)**：移除 `bugs === 0` 互斥條件，側欄任務列與收納盒中卡住（`⛔卡住`）、問題單（`⚑ BUG`）、排程逾期（`⏰逾期`）、對外詢問逾回（`📨逾回`）與待回（`⏳待回`）全數同時並存顯示。
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **問題單（BUG）免設起訖日 (`CR-162`)**：在任務抽屜表單中，針對 `BUG` 類型隱藏「開始日 – 到期日」欄位，避免問題單被強制要求填寫工期與排程日期。
+  - [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx) & [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **看板與清單視角警示徽章對齊 (`CR-162`)**：看板卡片補齊排程逾期（`⏰ 逾期`）徽章；清單收納盒支援自身受阻與盒內受阻並存警示。
+  - [`ui.tsx`](file:///D:/github/pmflow/apps/web/src/components/ui.tsx) & [`strings/inquiry.ts`](file:///D:/github/pmflow/apps/web/src/strings/inquiry.ts):
+    1. **對外詢問徽章精簡與語意區隔 (`CR-162`)**：將對外詢問文字簡化為 2 字動作語意（`📨 逾回`、`⏳ 待回`、`◐ 部份回`、`✓ 已回`），`OVERDUE` 配置專屬靛藍色系與 📨 圖示，與排程逾期 `⏰ 逾期`（玫瑰紅）明確區隔。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-162` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-162`。
+
+### Previous Changes: Direct Text Creation, Horizontal/Vertical Axis Constraints, and 4-Way Dual Handles (CR-159 ~ CR-161)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **新增文字直接生成不彈窗 (`CR-161`)**：點擊「新增文字」直接在畫布座標生成文字註記，移除自動呼叫 `setEditingAnnotation`，對齊流程圖簡潔體驗。

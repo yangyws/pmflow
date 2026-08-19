@@ -1,11 +1,11 @@
 /** 對外詢問用到的文字。寫法見 strings/index.ts */
 export const inquiry = {
-  /** 徽章。這是整個系統最常被看到的四個字，改之前想清楚 */
+  /** 徽章。這是整個系統最常被看到的簡短文字 */
   badge: {
-    awaiting: '待回覆',
-    overdue: '逾期未回',
-    partial: '部分已回',
-    replied: '已回覆',
+    awaiting: '待回',
+    overdue: '逾回',
+    partial: '部份回',
+    replied: '已回',
   },
 
   /**

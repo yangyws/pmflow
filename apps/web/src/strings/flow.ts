@@ -81,8 +81,10 @@ export const flow = {
     parallelTitle: (peers?: string) => `並行：與 ${peers} 匯合`,
     overdueBadge: '⏰ 逾期',
     overdueTitle: (due: string) => `已逾期（應到日期：${due}）`,
-    inquiryBadge: '❓ 待回覆',
+    inquiryBadge: '⏳ 待回',
     inquiryTitle: '對外詢問待回覆',
+    inquiryOverdueBadge: '📨 逾回',
+    inquiryOverdueTitle: '對外詢問逾期未回',
     childCount: (n: number) => `內含 ${n} 張`,
 
     /** 連線 */
