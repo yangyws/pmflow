@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Inside-Box Edge Deletion & Log Gate & Blocked Icon Alignment (CR-179)
+### Latest Changes: Graph Cross-Box Link Cleanup & Boundary Enforcements (CR-180)
+- **變更檔案**:
+  - [`routes/links.ts`](file:///D:/github/pmflow/apps/api/src/routes/links.ts):
+    1. **建立關聯收納盒隔離擋關 (`CR-180`)**：新增 `source` 與 `target` 之 `parent_id` 嚴格比對，兩端父層不一致時回傳 409 Conflict 拒絕建立。
+  - [`routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **父層變更自動清理跨盒連線 (`CR-180`)**：於 `PATCH /tasks/:id` 與 `PATCH /tasks/:id/move` 在任務父層變更時，自動清除變得不合法的跨邊界關聯線。
+  - [`seed.ts`](file:///D:/github/pmflow/apps/api/src/seed.ts):
+    1. **種子資料連線校正 (`CR-180`)**：校正示範專案連線為收納盒層級連線，杜絕重置時生成跨盒連線。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-180` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-180`。
+
+### Previous Changes: Graph Inside-Box Edge Deletion & Log Gate & Blocked Icon Alignment (CR-179)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **收納盒內關聯線點擊刪除修復 (`CR-179`)**：於 `<EdgeLabelRenderer>` 頂層注入透明加粗 SVG 點擊命中線（`strokeWidth={28}`、`pointerEvents: auto`）與折點點擊觸發，解決盒內連線被父收納盒實體 DOM 攔截導致無法觸發 `onEdgeClick` 刪除線條的 Bug。

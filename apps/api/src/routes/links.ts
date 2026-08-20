@@ -45,6 +45,13 @@ export default async function linkRoutes(app: FastifyInstance) {
       [sHandle, tHandle] = [tHandle, sHandle]
     }
 
+    // 收納盒隔離規則：收納盒內的卡片不能連到收納盒外（兩端任務必須同在同一個收納盒內，或皆在頂層畫布）
+    const [srcParent] = await sql<{ parent_id: string | null }[]>`SELECT parent_id FROM task WHERE id = ${sourceId}`
+    const [tgtParent] = await sql<{ parent_id: string | null }[]>`SELECT parent_id FROM task WHERE id = ${targetId}`
+    if ((srcParent?.parent_id ?? null) !== (tgtParent?.parent_id ?? null)) {
+      throw conflict('收納盒內的任務不能連到收納盒外', '兩端任務必須位於同一收納盒內或皆在畫布外層')
+    }
+
     const link = await sql.begin(async tx => {
       // 排程類才需要擋環與階層限制；語意類（RELATES / BLOCKS…）不影響日期，不受限制
       if (isScheduling(b.linkType)) {

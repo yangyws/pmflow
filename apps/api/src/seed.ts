@@ -201,11 +201,11 @@ export async function seedDemo(): Promise<boolean> {
 
       // 預設基礎連線（包含 E2E 測試 17 所需的連動依賴 6 -> 7）
       const links: Array<[number, number, string, number]> = [
-        [2, 6, 'FS', 2],        // 需求確認完成 2 天後才採購
-        [6, 7, 'FS', 0],        // 到貨後施工（E2E 連動測試依賴）
-        [7, 9, 'SS', 0],        // 施工與測試同時起跑
-        [9, 10, 'FF', 0],       // 測試與切換同時收尾
-        [3, 4, 'RELATES', 0],   // 語意關聯
+        [1, 5, 'FS', 2],        // 前置準備完成 2 天後才開始採購與施工（收納盒層級）
+        [6, 7, 'FS', 0],        // 到貨後施工（盒內依賴，E2E 連動測試依賴）
+        [5, 8, 'SS', 0],        // 採購施工與遷移切換連線（收納盒層級）
+        [9, 10, 'FF', 0],       // 測試與切換同時收尾（盒內依賴）
+        [3, 4, 'RELATES', 0],   // 語意關聯（盒內依賴）
       ]
       for (const [s, t, type, lag] of links) {
         await tx`INSERT INTO task_link (workspace_id, source_id, target_id, link_type, lag_days, created_by)

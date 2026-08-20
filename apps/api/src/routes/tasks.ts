@@ -407,7 +407,16 @@ export default async function taskRoutes(app: FastifyInstance) {
           updated_at     = now()
         WHERE id = ${req.params.id}`
 
-      if (b.parentId !== undefined) await rebuildClosure(tx, req.params.id)
+      if (b.parentId !== undefined) {
+        await rebuildClosure(tx, req.params.id)
+        // 清理因父層變更而變得不合法的跨收納盒/跨內外關聯線
+        await tx`
+          DELETE FROM task_link l
+          USING task st, task tt
+          WHERE l.source_id = st.id AND l.target_id = tt.id
+            AND (l.source_id = ${req.params.id} OR l.target_id = ${req.params.id})
+            AND COALESCE(st.parent_id, '00000000-0000-0000-0000-000000000000') != COALESCE(tt.parent_id, '00000000-0000-0000-0000-000000000000')`
+      }
 
       const logged: Record<string, unknown> = {}
       if (b.title !== undefined && b.title !== before?.title) {
@@ -617,7 +626,16 @@ export default async function taskRoutes(app: FastifyInstance) {
           parent_id  = ${b.parentId !== undefined ? b.parentId : sql`parent_id`},
           updated_at = now()
         WHERE id = ${req.params.id}`
-      if (b.parentId !== undefined) await rebuildClosure(tx, req.params.id)
+      if (b.parentId !== undefined) {
+        await rebuildClosure(tx, req.params.id)
+        // 清理因父層變更而變得不合法的跨收納盒/跨內外關聯線
+        await tx`
+          DELETE FROM task_link l
+          USING task st, task tt
+          WHERE l.source_id = st.id AND l.target_id = tt.id
+            AND (l.source_id = ${req.params.id} OR l.target_id = ${req.params.id})
+            AND COALESCE(st.parent_id, '00000000-0000-0000-0000-000000000000') != COALESCE(tt.parent_id, '00000000-0000-0000-0000-000000000000')`
+      }
 
       /*
        * 拖曳看板換欄也要留一筆狀態變更 —— 這條路以前完全不寫紀錄，
