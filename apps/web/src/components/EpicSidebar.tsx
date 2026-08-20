@@ -149,10 +149,12 @@ const COLLAPSE_KEY = 'pmflow.sidebar'
 
 function storedCollapsed(): boolean {
   try {
-    return localStorage.getItem(COLLAPSE_KEY) === 'collapsed'
+    const val = localStorage.getItem(COLLAPSE_KEY)
+    if (val !== null) return val === 'collapsed'
+    return typeof window !== 'undefined' && window.innerWidth < 768
   } catch {
-    // 隱私模式下 localStorage 會直接丟例外，那就當作沒收起來
-    return false
+    // 隱私模式或例外情況下，手機螢幕預設收合
+    return typeof window !== 'undefined' && window.innerWidth < 768
   }
 }
 

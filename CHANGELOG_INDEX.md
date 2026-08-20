@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Fix Edge Disappearance on Drop and Unrestrict Link Authorization (CR-171)
+### Latest Changes: Mobile Responsiveness and Desktop View Recommended Notice (CR-172)
+- **變更檔案**:
+  - [`DesktopRecommendedNotice.tsx`](file:///D:/github/pmflow/apps/web/src/components/DesktopRecommendedNotice.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **電腦版建議觀看友善提示 (`CR-172`)**：針對複雜且不適合手機操作之頁面（關聯圖、系統流程圖、甘特圖、語法範例），於手機小螢幕（`< 768px`）進入時展示「💻 建議使用電腦版觀看」提示面板，支援一鍵切換至清單檢視或保留小提示繼續瀏覽。
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **手機側欄預設自動收合 (`CR-172`)**：手機或小螢幕裝置載入時自動收合側欄，釋放主要畫面空間。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-172` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-172`。
+
+### Previous Changes: Fix Edge Disappearance on Drop and Unrestrict Link Authorization (CR-171)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **樂觀連線跨快取持久化 (`CR-171`)**：重構 `pendingOptimistic` 判定，即使連線已獲得伺服器真實 ID，在 `graphData` 抓回前持續保留連線不被清空，修復放開滑鼠連線瞬間消失問題。

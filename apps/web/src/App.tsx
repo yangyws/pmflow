@@ -20,6 +20,7 @@ import { EpicSidebar } from './components/EpicSidebar'
 import { NotificationBell } from './components/NotificationBell'
 import { UserMenu } from './components/UserMenu'
 import { AiSkillModal } from './components/AiSkillModal'
+import { DesktopRecommendedNotice } from './components/DesktopRecommendedNotice'
 import Login from './pages/Login'
 import Board from './pages/Board'
 import ListView from './pages/List'
@@ -773,34 +774,54 @@ function ProjectWorkspace({
                               focusedTaskId={focusedTaskId} />
               )}
               {view === 'gantt' && (
-                <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
-                  <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskEdit} onSelectTask={handleTaskSelect} focusedTaskId={focusedTaskId} />
-                </Suspense>
+                <DesktopRecommendedNotice
+                  viewName={shownViews.find(v => v.key === 'gantt')?.label ?? T.nav.views.gantt}
+                  onSwitchToList={() => setView('list')}
+                >
+                  <Suspense fallback={<Spinner label={T.nav.loadingGantt} />}>
+                    <GanttView projectId={projectId} tasks={visible} onOpen={handleTaskEdit} onSelectTask={handleTaskSelect} focusedTaskId={focusedTaskId} />
+                  </Suspense>
+                </DesktopRecommendedNotice>
               )}
               {view === 'simpleGraph' && (
-                <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <TaskGraphView
-                    projectId={projectId}
-                    tasks={tasks}
-                    onOpenTask={handleTaskEdit}
-                    focusedTaskId={focusedTaskId ?? epicId}
-                    menuFocusTarget={menuFocusTarget}
-                    onSelectTask={(id) => setFocusedTaskId(id)}
-                  />
-                </Suspense>
+                <DesktopRecommendedNotice
+                  viewName={shownViews.find(v => v.key === 'simpleGraph')?.label ?? T.nav.views.graph}
+                  onSwitchToList={() => setView('list')}
+                >
+                  <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
+                    <TaskGraphView
+                      projectId={projectId}
+                      tasks={tasks}
+                      onOpenTask={handleTaskEdit}
+                      focusedTaskId={focusedTaskId ?? epicId}
+                      menuFocusTarget={menuFocusTarget}
+                      onSelectTask={(id) => setFocusedTaskId(id)}
+                    />
+                  </Suspense>
+                </DesktopRecommendedNotice>
               )}
               {view === 'systemFlow' && (
-                <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
-                  <SystemFlowView projectId={projectId} />
-                </Suspense>
+                <DesktopRecommendedNotice
+                  viewName={shownViews.find(v => v.key === 'systemFlow')?.label ?? T.nav.views.systemFlow}
+                  onSwitchToList={() => setView('list')}
+                >
+                  <Suspense fallback={<Spinner label={T.nav.loadingGraph} />}>
+                    <SystemFlowView projectId={projectId} />
+                  </Suspense>
+                </DesktopRecommendedNotice>
               )}
               {view === 'playground' && (
-                <Suspense fallback={<Spinner label={`載入${shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}…`} />}>
-                  <PlaygroundView
-                    projectId={projectId}
-                    title={shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}
-                  />
-                </Suspense>
+                <DesktopRecommendedNotice
+                  viewName={shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}
+                  onSwitchToList={() => setView('list')}
+                >
+                  <Suspense fallback={<Spinner label={`載入${shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}…`} />}>
+                    <PlaygroundView
+                      projectId={projectId}
+                      title={shownViews.find(v => v.key === 'playground')?.label ?? T.nav.views.playground}
+                    />
+                  </Suspense>
+                </DesktopRecommendedNotice>
               )}
               {/*
                 * 刻意不傳 visible：燃盡圖與熱圖是整個專案的走勢，後端一次算完。
