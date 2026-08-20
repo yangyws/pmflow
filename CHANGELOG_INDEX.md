@@ -22,7 +22,24 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mobile Full-Width Single-Column Layout & Zero Horizontal Scroll (CR-173)
+### Latest Changes: Mobile Permission Partitioning & Week View Card Layout (CR-175)
+- **變更檔案**:
+  - [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx):
+    1. **行事曆週檢視滿版單欄卡片流 (`CR-175`)**：在手機端（`< 768px`），將週檢視與行事曆展開每週清單由多欄表格改為 100% 滿版單欄垂直卡片流，消除 `52rem` 水平溢出。
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **手機版專屬權限切分 (`CR-175`)**：手機端僅在「清單（List）」檢視下開放編輯與儲存；其餘檢視（看板、行事曆/週檢視、側欄、圖表等）開啟任務抽屜時強制唯讀。
+    2. **唯讀模式質感提示橫幅與快捷按鈕 (`CR-175`)**：唯讀模式頂部呈現「👁️ 唯讀檢視模式」橫幅，並配置「📋 前往清單編輯」快捷按鈕，一鍵切換至清單進行修改。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-175` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-175`。
+
+### Previous Changes: Mobile Interaction Strategy — View-Only Lists & Direct Drawer Editing (CR-174)
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx), [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx), [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
+    1. **手機點擊直通任務修改頁 (`CR-174`)**：手機端使用者點擊任何任務卡片或項目，一律直接開啟 `TaskDrawer`（任務修改頁），外層視圖保持為純淨單欄展示，修改操作一律在任務修改抽屜中進行。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-174` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-174`。
+
+### Previous Changes: Mobile Full-Width Single-Column Layout & Zero Horizontal Scroll (CR-173)
 - **變更檔案**:
   - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
     1. **清單手機滿版卡片流 (`CR-173`)**：手機端全面採用 100% 滿版單欄垂直卡片清單，完整呈現任務編號、標題、狀態、負責人、起訖日、進度與警示，完全不需往右滑動。

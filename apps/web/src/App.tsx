@@ -627,9 +627,21 @@ function ProjectWorkspace({
   const selectedLabel = selectedTask ? `${selectedRef ? `${selectedRef} ` : ''}${selectedTask.title}` : undefined
   const overdue = visible.filter(t => t.inquiryState === 'OVERDUE').length
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const handleTaskSelect = (id: string) => {
     setFocusedTaskId(id)
-    setOpenTask(null)
+    if (isMobile) {
+      // 手機版：點擊任意任務開啟任務詳情（清單檢視下可編輯，其他檢視下唯讀）
+      setOpenTask(id)
+    } else {
+      setOpenTask(null)
+    }
     if (id) setMenuFocusTarget({ id, ts: Date.now() })
   }
 
@@ -754,6 +766,8 @@ function ProjectWorkspace({
               onSeen={onFlashSeen}
               onClose={() => { onFlashSeen(); setOpenTask(null) }}
               onSelectTask={setOpenTask}
+              readOnly={isMobile && view !== 'list'}
+              onSwitchToList={() => { setView('list'); }}
             />
           ) : (
             <>

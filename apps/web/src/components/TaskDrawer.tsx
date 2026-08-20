@@ -57,6 +57,7 @@ function TaskDrawerShell({
 
 export function TaskDrawer({
   taskId, workspaceId, statuses, allTasks, onClose, onSelectTask, variant = 'pane', flash = false, onSeen,
+  readOnly = false, onSwitchToList,
 }: {
   taskId: string
   workspaceId: string
@@ -76,6 +77,10 @@ export function TaskDrawer({
    * 到那一刻才確定他真的看到了。不設時器自動收：人不見得正看著螢幕。
    */
   onSeen?: () => void
+  /** 手機版在非清單檢視下強制唯讀 */
+  readOnly?: boolean
+  /** 唯讀模式下快速切換至清單檢視進行編輯 */
+  onSwitchToList?: () => void
 }) {
   const qc = useQueryClient()
   /*
@@ -127,10 +132,11 @@ export function TaskDrawer({
    * 舊版後端沒有這兩個欄位時才退回角色＋關係人的近似判斷。
    * Ref: CR-086 — EDITOR 與 MANAGER 皆可編輯與保存。
    */
-  const canEdit = data?.canEdit
+  const rawCanEdit = data?.canEdit
     ?? ((isManager || role === 'EDITOR') && (isManager || isTaskCreator || isAssignee || isProjectCreator))
-  const canEditLinks = canEdit
-  const canDelete = data?.canDelete ?? (isManager || role === 'OWNER' || isTaskCreator || isProjectCreator)
+  const canEdit = readOnly ? false : rawCanEdit
+  const canEditLinks = readOnly ? false : canEdit
+  const canDelete = readOnly ? false : (data?.canDelete ?? (isManager || role === 'OWNER' || isTaskCreator || isProjectCreator))
 
   // Esc 關閉抽屜。在輸入框裡按 Esc 不關，免得打到一半誤觸把內容弄丟。
   useEffect(() => {
@@ -502,15 +508,37 @@ export function TaskDrawer({
             </header>
 
             <div className="flex-1 space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
-              {/* 欄位都變成純文字之後，總要有一個地方講原因 */}
-              {!canEdit && role && (
+              {/* 唯讀提示橫幅 (方案 A) */}
+              {readOnly ? (
+                <div className="rounded-xl bg-blue-50/90 p-3.5 text-xs text-blue-900 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-400/30 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shadow-xs">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="text-lg shrink-0 mt-0.5 select-none">👁️</span>
+                    <div>
+                      <p className="font-bold text-sm text-blue-950 dark:text-blue-100">唯讀檢視模式</p>
+                      <p className="mt-0.5 text-xs text-blue-700/90 dark:text-blue-300/90 leading-relaxed">
+                        手機端此檢視僅供瀏覽資訊；若需修改或指派任務，請前往【清單】頁面編輯。
+                      </p>
+                    </div>
+                  </div>
+                  {onSwitchToList && (
+                    <Button
+                      variant="primary"
+                      onClick={onSwitchToList}
+                      className="shrink-0 text-xs px-3 py-1.5 font-semibold shadow-xs cursor-pointer"
+                    >
+                      📋 前往清單編輯
+                    </Button>
+                  )}
+                </div>
+              ) : !canEdit && role ? (
+                /* 欄位都變成純文字之後，總要有一個地方講原因 */
                 <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset
                                 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300
                                 dark:ring-amber-400/30">
                   <p className="font-medium">{T.task.permission.readOnlyTitle}</p>
                   <p className="mt-0.5">{T.task.permission.readOnlyWhy}</p>
                 </div>
-              )}
+              ) : null}
 
               {/*
                 * ── 基本欄位 ──
