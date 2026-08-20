@@ -64,7 +64,7 @@ export default async function linkRoutes(app: FastifyInstance) {
         INSERT INTO task_link (workspace_id, source_id, target_id, link_type, lag_days, source_handle, target_handle, created_by)
         VALUES (${src.workspaceId}, ${sourceId}, ${targetId}, ${b.linkType},
                 ${b.lagDays ?? 0}, ${sHandle}, ${tHandle}, ${user.id})
-        ON CONFLICT (workspace_id, source_id, target_id, link_type)
+        ON CONFLICT (source_id, target_id, link_type)
         DO UPDATE SET source_handle = EXCLUDED.source_handle, target_handle = EXCLUDED.target_handle
         RETURNING id`
 
