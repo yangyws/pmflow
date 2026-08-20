@@ -737,6 +737,8 @@ function OrthogonalEdge({
 }: EdgeProps) {
   const { screenToFlowPosition } = useReactFlow()
   const draggingRef = useRef(false)
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
+  const hasMovedRef = useRef(false)
   const eData = data as OrthogonalEdgeData | undefined
   // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
   const wpKey = id
@@ -768,26 +770,37 @@ function OrthogonalEdge({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
-    e.preventDefault()
     draggingRef.current = true
-    armWaypointClickGuard() // Ref: CR-141
-    eData?.onWaypointDragStart?.() // Ref: CR-151
+    hasMovedRef.current = false
+    pointerStartRef.current = { x: e.clientX, y: e.clientY }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return
     e.stopPropagation()
-    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    eData?.onWaypointChange?.(wpKey, { x: Math.round(p.x), y: Math.round(p.y) })
+    if (
+      pointerStartRef.current &&
+      Math.hypot(e.clientX - pointerStartRef.current.x, e.clientY - pointerStartRef.current.y) > 3
+    ) {
+      if (!hasMovedRef.current) {
+        hasMovedRef.current = true
+        armWaypointClickGuard()
+        eData?.onWaypointDragStart?.()
+      }
+      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      eData?.onWaypointChange?.(wpKey, { x: Math.round(p.x), y: Math.round(p.y) })
+    }
   }
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return
     draggingRef.current = false
     e.stopPropagation()
-    scheduleWaypointGuardRelease() // Ref: CR-141
-    eData?.onWaypointDragEnd?.() // Ref: CR-151
+    if (hasMovedRef.current) {
+      scheduleWaypointGuardRelease()
+      eData?.onWaypointDragEnd?.()
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -799,33 +812,6 @@ function OrthogonalEdge({
     <>
       <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={30} />
       <EdgeLabelRenderer>
-        {/* 透明加粗的點擊命中線：確保在收納盒內部（nodes 層在 edges SVG 之上）也能 100% 響應點擊刪除 */}
-        <svg
-          className="nodrag nopan absolute inset-0 overflow-visible pointer-events-none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: 950,
-          }}
-        >
-          <path
-            d={path}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={28}
-            className="cursor-pointer pointer-events-auto"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (consumeWaypointClickGuard()) return
-              eData?.onEdgeClick?.()
-            }}
-          />
-        </svg>
-
         <div
           className="nodrag nopan absolute h-2.5 w-2.5 rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 cursor-move after:absolute after:content-[''] after:-inset-[9px] after:rounded-full"
           style={{
@@ -842,7 +828,7 @@ function OrthogonalEdge({
           onClick={(e) => {
             // Ref: CR-141
             e.stopPropagation()
-            if (consumeWaypointClickGuard()) return
+            if (hasMovedRef.current || consumeWaypointClickGuard()) return
             eData?.onEdgeClick?.()
           }}
           onDoubleClick={(e) => {

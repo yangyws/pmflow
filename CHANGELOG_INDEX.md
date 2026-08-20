@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Cross-Box Link Cleanup & Boundary Enforcements (CR-180)
+### Latest Changes: Canvas Edge Click Deletion & Waypoint Drag Fixes (CR-181)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **移除全螢幕 SVG 遮罩層 (`CR-181`)**：徹底移除 `EdgeLabelRenderer` 內部未帶 Transform 之全螢幕 SVG 遮罩，恢復 React Flow 原生 `<BaseEdge interactionWidth={30}>` 於畫布上的點擊刪除響應。
+    2. **折點指針位移閾值判定 (`CR-181`)**：僅在指針位移大於 3px 時啟動拖曳與防護鎖；單純點擊折點立即觸發 `onEdgeClick` 彈出刪除關聯確認視窗。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-181` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-181`。
+
+### Previous Changes: Graph Cross-Box Link Cleanup & Boundary Enforcements (CR-180)
 - **變更檔案**:
   - [`routes/links.ts`](file:///D:/github/pmflow/apps/api/src/routes/links.ts):
     1. **建立關聯收納盒隔離擋關 (`CR-180`)**：新增 `source` 與 `target` 之 `parent_id` 嚴格比對，兩端父層不一致時回傳 409 Conflict 拒絕建立。
