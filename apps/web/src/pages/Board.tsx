@@ -496,11 +496,11 @@ function Card({
         </div>
       )}
 
-      <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-400">
+      <div className="mt-1.5 flex items-center gap-x-2 gap-y-1 text-[11px] text-slate-400 dark:text-slate-400 flex-wrap">
         {task.dueDate && <span>📅 {task.dueDate.slice(5, 10).replace('-', '/')}</span>}
-        {task.assigneeName && <span>👤 {task.assigneeName}</span>}
+        {task.assigneeName && <span className="truncate max-w-[90px] sm:max-w-[120px]">👤 {task.assigneeName}</span>}
         {task.type !== 'BUG' && task.progress > 0 && (
-          <span className="ml-auto flex items-center gap-1">
+          <span className="ml-auto flex items-center gap-1 shrink-0">
             <span className="h-1 w-10 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
               <span className={cx("block h-full", task.progress >= 100 ? "bg-emerald-500" : "bg-red-500")} style={{ width: `${task.progress}%` }} />
             </span>

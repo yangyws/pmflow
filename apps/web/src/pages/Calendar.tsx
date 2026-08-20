@@ -491,14 +491,15 @@ export default function CalendarView({
             {expandedWeek !== null && (
               <div className="flex items-center gap-1.5 ml-1">
                 <span className="rounded bg-blue-50 px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
-                  第 {expandedWeek + 1} 週清單
+                  第 {expandedWeek + 1} 週
                 </span>
                 <button
                   type="button"
                   onClick={() => { setExpandedWeek(null); setSelectedWeekDay(null); }}
                   className="text-xs text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 underline cursor-pointer"
                 >
-                  ▲ 返回全月月格
+                  <span className="hidden sm:inline">▲ 返回全月月格</span>
+                  <span className="sm:hidden">▲ 返回全月</span>
                 </button>
               </div>
             )}
@@ -511,7 +512,9 @@ export default function CalendarView({
                 className="flex items-center gap-1 rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 title={filterCollapsed ? '展開篩選與圖例' : '向上收合篩選與圖例'}
               >
-                <span>⚙ 篩選與圖例</span>
+                <span>⚙</span>
+                <span className="hidden sm:inline">篩選與圖例</span>
+                <span className="sm:hidden">篩選</span>
                 <span className="text-[10px]">{filterCollapsed ? '▼' : '▲'}</span>
               </button>
               <Button onClick={openNewLeave} className="text-xs py-1 px-2 sm:px-2.5">{C.leave.add}</Button>

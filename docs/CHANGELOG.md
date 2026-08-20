@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-177` | 2026-08-20 | [小螢幕自適應排版：修復 TaskDrawer 欄位擠壓、麵包屑與行事曆小手機防溢出、卡片頁腳防重疊](#cr-177) | `TaskDrawer.tsx`, `Calendar.tsx`, `App.tsx`, `List.tsx`, `Week.tsx`, `Board.tsx` | 已驗證 |
 | `CR-176` | 2026-08-20 | [手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）](#cr-176) | `List.tsx`, `Board.tsx`, `Week.tsx`, `Calendar.tsx`, `TaskDrawer.tsx`, `App.tsx`, `EpicSidebar.tsx` | 已驗證 |
 | `CR-175` | 2026-08-20 | [手機版權限與排版同步：行事曆週清單滿版單欄卡片流、非清單檢視強制唯讀與頂部提示橫幅](#cr-175) | `Week.tsx`, `TaskDrawer.tsx`, `App.tsx` | 已驗證 |
 | `CR-174` | 2026-08-20 | [行動端互動策略：手機版全站外層列表純展示，點擊直達任務修改頁（TaskDrawer）專職編輯](#cr-174) | `App.tsx`, `List.tsx`, `Board.tsx` | 已驗證 |
@@ -234,6 +235,20 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-177"></a>CR-177 (2026-08-20) — 小螢幕自適應排版：修復 TaskDrawer 欄位擠壓、麵包屑與行事曆小手機防溢出、卡片頁腳防重疊
+
+- **使用者需求**：小手機的排版會擠壓，幫我檢查一下。
+- **排查與修復實作**：
+  1. **任務修改抽屜欄位防擠壓 (`TaskDrawer.tsx`)**：
+     - 修復手機端基本欄位網格（`grid-cols-2`）中，負責人（Assignee）、進度（Progress）與起訖日期（Start/Due Dates）因缺少 `col-span-2` 而被強制擠壓至半寬 1 格（導致兩個日期輸入框與進度條嚴重重疊變形）的問題；補齊 `col-span-2 sm:col-span-2` 與 `col-span-2 sm:col-span-4` 讓其在手機端滿版雙欄展開。
+     - 活動時間軸（Activity Timeline）項目新增 `flex-wrap gap-x-2 gap-y-0.5`，防止時間、操作人與內容在窄螢幕上重疊或水平溢出。
+  2. **行事曆工具列與展開清單小螢幕自適應 (`Calendar.tsx`)**：
+     - 月曆頂部按鈕於小螢幕採用響應式簡稱（`⚙ 篩選` 與 `▲ 返回全月`），並配置 `shrink-0` 與緊湊內邊距，防止工具列在 360px 螢幕下折行過多。
+  3. **全域麵包屑與卡片頁腳防擠壓 (`App.tsx`, `List.tsx`, `Week.tsx`, `Board.tsx`)**：
+     - `App.tsx` 麵包屑於手機端自動簡化專案名稱（`← 返回`）與關閉按鈕，標題與父項目安全截斷。
+     - 清單、週檢視與看板之卡片頁腳（負責人姓名、日期區間與進度條）新增自適應截斷與 `flex-wrap`，徹底杜絕小螢幕擠壓與重疊。
+- **異動模組**：`apps/web/src/components/TaskDrawer.tsx`, `apps/web/src/pages/Calendar.tsx`, `apps/web/src/App.tsx`, `apps/web/src/pages/List.tsx`, `apps/web/src/pages/Week.tsx`, `apps/web/src/pages/Board.tsx`。
 
 ### <a id="cr-176"></a>CR-176 (2026-08-20) — 手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）
 

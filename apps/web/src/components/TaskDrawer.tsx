@@ -624,7 +624,7 @@ export function TaskDrawer({
                     </ReadOnlyValue>
                   )}
                 </Field>
-                <div className="sm:col-span-2">
+                <div className="col-span-2 sm:col-span-2">
                 <Field label={T.task.drawer.fieldAssignee}>
                   {canEdit ? (
                     /* 選了人不會馬上送出：下面會跳出交接說明，按了才算數 */
@@ -678,7 +678,7 @@ export function TaskDrawer({
                 </Field>
                 {/* 進度佔兩欄：拖拉條再窄就拖不準了（問題單不需要進度條） */}
                 {form.type !== 'BUG' && data.type !== 'BUG' && (
-                  <div className="sm:col-span-2">
+                  <div className="col-span-2 sm:col-span-2">
                     <Field label={T.task.drawer.fieldProgress}>
                       {canEdit && nonBugChildren.length === 0 ? (
                         <>
@@ -711,16 +711,16 @@ export function TaskDrawer({
                 )}
                 {/* 開始與結束擺在同一格，中間一個破折號 —— 問題單免設起訖日 */}
                 {form.type !== 'BUG' && data.type !== 'BUG' && (
-                  <div className="sm:col-span-4">
+                  <div className="col-span-2 sm:col-span-4">
                     <Field label={`${T.task.drawer.fieldStart} – ${T.task.drawer.fieldDue}`}>
                       {canEdit ? (
-                        <div className="flex items-center gap-2">
-                          <Input type="date" className="min-w-0 flex-1"
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <Input type="date" className="min-w-0 flex-1 text-xs"
                                  value={form.startDate?.slice(0, 10) ?? ''}
                                  aria-label={T.task.drawer.fieldStart}
                                  onChange={e => edit({ startDate: e.target.value || null })} />
                           <span aria-hidden className="text-slate-400 dark:text-slate-400">–</span>
-                          <Input type="date" className="min-w-0 flex-1"
+                          <Input type="date" className="min-w-0 flex-1 text-xs"
                                  value={form.dueDate?.slice(0, 10) ?? ''}
                                  aria-label={T.task.drawer.fieldDue}
                                  onChange={e => edit({ dueDate: e.target.value || null })} />
@@ -1036,14 +1036,14 @@ export function TaskDrawer({
                 <ul className="space-y-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                   {data.activities.slice(0, 15).map(a => (
                     <li key={a.id}>
-                      <div className="flex gap-2">
-                        <span className="text-slate-400 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:flex-nowrap">
+                        <span className="text-slate-400 dark:text-slate-400 shrink-0">
                           {new Date(a.createdAt).toLocaleString('zh-TW')}
                         </span>
-                        <span className="text-slate-600 dark:text-slate-300">
+                        <span className="font-medium text-slate-600 dark:text-slate-300 shrink-0">
                           {a.actorName ?? T.task.drawer.systemActor}
                         </span>
-                        <span>{describeActivity(a.kind, a.body, { statuses, priorities, types })}</span>
+                        <span className="break-all">{describeActivity(a.kind, a.body, { statuses, priorities, types })}</span>
                       </div>
                       {/* 交接說明另起一行帶引號 —— 那是一句人講的話，
                           接在「把負責人從誰換成誰」後面會跟事實糊在一起 */}

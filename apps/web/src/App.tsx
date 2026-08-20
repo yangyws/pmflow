@@ -705,7 +705,9 @@ function ProjectWorkspace({
                   onClick={() => { setOpenTask(null) }}
                   className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 shrink-0 font-medium cursor-pointer"
                 >
-                  <span aria-hidden>←</span> {project?.name}
+                  <span aria-hidden>←</span>
+                  <span className="hidden sm:inline">{project?.name}</span>
+                  <span className="sm:hidden">返回</span>
                 </button>
                 {(() => {
                   const t = tasks.find(x => x.id === openTask)
@@ -715,7 +717,7 @@ function ProjectWorkspace({
                       <span className="text-slate-300 dark:text-slate-600 shrink-0">/</span>
                       <button
                         onClick={() => { setEpicId(parent.id); setOpenTask(null) }}
-                        className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 truncate cursor-pointer"
+                        className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 truncate max-w-[80px] sm:max-w-[120px] cursor-pointer"
                       >
                         {parent.title}
                       </button>
@@ -733,9 +735,10 @@ function ProjectWorkspace({
                 </span>
                 <button
                   onClick={() => setOpenTask(null)}
-                  className="ml-auto px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+                  className="ml-auto px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+                  title="關閉編輯"
                 >
-                  關閉編輯 ✕
+                  <span className="hidden sm:inline">關閉編輯 </span>✕
                 </button>
               </div>
             ) : selectedLabel ? (

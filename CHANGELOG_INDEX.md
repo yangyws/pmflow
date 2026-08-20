@@ -22,7 +22,19 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mobile Typography & Button Fine-Tuning Optimization (CR-176)
+### Latest Changes: Small Screen Responsive Layout & Anti-Squeeze Fixes (CR-177)
+- **變更檔案**:
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **基本欄位防擠壓滿版重構 (`CR-177`)**：修復手機端負責人、進度與起訖日因缺少 `col-span-2` 被壓縮至半寬 1 格的問題，配置 `col-span-2 sm:col-span-2` 與 `col-span-2 sm:col-span-4` 確保滿版雙欄正常展開。
+    2. **活動時間軸自適應換行 (`CR-177`)**：活動項目配置 `flex-wrap`，防止窄螢幕文字重疊或水平溢出。
+  - [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
+    1. **月曆小手機工具列自適應 (`CR-177`)**：頂部按鈕小螢幕響應式縮寫（`⚙ 篩選`、`▲ 返回全月`）與緊湊 padding，防止過多折行。
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx), [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx), [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx), [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
+    1. **麵包屑與卡片頁腳防擠壓 (`CR-177`)**：麵包屑手機端簡化專案名稱（`← 返回`），卡片頁腳姓名自適應截斷與 `flex-wrap` 防重疊。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-177` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-177`。
+
+### Previous Changes: Mobile Typography & Button Fine-Tuning Optimization (CR-176)
 - **變更檔案**:
   - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx), [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx), [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx), [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
     1. **手機版卡片標題字級與內邊距微縮 (`CR-176`)**：卡片標題由大字級調為緊湊精緻之 `text-[13px] sm:text-sm font-semibold`，狀態、徽章、日期與負責人統一調為 `text-[11px] / text-[10px]`，卡片內邊距調為 `p-2.5 sm:p-3`，進度條厚度微縮為 `h-1`。

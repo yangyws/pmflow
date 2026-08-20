@@ -424,12 +424,12 @@ export default function ListView({
               </div>
 
               {/* 負責人與進度 */}
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 gap-1.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {t.assigneeName ? (
                     <>
                       <Avatar userId={t.assigneeId} name={t.assigneeName} hasAvatar={t.assigneeHasAvatar} />
-                      <span className="truncate max-w-[110px] font-medium text-slate-700 dark:text-slate-300">
+                      <span className="truncate max-w-[85px] sm:max-w-[120px] font-medium text-slate-700 dark:text-slate-300">
                         {t.assigneeName}
                       </span>
                     </>
@@ -437,7 +437,7 @@ export default function ListView({
                     <span className="text-slate-400">{T.common.unassigned}</span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <span>{fmt(startDate)} ~ {fmt(dueDate)}</span>
                   <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                     {progress}%
