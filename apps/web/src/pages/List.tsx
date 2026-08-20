@@ -332,8 +332,162 @@ export default function ListView({
   }
 
   return (
-    <div className="h-full overflow-auto p-4">
-      <table className="w-full min-w-[76rem] table-fixed border-collapse overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200
+    <div className="h-full overflow-auto p-2 sm:p-4 max-w-full">
+      {/* 📱 手機版滿版垂直卡片清單（零橫向滑動） */}
+      <div className="md:hidden flex flex-col gap-2.5 pb-8 w-full max-w-full">
+        {ordered.map(t => {
+          const st = statusName[t.statusKey]
+          const r = rolled.get(t.id)
+          const progress = r?.progress ?? t.progress
+          const startDate = r?.startDate ?? t.startDate
+          const dueDate = r?.dueDate ?? t.dueDate
+          const overdue = isTaskOverdue(dueDate, progress)
+          const hasUnread = unreadTaskIds.has(t.id)
+
+          const isTaskDone = (sKey: string, prog?: number | null) =>
+            statusCatMap.get(sKey) === 'DONE' || sKey === 'DONE' || (prog ?? 0) >= 100
+          const cardKids = tasks.filter(k => k.parentId === t.id)
+          const activeProblemCardKids = cardKids.filter(k => {
+            if (isTaskDone(k.statusKey, k.progress)) return false
+            return k.type === 'BUG'
+          })
+          const cardProblemCount = activeProblemCardKids.length
+          const isBlocked = !isTaskDone(t.statusKey, t.progress) && (blockedByMap.get(t.id)?.length ?? 0) > 0
+
+          return (
+            <div
+              key={t.id}
+              onClick={() => {
+                if (hasUnread) markTaskRead(t.id)
+                onOpen(t.id)
+              }}
+              className={cx(
+                'w-full rounded-xl border border-slate-200 bg-white p-3 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/80',
+                t.id === focusedTaskId && 'ring-2 ring-blue-500',
+                hasUnread && 'pmflow-flash'
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {t.isBox && <span className="text-xs">📦</span>}
+                  {typeOf(t.type) && (
+                    <TypeBadge name={typeOf(t.type)} color={typeColorOf(t.type)} />
+                  )}
+                  <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+                    {t.ref}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="rounded px-2 py-0.5 text-xs font-medium text-white shadow-xs"
+                    style={{ background: st?.color ?? '#94a3b8' }}
+                  >
+                    {st?.name ?? t.statusKey}
+                  </span>
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        onEdit(t.id)
+                      }}
+                      className="p-0.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                    >
+                      ✏️
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {t.title}
+              </div>
+
+              {/* 警示區 */}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {cardProblemCount > 0 && (
+                  <ProblemBadge count={cardProblemCount} isShort={true} problem={`內有 ${cardProblemCount} 張問題單`} />
+                )}
+                {isBlocked && (
+                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                    ⛔ 卡住
+                  </span>
+                )}
+                {overdue && (
+                  <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                    ⏰ 逾期
+                  </span>
+                )}
+                {t.inquiryState && (
+                  <InquiryBadge state={t.inquiryState} />
+                )}
+              </div>
+
+              {/* 負責人與進度 */}
+              <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {t.assigneeName ? (
+                    <>
+                      <Avatar userId={t.assigneeId} name={t.assigneeName} hasAvatar={t.assigneeHasAvatar} />
+                      <span className="truncate max-w-[120px] font-medium text-slate-700 dark:text-slate-300">
+                        {t.assigneeName}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400">{T.common.unassigned}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span>{fmt(startDate)} ~ {fmt(dueDate)}</span>
+                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                    {progress}%
+                  </span>
+                </div>
+              </div>
+
+              {/* 進度條 */}
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%`, background: st?.color ?? '#3178c6' }}
+                />
+              </div>
+            </div>
+          )
+        })}
+
+        {canCreate && (
+          <div className="mt-1">
+            {addingTop ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-2">
+                <div className="flex items-center gap-2">
+                  <NewTaskType value={typeFor(topTypes)} options={topTypes} onChange={setNewType} />
+                  <Input
+                    value={topTitle}
+                    onChange={e => setTopTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') newTop() }}
+                    placeholder={parent ? T.task.list.addChildPlaceholder(parent.title) : T.task.list.addTaskPlaceholder}
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Button onClick={() => { setAddingTop(false); setTopTitle('') }}>{T.common.cancel}</Button>
+                  <Button variant="primary" disabled={!topTitle.trim()} onClick={newTop}>{T.task.list.addSubmit}</Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setAddingTop(true); setTopTitle('') }}
+                className="w-full rounded-xl border border-dashed border-slate-300 bg-white/60 p-3 text-center text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300 cursor-pointer"
+              >
+                ＋ {T.task.list.addTask}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 🖥️ 電腦版詳細表格（水平展開） */}
+      <table className="hidden md:table w-full min-w-[76rem] table-fixed border-collapse overflow-hidden rounded-lg bg-white text-sm ring-1 ring-slate-200
                         dark:bg-slate-900 dark:ring-slate-700">
         <thead>
           <tr className="whitespace-nowrap bg-slate-50 text-left text-xs font-medium text-slate-500

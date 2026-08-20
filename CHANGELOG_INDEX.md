@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mobile Responsiveness and Desktop View Recommended Notice (CR-172)
+### Latest Changes: Mobile Full-Width Single-Column Layout & Zero Horizontal Scroll (CR-173)
+- **變更檔案**:
+  - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **清單手機滿版卡片流 (`CR-173`)**：手機端全面採用 100% 滿版單欄垂直卡片清單，完整呈現任務編號、標題、狀態、負責人、起訖日、進度與警示，完全不需往右滑動。
+  - [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
+    1. **看板手機狀態頁籤切換器 (`CR-173`)**：手機端提供頂部狀態切換頁籤，單欄滿版垂直呈現選中狀態之所有任務卡片。
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **側欄抽屜浮層與滿版容器 (`CR-173`)**：側欄收合時右側內容 100% 滿版，側欄展開時以抽屜式浮層與半透明背景呈現，全域防止橫向溢出。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-173` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-173`。
+
+### Previous Changes: Mobile Responsiveness and Desktop View Recommended Notice (CR-172)
 - **變更檔案**:
   - [`DesktopRecommendedNotice.tsx`](file:///D:/github/pmflow/apps/web/src/components/DesktopRecommendedNotice.tsx), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
     1. **電腦版建議觀看友善提示 (`CR-172`)**：針對複雜且不適合手機操作之頁面（關聯圖、系統流程圖、甘特圖、語法範例），於手機小螢幕（`< 768px`）進入時展示「💻 建議使用電腦版觀看」提示面板，支援一鍵切換至清單檢視或保留小提示繼續瀏覽。

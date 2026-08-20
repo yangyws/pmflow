@@ -240,30 +240,84 @@ export default function Board({
     return () => el.removeEventListener('wheel', handleWheel)
   }, [])
 
+  const [mobileStatus, setMobileStatus] = useState<string | null>(null)
+  const activeMobileStatus = mobileStatus ?? columns[0]?.key
+  const activeMobileCol = columns.find(c => c.key === activeMobileStatus) ?? columns[0]
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col max-w-full">
       {error && (
         <div className="mx-4 mt-3 flex items-center justify-between rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-2 font-bold hover:opacity-80">✕</button>
         </div>
       )}
-      <DndContext sensors={sensors} collisionDetection={closestCorners}
-                  onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div ref={boardContainerRef} className="flex flex-1 gap-3 overflow-x-auto p-4">
+
+      {/* 📱 手機版狀態頁籤切換 + 滿版單欄垂直列表（零橫向滑動） */}
+      <div className="md:hidden flex flex-col flex-1 min-h-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto p-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 scrollbar-none shrink-0">
           {columns.map(col => (
-            <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
-                    topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap}
-                    problemCountMap={problemCountMap}
-                    types={project?.types ?? []} />
+            <button
+              key={col.key}
+              onClick={() => setMobileStatus(col.key)}
+              className={cx(
+                'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none',
+                activeMobileCol?.key === col.key
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              )}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
+              <span>{col.name}</span>
+              <span className="opacity-80">({col.tasks.length})</span>
+            </button>
           ))}
         </div>
-        <DragOverlay>
-          {dragging && <Card task={dragging} overlay draggable onOpen={() => {}}
-                                topPriority={topPriority} types={project?.types ?? []}
-                                problemCount={problemCountMap.get(dragging.id) ?? 0} />}
-        </DragOverlay>
-      </DndContext>
+
+        {activeMobileCol && (
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {activeMobileCol.tasks.map(task => (
+              <Card
+                key={task.id}
+                task={task}
+                onOpen={onOpen}
+                onEdit={onEdit}
+                draggable={false}
+                topPriority={topPriority}
+                types={project?.types ?? []}
+                problemCount={problemCountMap.get(task.id) ?? 0}
+                blockedBy={blockedByMap.get(task.id)}
+                isFocused={task.id === focusedTaskId}
+              />
+            ))}
+            {activeMobileCol.tasks.length === 0 && (
+              <div className="rounded-xl border-2 border-dashed border-slate-200 py-12 text-center text-xs text-slate-400 dark:border-slate-800">
+                此狀態目前無任務
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 🖥️ 電腦版多欄看板（拖曳排程） */}
+      <div className="hidden md:flex flex-1 min-h-0">
+        <DndContext sensors={sensors} collisionDetection={closestCorners}
+                    onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div ref={boardContainerRef} className="flex flex-1 gap-3 overflow-x-auto p-4">
+            {columns.map(col => (
+              <Column key={col.key} column={col} onOpen={onOpen} onEdit={onEdit} canDrag={canDrag}
+                      topPriority={topPriority} focusedTaskId={focusedTaskId} blockedByMap={blockedByMap}
+                      problemCountMap={problemCountMap}
+                      types={project?.types ?? []} />
+            ))}
+          </div>
+          <DragOverlay>
+            {dragging && <Card task={dragging} overlay draggable onOpen={() => {}}
+                                  topPriority={topPriority} types={project?.types ?? []}
+                                  problemCount={problemCountMap.get(dragging.id) ?? 0} />}
+          </DragOverlay>
+        </DndContext>
+      </div>
     </div>
   )
 }

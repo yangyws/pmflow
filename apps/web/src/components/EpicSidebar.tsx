@@ -637,8 +637,13 @@ export function EpicSidebar({
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white
-                      dark:border-slate-700 dark:bg-slate-900">
+    <>
+      {/* 行動裝置展開時的半透明背景遮罩 */}
+      <div
+        className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs md:hidden"
+        onClick={() => setCollapse(true)}
+      />
+      <aside className="fixed inset-y-0 left-0 z-50 w-72 md:relative md:inset-auto md:z-auto md:w-64 flex shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl md:shadow-none dark:border-slate-700 dark:bg-slate-900">
 
       {/* ── 專案標頭 (與右側頂欄第一層 h-12 完美對齊) ── */}
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 px-3 dark:border-slate-700">
@@ -789,6 +794,7 @@ export function EpicSidebar({
       </nav>
 
     </aside>
+    </>
   )
 }
 

@@ -639,7 +639,7 @@ function ProjectWorkspace({
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full w-full max-w-full overflow-hidden">
       <EpicSidebar
         project={project}
         tasks={tasks}
@@ -658,7 +658,7 @@ function ProjectWorkspace({
         onSwitchProject={onSwitchProject}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden w-full max-w-full">
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，常駐顯示 */}
           <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 min-w-0">
