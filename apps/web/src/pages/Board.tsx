@@ -261,13 +261,13 @@ export default function Board({
               key={col.key}
               onClick={() => setMobileStatus(col.key)}
               className={cx(
-                'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none',
+                'shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer select-none',
                 activeMobileCol?.key === col.key
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
               )}
             >
-              <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: col.color }} />
               <span>{col.name}</span>
               <span className="opacity-80">({col.tasks.length})</span>
             </button>
@@ -275,7 +275,7 @@ export default function Board({
         </div>
 
         {activeMobileCol && (
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-2 sm:space-y-2.5">
             {activeMobileCol.tasks.map(task => (
               <Card
                 key={task.id}
@@ -439,7 +439,7 @@ function Card({
       }}
       title={draggable ? undefined : T.task.permission.cannotDragCard}
       className={cx(
-        'rounded-lg p-2.5 transition-all',
+        'rounded-lg p-2 sm:p-2.5 transition-all',
         isFocused
           ? 'ring-2 ring-blue-500 bg-blue-50/90 dark:bg-blue-900/40 dark:ring-blue-400 shadow-md'
           : 'bg-white ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600',
@@ -462,7 +462,7 @@ function Card({
           </span>
         )}
       </div>
-      <div className="text-sm leading-snug text-slate-800 dark:text-slate-200">
+      <div className="text-[13px] sm:text-sm font-semibold leading-snug text-slate-800 dark:text-slate-200">
         {task.title}
       </div>
 
@@ -496,7 +496,7 @@ function Card({
         </div>
       )}
 
-      <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-400">
+      <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-400">
         {task.dueDate && <span>📅 {task.dueDate.slice(5, 10).replace('-', '/')}</span>}
         {task.assigneeName && <span>👤 {task.assigneeName}</span>}
         {task.type !== 'BUG' && task.progress > 0 && (

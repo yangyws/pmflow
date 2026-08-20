@@ -673,14 +673,14 @@ export function EpicSidebar({
         <button
           onClick={() => onSelectEpic(null)}
           className={cx(
-            'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors cursor-pointer',
+            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 sm:py-2 text-left text-xs sm:text-sm transition-colors cursor-pointer',
             selectedEpicId === null
               ? 'bg-blue-50 dark:bg-blue-950/60 font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30 shadow-xs'
               : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
           )}>
           <span className="text-slate-400 dark:text-slate-400">☰</span>
           <span className="flex-1 font-medium">{T.nav.sidebar.allTasks}</span>
-          <span className="text-xs tabular-nums font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+          <span className="text-[11px] sm:text-xs tabular-nums font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
             {tasks.length}
           </span>
         </button>
@@ -785,7 +785,7 @@ export function EpicSidebar({
           </div>
         ) : (
           <button onClick={() => setAdding(true)} disabled={!project}
-                  className="mt-1 w-full rounded-md px-2.5 py-2 text-left text-sm text-slate-400
+                  className="mt-1 w-full rounded-md px-2.5 py-1.5 sm:py-2 text-left text-xs sm:text-sm text-slate-400
                              hover:bg-slate-50 disabled:opacity-50
                              dark:text-slate-400 dark:hover:bg-slate-800">
             ＋ 新增事件
@@ -931,7 +931,7 @@ function TreeNode({
           aria-label={open ? T.nav.sidebar.collapseEpic : T.nav.sidebar.expandEpic}
           aria-expanded={open}
           style={{ marginLeft: depth * 12 }}
-          className={cx('w-6 shrink-0 text-xs', isRoot ? 'py-2.5' : 'py-1.5',
+          className={cx('w-6 shrink-0 text-xs', isRoot ? 'py-2 sm:py-2.5' : 'py-1.5',
             kids.length
               ? 'text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               : 'text-transparent')}>
@@ -949,7 +949,7 @@ function TreeNode({
             : `[${task.ref}] ${task.title}`}
           aria-current={!isRoot && active ? 'true' : undefined}
           className={cx('block min-w-0 flex-1 rounded-md pr-2.5 text-left',
-                        isRoot ? 'py-2' : 'py-1.5')}>
+                        isRoot ? 'py-1.5 sm:py-2' : 'py-1 sm:py-1.5')}>
           <div className="flex flex-col gap-1 min-w-0">
             {/* 第一行：收納盒圖示(📦) + MRG編號 + 種類標籤 + 警示徽章 + 完成打勾(進度100%) */}
             <div className="flex items-center gap-1.5 min-w-0">
@@ -959,9 +959,9 @@ function TreeNode({
                   return saved ? new Set(JSON.parse(saved)).has(task.id) : false
                 } catch { return false }
               })())) && (
-                <span className="shrink-0 text-xs select-none">📦</span>
+                <span className="shrink-0 text-[11px] sm:text-xs select-none">📦</span>
               )}
-              <span className="shrink-0 font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+              <span className="shrink-0 font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400">
                 {task.ref || (task.number ? `MRG-${task.number}` : '')}
               </span>
               <TypeBadge name={kindName} color={kindColor} />
@@ -1021,8 +1021,8 @@ function TreeNode({
             )}
 
             {/* 第二行：任務標題 */}
-            <div className={cx('min-w-0 truncate text-xs leading-snug',
-              isRoot ? 'text-sm font-medium' : 'text-[13px]',
+            <div className={cx('min-w-0 truncate leading-snug',
+              isRoot ? 'text-xs sm:text-sm font-medium' : 'text-[11px] sm:text-[13px]',
               active
                 ? 'font-semibold text-blue-900 dark:text-blue-100'
                 : 'text-slate-700 dark:text-slate-300'
@@ -1032,17 +1032,17 @@ function TreeNode({
 
             {/* 第三行：進度條 */}
             {task.type !== 'BUG' && stat && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <span className={cx('block h-full transition-all duration-300',
                           stat.progress >= 100 ? 'bg-emerald-500' : 'bg-red-500')}
                         style={{ width: `${stat.progress}%` }} />
                 </span>
-                <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
+                <span className="shrink-0 text-[10px] sm:text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
                   {stat.progress}%
                 </span>
                 {stat.hasChildren && (
-                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
+                  <span className="shrink-0 text-[10px] sm:text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
                     {stat.done}/{stat.total}
                   </span>
                 )}

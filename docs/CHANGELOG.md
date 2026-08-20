@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-176` | 2026-08-20 | [手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）](#cr-176) | `List.tsx`, `Board.tsx`, `Week.tsx`, `Calendar.tsx`, `TaskDrawer.tsx`, `App.tsx`, `EpicSidebar.tsx` | 已驗證 |
 | `CR-175` | 2026-08-20 | [手機版權限與排版同步：行事曆週清單滿版單欄卡片流、非清單檢視強制唯讀與頂部提示橫幅](#cr-175) | `Week.tsx`, `TaskDrawer.tsx`, `App.tsx` | 已驗證 |
 | `CR-174` | 2026-08-20 | [行動端互動策略：手機版全站外層列表純展示，點擊直達任務修改頁（TaskDrawer）專職編輯](#cr-174) | `App.tsx`, `List.tsx`, `Board.tsx` | 已驗證 |
 | `CR-173` | 2026-08-20 | [行動端排版重構：手機畫面全站滿版垂直單欄呈現（徹底消除橫向滑動與側欄推擠）](#cr-173) | `List.tsx`, `Board.tsx`, `EpicSidebar.tsx`, `App.tsx` | 已驗證 |
@@ -233,6 +234,25 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-176"></a>CR-176 (2026-08-20) — 手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）
+
+- **使用者需求**：手機版的文字需要縮小一點，相應的按鈕也太大，需要整體調小排版比例，使其更加緊湊、精緻與舒適。
+- **實作細節**：
+  1. **全站視圖卡片與標題字級微縮 (`List.tsx`, `Board.tsx`, `Week.tsx`, `Calendar.tsx`)**：
+     - 手機版卡片標題字體調整為緊湊精緻的 `text-[13px] sm:text-sm font-semibold leading-snug`。
+     - 狀態標籤、種類徽章、MRG 編號、日期與負責人文字調整為 `text-[11px] / text-[10px]`，卡片內邊距優化為 `p-2.5 sm:p-3`，進度條厚度微調為 `h-1`。
+     - 手機上的操作按鈕（例如「＋ 新增任務」按鈕、看板頂部狀態切換頁籤、行事曆模式切換鈕）縮減內邊距為 `px-2 py-0.5 sm:px-2.5 sm:py-1 / text-xs`。
+  2. **任務修改抽屜視覺收斂 (`TaskDrawer.tsx`)**：
+     - 抽屜標題調整為 `text-base sm:text-lg font-semibold`（手機不再使用過大之 `text-xl`）。
+     - 各區塊標題（基本欄位、任務內容/問題內容、解決內容、遭遇問題與解決歷程、前後相依、上下階層、活動時間軸）統一收斂為 `text-xs sm:text-sm`。
+     - 唯讀橫幅、頂部操作按鈕（保存、放棄、刪除、前往清單等）精簡為 `text-xs` 與 `py-1.5 px-2.5` 緊湊 padding。
+  3. **頂部導覽列與麵包屑高度壓縮 (`App.tsx`)**：
+     - 第一層頁籤導覽列在手機端壓縮高度至 `h-10 sm:h-12`，頁籤按鈕調整為 `px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm`。
+     - 第二層麵包屑高度壓縮至 `min-h-8 sm:min-h-9`，字級調整為 `text-[11px] sm:text-xs`。
+  4. **側欄抽屜項目精緻化 (`EpicSidebar.tsx`)**：
+     - 側欄在手機抽屜展開時，任務項目標題調整為 `isRoot ? 'text-xs sm:text-sm font-medium' : 'text-[11px] sm:text-[13px]'`，統計數字與計數徽章調整為 `text-[10px] sm:text-[11px]`。
+- **異動模組**：`apps/web/src/pages/List.tsx`, `apps/web/src/pages/Board.tsx`, `apps/web/src/pages/Week.tsx`, `apps/web/src/pages/Calendar.tsx`, `apps/web/src/components/TaskDrawer.tsx`, `apps/web/src/App.tsx`, `apps/web/src/components/EpicSidebar.tsx`。
 
 ### <a id="cr-175"></a>CR-175 (2026-08-20) — 手機版權限與排版同步：行事曆週清單滿版單欄卡片流、非清單檢視強制唯讀與頂部提示橫幅
 

@@ -362,24 +362,24 @@ export default function ListView({
                 onOpen(t.id)
               }}
               className={cx(
-                'w-full rounded-xl border border-slate-200 bg-white p-3 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/80',
+                'w-full rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/80',
                 t.id === focusedTaskId && 'ring-2 ring-blue-500',
                 hasUnread && 'pmflow-flash'
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  {t.isBox && <span className="text-xs">📦</span>}
+                  {t.isBox && <span className="text-[11px]">📦</span>}
                   {typeOf(t.type) && (
                     <TypeBadge name={typeOf(t.type)} color={typeColorOf(t.type)} />
                   )}
-                  <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
                     {t.ref}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span
-                    className="rounded px-2 py-0.5 text-xs font-medium text-white shadow-xs"
+                    className="rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-xs"
                     style={{ background: st?.color ?? '#94a3b8' }}
                   >
                     {st?.name ?? t.statusKey}
@@ -391,7 +391,7 @@ export default function ListView({
                         e.stopPropagation()
                         onEdit(t.id)
                       }}
-                      className="p-0.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                      className="p-0.5 text-xs text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
                     >
                       ✏️
                     </button>
@@ -399,12 +399,12 @@ export default function ListView({
                 </div>
               </div>
 
-              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-1 text-[13px] sm:text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
                 {t.title}
               </div>
 
               {/* 警示區 */}
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
                 {cardProblemCount > 0 && (
                   <ProblemBadge count={cardProblemCount} isShort={true} problem={`內有 ${cardProblemCount} 張問題單`} />
                 )}
@@ -424,12 +424,12 @@ export default function ListView({
               </div>
 
               {/* 負責人與進度 */}
-              <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {t.assigneeName ? (
                     <>
                       <Avatar userId={t.assigneeId} name={t.assigneeName} hasAvatar={t.assigneeHasAvatar} />
-                      <span className="truncate max-w-[120px] font-medium text-slate-700 dark:text-slate-300">
+                      <span className="truncate max-w-[110px] font-medium text-slate-700 dark:text-slate-300">
                         {t.assigneeName}
                       </span>
                     </>
@@ -446,7 +446,7 @@ export default function ListView({
               </div>
 
               {/* 進度條 */}
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{ width: `${progress}%`, background: st?.color ?? '#3178c6' }}
@@ -459,7 +459,7 @@ export default function ListView({
         {canCreate && (
           <div className="mt-1">
             {addingTop ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-2">
                 <div className="flex items-center gap-2">
                   <NewTaskType value={typeFor(topTypes)} options={topTypes} onChange={setNewType} />
                   <Input
@@ -470,14 +470,14 @@ export default function ListView({
                   />
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  <Button onClick={() => { setAddingTop(false); setTopTitle('') }}>{T.common.cancel}</Button>
-                  <Button variant="primary" disabled={!topTitle.trim()} onClick={newTop}>{T.task.list.addSubmit}</Button>
+                  <Button className="text-xs py-1 px-2.5" onClick={() => { setAddingTop(false); setTopTitle('') }}>{T.common.cancel}</Button>
+                  <Button className="text-xs py-1 px-2.5" variant="primary" disabled={!topTitle.trim()} onClick={newTop}>{T.task.list.addSubmit}</Button>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => { setAddingTop(true); setTopTitle('') }}
-                className="w-full rounded-xl border border-dashed border-slate-300 bg-white/60 p-3 text-center text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300 cursor-pointer"
+                className="w-full rounded-xl border border-dashed border-slate-300 bg-white/60 py-1.5 px-2.5 text-center text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300 cursor-pointer"
               >
                 ＋ {T.task.list.addTask}
               </button>

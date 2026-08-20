@@ -404,13 +404,13 @@ export function TaskDrawer({
     >
       {isLoading || !data ? <Spinner /> : (
           <>
-            <header className="flex items-start justify-between border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4
+            <header className="flex items-start justify-between border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-4
                                dark:border-slate-700">
               {/* flex-1 不能省：沒有它這一格只有內容寬，
                   標題就只用得到畫面的一小段，長標題會被擠成很窄的一直條 */}
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-500
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] sm:text-xs text-slate-500
                                    dark:bg-slate-800 dark:text-slate-400">
                     {data.ref}
                   </span>
@@ -430,20 +430,20 @@ export function TaskDrawer({
                     */}
                   {inquiryCounts.waiting > 0 && (
                     <span title={T.task.drawer.inquiryWaitingTip(inquiryCounts.waiting)}
-                          className="rounded bg-blue-100 px-1 text-[11px] font-medium text-blue-700
+                          className="rounded bg-blue-100 px-1 text-[10px] sm:text-[11px] font-medium text-blue-700
                                      dark:bg-blue-500/15 dark:text-blue-300">
                       {T.task.drawer.inquiryWaiting(inquiryCounts.waiting)}
                     </span>
                   )}
                   {inquiryCounts.overdue > 0 && (
                     <span title={T.task.drawer.inquiryOverdueTip(inquiryCounts.overdue)}
-                          className="rounded bg-red-100 px-1 text-[11px] font-medium text-red-700
+                          className="rounded bg-red-100 px-1 text-[10px] sm:text-[11px] font-medium text-red-700
                                      dark:bg-red-500/15 dark:text-red-300">
                       {T.task.drawer.inquiryOverdue(inquiryCounts.overdue)}
                     </span>
                   )}
                   {inquiryCounts.allReplied && (
-                    <span className="rounded bg-emerald-100 px-1.5 text-[11px] font-medium
+                    <span className="rounded bg-emerald-100 px-1.5 text-[10px] sm:text-[11px] font-medium
                                      text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                       {T.task.drawer.inquiryAllReplied}
                     </span>
@@ -456,12 +456,12 @@ export function TaskDrawer({
                   />
                 ) : (
                   /* 改不動就不要畫成輸入框 —— 看起來能打字卻存不進去最難懂 */
-                  <h2 className="mt-1.5 text-xl font-semibold text-slate-800 dark:text-slate-100">
+                  <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">
                     {data.title}
                   </h2>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {/*
                   * 保存與刪除放在標題列右邊，不放在整頁最下面 ——
                   * 這一頁很長（欄位、問題、對外詢問、關聯、活動紀錄），
@@ -474,12 +474,13 @@ export function TaskDrawer({
                     title={saveBlocked
                       ? T.task.drawer.saveBlockedByInquiry(openInquiries)
                       : (!dirty ? T.task.drawer.nothingToSave : undefined)}
+                    className="text-xs py-1.5 px-2.5 sm:px-3"
                     onClick={() => save.mutate(draft as Record<string, unknown>)}>
                     {save.isPending ? T.task.drawer.saving : T.task.drawer.save}
                   </Button>
                 )}
                 {canEdit && dirty && (
-                  <Button onClick={() => setDraft({})}>{T.task.drawer.discard}</Button>
+                  <Button className="text-xs py-1.5 px-2.5" onClick={() => setDraft({})}>{T.task.drawer.discard}</Button>
                 )}
 
                 {/* 刪除兩段式：按一次問一句，再按一次才真的刪。
@@ -491,31 +492,31 @@ export function TaskDrawer({
                         ? T.task.drawer.deleteHasChildren(data.children.length)
                         : T.task.drawer.deleteConfirm}
                     </span>
-                    <Button variant="danger" disabled={remove.isPending}
+                    <Button variant="danger" className="text-xs py-1.5 px-2.5" disabled={remove.isPending}
                             onClick={() => remove.mutate()}>
                       {T.task.drawer.deleteYes}
                     </Button>
-                    <Button onClick={() => setConfirmDelete(false)}>{T.common.cancel}</Button>
+                    <Button className="text-xs py-1.5 px-2.5" onClick={() => setConfirmDelete(false)}>{T.common.cancel}</Button>
                   </>
                 ) : (
-                  <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+                  <Button variant="danger" className="text-xs py-1.5 px-2.5" onClick={() => setConfirmDelete(true)}>
                     {T.task.drawer.delete}
                   </Button>
                 ))}
 
-                <Button variant="ghost" onClick={onClose} className="text-lg leading-none">✕</Button>
+                <Button variant="ghost" onClick={onClose} className="text-base sm:text-lg leading-none p-1 sm:p-1.5">✕</Button>
               </div>
             </header>
 
-            <div className="flex-1 space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
+            <div className="flex-1 space-y-4 sm:space-y-6 overflow-y-auto px-3 sm:px-6 py-3 sm:py-5">
               {/* 唯讀提示橫幅 (方案 A) */}
               {readOnly ? (
-                <div className="rounded-xl bg-blue-50/90 p-3.5 text-xs text-blue-900 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-400/30 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shadow-xs">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="text-lg shrink-0 mt-0.5 select-none">👁️</span>
+                <div className="rounded-xl bg-blue-50/90 p-2.5 sm:p-3.5 text-xs text-blue-900 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-400/30 flex items-center justify-between gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap shadow-xs">
+                  <div className="flex items-start gap-2 sm:gap-2.5 min-w-0">
+                    <span className="text-base sm:text-lg shrink-0 mt-0.5 select-none">👁️</span>
                     <div>
-                      <p className="font-bold text-sm text-blue-950 dark:text-blue-100">唯讀檢視模式</p>
-                      <p className="mt-0.5 text-xs text-blue-700/90 dark:text-blue-300/90 leading-relaxed">
+                      <p className="font-bold text-xs sm:text-sm text-blue-950 dark:text-blue-100">唯讀檢視模式</p>
+                      <p className="mt-0.5 text-[11px] sm:text-xs text-blue-700/90 dark:text-blue-300/90 leading-relaxed">
                         手機端此檢視僅供瀏覽資訊；若需修改或指派任務，請前往【清單】頁面編輯。
                       </p>
                     </div>
@@ -524,7 +525,7 @@ export function TaskDrawer({
                     <Button
                       variant="primary"
                       onClick={onSwitchToList}
-                      className="shrink-0 text-xs px-3 py-1.5 font-semibold shadow-xs cursor-pointer"
+                      className="shrink-0 text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 font-semibold shadow-xs cursor-pointer"
                     >
                       📋 前往清單編輯
                     </Button>
@@ -778,13 +779,13 @@ export function TaskDrawer({
               )}
 
               {/* ── 內容區塊：任務單顯示「任務內容」；問題單顯示「問題內容」與「解決內容」 ── */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs space-y-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4 shadow-xs space-y-3 sm:space-y-4">
                 {/* 任務內容 / 問題內容 */}
                 <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="mb-1.5 sm:mb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-base">{form.type === 'BUG' ? '⚠️' : '📝'}</span>
-                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-sm sm:text-base">{form.type === 'BUG' ? '⚠️' : '📝'}</span>
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
                         {form.type === 'BUG' ? '問題內容' : '任務內容'}
                       </h3>
                     </div>
@@ -795,12 +796,12 @@ export function TaskDrawer({
                       onChange={e => edit({ description: e.target.value || null })}
                       rows={3}
                       placeholder={form.type === 'BUG' ? '描述遭遇問題的詳細狀況、影響範圍或排查線索…' : '填寫任務的詳細說明、需求背景或執行指引…'}
-                      className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
+                      className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
                                  placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
                                  focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
                     />
                   ) : (
-                    <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-2.5 sm:p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                       {form.description?.trim() ? form.description : (
                         <span className="text-slate-400 dark:text-slate-500 text-xs">
                           {form.type === 'BUG' ? '（無問題內容）' : '（無任務內容）'}
@@ -812,14 +813,14 @@ export function TaskDrawer({
 
                 {/* 問題單專屬：解決內容 */}
                 {form.type === 'BUG' && (
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="mb-1.5 sm:mb-2 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-base">💡</span>
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                        <span className="text-sm sm:text-base">💡</span>
+                        <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
                           解決內容
                         </h3>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span className="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                           （填寫即視為 100% 完成解決）
                         </span>
                       </div>
@@ -837,12 +838,12 @@ export function TaskDrawer({
                         }}
                         rows={3}
                         placeholder="填寫問題的解決方式、排解步驟或因應措施（填寫即視為100%解決）…"
-                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2 text-sm
+                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
                                    placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
                                    focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
                       />
                     ) : (
-                      <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                      <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-2.5 sm:p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                         {form.problem?.trim() ? form.problem : (
                           <span className="text-slate-400 dark:text-slate-500 text-xs">（尚未填寫解決內容）</span>
                         )}
@@ -883,15 +884,15 @@ export function TaskDrawer({
               {/* ── 前後相依（僅一般任務單可建立，問題單不參與流程相依） ── */}
               {data.type !== 'BUG' && (
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <h3 className="mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {T.task.link.title}{' '}
-                    <span className="font-normal text-slate-400 dark:text-slate-400">
+                    <span className="font-normal text-[11px] sm:text-xs text-slate-400 dark:text-slate-400">
                       {T.task.link.titleHint}
                     </span>
                   </h3>
                   <div className="space-y-1.5">
                     {data.links.length === 0 && (
-                      <p className="text-sm text-slate-400 dark:text-slate-400">{T.task.link.empty}</p>
+                      <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-400">{T.task.link.empty}</p>
                     )}
                     {[...data.links].sort((a, b) => {
                       const numA = parseInt(a.otherRef?.replace(/\D/g, '') || '0', 10)
@@ -899,14 +900,14 @@ export function TaskDrawer({
                       return numA - numB
                     }).map(l => (
                       <div key={l.id + l.direction}
-                           className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm
+                           className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm
                                       dark:bg-slate-800">
                         <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
                           <span className="font-mono font-semibold text-slate-500 dark:text-slate-400 mr-2">{l.otherRef}</span>
                           <span>{l.otherTitle}</span>
                         </span>
                         {canEditLinks && (
-                          <Button variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
+                          <Button variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 p-0.5"
                                   onClick={() => delLink.mutate(l.id)}>✕</Button>
                         )}
                       </div>
@@ -924,7 +925,7 @@ export function TaskDrawer({
                     <div className="min-w-56 flex-1">
                       <Field label={T.task.link.fieldTarget}>
                         <Select value={targetId} onChange={e => setTargetId(e.target.value)}
-                                className="w-full">
+                                className="w-full text-xs sm:text-sm">
                           <option value="">{T.task.link.pickTask}</option>
                           {allTasks.filter(t => t.id !== taskId && t.type !== 'BUG').sort((a, b) => {
                             const numA = parseInt(a.ref?.replace(/\D/g, '') || '0', 10)
@@ -936,14 +937,14 @@ export function TaskDrawer({
                         </Select>
                       </Field>
                     </div>
-                    <Button variant="primary" disabled={!targetId || addLink.isPending}
+                    <Button variant="primary" className="text-xs py-1.5 px-2.5 sm:px-3" disabled={!targetId || addLink.isPending}
                             onClick={() => addLink.mutate({ targetId, linkType: 'FS', lagDays: 0 })}>
                       {T.task.link.add}
                     </Button>
                   </div>
                   )}
                   {linkError && (
-                    <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200
+                    <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs sm:text-sm text-red-700 ring-1 ring-red-200
                                     dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30">
                       {linkError}
                     </div>
@@ -954,9 +955,9 @@ export function TaskDrawer({
               {/* ── 上下階層（所屬父任務 / 子任務清單，排除問題單） ── */}
               {(allTasks.find(t => t.id === data.parentId) || data.children.filter(c => c.type !== 'BUG').length > 0) && (
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <h3 className="mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
                     {T.task.children.title}{' '}
-                    <span className="font-normal text-slate-400 dark:text-slate-400">
+                    <span className="font-normal text-[11px] sm:text-xs text-slate-400 dark:text-slate-400">
                       {T.task.children.titleHint}
                     </span>
                   </h3>
@@ -966,13 +967,13 @@ export function TaskDrawer({
                     const p = allTasks.find(t => t.id === data.parentId)!
                     return (
                       <div className="mb-3">
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
                           <span>所屬父任務（收納盒）</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => onSelectTask?.(p.id)}
-                          className="flex w-full items-center gap-2 rounded-md bg-blue-50/70 border border-blue-200/80 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-100 dark:bg-slate-800 dark:border-blue-900/50 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
+                          className="flex w-full items-center gap-2 rounded-md bg-blue-50/70 border border-blue-200/80 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-left transition-colors hover:bg-blue-100 dark:bg-slate-800 dark:border-blue-900/50 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
                           title="點擊前往所屬父任務"
                         >
                           <span className="shrink-0 text-xs">📦</span>
@@ -989,7 +990,7 @@ export function TaskDrawer({
                   {data.children.filter(c => c.type !== 'BUG').length > 0 && (
                     <div>
                       {allTasks.find(t => t.id === data.parentId) && (
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
                           子任務清單
                         </div>
                       )}
@@ -1003,16 +1004,16 @@ export function TaskDrawer({
                             key={c.id}
                             type="button"
                             onClick={() => onSelectTask?.(c.id)}
-                            className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
+                            className="flex w-full items-center gap-2 rounded-md bg-slate-50 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-left transition-colors hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer group"
                             title="點擊打開該子任務事件詳情頁"
                           >
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
                                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.ref}</span>
                                 <span className="truncate font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400">{c.title}</span>
                               </div>
                               {c.problem && (
-                                <div className="mt-1 flex items-center">
+                                <div className="mt-0.5 sm:mt-1 flex items-center">
                                   <ProblemBadge problem={c.problem} />
                                 </div>
                               )}
@@ -1029,10 +1030,10 @@ export function TaskDrawer({
 
               {/* ── 活動時間軸 ── */}
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <h3 className="mb-1.5 sm:mb-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
                   {T.task.drawer.activityTitle}
                 </h3>
-                <ul className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <ul className="space-y-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                   {data.activities.slice(0, 15).map(a => (
                     <li key={a.id}>
                       <div className="flex gap-2">
@@ -1068,7 +1069,7 @@ export function TaskDrawer({
  */
 function ReadOnlyValue({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-0.5 py-1.5 text-sm text-slate-800 dark:text-slate-100">{children}</div>
+    <div className="px-0.5 py-1 sm:py-1.5 text-xs sm:text-sm text-slate-800 dark:text-slate-100">{children}</div>
   )
 }
 
@@ -1108,7 +1109,7 @@ function TitleBox({ value, onCommit }: { value: string; onCommit: (v: string) =>
     el.style.height = `${el.scrollHeight}px`
   }
 
-  const base = 'mt-1.5 w-full text-xl font-semibold leading-snug text-slate-800 dark:text-slate-100'
+  const base = 'mt-1 w-full text-base sm:text-lg font-semibold leading-snug text-slate-800 dark:text-slate-100'
 
   if (!editing) {
     /*
@@ -1340,11 +1341,11 @@ function ProblemSection({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4 shadow-xs">
+      <div className="mb-2 sm:mb-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-base">⚠️</span>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          <span className="text-sm sm:text-base">⚠️</span>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
             {T.task.problem.label}
           </h3>
         </div>
@@ -1352,7 +1353,7 @@ function ProblemSection({
 
       {/* 現有收納中的問題卡片清單 */}
       {childProblems && childProblems.length > 0 && (
-        <div className="mb-3 space-y-1.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-3">
+        <div className="mb-3 space-y-1.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-2.5 sm:p-3">
           <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
             <span>📦</span> 已收納之問題卡片 ({childProblems.length} 張)：
           </p>
@@ -1361,11 +1362,11 @@ function ProblemSection({
               <div
                 key={p.id}
                 onClick={() => onSelectTask?.(p.id)}
-                className="flex items-center justify-between gap-2 p-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition text-xs"
+                className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition text-xs"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 shrink-0">{p.ref}</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
+                  <span className="font-mono text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 shrink-0">{p.ref}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate text-xs">{p.title}</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 shrink-0 font-medium">
                   問題單
@@ -1377,7 +1378,7 @@ function ProblemSection({
       )}
 
       {/* 填寫新問題並開立問題卡片收納 */}
-      <div className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5 mb-3">
+      <div className="space-y-2.5 sm:space-y-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-2.5 sm:p-3.5 mb-3">
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
             問題標題 <span className="text-rose-500">*</span>
@@ -1386,7 +1387,7 @@ function ProblemSection({
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             placeholder="請輸入問題標題（建立後此事件自動轉為收納盒，並將問題卡片收納其中）…"
-            className="w-full"
+            className="w-full text-xs sm:text-sm"
           />
         </div>
 
@@ -1399,7 +1400,7 @@ function ProblemSection({
             onChange={e => setNewContent(e.target.value)}
             rows={2}
             placeholder="描述遭遇問題的詳細狀況、影響範圍或排查線索…"
-            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm
+            className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
                        placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
                        focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
           />
@@ -1410,7 +1411,7 @@ function ProblemSection({
             variant="primary"
             disabled={!newTitle.trim() || isCreatingCard}
             onClick={handleCreate}
-            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs"
+            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs py-1.5 px-2.5"
           >
             <span>📦</span> 開立問題卡片並收納
           </Button>

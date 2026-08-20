@@ -672,13 +672,13 @@ function ProjectWorkspace({
 
       <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden w-full max-w-full">
         <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          {/* 第一層 (h-12)：頁籤區 (左) + 通知與頭像選單 (右)，常駐顯示 */}
-          <div className="flex h-12 items-center border-b border-slate-200 px-2 sm:px-3 dark:border-slate-700 min-w-0">
-            <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-1 scrollbar-none">
+          {/* 第一層 (h-10 sm:h-12)：頁籤區 (左) + 通知與頭像選單 (右)，常駐顯示 */}
+          <div className="flex h-10 sm:h-12 items-center border-b border-slate-200 px-1.5 sm:px-3 dark:border-slate-700 min-w-0">
+            <nav className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto whitespace-nowrap min-w-0 flex-1 pr-1 scrollbar-none">
               {shownViews.map(v => (
                 <button key={v.key} onClick={() => { setView(v.key); setOpenTask(null) }}
                         className={cx(
-                          'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors select-none cursor-pointer',
+                          'flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors select-none cursor-pointer',
                           view === v.key && !openTask
                             ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-semibold'
                             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -687,7 +687,7 @@ function ProjectWorkspace({
                 </button>
               ))}
             </nav>
-            <div className="ml-auto shrink-0 flex items-center gap-1.5 sm:gap-2">
+            <div className="ml-auto shrink-0 flex items-center gap-1 sm:gap-2">
               <TabPrefs hidden={hiddenTabs} setHidden={setHiddenTabs}
                         ordered={orderedViews} onReorder={reorderTab}
                         onResetOrder={() => setTabOrder([])}
@@ -697,10 +697,10 @@ function ProjectWorkspace({
             </div>
           </div>
 
-          {/* 第二層 (min-h-9)：當前顯示事件 / 編輯模式麵包屑 */}
-          <div className="flex min-h-9 items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1 text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40 flex-wrap sm:flex-nowrap">
+          {/* 第二層 (min-h-8 sm:min-h-9)：當前顯示事件 / 編輯模式麵包屑 */}
+          <div className="flex min-h-8 sm:min-h-9 items-center gap-1.5 sm:gap-3 px-2.5 sm:px-4 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium bg-slate-50/50 dark:bg-slate-800/40 flex-wrap sm:flex-nowrap">
             {openTask ? (
-              <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 truncate flex-1 min-w-0">
                 <button
                   onClick={() => { setOpenTask(null) }}
                   className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 shrink-0 font-medium cursor-pointer"
@@ -723,7 +723,7 @@ function ProjectWorkspace({
                   ) : null
                 })()}
                 <span className="text-slate-300 dark:text-slate-600 shrink-0">/</span>
-                <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
+                <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-1.5 sm:px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
                   {(() => {
                     const current = tasks.find(x => x.id === openTask)
                     if (!current) return T.nav.fallbackTaskTitle
@@ -733,7 +733,7 @@ function ProjectWorkspace({
                 </span>
                 <button
                   onClick={() => setOpenTask(null)}
-                  className="ml-auto px-2 py-0.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+                  className="ml-auto px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shrink-0"
                 >
                   關閉編輯 ✕
                 </button>
@@ -741,7 +741,7 @@ function ProjectWorkspace({
             ) : selectedLabel ? (
               <div className="flex items-center gap-1.5 truncate">
                 <span className="shrink-0 text-slate-400 dark:text-slate-400 font-normal">當前顯示：</span>
-                <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
+                <span className="truncate font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-1.5 sm:px-2 py-0.5 rounded ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
                   {selectedLabel}
                 </span>
               </div>

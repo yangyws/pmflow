@@ -141,6 +141,8 @@ export default function CalendarView({
   const [calViewMode, setCalViewMode] = useRemembered<'month' | 'week'>('calendar.viewMode', 'month')
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null)
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
+  /** 頂部篩選與圖例向上折疊狀態 */
+  const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false)
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId),
@@ -424,7 +426,7 @@ export default function CalendarView({
         type="button"
         onClick={() => setCalViewMode('month')}
         className={cx(
-          'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          'rounded-md px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-medium transition-colors',
           calViewMode === 'month'
             ? 'bg-white text-slate-800 shadow-xs dark:bg-slate-700 dark:text-slate-100'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -436,7 +438,7 @@ export default function CalendarView({
         type="button"
         onClick={() => setCalViewMode('week')}
         className={cx(
-          'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          'rounded-md px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs font-medium transition-colors',
           calViewMode === 'week'
             ? 'bg-white text-slate-800 shadow-xs dark:bg-slate-700 dark:text-slate-100'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -467,59 +469,95 @@ export default function CalendarView({
       <div className="flex h-full flex-col">
 
         {/* ── 工具列 ── */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
-                        dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex flex-col border-b border-slate-200 bg-white px-2.5 sm:px-4 py-1.5 sm:py-2 dark:border-slate-700 dark:bg-slate-900 gap-1.5 sm:gap-2 shrink-0">
+          {/* 第一行：月份切換 + 今天 + 篩選折疊按鈕 + 登記請假 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" onClick={() => go(-1)} aria-label={C.prevMonth} className="px-2 py-1 text-xs sm:text-sm">‹</Button>
+              <div className="min-w-[6rem] sm:min-w-[7.5rem] text-center text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {monthLabel(cursor.year, cursor.month)}
+              </div>
+              <Button variant="ghost" onClick={() => go(1)} aria-label={C.nextMonth} className="px-2 py-1 text-xs sm:text-sm">›</Button>
+              <Button
+                onClick={() => {
+                  const d = new Date()
+                  setCursor({ year: d.getFullYear(), month: d.getMonth() })
+                }}
+                className="px-2 py-1 text-xs sm:text-sm"
+              >{C.today}</Button>
+            </div>
 
-          <Button variant="ghost" onClick={() => go(-1)} aria-label={C.prevMonth}>‹</Button>
-          <div className="min-w-[7.5rem] text-center text-sm font-semibold text-slate-800
-                          dark:text-slate-100">
-            {monthLabel(cursor.year, cursor.month)}
+            {/* 展開清單時的聚焦提示 / 還原按鈕 */}
+            {expandedWeek !== null && (
+              <div className="flex items-center gap-1.5 ml-1">
+                <span className="rounded bg-blue-50 px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 ring-1 ring-inset ring-blue-600/20 dark:ring-blue-400/30">
+                  第 {expandedWeek + 1} 週清單
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setExpandedWeek(null); setSelectedWeekDay(null); }}
+                  className="text-xs text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 underline cursor-pointer"
+                >
+                  ▲ 返回全月月格
+                </button>
+              </div>
+            )}
+
+            <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+              {/* 折疊/展開「篩選與圖例」切換鈕 */}
+              <button
+                type="button"
+                onClick={() => setFilterCollapsed(prev => !prev)}
+                className="flex items-center gap-1 rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title={filterCollapsed ? '展開篩選與圖例' : '向上收合篩選與圖例'}
+              >
+                <span>⚙ 篩選與圖例</span>
+                <span className="text-[10px]">{filterCollapsed ? '▼' : '▲'}</span>
+              </button>
+              <Button onClick={openNewLeave} className="text-xs py-1 px-2 sm:px-2.5">{C.leave.add}</Button>
+            </div>
           </div>
-          <Button variant="ghost" onClick={() => go(1)} aria-label={C.nextMonth}>›</Button>
-          <Button
-            onClick={() => {
-              const d = new Date()
-              setCursor({ year: d.getFullYear(), month: d.getMonth() })
-            }}
-          >{C.today}</Button>
 
-          <div className="ml-3 flex items-center gap-3 text-sm">
-            <label className="flex cursor-pointer items-center gap-1.5 text-slate-600
-                              dark:text-slate-300">
-              <input type="checkbox" checked={showInquiries}
-                     onChange={e => setShowInquiries(e.target.checked)}
-                     className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
-              {C.filterInquiries} <span className="text-xs text-slate-400 dark:text-slate-400">{inqCount}</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-1.5 text-slate-600
-                              dark:text-slate-300">
-              <input type="checkbox" checked={showLeaves}
-                     onChange={e => setShowLeaves(e.target.checked)}
-                     className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
-              {C.filterLeaves} <span className="text-xs text-slate-400 dark:text-slate-400">{leaveCount}</span>
-            </label>
-          </div>
+          {/* 第二行：對外詢問 / 請假核取方塊 + 圖例（支援向上折疊） */}
+          {!filterCollapsed && (
+            <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80 text-xs flex-wrap sm:flex-nowrap transition-all duration-200">
+              <div className="flex items-center gap-4 text-xs">
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-600 dark:text-slate-300 select-none">
+                  <input type="checkbox" checked={showInquiries}
+                         onChange={e => setShowInquiries(e.target.checked)}
+                         className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
+                  <span>{C.filterInquiries}</span>
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">{inqCount}</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-600 dark:text-slate-300 select-none">
+                  <input type="checkbox" checked={showLeaves}
+                         onChange={e => setShowLeaves(e.target.checked)}
+                         className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800" />
+                  <span>{C.filterLeaves}</span>
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">{leaveCount}</span>
+                </label>
+              </div>
 
-          <Button onClick={openNewLeave}>{C.leave.add}</Button>
-
-          <div className="ml-auto flex items-center gap-2.5 text-xs select-none flex-wrap">
-            <span className="text-slate-400 font-medium dark:text-slate-400">圖例：</span>
-            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
-              逾期/問題
-            </span>
-            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              進行中
-            </span>
-            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              已完成
-            </span>
-          </div>
+              <div className="flex items-center gap-2.5 text-[11px] select-none shrink-0 text-slate-500 dark:text-slate-400">
+                <span className="font-medium">圖例：</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-rose-500" />
+                  逾期/問題
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  進行中
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  已完成
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 請假讀不到時講一聲 —— 不然畫面上「沒有人請假」跟「沒讀到」長得一樣 */}
+        {/* 請假讀不到時講一聲 ── */}
         {leaveFailed && (
           <div className="border-b border-red-200 bg-red-50 px-4 py-1.5 text-xs text-red-700
                           dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -551,6 +589,7 @@ export default function CalendarView({
         <div className="min-h-0 flex-1 overflow-auto">
           {weeks.map((week, w) => {
             const isExpanded = expandedWeek === w
+            if (expandedWeek !== null && !isExpanded) return null
             const firstDay = week.days[0]
             const lastDay = week.days[6]
             const weekTasks = visiblePieces.filter(p => {
@@ -575,10 +614,10 @@ export default function CalendarView({
                       }
                     }}
                     className={cx(
-                      'w-8 shrink-0 flex flex-col items-center justify-start pt-2 border-r border-slate-200 dark:border-slate-700 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold',
+                      'w-8 shrink-0 flex flex-col items-center justify-start pt-2 border-r border-slate-200 dark:border-slate-700 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer',
                       isExpanded ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
                     )}
-                    title={isExpanded ? '收折本週任務清單' : '展開本週任務與行程清單'}
+                    title={isExpanded ? '收折本週任務清單並返回全月' : '展開本週任務與行程清單'}
                   >
                     <span>{isExpanded ? '▼' : '▶'}</span>
                     <span className="mt-1 text-[10px] scale-90">{weekTasks.length}</span>
@@ -614,9 +653,9 @@ export default function CalendarView({
                   </div>
                 </div>
 
-                {/* ── 展開本週任務面板 (載入全功能週檢視模組) ── */}
+                {/* ── 展開本週任務面板 (載入全功能週檢視模組 - 精簡模式) ── */}
                 {isExpanded && (
-                  <div className="bg-slate-50 p-2 border-t border-blue-200 dark:bg-slate-900 dark:border-blue-900 shadow-inner rounded-b-lg overflow-hidden">
+                  <div className="bg-slate-50 border-t border-blue-200 dark:bg-slate-900 dark:border-blue-900 shadow-inner overflow-hidden">
                     <WeekView
                       projectId={projectId}
                       tasks={tasks}
@@ -626,6 +665,7 @@ export default function CalendarView({
                       onEdit={onEdit}
                       focusedTaskId={focusedTaskId}
                       initialWeekStart={firstDay}
+                      compact={true}
                     />
                   </div>
                 )}

@@ -22,7 +22,21 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mobile Permission Partitioning & Week View Card Layout (CR-175)
+### Latest Changes: Mobile Typography & Button Fine-Tuning Optimization (CR-176)
+- **變更檔案**:
+  - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx), [`Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx), [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx), [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
+    1. **手機版卡片標題字級與內邊距微縮 (`CR-176`)**：卡片標題由大字級調為緊湊精緻之 `text-[13px] sm:text-sm font-semibold`，狀態、徽章、日期與負責人統一調為 `text-[11px] / text-[10px]`，卡片內邊距調為 `p-2.5 sm:p-3`，進度條厚度微縮為 `h-1`。
+    2. **手機操作按鈕尺寸收斂 (`CR-176`)**：新增任務按鈕、看板頂部狀態切換籤、行事曆月週切換鈕內邊距與文字收斂至 `px-2 py-0.5 sm:px-2.5 sm:py-1 / text-xs`。
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **抽屜標題與區塊標頭尺寸微縮 (`CR-176`)**：抽屜標題調為 `text-base sm:text-lg`，各區塊（基本欄位、內容、問題與解決、前後相依、上下階層、時間軸）標頭收斂為 `text-xs sm:text-sm`，操作按鈕與提示橫幅精緻化。
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **頂部導覽列與麵包屑高度壓縮 (`CR-176`)**：第一層導覽高度降為 `h-10 sm:h-12`，第二層麵包屑降為 `min-h-8 sm:min-h-9`（`text-[11px] sm:text-xs`），釋放手機縱向空間。
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **側欄展開抽屜文字與計數微縮 (`CR-176`)**：樹狀節點標題調整為 `isRoot ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-[13px]'`，計數徽章調整為 `text-[10px] sm:text-[11px]`。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-176` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-176`。
+
+### Previous Changes: Mobile Permission Partitioning & Week View Card Layout (CR-175)
 - **變更檔案**:
   - [`Week.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Week.tsx):
     1. **行事曆週檢視滿版單欄卡片流 (`CR-175`)**：在手機端（`< 768px`），將週檢視與行事曆展開每週清單由多欄表格改為 100% 滿版單欄垂直卡片流，消除 `52rem` 水平溢出。

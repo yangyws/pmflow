@@ -58,7 +58,7 @@ const GROUP_BY_LABEL: Record<GroupBy, string> = {
 const NO_ASSIGNEE = '__unassigned__'
 
 export default function WeekView({
-  projectId, tasks, statuses, types, onOpen, onEdit, focusedTaskId, extraHeaderLeft, initialWeekStart,
+  projectId, tasks, statuses, types, onOpen, onEdit, focusedTaskId, extraHeaderLeft, initialWeekStart, compact = false,
 }: {
   /** 只拿來當收合偏好的鍵 —— 狀態是每個專案自己一份，鍵不分專案會互相蓋掉 */
   projectId: string
@@ -72,6 +72,8 @@ export default function WeekView({
   /** 工具列最左側額外注入元素（如行事曆之 [月視角 | 週視角] 切換鈕） */
   extraHeaderLeft?: React.ReactNode
   initialWeekStart?: string
+  /** 嵌入於行事曆月格展開時，啟用精簡工具列並隱藏重複日期欄 */
+  compact?: boolean
 }) {
   const today = todayYmd()
   /** 目前看的是哪一週，存的是那一週的星期日 */
@@ -273,112 +275,150 @@ export default function WeekView({
     <div className="flex h-full flex-col">
 
       {/* ── 工具列 ── */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
-                      dark:border-slate-700 dark:bg-slate-900">
-        {extraHeaderLeft}
-        <Button variant="ghost" onClick={() => { setSelectedDay(null); go(-1) }} aria-label={W.prevWeek}>‹</Button>
-        <div className="min-w-[8rem] text-center">
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {W.rangeLabel(shortDate(weekStart), shortDate(weekEnd))}
+      {compact ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">{W.groupByLabel}</span>
+            {GROUP_BY.map(g => (
+              <button key={g} type="button" onClick={() => setGroupBy(g)}
+                      aria-pressed={groupBy === g}
+                      className={cx(
+                        'rounded px-2 py-0.5 text-xs transition-colors cursor-pointer',
+                        groupBy === g
+                          ? 'bg-blue-50 font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30'
+                          : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                      )}>
+                {GROUP_BY_LABEL[g]}
+              </button>
+            ))}
           </div>
-          <div className="text-[11px] text-slate-400 dark:text-slate-400">
-            {fromYear === toYear ? W.yearLabel(fromYear) : W.yearSpanLabel(fromYear, toYear)}
+
+          <div className="flex items-center gap-2">
+            {groups.length > 0 && (
+              <Button variant="ghost"
+                      className="text-xs py-0.5 px-2"
+                      onClick={() => setCollapsed(allCollapsed
+                        ? collapsed.filter(k => !k.startsWith(collapseKey))
+                        : [
+                          ...collapsed.filter(k => !k.startsWith(collapseKey)),
+                          ...groups.map(g => collapseKey + g.key),
+                        ])}>
+                {allCollapsed ? W.expandAll : W.collapseAll}
+              </Button>
+            )}
+            <span className="text-slate-400 dark:text-slate-400 text-xs">
+              {W.summary(rows.length)}
+            </span>
           </div>
         </div>
-        <Button variant="ghost" onClick={() => { setSelectedDay(null); go(1) }} aria-label={W.nextWeek}>›</Button>
-        <Button onClick={() => { setSelectedDay(null); setWeekStart(thisWeekStart) }}>{W.thisWeek}</Button>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2
+                          dark:border-slate-700 dark:bg-slate-900">
+            {extraHeaderLeft}
+            <Button variant="ghost" onClick={() => { setSelectedDay(null); go(-1) }} aria-label={W.prevWeek}>‹</Button>
+            <div className="min-w-[8rem] text-center">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {W.rangeLabel(shortDate(weekStart), shortDate(weekEnd))}
+              </div>
+              <div className="text-[11px] text-slate-400 dark:text-slate-400">
+                {fromYear === toYear ? W.yearLabel(fromYear) : W.yearSpanLabel(fromYear, toYear)}
+              </div>
+            </div>
+            <Button variant="ghost" onClick={() => { setSelectedDay(null); go(1) }} aria-label={W.nextWeek}>›</Button>
+            <Button onClick={() => { setSelectedDay(null); setWeekStart(thisWeekStart) }}>{W.thisWeek}</Button>
 
-        {weekStart === thisWeekStart && !selectedDay && (
-          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700
-                           ring-1 ring-inset ring-blue-600/20
-                           dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30">
-            {W.currentBadge}
-          </span>
-        )}
-
-        {selectedDay && (
-          <button type="button" onClick={() => setSelectedDay(null)}
-                  title={W.clearSingleDayTip}
-                  className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5
-                             text-xs font-medium text-blue-800 hover:bg-blue-200
-                             dark:bg-blue-500/20 dark:text-blue-200 dark:hover:bg-blue-500/30
-                             transition-colors cursor-pointer">
-            <span>{W.filterSingleDay(shortDate(selectedDay))}</span>
-            <span className="text-blue-600 dark:text-blue-300 font-bold text-xs ml-0.5">✕</span>
-          </button>
-        )}
-
-        {/* 分組方式。放在工具列右半邊，跟左邊「看哪一週」分開 ——
-            一個是換時間，一個是換排法，混在一起按錯的機會很高 */}
-        <div className="ml-auto flex items-center gap-1">
-          <span className="text-xs text-slate-500 dark:text-slate-400">{W.groupByLabel}</span>
-          {GROUP_BY.map(g => (
-            <button key={g} type="button" onClick={() => setGroupBy(g)}
-                    aria-pressed={groupBy === g}
-                    className={cx(
-                      'rounded px-2 py-1 text-xs transition-colors',
-                      groupBy === g
-                        ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 ' +
-                          'dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30'
-                        : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                    )}>
-              {GROUP_BY_LABEL[g]}
-            </button>
-          ))}
-        </div>
-
-        {/* 一組都沒有的時候不畫這顆 —— 按了不會有任何事情發生的按鈕不要出現 */}
-        {groups.length > 0 && (
-          <Button variant="ghost"
-                  onClick={() => setCollapsed(allCollapsed
-                    ? collapsed.filter(k => !k.startsWith(collapseKey))
-                    : [
-                      ...collapsed.filter(k => !k.startsWith(collapseKey)),
-                      ...groups.map(g => collapseKey + g.key),
-                    ])}>
-            {allCollapsed ? W.expandAll : W.collapseAll}
-          </Button>
-        )}
-
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {selectedDay ? W.singleDaySummary(shortDate(selectedDay), rows.length) : W.summary(rows.length)}
-        </span>
-      </div>
-
-      {/* ── 這一週的七天，讓標題那段日期對得上星期幾（可點選切換單日視角） ── */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50
-                      dark:border-slate-700 dark:bg-slate-900">
-        {WEEKDAY_LABELS.map((label, i) => {
-          const day = shiftYmd(weekStart, i)
-          const isToday = day === today
-          const isSelected = day === selectedDay
-          return (
-            <button key={label}
-                 type="button"
-                 title={W.dayTip(shortDate(day))}
-                 onClick={() => setSelectedDay(prev => prev === day ? null : day)}
-                 className={cx(
-                   'flex items-center justify-center gap-1 py-1.5 text-xs transition-colors cursor-pointer',
-                   isSelected
-                     ? 'bg-blue-100/80 font-semibold text-blue-800 border-b-2 border-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400'
-                     : 'hover:bg-slate-100 dark:hover:bg-slate-800',
-                   !isSelected && (i === 0 || i === 6
-                     ? 'text-slate-400 dark:text-slate-400'
-                     : 'text-slate-500 dark:text-slate-400')
-                 )}>
-              <span className="font-medium">{label}</span>
-              <span className={cx(
-                'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 tabular-nums',
-                isToday ? 'bg-red-600 font-bold text-white shadow-sm dark:bg-red-500'
-                        : isSelected ? 'bg-blue-600 font-bold text-white dark:bg-blue-400'
-                                     : ''
-              )} title={isToday ? '今天' : undefined}>
-                {parseYmd(day).getDate()}
+            {weekStart === thisWeekStart && !selectedDay && (
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700
+                               ring-1 ring-inset ring-blue-600/20
+                               dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30">
+                {W.currentBadge}
               </span>
-            </button>
-          )
-        })}
-      </div>
+            )}
+
+            {selectedDay && (
+              <button type="button" onClick={() => setSelectedDay(null)}
+                      title={W.clearSingleDayTip}
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5
+                                 text-xs font-medium text-blue-800 hover:bg-blue-200
+                                 dark:bg-blue-500/20 dark:text-blue-200 dark:hover:bg-blue-500/30
+                                 transition-colors cursor-pointer">
+                <span>{W.filterSingleDay(shortDate(selectedDay))}</span>
+                <span className="text-blue-600 dark:text-blue-300 font-bold text-xs ml-0.5">✕</span>
+              </button>
+            )}
+
+            {/* 分組方式。放在工具列右半邊，跟左邊「看哪一週」分開 */}
+            <div className="ml-auto flex items-center gap-1">
+              <span className="text-xs text-slate-500 dark:text-slate-400">{W.groupByLabel}</span>
+              {GROUP_BY.map(g => (
+                <button key={g} type="button" onClick={() => setGroupBy(g)}
+                        aria-pressed={groupBy === g}
+                        className={cx(
+                          'rounded px-2 py-1 text-xs transition-colors',
+                          groupBy === g
+                            ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 ' +
+                              'dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30'
+                            : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                        )}>
+                  {GROUP_BY_LABEL[g]}
+                </button>
+              ))}
+            </div>
+
+            {groups.length > 0 && (
+              <Button variant="ghost"
+                      onClick={() => setCollapsed(allCollapsed
+                        ? collapsed.filter(k => !k.startsWith(collapseKey))
+                        : [
+                          ...collapsed.filter(k => !k.startsWith(collapseKey)),
+                          ...groups.map(g => collapseKey + g.key),
+                        ])}>
+                {allCollapsed ? W.expandAll : W.collapseAll}
+              </Button>
+            )}
+
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {selectedDay ? W.singleDaySummary(shortDate(selectedDay), rows.length) : W.summary(rows.length)}
+            </span>
+          </div>
+
+          {/* ── 這一週的七天 ── */}
+          <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50
+                          dark:border-slate-700 dark:bg-slate-900">
+            {WEEKDAY_LABELS.map((label, i) => {
+              const day = shiftYmd(weekStart, i)
+              const isToday = day === today
+              const isSelected = day === selectedDay
+              return (
+                <button key={label}
+                     type="button"
+                     title={W.dayTip(shortDate(day))}
+                     onClick={() => setSelectedDay(prev => prev === day ? null : day)}
+                     className={cx(
+                       'flex items-center justify-center gap-1 py-1.5 text-xs transition-colors cursor-pointer',
+                       isSelected
+                         ? 'bg-blue-100/80 font-semibold text-blue-800 border-b-2 border-blue-600 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400'
+                         : 'hover:bg-slate-100 dark:hover:bg-slate-800',
+                       !isSelected && (i === 0 || i === 6
+                         ? 'text-slate-400 dark:text-slate-400'
+                         : 'text-slate-500 dark:text-slate-400')
+                     )}>
+                  <span className="font-medium">{label}</span>
+                  <span className={cx(
+                    'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 tabular-nums',
+                    isToday ? 'bg-red-600 font-bold text-white shadow-sm dark:bg-red-500'
+                            : isSelected ? 'bg-blue-600 font-bold text-white dark:bg-blue-400'
+                                         : ''
+                  )} title={isToday ? '今天' : undefined}>
+                    {parseYmd(day).getDate()}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {/* ── 任務 ── */}
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
@@ -398,7 +438,7 @@ export default function WeekView({
                       onClick={() => toggleGroup(g.key)}
                       aria-expanded={!off}
                       aria-label={off ? W.expandGroup(g.name) : W.collapseGroup(g.name)}
-                      className="flex w-full items-center gap-2 rounded-lg bg-slate-100/90 px-3 py-2 text-left transition-colors hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-800"
+                      className="flex w-full items-center gap-1.5 sm:gap-2 rounded-lg bg-slate-100/90 px-2.5 py-1.5 sm:py-2 text-left transition-colors hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-800"
                     >
                       <span aria-hidden className={cx('shrink-0 text-xs text-slate-400 transition-transform dark:text-slate-400', off && '-rotate-90')}>
                         ▼
@@ -406,16 +446,16 @@ export default function WeekView({
                       {g.avatar ? (
                         <Avatar userId={g.avatar.userId} name={g.avatar.name} hasAvatar={g.avatar.hasAvatar} />
                       ) : (
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: g.color ?? undefined }} />
+                        <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full" style={{ background: g.color ?? undefined }} />
                       )}
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                         {g.name}
                       </span>
-                      <span className="text-xs text-slate-400 dark:text-slate-400">
+                      <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-400">
                         {W.groupCount(g.rows.length)}
                       </span>
                       {off && g.overdue > 0 && (
-                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30">
+                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30">
                           {W.groupOverdue(g.overdue)}
                         </span>
                       )}
@@ -653,7 +693,7 @@ function MobileTaskCard({
         onOpen(t.id)
       }}
       className={cx(
-        'w-full rounded-xl border border-slate-200 bg-white p-3 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/80',
+        'w-full rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/80',
         isFocused && 'ring-2 ring-blue-500',
         hasUnread && 'pmflow-flash'
       )}
@@ -662,12 +702,12 @@ function MobileTaskCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <TypeBadge name={typeName} color={typeColor} />
-          <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+          <span className="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
             {t.ref}
           </span>
         </div>
         <span
-          className="rounded px-2 py-0.5 text-xs font-medium text-white shadow-xs shrink-0"
+          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-xs shrink-0"
           style={{ background: status?.color ?? '#94a3b8' }}
         >
           {status?.name ?? t.statusKey}
@@ -675,12 +715,12 @@ function MobileTaskCard({
       </div>
 
       {/* 標題 */}
-      <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+      <div className="mt-1 text-[13px] sm:text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
         {t.title}
       </div>
 
       {/* 警示區 */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-1.5 flex flex-wrap items-center gap-1">
         {t.type !== 'BUG' && t.problem && (
           <ProblemBadge problem={t.problem} />
         )}
@@ -695,12 +735,12 @@ function MobileTaskCard({
       </div>
 
       {/* 負責人與起訖日 */}
-      <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5 min-w-0">
           {t.assigneeName ? (
             <>
               <Avatar userId={t.assigneeId} name={t.assigneeName} hasAvatar={t.assigneeHasAvatar} />
-              <span className="truncate max-w-[120px] font-medium text-slate-700 dark:text-slate-300">
+              <span className="truncate max-w-[110px] font-medium text-slate-700 dark:text-slate-300">
                 {t.assigneeName}
               </span>
             </>
@@ -720,7 +760,7 @@ function MobileTaskCard({
 
       {/* 進度條 */}
       {t.type !== 'BUG' && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${t.progress}%`, background: status?.color ?? '#3178c6' }}
