@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Small Screen Responsive Layout & Anti-Squeeze Fixes (CR-177)
+### Latest Changes: Graph Focus Persistence & Card Dynamic Height Fixes (CR-178)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **切換頁籤焦點持久聚焦 (`CR-178`)**：重構 `loadSavedViewport` 為專案隔離並於組件掛載時動態載入；實作 `centerOnNode` 深度座標定位，在切換頁籤回來或選中任務時自動平滑置中聚焦，解決視角跑掉問題。
+    2. **卡片高度自適應與進度條防遮蔽 (`CR-178`)**：移除卡片固定 `height: 90` 限制，改採 `minHeight: 90` 與 `flex-col justify-between`，多行標題與警示徽章共存時框體自然延展，確保進度條完整顯示；`computeBoxDimensions` 支援依卡片動態高度擴展邊界。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-178` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-178`。
+
+### Previous Changes: Small Screen Responsive Layout & Anti-Squeeze Fixes (CR-177)
 - **變更檔案**:
   - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **基本欄位防擠壓滿版重構 (`CR-177`)**：修復手機端負責人、進度與起訖日因缺少 `col-span-2` 被壓縮至半寬 1 格的問題，配置 `col-span-2 sm:col-span-2` 與 `col-span-2 sm:col-span-4` 確保滿版雙欄正常展開。

@@ -104,15 +104,17 @@ const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
 }
 const PRO_OPTIONS = { hideAttribution: true }
 
-const STORAGE_KEY_VIEWPORT = 'pmflow_simple_graph_viewport'
+const getStorageKeyViewport = (projectId?: string) =>
+  projectId ? `pmflow_simple_graph_viewport_${projectId}` : 'pmflow_simple_graph_viewport'
 
 // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
-function loadSavedViewport(): Viewport | undefined {
+function loadSavedViewport(projectId?: string): Viewport | undefined {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_VIEWPORT)
+    const raw = (projectId ? localStorage.getItem(`pmflow_simple_graph_viewport_${projectId}`) : null)
+      || localStorage.getItem('pmflow_simple_graph_viewport')
     if (raw) {
       const parsed = JSON.parse(raw) as Viewport
-      if (parsed && typeof parsed.zoom === 'number' && parsed.zoom >= 0.1) {
+      if (parsed && typeof parsed.zoom === 'number' && parsed.zoom >= 0.05) {
         return parsed
       }
     }
@@ -121,8 +123,6 @@ function loadSavedViewport(): Viewport | undefined {
   }
   return undefined
 }
-
-const savedViewport = loadSavedViewport()
 
 // 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 Graph.tsx: React Flow 要求父節點排在子節點前面，否則子節點座標會對不上)
 // Ref: CR-152 深度只算一次並記起來；本來就照順序時直接回傳原陣列，不排序也不配置新陣列
@@ -248,7 +248,7 @@ function computeBoxDimensions(
     const kX = k.position?.x ?? 24
     const kY = k.position?.y ?? 70
     let kW = Number(k.style?.width ?? k.width ?? (k as any).measured?.width ?? (isKBox ? 340 : 256))
-    let kH = Number(k.style?.height ?? k.height ?? (k as any).measured?.height ?? (isKBox ? 280 : 90))
+    let kH = Number((k as any).measured?.height ?? k.style?.height ?? k.height ?? (isKBox ? 280 : 90))
 
     if (isKBox) {
       const subDims = computeBoxDimensions(k.id, childNodes, undefined, undefined, new Set(visited))
@@ -277,7 +277,7 @@ function computeBoxDimensions(
 function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<CustomSimpleNode>) {
   const isBox = data.mode === 'box'
   const nodeW = width ?? (isBox ? 340 : 256)
-  const nodeH = height ?? (isBox ? 260 : 90)
+  const nodeH = height ?? (isBox ? 260 : undefined)
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -294,8 +294,12 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      style={{ width: nodeW, height: nodeH }}
-      className="relative select-none pointer-events-auto w-full h-full"
+      style={{
+        width: nodeW,
+        height: isBox ? nodeH : undefined,
+        minHeight: isBox ? undefined : 90,
+      }}
+      className={cx('relative select-none pointer-events-auto', isBox ? 'w-full h-full' : 'w-full')}
     >
       {isBox ? (
         <div
@@ -427,7 +431,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       ) : (
         <div
           className={cx(
-            'w-full h-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-start overflow-hidden opacity-100',
+            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-200 dark:border-slate-800'
@@ -437,7 +441,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             className="h-1 rounded-t-lg shrink-0"
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
           />
-          <div className="p-2.5 flex flex-col justify-start flex-1 gap-1 min-w-0">
+          <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
             {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 */}
             <div className="flex items-center gap-1.5 w-max min-w-full whitespace-nowrap overflow-visible">
               {data.taskType !== 'BUG' && (
@@ -1123,11 +1127,53 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     return d.toISOString().slice(0, 10)
   }, [])
 
+  const savedViewport = useMemo(() => loadSavedViewport(projectId), [projectId])
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const lastFocusedTsRef = useRef<number>(0)
+  const lastFocusedTaskIdRef = useRef<string | null>(null)
   const connectStartRef = useRef<{ nodeId: string | null; handleId: string | null; handleType: string | null } | null>(null)
+
+  const centerOnNode = useCallback(
+    (nodeId: string, duration = 500) => {
+      const targetNode = nodes.find((n) => n.id === nodeId)
+      if (!targetNode) return false
+
+      let absX = targetNode.position.x
+      let absY = targetNode.position.y
+
+      if (targetNode.parentId) {
+        let curParentId: string | undefined = targetNode.parentId
+        const visited = new Set<string>()
+        while (curParentId && !visited.has(curParentId)) {
+          visited.add(curParentId)
+          const pNode = nodes.find((n) => n.id === curParentId)
+          if (pNode) {
+            absX += pNode.position.x
+            absY += pNode.position.y
+            curParentId = pNode.parentId
+          } else {
+            break
+          }
+        }
+      }
+
+      const isBox = (targetNode.data as SimpleGraphNodeData)?.mode === 'box'
+      const w = (targetNode.measured?.width || targetNode.width || (isBox ? 360 : 220)) as number
+      const h = (targetNode.measured?.height || targetNode.height || (isBox ? 260 : 80)) as number
+
+      const centerX = absX + w / 2
+      const centerY = absY + h / 2
+
+      const currentZoom = getViewport()?.zoom || 1
+      const targetZoom = isBox ? Math.min(Math.max(currentZoom, 0.6), 1.0) : Math.min(Math.max(currentZoom, 0.8), 1.2)
+
+      setCenter(centerX, centerY, { duration, zoom: targetZoom })
+      return true
+    },
+    [nodes, setCenter, getViewport]
+  )
 
   // 僅限於從左側 Menu 點擊項目時，才觸發關聯圖鏡頭平滑移動並聚焦至該目標；點擊「全部任務」時觸發顯示全部
   useEffect(() => {
@@ -1141,40 +1187,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       return
     }
 
-    const targetNode = nodes.find((n) => n.id === menuFocusTarget.id)
-    if (!targetNode) return
+    setSelectedNodeId(menuFocusTarget.id)
+    centerOnNode(menuFocusTarget.id, 600)
+  }, [menuFocusTarget, nodes, fitView, centerOnNode])
 
-    let absX = targetNode.position.x
-    let absY = targetNode.position.y
+  // 當切換頁籤回來或外部 focusedTaskId 變更時，自動平滑聚焦至目標任務卡片
+  useEffect(() => {
+    if (!focusedTaskId || !nodes.length) return
+    if (lastFocusedTaskIdRef.current === focusedTaskId) return
+    lastFocusedTaskIdRef.current = focusedTaskId
 
-    if (targetNode.parentId) {
-      let curParentId: string | undefined = targetNode.parentId
-      const visited = new Set<string>()
-      while (curParentId && !visited.has(curParentId)) {
-        visited.add(curParentId)
-        const pNode = nodes.find((n) => n.id === curParentId)
-        if (pNode) {
-          absX += pNode.position.x
-          absY += pNode.position.y
-          curParentId = pNode.parentId
-        } else {
-          break
-        }
-      }
-    }
-
-    const isBox = (targetNode.data as SimpleGraphNodeData)?.mode === 'box'
-    const w = (targetNode.measured?.width || targetNode.width || (isBox ? 360 : 220)) as number
-    const h = (targetNode.measured?.height || targetNode.height || (isBox ? 260 : 80)) as number
-
-    const centerX = absX + w / 2
-    const centerY = absY + h / 2
-
-    const currentZoom = getViewport()?.zoom || 1
-    const targetZoom = isBox ? Math.min(Math.max(currentZoom, 0.6), 1.0) : Math.min(Math.max(currentZoom, 0.8), 1.2)
-
-    setCenter(centerX, centerY, { duration: 600, zoom: targetZoom })
-  }, [menuFocusTarget, nodes, setCenter, getViewport])
+    setSelectedNodeId(focusedTaskId)
+    requestAnimationFrame(() => {
+      centerOnNode(focusedTaskId, 400)
+    })
+  }, [focusedTaskId, nodes, centerOnNode])
 
   const parallelMap = useMemo(() => {
     const map = new Map<string, { isParallel: boolean; peers: string[] }>()
@@ -2083,9 +2110,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     })
   }, [graphData, projectId, tasks])
 
-  // 僅當「完全沒有儲存過 Viewport」時，首次進入才執行 fitView
+  // 僅當「完全沒有儲存過 Viewport 且沒有指定聚焦任務」時，首次進入才執行 fitView
   useEffect(() => {
-    if (savedViewport) return // 已有儲存視角時，保留使用者上次的位置與縮放，不自動重置
+    if (savedViewport || focusedTaskId) return // 已有儲存視角或有選中焦點時，保留焦點或使用者視角，不自動重置
 
     if (nodes.length > 0 && !hasFittedRef.current) {
       const allMeasured = nodes.every(
@@ -2106,7 +2133,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         return () => clearTimeout(timer)
       }
     }
-  }, [nodes, fitView])
+  }, [nodes, fitView, savedViewport, focusedTaskId])
 
   // 每次拖曳移位自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   useEffect(() => {
@@ -2412,9 +2439,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               position: kPos,
               zIndex: 10,
               width: 256,
-              height: 90,
-              style: { width: 256, height: 90 },
-              measured: { width: 256, height: 90 },
+              style: { width: 256 },
               data: {
                 label: k.title,
                 refText: k.ref,
@@ -2465,9 +2490,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           position: cardPos,
           zIndex: parentBoxId ? 10 : 2,
           width: 256,
-          height: 90,
-          style: { width: 256, height: 90 },
-          measured: { width: 256, height: 90 },
+          style: { width: 256 },
           data: {
             label: t.title,
             refText: t.ref,
@@ -2564,28 +2587,33 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         const isBoxNode = (newNode.data as SimpleGraphNodeData)?.mode === 'box'
-        const defaultW = isBoxNode ? 340 : 256
-        const defaultH = isBoxNode ? 260 : 90
-
         const targetPos = savedPos ?? existing?.position ?? newNode.position
-        const targetW = Math.max(defaultW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultW)
-        const targetH = Math.max(defaultH, existing?.height ?? savedSize?.height ?? newNode.height ?? defaultH)
 
-        const styleObj = {
-          ...(existing?.style || newNode.style),
-          width: targetW,
-          height: targetH,
+        if (isBoxNode) {
+          const defaultW = 340
+          const defaultH = 260
+          const targetW = Math.max(defaultW, existing?.width ?? savedSize?.width ?? newNode.width ?? defaultW)
+          const targetH = Math.max(defaultH, existing?.height ?? savedSize?.height ?? newNode.height ?? defaultH)
+          const styleObj = {
+            ...(existing?.style || newNode.style),
+            width: targetW,
+            height: targetH,
+          }
+          return {
+            ...newNode,
+            position: targetPos,
+            style: styleObj,
+            width: targetW,
+            height: targetH,
+            measured: { width: targetW, height: targetH },
+          }
         }
-
-        const dimObj = { width: targetW, height: targetH }
 
         return {
           ...newNode,
           position: targetPos,
-          style: styleObj,
-          width: targetW,
-          height: targetH,
-          measured: dimObj,
+          style: { width: 256 },
+          width: 256,
         }
       })
 
@@ -3144,7 +3172,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
           const nodeBoxDims = isBoxNode ? computeBoxDimensions(node.id, currentNodes, resized[node.id]?.width, resized[node.id]?.height) : undefined
           const nodeBoxW = nodeBoxDims ? nodeBoxDims.width : Number(node.style?.width ?? node.width ?? (isBoxNode ? 340 : 256))
-          const nodeBoxH = nodeBoxDims ? nodeBoxDims.height : Number(node.style?.height ?? node.height ?? (isBoxNode ? 260 : 72))
+          const nodeBoxH = nodeBoxDims ? nodeBoxDims.height : Number(node.style?.height ?? node.height ?? 260)
 
           const updatedMap = new Map(currentNodes.map((n) => [n.id, n]))
           const movedNode = updatedMap.get(node.id)
@@ -3153,9 +3181,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               ...movedNode,
               parentId: targetBox!.id,
               position: targetSlotPos,
-              style: { width: nodeBoxW, height: nodeBoxH },
-              width: nodeBoxW,
-              height: nodeBoxH,
+              style: isBoxNode ? { width: nodeBoxW, height: nodeBoxH } : { width: 256 },
+              width: isBoxNode ? nodeBoxW : 256,
+              height: isBoxNode ? nodeBoxH : undefined,
               data: {
                 ...movedNode.data,
                 mode: isBoxNode ? 'box' : 'card',
@@ -3266,16 +3294,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const handleMoveEnd = useCallback(
     (_: unknown, viewport: Viewport) => {
-      if (nodes.length === 0 || !viewport || typeof viewport.zoom !== 'number' || viewport.zoom < 0.1) {
+      if (nodes.length === 0 || !viewport || typeof viewport.zoom !== 'number' || viewport.zoom < 0.05) {
         return
       }
       try {
-        localStorage.setItem(STORAGE_KEY_VIEWPORT, JSON.stringify(viewport))
+        const key = getStorageKeyViewport(projectId)
+        localStorage.setItem(key, JSON.stringify(viewport))
       } catch {
         // ignore
       }
     },
-    [nodes.length]
+    [nodes.length, projectId]
   )
 
   /*
@@ -3585,7 +3614,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             nodesConnectable={true}
             elementsSelectable={true}
             defaultViewport={savedViewport}
-            fitView={!savedViewport}
+            fitView={!savedViewport && !focusedTaskId}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}

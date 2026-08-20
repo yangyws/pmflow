@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-178` | 2026-08-20 | [關聯圖焦點與卡片高度修復：切換頁籤焦點持久聚焦、卡片框體自然撐開杜絕進度條被遮蔽](#cr-178) | `TaskGraph.tsx` | 已驗證 |
 | `CR-177` | 2026-08-20 | [小螢幕自適應排版：修復 TaskDrawer 欄位擠壓、麵包屑與行事曆小手機防溢出、卡片頁腳防重疊](#cr-177) | `TaskDrawer.tsx`, `Calendar.tsx`, `App.tsx`, `List.tsx`, `Week.tsx`, `Board.tsx` | 已驗證 |
 | `CR-176` | 2026-08-20 | [手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）](#cr-176) | `List.tsx`, `Board.tsx`, `Week.tsx`, `Calendar.tsx`, `TaskDrawer.tsx`, `App.tsx`, `EpicSidebar.tsx` | 已驗證 |
 | `CR-175` | 2026-08-20 | [手機版權限與排版同步：行事曆週清單滿版單欄卡片流、非清單檢視強制唯讀與頂部提示橫幅](#cr-175) | `Week.tsx`, `TaskDrawer.tsx`, `App.tsx` | 已驗證 |
@@ -235,6 +236,22 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-178"></a>CR-178 (2026-08-20) — 關聯圖焦點與卡片高度修復：切換頁籤焦點持久聚焦、卡片框體自然撐開杜絕進度條被遮蔽
+
+- **使用者需求**：
+  1. 關聯圖點選任務後切換頁籤回來，焦點跑掉了。
+  2. 關聯圖的卡片有些進度條不見了，框沒有自動擴大被遮蔽了。
+- **排查與修復實作**：
+  1. **切換頁籤焦點持久化與自動平滑聚焦 (`TaskGraph.tsx`)**：
+     - 修復 `loadSavedViewport` 僅於模組載入時執行一次且缺乏專案隔離的缺陷，重構為專案鍵值讀寫（`pmflow_simple_graph_viewport_${projectId}`）與 `useMemo` 動態載入。
+     - 實作 `centerOnNode` 演算法，精準計算節點包含所有父收納盒累加之絕對座標與尺寸。
+     - 於組件掛載或切換頁籤回來時，若外部帶有 `focusedTaskId`（選中之任務），自動平滑置中聚焦至該任務節點，徹底杜絕視角跳走或焦點遺失。
+  2. **卡片高度自適應與進度條防遮蔽 (`TaskGraph.tsx`)**：
+     - 移除卡片節點之固定 `height: 90` 與 `measured: { height: 90 }` 硬編碼限制，改為 `style: { width: 256 }` 與 `minHeight: 90`。
+     - 讓卡片容器在遇到多行標題與警示徽章（問題/阻擋/並行/逾期/詢問）時能根據內容自然向下延展，內部使用 `flex-col justify-between gap-1.5`，確保底部的進度條（`NodeProgressBar`）完整展示不被裁切。
+     - `computeBoxDimensions` 同步支援依據子卡片動態量測高度（`measured.height`）自動擴充收納盒邊界。
+- **異動模組**：`apps/web/src/pages/TaskGraph.tsx`。
 
 ### <a id="cr-177"></a>CR-177 (2026-08-20) — 小螢幕自適應排版：修復 TaskDrawer 欄位擠壓、麵包屑與行事曆小手機防溢出、卡片頁腳防重疊
 
