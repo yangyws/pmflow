@@ -249,6 +249,7 @@ export default function App() {
         key={projectId}
         projectId={projectId}
         workspaceId={workspaceId}
+        canManageProject={canManageProject}
         view={view} setView={setView}
         openTask={openTask} setOpenTask={setOpenTask}
         flashTask={flashTask}
@@ -496,11 +497,12 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
  * 查詢集中在這一層，側欄和主視圖吃同一份資料，不會各抓一次。
  */
 function ProjectWorkspace({
-  projectId, workspaceId, view: requestedView, setView, openTask, setOpenTask,
+  projectId, workspaceId, canManageProject = false, view: requestedView, setView, openTask, setOpenTask,
   flashTask, onFlashSeen, onSwitchProject, bell, menu,
 }: {
   projectId: string
   workspaceId: string
+  canManageProject?: boolean
   view: View
   setView: (v: View) => void
   openTask: string | null
@@ -813,6 +815,7 @@ function ProjectWorkspace({
                       focusedTaskId={focusedTaskId ?? epicId}
                       menuFocusTarget={menuFocusTarget}
                       onSelectTask={(id) => setFocusedTaskId(id)}
+                      canManage={canManageProject}
                     />
                   </Suspense>
                 </DesktopRecommendedNotice>

@@ -122,7 +122,7 @@ export const flow = {
       badgeSection: '警示徽章',
       problem: '⚑ 問題 / 問 N',
       problemDesc: '：包含未解決之問題單或遭遇問題說明。',
-      blocked: '⚠️ 卡住 / 卡 N',
+      blocked: '⛔ 卡住 / ⛔ 卡 N',
       blockedDesc: '：任務進度受阻、等待外部資源中。',
       overdue: '⏰ 逾期 / 逾 N',
       overdueDesc: '：已超過預定結束日且尚未達到 100%。',

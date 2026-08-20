@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Focus Persistence & Card Dynamic Height Fixes (CR-178)
+### Latest Changes: Graph Inside-Box Edge Deletion & Log Gate & Blocked Icon Alignment (CR-179)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒內關聯線點擊刪除修復 (`CR-179`)**：於 `<EdgeLabelRenderer>` 頂層注入透明加粗 SVG 點擊命中線（`strokeWidth={28}`、`pointerEvents: auto`）與折點點擊觸發，解決盒內連線被父收納盒實體 DOM 攔截導致無法觸發 `onEdgeClick` 刪除線條的 Bug。
+    2. **Log 視窗管理者權限控管 (`CR-179`)**：引入 `canManage` 參數，右下角「📋 即時 Log 開關按鈕」與「動作與座標 Log 視窗」僅對管理者開放。
+    3. **圖示說明「卡住」項目一致性校正 (`CR-179`)**：圖示說明懸浮視窗與 `strings/flow.ts` 內「卡住」警示由 `⚠️` 修正為與卡片一致的 `⛔ 卡住 / ⛔ 卡 N` 與紅色標籤。
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx): 傳遞 `canManageProject` 至 `ProjectWorkspace` 與 `TaskGraphView`。
+  - [`strings/flow.ts`](file:///D:/github/pmflow/apps/web/src/strings/flow.ts): 同步 `help.blocked` 字串為 `⛔ 卡住 / ⛔ 卡 N`。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-179` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-179`。
+
+### Previous Changes: Graph Focus Persistence & Card Dynamic Height Fixes (CR-178)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **切換頁籤焦點持久聚焦 (`CR-178`)**：重構 `loadSavedViewport` 為專案隔離並於組件掛載時動態載入；實作 `centerOnNode` 深度座標定位，在切換頁籤回來或選中任務時自動平滑置中聚焦，解決視角跑掉問題。

@@ -717,6 +717,7 @@ type OrthogonalEdgeData = {
   // Ref: CR-151
   onWaypointDragStart?: () => void
   onWaypointDragEnd?: () => void
+  onEdgeClick?: () => void
 }
 
 // Ref: CR-139 & CR-154 支援智慧直角避障與手動折點
@@ -798,6 +799,33 @@ function OrthogonalEdge({
     <>
       <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={30} />
       <EdgeLabelRenderer>
+        {/* 透明加粗的點擊命中線：確保在收納盒內部（nodes 層在 edges SVG 之上）也能 100% 響應點擊刪除 */}
+        <svg
+          className="nodrag nopan absolute inset-0 overflow-visible pointer-events-none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 950,
+          }}
+        >
+          <path
+            d={path}
+            fill="none"
+            stroke="transparent"
+            strokeWidth={28}
+            className="cursor-pointer pointer-events-auto"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (consumeWaypointClickGuard()) return
+              eData?.onEdgeClick?.()
+            }}
+          />
+        </svg>
+
         <div
           className="nodrag nopan absolute h-2.5 w-2.5 rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 cursor-move after:absolute after:content-[''] after:-inset-[9px] after:rounded-full"
           style={{
@@ -814,6 +842,8 @@ function OrthogonalEdge({
           onClick={(e) => {
             // Ref: CR-141
             e.stopPropagation()
+            if (consumeWaypointClickGuard()) return
+            eData?.onEdgeClick?.()
           }}
           onDoubleClick={(e) => {
             // Ref: CR-141
@@ -1064,6 +1094,7 @@ export interface TaskGraphProps {
   focusedTaskId?: string | null
   menuFocusTarget?: { id: string | null; ts: number } | null
   onSelectTask?: (taskId: string) => void
+  canManage?: boolean
 }
 export type SimpleGraphProps = TaskGraphProps
 
@@ -1082,7 +1113,7 @@ type LogItem = {
   message: string
 }
 
-function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask }: TaskGraphProps) {
+function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask, canManage = false }: TaskGraphProps) {
   const { fitView, setCenter, getViewport, zoomIn, zoomOut } = useReactFlow()
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
@@ -2744,7 +2775,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   )
 
   const onEdgeClick = useCallback(
-    (_: React.MouseEvent, edge: Edge) => {
+    (_: React.MouseEvent | null, edge: Edge) => {
       if (consumeWaypointClickGuard()) return // Ref: CR-141
       const sourceNode = nodes.find((n) => n.id === edge.source)
       const targetNode = nodes.find((n) => n.id === edge.target)
@@ -3543,6 +3574,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           onSaveText: handleSaveEdgeText,
           onWaypointDragStart: beginInteraction,
           onWaypointDragEnd: endInteraction,
+          onEdgeClick: () => onEdgeClick(null, e),
         },
         animated: false,
         style: {
@@ -3566,6 +3598,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     handleSaveEdgeText,
     beginInteraction,
     endInteraction,
+    onEdgeClick,
   ])
 
   return (
@@ -3745,7 +3778,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                       <span>{T.flow.relationGraph.help.problemDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
-                      <span className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 font-semibold text-[10px]">{T.flow.relationGraph.help.blocked}</span>
+                      <span className="shrink-0 rounded bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 ring-1 ring-inset ring-red-600/20 px-1 py-0.5 font-semibold text-[10px]">{T.flow.relationGraph.help.blocked}</span>
                       <span>{T.flow.relationGraph.help.blockedDesc}</span>
                     </p>
                     <p className="flex items-start gap-1.5">
@@ -3783,25 +3816,27 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             </div>
           )}
 
-          {/* 右下角 即時 Log 開關按鈕 */}
-          <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2 pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => setShowLogPanel((prev) => !prev)}
-              className={cx(
-                'w-9 h-9 rounded-lg flex items-center justify-center text-base transition-all duration-150 cursor-pointer shadow-lg border select-none',
-                showLogPanel
-                  ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
-              )}
-              title={T.flow.relationGraph.log.toggleTitle}
-            >
-              📋
-            </button>
-          </div>
+          {/* 右下角 即時 Log 開關按鈕 (僅管理者具備權限查看) */}
+          {canManage && (
+            <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => setShowLogPanel((prev) => !prev)}
+                className={cx(
+                  'w-9 h-9 rounded-lg flex items-center justify-center text-base transition-all duration-150 cursor-pointer shadow-lg border select-none',
+                  showLogPanel
+                    ? 'bg-slate-900 text-white border-slate-700 dark:bg-slate-800'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+                )}
+                title={T.flow.relationGraph.log.toggleTitle}
+              >
+                📋
+              </button>
+            </div>
+          )}
         </div>
 
-        {showLogPanel && (
+        {canManage && showLogPanel && (
           <div className="w-80 border-l border-slate-200 bg-slate-900 text-slate-100 flex flex-col z-20 dark:border-slate-800 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 bg-slate-950/80">
               <div className="flex items-center gap-1.5 font-medium text-xs text-indigo-400">

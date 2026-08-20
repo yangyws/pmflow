@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-179` | 2026-08-20 | [關聯圖優化：修復收納盒內關聯線無法點擊刪除 Bug（頂層命中層）、Log 視窗管理者權限控管、校正「卡住」圖示說明一致性](#cr-179) | `TaskGraph.tsx`, `App.tsx`, `strings/flow.ts` | 已驗證 |
 | `CR-178` | 2026-08-20 | [關聯圖焦點與卡片高度修復：切換頁籤焦點持久聚焦、卡片框體自然撐開杜絕進度條被遮蔽](#cr-178) | `TaskGraph.tsx` | 已驗證 |
 | `CR-177` | 2026-08-20 | [小螢幕自適應排版：修復 TaskDrawer 欄位擠壓、麵包屑與行事曆小手機防溢出、卡片頁腳防重疊](#cr-177) | `TaskDrawer.tsx`, `Calendar.tsx`, `App.tsx`, `List.tsx`, `Week.tsx`, `Board.tsx` | 已驗證 |
 | `CR-176` | 2026-08-20 | [手機版視覺微縮優化：文字與按鈕尺寸精緻化微縮（緊湊排版、細緻字級與內邊距最佳化）](#cr-176) | `List.tsx`, `Board.tsx`, `Week.tsx`, `Calendar.tsx`, `TaskDrawer.tsx`, `App.tsx`, `EpicSidebar.tsx` | 已驗證 |
@@ -236,6 +237,23 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-179"></a>CR-179 (2026-08-20) — 關聯圖優化：修復收納盒內關聯線無法點擊刪除 Bug（頂層命中層）、Log 視窗管理者權限控管、校正「卡住」圖示說明一致性
+
+- **使用者需求**：
+  1. 我無法刪除收納盒內的關聯線。
+  2. 動作與座標 Log 視窗只有管理者能看到，其他人沒有權限看到。
+  3. 卡住的圖示跟圖示說明裡面的不一致。
+- **排查與修復實作**：
+  1. **收納盒內關聯線點擊刪除修復 (`TaskGraph.tsx`)**：
+     - 排查原因：React Flow 預設之連線層（`.react-flow__edges` SVG）位於節點層（`.react-flow__nodes`）下方。當子任務卡片收納進收納盒（`parentId: boxId`）後，收納盒節點的實體 DOM 佔滿了整個收納區域並帶有 `pointer-events-auto`，導致滑鼠點擊盒內卡片之間的連線時，點擊事件全數被父收納盒節點攔截，React Flow 原生之 `onEdgeClick` 無法接收到點擊事件。
+     - 解決方案：於自訂連線元件 `OrthogonalEdge` 的頂層渲染器（`<EdgeLabelRenderer>`，其 `z-index` 高於所有節點）中，注入一條與連線路徑完全重合的透明加粗 SVG 點擊命中路徑（`strokeWidth={28}`、`pointerEvents: auto`）以及在折點圓點上綁定點擊事件，無論連線位於收納盒內或開放畫布上，點擊皆能 100% 精準觸發 `onEdgeClick` 並開啟刪除關聯確認彈窗。
+  2. **動作與座標 Log 視窗權限控管 (`App.tsx`, `TaskGraph.tsx`)**：
+     - 於 `TaskGraphProps` 與 `TaskGraphInner` 引入 `canManage?: boolean` 權限參數，由外層 `App.tsx` / `ProjectWorkspace` 傳入專案管理權限（超級管理者、工作區管理者、專案建立者、專案管理者）。
+     - 右下角的「📋 即時 Log 開關按鈕」與「動作與座標 Log 視窗」全面加上 `canManage` 守門，非管理者完全不渲染該按鈕與面板。
+  3. **校正「卡住」圖示與說明一致性 (`TaskGraph.tsx`, `strings/flow.ts`)**：
+     - 圖示說明懸浮視窗（Legend Tooltip）與 `strings/flow.ts` 內的「卡住」項目由舊版的 `⚠️ 卡住` 與黃色標籤修正為與卡片/收納盒完全一致的 `⛔ 卡住 / ⛔ 卡 N` 與紅色標籤（`bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20`）。
+- **異動模組**：`apps/web/src/pages/TaskGraph.tsx`, `apps/web/src/App.tsx`, `apps/web/src/strings/flow.ts`。
 
 ### <a id="cr-178"></a>CR-178 (2026-08-20) — 關聯圖焦點與卡片高度修復：切換頁籤焦點持久聚焦、卡片框體自然撐開杜絕進度條被遮蔽
 
