@@ -2071,12 +2071,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       })
 
     setEdges((prevEds) => {
-      // 保留正在連線或尚未包含在本次 graphData 中的樂觀連線 (xy-edge__)，防止連續連線時被舊的 queryData 衝掉
+      // 保留正在連線或尚未包含在本次 graphData 中的樂觀連線，防止伺服器快取刷新時差抹除連線
       const pendingOptimistic = prevEds.filter((e) =>
-        e.id.startsWith('xy-edge__') &&
         !realEdges.some((re) =>
-          re.source === e.source && re.target === e.target &&
-          re.sourceHandle === e.sourceHandle && re.targetHandle === e.targetHandle
+          re.id === e.id ||
+          (re.source === e.source && re.target === e.target &&
+           re.sourceHandle === e.sourceHandle && re.targetHandle === e.targetHandle)
         )
       )
       return [...realEdges, ...pendingOptimistic]
@@ -2873,9 +2873,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
             queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
           })
-          .catch((err) => {
+          .catch((err: any) => {
             console.error('Failed to add link in DB:', err)
-            setEdges((eds) => eds.filter((e) => e.id !== tempId))
+            setEdges((eds) =>
+              eds.filter(
+                (e) =>
+                  e.id !== tempId &&
+                  !(e.source === connection.source && e.target === connection.target && e.id.startsWith('xy-edge__'))
+              )
+            )
+            const msg = err?.detail || err?.title || err?.message || '建立關聯失敗'
+            setAlertMsg(msg)
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
           })
       }

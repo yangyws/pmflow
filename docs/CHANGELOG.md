@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-171` | 2026-08-20 | [關聯圖修正：修復拉線放開消失問題（樂觀連線跨快取持久化）並解除關聯線操作之關係人權限限制](#cr-171) | `TaskGraph.tsx`, `routes/links.ts`, `e2e.sh` | 已驗證 |
 | `CR-170` | 2026-08-19 | [資料清理：全面清理資料庫與示範專案中殘留之舊版 EPIC 與里程碑類型，統一收斂為任務單](#cr-170) | `seed.ts`, `0026_cleanup_legacy_epic_milestone_types.sql` | 已驗證 |
 | `CR-169` | 2026-08-19 | [關聯圖修正：修復連續拉線/多卡連線時舊連線被覆蓋或快取覆寫消失 Bug](#cr-169) | `TaskGraph.tsx` | 已驗證 |
 | `CR-168` | 2026-08-19 | [權限校正：嚴格劃分環境變數超級管理者、專案擁有者（建立者）與專案管理者之權限邊界](#cr-168) | `lib/auth.ts`, `routes/auth.ts`, `routes/projects.ts`, `routes/members.ts`, `App.tsx` | 已驗證 |
@@ -228,6 +229,15 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-171"></a>CR-171 (2026-08-20) — 關聯圖修正：修復拉線放開消失問題（樂觀連線跨快取持久化）並解除關聯線操作之關係人權限限制
+
+- **使用者問題**：在關聯圖中拉線放開後連線會瞬間消失；且使用者希望關聯線操作不需要關係人權限控管。
+- **根本原因排查與修復**：
+  1. **樂觀連線跨快取更新持久化**：修復 [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx) 中 `pendingOptimistic` 過濾條件，當連線取得後端真實 ID（非 `xy-edge__` 前綴）但尚未被伺服器 `graphData` 回傳時，維持保留不被快取更新覆寫抹除，徹底解決放開線條瞬間消失問題。
+  2. **解除關聯線關係人授權限制**：依使用者指示，在 [`routes/links.ts`](file:///D:/github/pmflow/apps/api/src/routes/links.ts) 移除關聯線建立、更新、刪除之 `assertTaskStakeholder` 限制，專案內具備 `EDITOR` / `MANAGER` 權限之所有成員皆可自由互相建立與調整卡片關聯。
+  3. **健全失敗回滾與錯誤提示**：在 [`onConnect`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx) 的 `catch` 區塊加入精準樂觀節點清理與 `setAlertMsg` 提示彈窗，避免異常時殘留假連線。
+- **異動模組**：`apps/web/src/pages/TaskGraph.tsx`, `apps/api/src/routes/links.ts`, `apps/api/test/e2e.sh`。
 
 ### <a id="cr-170"></a>CR-170 (2026-08-19) — 資料清理：全面清理資料庫與示範專案中殘留之舊版 EPIC 與里程碑類型，統一收斂為任務單
 

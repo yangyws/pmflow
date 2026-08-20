@@ -575,22 +575,20 @@ S_J=$(curl -s -H "Authorization: Bearer $JT" -H 'content-type: application/json'
   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
 [ -n "$S_J" ] && ok "Jack 開得了自己的任務（跨人依賴的起點）" || no "Jack 開任務" "開不出來"
 
-# ── 關聯線：建立驗發起端 ──
-chkcw "別人的任務：從它拉一條關聯線出去 → 403" "403" "關聯線" "$JT" \
+# ── 關聯線：專案成員皆可連線 ──
+chkc "專案成員連線：Jack 從 demo 的任務拉一條關聯線出去 → 201" "201" "$JT" \
   -X POST $API/tasks/$S_A/links -d "{\"targetId\":\"$S_B\",\"linkType\":\"FS\"}"
 chkc "跨人依賴：Jack 從自己的任務拉 FS 指到 demo 的任務 → 201" "201" "$JT" \
   -X POST $API/tasks/$S_J/links -d "{\"targetId\":\"$S_A\",\"linkType\":\"FS\"}"
 
-# ── 關聯線：刪除也驗發起端 ──
+# ── 關聯線：專案成員刪除 ──
 S_L=$(curl -s -H "$AUTH" -H 'content-type: application/json' -X POST $API/tasks/$S_A/links \
   -d "{\"targetId\":\"$S_B\",\"linkType\":\"FS\"}" \
   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))' | tr -d '\r')
 [ -n "$S_L" ] && ok "demo 在自己兩張任務之間建了一條關聯線" || no "建關聯線" "建不出來"
 # DELETE 沒有內容，不能沿用 chkc（理由同第 27 項）
-chk "別人任務上的關聯線：非關係人剪不掉 → 403" \
-  "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $JT" -X DELETE $API/links/$S_L)" "403"
-chk "同一條線：關係人自己剪得掉 → 204" \
-  "$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -X DELETE $API/links/$S_L)" "204"
+chk "專案成員剪得掉關聯線 → 204" \
+  "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $JT" -X DELETE $API/links/$S_L)" "204"
 
 # ── 對外詢問單：改／重開／刪要守門，登錄回覆刻意開放 ──
 S_Q=$(ASK "$S_A" "資訊部" "$SOON")

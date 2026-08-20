@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Cleanup Legacy EPIC and Milestone Types (CR-170)
+### Latest Changes: Fix Edge Disappearance on Drop and Unrestrict Link Authorization (CR-171)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **樂觀連線跨快取持久化 (`CR-171`)**：重構 `pendingOptimistic` 判定，即使連線已獲得伺服器真實 ID，在 `graphData` 抓回前持續保留連線不被清空，修復放開滑鼠連線瞬間消失問題。
+    2. **健全連線失敗彈窗與回滾 (`CR-171`)**：連線失敗時顯示 Alert 彈窗並精準移除暫存連線。
+  - [`links.ts`](file:///D:/github/pmflow/apps/api/src/routes/links.ts), [`e2e.sh`](file:///D:/github/pmflow/apps/api/test/e2e.sh):
+    1. **解除關聯線關係人授權控管 (`CR-171`)**：移除 `assertTaskStakeholder` 限制，專案內一般 `EDITOR` / `MANAGER` 皆可互相建立、修改與刪除任務關聯線。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-171` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-171`。
+
+### Previous Changes: Cleanup Legacy EPIC and Milestone Types (CR-170)
 - **變更檔案**:
   - [`seed.ts`](file:///D:/github/pmflow/apps/api/src/seed.ts), [`0026_cleanup_legacy_epic_milestone_types.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0026_cleanup_legacy_epic_milestone_types.sql):
     1. **全面清理歷史 EPIC / 里程碑類型 (`CR-170`)**：將資料庫與示範專案中舊有的 `EPIC` / `MILESTONE` 類型全面統一收斂為標準的 `TASK`（任務單），消除卡片與抽屜上殘留的非預期標籤。

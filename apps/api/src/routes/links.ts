@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
-import { assertTaskStakeholder, authenticate, requireTaskAccess } from '../lib/auth.js'
+import { authenticate, requireTaskAccess } from '../lib/auth.js'
 import { assertNoCycle, isScheduling, SYMMETRIC } from '../lib/graph.js'
 import { notify } from '../lib/notify.js'
 import { emitRealtimeEvent } from '../lib/events.js'
@@ -28,16 +28,9 @@ export default async function linkRoutes(app: FastifyInstance) {
     const user = await authenticate(req)
     const b = createBody.parse(req.body)
 
-    // 兩端都要驗權限。只驗一端就是 Vikunja 2026 那個關聯 IDOR（GO-2026-4847）。
+    // 兩端都要驗權限（專案 EDITOR 以上即可連線）
     const src = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     const tgt = await requireTaskAccess(user.id, b.targetId, 'EDITOR')
-
-    /*
-     * Ref: CR-130 —— 角色過了還要是「關係人」，否則任何 EDITOR 都能去剪接別人的關聯。
-     * 只驗**發起的那一端**：跨人依賴（我的任務要等你的任務做完）是這套系統的核心用法，
-     * 兩端都要求關係人等於把它整個關掉。指到誰身上只需要對那張有編輯權（上面已驗）。
-     */
-    await assertTaskStakeholder(req.params.id, user.id, src.role, '關聯線')
 
     if (src.workspaceId !== tgt.workspaceId) throw forbidden('不能跨工作區建立關聯')
     if (req.params.id === b.targetId) throw badRequest('任務不能關聯到自己')
@@ -137,19 +130,7 @@ export default async function linkRoutes(app: FastifyInstance) {
     const [l] = await sql<{ source_id: string; target_id: string; created_by: string | null }[]>`
       SELECT source_id, target_id, created_by FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
-    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
-
-    let isAllowed = role === 'MANAGER' || (l.created_by && l.created_by === user.id) || role === 'EDITOR'
-    if (!isAllowed) {
-      try {
-        await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
-        isAllowed = true
-      } catch {
-        const tgt = await requireTaskAccess(user.id, l.target_id, 'EDITOR')
-        await assertTaskStakeholder(l.target_id, user.id, tgt.role, '關聯線')
-        isAllowed = true
-      }
-    }
+    const { projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
 
     await sql`
       UPDATE task_link
@@ -178,19 +159,7 @@ export default async function linkRoutes(app: FastifyInstance) {
     const [l] = await sql<{ source_id: string; target_id: string; created_by: string | null }[]>`
       SELECT source_id, target_id, created_by FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
-    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
-
-    let isAllowed = role === 'MANAGER' || (l.created_by && l.created_by === user.id) || role === 'EDITOR'
-    if (!isAllowed) {
-      try {
-        await assertTaskStakeholder(l.source_id, user.id, role, '關聯線')
-        isAllowed = true
-      } catch {
-        const tgt = await requireTaskAccess(user.id, l.target_id, 'EDITOR')
-        await assertTaskStakeholder(l.target_id, user.id, tgt.role, '關聯線')
-        isAllowed = true
-      }
-    }
+    const { projectId, workspaceId } = await requireTaskAccess(user.id, l.source_id, 'EDITOR')
 
     await sql`DELETE FROM task_link WHERE id = ${req.params.id}`
 
