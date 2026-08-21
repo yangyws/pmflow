@@ -1587,6 +1587,18 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
             setNodes((prevNodes) =>
               prevNodes.map((n) => {
+                if (n.id === nodeId) {
+                  return {
+                    ...n,
+                    width: 256,
+                    height: undefined,
+                    style: { width: 256 },
+                    data: {
+                      ...n.data,
+                      mode: 'card',
+                    },
+                  }
+                }
                 if (childIds.has(n.id)) {
                   const p = newPosMap.get(n.id) ?? n.position
                   return {
@@ -1633,6 +1645,18 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
             setNodes((prevNodes) =>
               prevNodes.map((n) => {
+                if (n.id === nodeId) {
+                  return {
+                    ...n,
+                    width: 256,
+                    height: undefined,
+                    style: { width: 256 },
+                    data: {
+                      ...n.data,
+                      mode: 'card',
+                    },
+                  }
+                }
                 if (childIds.has(n.id)) {
                   return {
                     ...n,
@@ -1648,6 +1672,25 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             )
           }
         }
+      } else {
+        // 沒有子卡片時的純模式切換
+        setNodes((prevNodes) =>
+          prevNodes.map((n) => {
+            if (n.id === nodeId) {
+              return {
+                ...n,
+                width: nextMode === 'box' ? 340 : 256,
+                height: nextMode === 'box' ? 260 : undefined,
+                style: nextMode === 'box' ? { width: 340, minHeight: 240 } : { width: 256 },
+                data: {
+                  ...n.data,
+                  mode: nextMode,
+                },
+              }
+            }
+            return n
+          })
+        )
       }
 
       setToggledModes((prev) => {
@@ -3614,7 +3657,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const isSelected = activeSelectedId === node.id
       const isRelated = relatedSet ? relatedSet.has(node.id) : true
       const nodeBlockedBy = blockedByMap.get(node.id)
-      const isBox = (node.data as SimpleGraphNodeData)?.mode === 'box'
+      const currentMode = toggledModes[node.id] ?? (node.data as SimpleGraphNodeData)?.mode ?? 'card'
+      const isBox = currentMode === 'box'
       const liveChildCount = nodeChildrenMap.get(node.id)?.length ?? 0
 
       // 只有收納盒非空 (liveChildCount > 0) 時，才統計畫布上歸屬於該收納盒的未完成受阻卡片數
@@ -3653,7 +3697,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const isCollapsed = !!collapsedNodes[node.id]
       const isHidden = hiddenNodeIds.has(node.id)
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${isBox}|${isCollapsed}|${isHidden}`
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${currentMode}|${isCollapsed}|${isHidden}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3686,6 +3730,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         extent: NODE_EXTENT,
         data: {
           ...node.data,
+          mode: currentMode,
           isSelected,
           isRelated,
           hasSelectionActive: !!relatedSet,
@@ -3711,7 +3756,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {

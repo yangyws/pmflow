@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Nested Box Unboxing to Parent Box Auto-Grid (CR-185)
+### Latest Changes: Graph Edge Anti-Flicker & Synchronized Mode State (CR-186)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **模式切換原子同步更新 (`CR-186`)**：在 `executeToggleMode` 中同步更新目標節點自身尺寸與模式，並在 `nodesWithHandlers` 中即時解析 `toggledModes`，徹底消除切換時的中間幀連線重新計算跳動與閃爍。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-186` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-186`。
+
+### Previous Changes: Graph Nested Box Unboxing to Parent Box Auto-Grid (CR-185)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **巢狀收納盒還原至上層收納盒 (`CR-185`)**：當收納盒自身位於上層收納盒時，切換為卡片會將子卡片自動移入該上層收納盒，並依序自動排列於網格槽位中。
