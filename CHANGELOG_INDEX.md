@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Collapsed Progress Bar & Header Horizontal Scroll Fixes (CR-183)
+### Latest Changes: Graph Box Capacity Hint Relocation (CR-184)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒提示字移至底框上方 (`CR-184`)**：將 `(移入卡片自動擴大容量)` 由收納盒頂部標頭移至內部最下方底框上方，大幅改善標頭視覺空間。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-184` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-184`。
+
+### Previous Changes: Graph Collapsed Progress Bar & Header Horizontal Scroll Fixes (CR-183)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **折疊狀態進度條可見度修復 (`CR-183`)**：折疊時改為自適應自然高度（`min-h-[90px]`），解決固定 90px 導致進度條被截斷消失之問題。

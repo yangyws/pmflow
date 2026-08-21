@@ -358,9 +358,6 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                     </button>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
-                  {T.flow.relationGraph.boxCapacityHint}
-                </span>
               </div>
 
               {/* 第二行：收納盒警示徽章 */}
@@ -439,6 +436,13 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
               <NodeProgressBar progress={data.progress ?? 0} />
             </div>
           </div>
+
+          {/* 底部邊框上方提示（展開狀態下顯示於收納盒底部邊框上方） */}
+          {!data.isCollapsed && (
+            <div className="px-3 py-1 flex items-center justify-between pointer-events-none select-none text-[10px] text-slate-400/80 dark:text-slate-500/80">
+              <span>{T.flow.relationGraph.boxCapacityHint}</span>
+            </div>
+          )}
 
           {/* 右下角縮放控制鈕 */}
           {!data.isCollapsed && (
