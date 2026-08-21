@@ -62,6 +62,12 @@ export const flow = {
     resizeBox: '按住拖曳調整收納盒尺寸',
     untitledBox: '無標題收納盒',
     untitledTask: '無標題任務',
+    collapse: '▲ 摺疊',
+    expand: '▼ 展開',
+    collapseBoxHint: '摺疊收納盒 (隱藏內部子卡片)',
+    expandBoxHint: '展開收納盒 (顯示內部子卡片)',
+    collapseCardHint: '摺疊子項目 (隱藏內部子任務與問題單)',
+    expandCardHint: '展開子項目 (顯示內部子任務與問題單)',
 
     /** 任務種類的預設名字（專案沒有自訂種類時用） */
     typeTask: '任務單',

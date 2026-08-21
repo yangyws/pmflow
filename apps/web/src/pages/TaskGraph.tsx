@@ -183,6 +183,8 @@ export type TaskGraphNodeData = {
   isSelected?: boolean
   isRelated?: boolean
   hasSelectionActive?: boolean
+  isCollapsed?: boolean
+  onToggleCollapse?: (id: string) => void
   minWidth?: number
   minHeight?: number
   onToggleMode?: (id: string) => void
@@ -229,8 +231,17 @@ function computeBoxDimensions(
   childNodes: Node[],
   currentResizedW?: number,
   currentResizedH?: number,
-  visited = new Set<string>()
+  visited = new Set<string>(),
+  isCollapsed = false
 ): { minWidth: number; minHeight: number; width: number; height: number } {
+  if (isCollapsed) {
+    return {
+      minWidth: 320,
+      minHeight: 90,
+      width: Math.max(320, currentResizedW ?? 0),
+      height: 90,
+    }
+  }
   if (visited.has(boxId)) {
     return { minWidth: 340, minHeight: 260, width: Math.max(340, currentResizedW ?? 0), height: Math.max(260, currentResizedH ?? 0) }
   }
@@ -296,15 +307,16 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       onDoubleClick={handleDoubleClick}
       style={{
         width: nodeW,
-        height: isBox ? nodeH : undefined,
-        minHeight: isBox ? undefined : 90,
+        height: isBox ? (data.isCollapsed ? 90 : nodeH) : undefined,
+        minHeight: 90,
       }}
       className={cx('relative select-none pointer-events-auto', isBox ? 'w-full h-full' : 'w-full')}
     >
       {isBox ? (
         <div
           className={cx(
-            'relative w-full h-full min-w-[320px] min-h-[240px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
+            'relative w-full h-full min-w-[320px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
+            data.isCollapsed ? 'min-h-[90px]' : 'min-h-[240px]',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-300 dark:border-slate-700'
@@ -330,6 +342,21 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                     {data.refText || 'MRG-BOX'}
                   </span>
                   <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
+                  {((typeof data.childCount === 'number' && data.childCount > 0) ||
+                    (typeof data.problemCount === 'number' && data.problemCount > 0)) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        data.onToggleCollapse?.(id)
+                      }}
+                      className="nodrag shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold transition-colors cursor-pointer border text-center select-none bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 shadow-xs"
+                      title={data.isCollapsed ? T.flow.relationGraph.expandBoxHint : T.flow.relationGraph.collapseBoxHint}
+                    >
+                      {data.isCollapsed ? T.flow.relationGraph.expand : T.flow.relationGraph.collapse}
+                    </button>
+                  )}
                 </div>
                 <span className="text-[10px] text-slate-400/90 dark:text-slate-500/90 font-normal shrink-0 select-none pointer-events-none pl-1">
                   {T.flow.relationGraph.boxCapacityHint}
@@ -414,19 +441,21 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
           </div>
 
           {/* 右下角縮放控制鈕 */}
-          <NodeResizeControl
-            position="bottom-right"
-            minWidth={data.minWidth ?? 340}
-            minHeight={data.minHeight ?? 280}
-            className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
-          >
-            <div
-              className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
-              title={T.flow.relationGraph.resizeBox}
+          {!data.isCollapsed && (
+            <NodeResizeControl
+              position="bottom-right"
+              minWidth={data.minWidth ?? 340}
+              minHeight={data.minHeight ?? 280}
+              className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
             >
-              ↘
-            </div>
-          </NodeResizeControl>
+              <div
+                className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
+                title={T.flow.relationGraph.resizeBox}
+              >
+                ↘
+              </div>
+            </NodeResizeControl>
+          )}
         </div>
       ) : (
         <div
@@ -442,7 +471,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             style={{ backgroundColor: data.typeColor || '#3b82f6' }}
           />
           <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
-            {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 */}
+            {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 + 折疊按鈕 */}
             <div className="flex items-center gap-1.5 w-max min-w-full whitespace-nowrap overflow-visible">
               {data.taskType !== 'BUG' && (
                 <button
@@ -458,6 +487,21 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                 {data.refText || 'MRG-1'}
               </span>
               <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
+              {((typeof data.childCount === 'number' && data.childCount > 0) ||
+                (typeof data.problemCount === 'number' && data.problemCount > 0)) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    data.onToggleCollapse?.(id)
+                  }}
+                  className="nodrag shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold transition-colors cursor-pointer border text-center select-none bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 shadow-xs"
+                  title={data.isCollapsed ? T.flow.relationGraph.expandCardHint : T.flow.relationGraph.collapseCardHint}
+                >
+                  {data.isCollapsed ? T.flow.relationGraph.expand : T.flow.relationGraph.collapse}
+                </button>
+              )}
             </div>
 
             {/* 第二行：警示徽章 */}
@@ -1418,6 +1462,47 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
   })
 
+  /** 收納盒與卡片的折疊狀態。按專案 projectId 持久化於 localStorage */
+  const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`pmflow_simple_graph_collapsed_${projectId}`)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  const handleToggleCollapse = useCallback(
+    (nodeId: string) => {
+      setCollapsedNodes((prev) => {
+        const next = { ...prev, [nodeId]: !prev[nodeId] }
+        try {
+          if (projectId) {
+            localStorage.setItem(`pmflow_simple_graph_collapsed_${projectId}`, JSON.stringify(next))
+          }
+        } catch {}
+        return next
+      })
+    },
+    [projectId]
+  )
+
+  const hiddenNodeIds = useMemo(() => {
+    const hidden = new Set<string>()
+    const addChildrenOf = (pId: string) => {
+      nodes.filter((n) => n.parentId === pId).forEach((child) => {
+        hidden.add(child.id)
+        addChildrenOf(child.id)
+      })
+    }
+    Object.entries(collapsedNodes).forEach(([pId, isCollapsed]) => {
+      if (isCollapsed) {
+        addChildrenOf(pId)
+      }
+    })
+    return hidden
+  }, [nodes, collapsedNodes])
+
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
   const hasFittedRef = useRef(false)
   const isLoadedRef = useRef(false)
@@ -2332,7 +2417,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }
         })
 
-        const dims = computeBoxDimensions(t.id, childNodesList, resizedMap[t.id]?.width, resizedMap[t.id]?.height)
+        const isBoxCollapsed = !!collapsedNodes[t.id]
+        const dims = computeBoxDimensions(t.id, childNodesList, resizedMap[t.id]?.width, resizedMap[t.id]?.height, undefined, isBoxCollapsed)
 
         const tStatusCat = statusCatMap.get(t.statusKey)
         const tIsDone = tStatusCat === 'DONE' || t.statusKey === 'DONE' || (t.progress ?? 0) >= 100
@@ -2413,6 +2499,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             parallelPeers: tParallelInfo?.peers,
             minWidth: dims.minWidth,
             minHeight: dims.minHeight,
+            isCollapsed: isBoxCollapsed,
+            onToggleCollapse: handleToggleCollapse,
             onToggleMode: handleToggleMode,
             onOpenTask,
           },
@@ -2523,6 +2611,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             inquiryState: t.inquiryState,
             isParallel: tParallelInfo?.isParallel,
             parallelPeers: tParallelInfo?.peers,
+            childCount: tKids.length,
+            isCollapsed: !!collapsedNodes[t.id],
+            onToggleCollapse: handleToggleCollapse,
             onToggleMode: handleToggleMode,
             onOpenTask,
           },
@@ -3484,7 +3575,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const isParallel = !!parallelInfo?.isParallel
       const parallelPeers = parallelInfo?.peers
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${isBox}`
+      const isCollapsed = !!collapsedNodes[node.id]
+      const isHidden = hiddenNodeIds.has(node.id)
+
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${isBox}|${isCollapsed}|${isHidden}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -3494,8 +3588,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const built: Node = {
         ...node,
-        draggable: true,
-        selectable: true,
+        hidden: isHidden,
+        draggable: !isHidden,
+        selectable: !isHidden,
+        width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.width,
+        height: isBox && isCollapsed ? 90 : node.height,
+        style: {
+          ...node.style,
+          width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.style?.width,
+          height: isBox && isCollapsed ? 90 : node.style?.height,
+          minHeight: isBox && isCollapsed ? 90 : (node.style?.minHeight ?? (isBox ? undefined : 90)),
+        },
         zIndex: isSelected
           ? 50
           : isRelated
@@ -3515,13 +3618,15 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           blockedCount,
           problemCount,
           problem: problemTooltip,
-          childCount: isBox ? liveChildCount : node.data?.childCount,
+          childCount: isBox ? liveChildCount : (nodeChildrenMap.get(node.id)?.length ?? node.data?.childCount),
           overdueCount: isBox ? liveOverdueCount : node.data?.overdueCount,
           inquiryOverdueCount: isBox ? liveInquiryOverdueCount : (node.data?.inquiryState === 'OVERDUE' ? 1 : 0),
           inquiryAwaitingCount: isBox ? liveInquiryAwaitingCount : (node.data?.inquiryState === 'AWAITING' || node.data?.inquiryState === 'PARTIAL' ? 1 : 0),
           inquiryCount: isBox ? liveInquiryCount : node.data?.inquiryCount,
           isParallel,
           parallelPeers,
+          isCollapsed,
+          onToggleCollapse: handleToggleCollapse,
           onToggleMode: handleToggleMode,
         },
       }
@@ -3531,7 +3636,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
@@ -3542,11 +3647,13 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const styledEdges = useMemo(() => {
     return edges.map((e) => {
+      const isHidden = hiddenNodeIds.has(String(e.source)) || hiddenNodeIds.has(String(e.target))
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
       const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       return {
         ...e,
         ...edgeStyleAndMarker,
+        hidden: isHidden,
         // Ref: CR-139 全檔統一直角折線 + 可拖曳折點
         type: 'orthogonal',
         data: {
@@ -3585,6 +3692,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     beginInteraction,
     endInteraction,
     onEdgeClick,
+    hiddenNodeIds,
   ])
 
   return (

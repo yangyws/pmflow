@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Canvas Edge Click Deletion & Waypoint Drag Fixes (CR-181)
+### Latest Changes: Graph Box & Card Nested Item Collapse / Expand (CR-182)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **折疊按鈕與緊湊樣式 (`CR-182`)**：當收納盒或卡片內部包含子任務或問題單時，標頭顯示 `▲ 摺疊 / ▼ 展開` 按鈕。
+    2. **遞迴節點與連線隱藏 (`CR-182`)**：折疊時遞迴隱藏所有子節點與內部連線，收納盒縮小為 90px 單行卡片並完整保留統計徽章；展開時恢復網格排版與連線。
+    3. **狀態持久化 (`CR-182`)**：依專案記錄折疊偏好於 `localStorage`。
+  - [`strings/flow.ts`](file:///D:/github/pmflow/apps/web/src/strings/flow.ts): 新增關聯圖折疊與展開相關文字。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-182` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-182`。
+
+### Previous Changes: Canvas Edge Click Deletion & Waypoint Drag Fixes (CR-181)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **移除全螢幕 SVG 遮罩層 (`CR-181`)**：徹底移除 `EdgeLabelRenderer` 內部未帶 Transform 之全螢幕 SVG 遮罩，恢復 React Flow 原生 `<BaseEdge interactionWidth={30}>` 於畫布上的點擊刪除響應。
