@@ -38,13 +38,10 @@ import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
-// 依據出發接點（左右出發為實線、上下出發為虛線，或自訂/盒內顏色）與標頭箭頭方向產生邊樣式
-function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string, isInsideBox?: boolean) {
+// 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線，或自訂顏色）與標頭箭頭方向產生邊樣式
+function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string) {
   const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
-  const defaultColor = isInsideBox
-    ? (isLeftRight ? '#10b981' : '#06b6d4') // 盒內連線專屬辨識色：翡翠綠（左右） / 青綠（上下）
-    : (isLeftRight ? '#ef4444' : '#8b5cf6') // 外部連線：珊瑚紅（左右） / 紫羅蘭（上下）
-  const strokeColor = customColor || defaultColor
+  const strokeColor = customColor || (isLeftRight ? '#ef4444' : '#8b5cf6')
   return {
     animated: false,
     style: {
@@ -313,13 +310,13 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         height: isBox ? (data.isCollapsed ? undefined : nodeH) : undefined,
         minHeight: 90,
       }}
-      className={cx('relative select-none pointer-events-auto', isBox ? (data.isCollapsed ? 'w-full' : 'w-full h-full') : 'w-full')}
+      className={cx('relative select-none', isBox ? (data.isCollapsed ? 'w-full pointer-events-auto' : 'w-full h-full pointer-events-none') : 'w-full pointer-events-auto')}
     >
       {isBox ? (
         <div
           className={cx(
-            'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
-            data.isCollapsed ? 'min-h-[90px]' : 'h-full min-w-[320px] min-h-[240px]',
+            'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden opacity-100',
+            data.isCollapsed ? 'min-h-[90px] pointer-events-auto cursor-grab active:cursor-grabbing' : 'h-full min-w-[320px] min-h-[240px] pointer-events-none',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-300 dark:border-slate-700'
@@ -327,10 +324,10 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         >
           <div>
             <div
-              className="h-1 rounded-t-lg shrink-0"
+              className="h-1 rounded-t-lg shrink-0 pointer-events-auto"
               style={{ backgroundColor: data.typeColor || '#6366f1' }}
             />
-            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start gap-1">
+            <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start gap-1 pointer-events-auto cursor-grab active:cursor-grabbing">
               <div className="flex items-center justify-between gap-1.5 w-full">
                 <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
                   <button
@@ -453,7 +450,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
               position="bottom-right"
               minWidth={data.minWidth ?? 340}
               minHeight={data.minHeight ?? 280}
-              className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent"
+              className="nodrag !w-4 !h-4 !bottom-1 !right-1 !border-0 !bg-transparent pointer-events-auto"
             >
               <div
                 className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-slate-200/80 dark:bg-slate-700/80 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 border border-slate-300/80 dark:border-slate-600/80 cursor-se-resize shadow-xs select-none"
@@ -833,8 +830,6 @@ function OrthogonalEdge({
   const draggingRef = useRef(false)
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
   const hasMovedRef = useRef(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const isHighlighted = isHovered || !!selected
   const eData = data as OrthogonalEdgeData | undefined
   // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
   const wpKey = id
@@ -906,11 +901,9 @@ function OrthogonalEdge({
 
   return (
     <>
-      {/* 組合方案 A+B：全線 36px 寬幅點擊熱區 ＋ 懸停全線加粗發光 ＋ 折點動態放大與發光光暈 */}
+      {/* 組合方案 A+B：全線 36px 寬幅點擊熱區 ＋ 純 CSS 零跳動懸停加粗發光 ＋ 折點中心鎖定 */}
       <g
-        className="react-flow__edge"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className="react-flow__edge group/edge cursor-pointer pointer-events-stroke"
         onClick={(e) => {
           e.stopPropagation()
           if (hasMovedRef.current || consumeWaypointClickGuard()) return
@@ -923,10 +916,9 @@ function OrthogonalEdge({
           fill="none"
           stroke="transparent"
           strokeWidth={36}
-          className="cursor-pointer"
-          pointerEvents="stroke"
+          className="peer/hit cursor-pointer pointer-events-stroke"
         />
-        {/* 實體關聯線：懸停或選中時自動加粗為 4px 並帶藍色柔和發光 */}
+        {/* 實體關聯線：懸停時純 CSS 即時加粗為 4px 並帶亮藍柔和發光，0ms 延遲、零 React 重繪、零跳動 */}
         <path
           id={id}
           d={path}
@@ -934,30 +926,29 @@ function OrthogonalEdge({
           markerEnd={markerEnd}
           style={{
             ...style,
-            stroke: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
-            strokeWidth: isHighlighted ? 4 : (style?.strokeWidth ?? 2.5),
-            filter: isHighlighted ? 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.6))' : undefined,
-            transition: 'stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease',
+            stroke: selected ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
+            strokeWidth: selected ? 4 : (style?.strokeWidth ?? 2.5),
+            filter: selected ? 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.6))' : undefined,
           }}
-          className="react-flow__edge-path cursor-pointer"
-          pointerEvents="stroke"
+          className={cx(
+            "react-flow__edge-path cursor-pointer pointer-events-stroke transition-all duration-150",
+            "peer-hover/hit:!stroke-[#3b82f6] peer-hover/hit:!stroke-[4px] peer-hover/hit:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]",
+            "hover:!stroke-[#3b82f6] hover:!stroke-[4px] hover:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]"
+          )}
         />
       </g>
 
       <EdgeLabelRenderer>
         <div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
           className={cx(
-            "nodrag nopan absolute rounded-full transition-all duration-150 select-none cursor-grab active:cursor-grabbing",
+            "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000] select-none cursor-grab active:cursor-grabbing transition-all duration-150",
             "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
-            isHighlighted
-              ? "h-5 w-5 -ml-2.5 -mt-2.5 bg-blue-500 border-2 border-white dark:border-slate-900 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 scale-125 z-[1001]"
-              : "h-3.5 w-3.5 -ml-[7px] -mt-[7px] border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000]"
+            "hover:scale-135 hover:!bg-blue-500 hover:ring-4 hover:ring-blue-400/40 hover:shadow-md hover:shadow-blue-500/50 hover:z-[1001]",
+            selected && "scale-135 !bg-blue-500 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 z-[1001]"
           )}
           style={{
-            backgroundColor: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
-            transform: `translate(${px}px, ${py}px)`,
+            backgroundColor: style?.stroke ?? '#ef4444',
+            transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
             pointerEvents: 'all',
           }}
           title={T.flow.relationGraph.waypointHint}
@@ -3100,11 +3091,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
       const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-      const isInsideBox = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId)
       const isLeftRight = !edge.sourceHandle || edge.sourceHandle.includes('left') || edge.sourceHandle.includes('right')
-      const defaultColor = isInsideBox
-        ? (isLeftRight ? '#10b981' : '#06b6d4')
-        : (isLeftRight ? '#ef4444' : '#8b5cf6')
+      const defaultColor = isLeftRight ? '#ef4444' : '#8b5cf6'
 
       setConfirmDeleteEdge({
         edgeId: edge.id,
@@ -3899,21 +3887,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const styledEdges = useMemo(() => {
     const prevCache = derivedEdgeCacheRef.current
     const nextCache = new Map<string, { src: Edge; key: string; edge: Edge }>()
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
     const result = edges.map((e) => {
       const isHidden = hiddenNodeIds.has(String(e.source)) || hiddenNodeIds.has(String(e.target))
-      const sourceNode = nodeMap.get(String(e.source))
-      const targetNode = nodeMap.get(String(e.target))
-      const isInsideBox = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId)
       const color = edgeColors[e.id]
-      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, color, isInsideBox)
+      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, color)
       const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       const wp = waypoints[e.id] ?? null
       const txt = edgeTexts[e.id] ?? ''
 
       const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
-      const key = `${isHidden}|${isInsideBox}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
+      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
 
       const hit = prevCache.get(e.id)
       if (hit && hit.src === e && hit.key === key) {

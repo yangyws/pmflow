@@ -22,7 +22,22 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Storage Box Internal Edge Distinct Color (CR-190)
+### Latest Changes: Edge Revert & Waypoint Stability & Pure CSS Hover & E2E Test Alignments (CR-191)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒連線預設顏色還原 (`CR-191`)**：還原為標準紅（左右）/紫（上下）配色，保留 8 色自訂變色支援。
+    2. **純 CSS 懸停發光與收納盒穿透 (`CR-191`)**：移除 `useState(isHovered)` 杜絕重繪震盪；收納盒背景穿透事件，懸停時即時加粗為 4px 並亮藍發光。
+    3. **折點中心鎖定 (`CR-191`)**：DOM 容器統一 `translate(-50%, -50%) translate(${px}px, ${py}px)`，原點精確對齊幾何中心。
+  - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
+    1. **折點幾何中點確定性算法 (`CR-191`)**：3 節點鎖定轉角、4 節點鎖定中段中心，徹底消除折點跳動。
+  - [`routes/auth.ts`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts):
+    1. **超級管理者身分切換授權 (`CR-191`)**：在 `/auth/impersonate` 支援 `isSuperAdmin` 判斷。
+  - [`e2e.sh`](file:///D:/github/pmflow/apps/api/test/e2e.sh) & [`e2e.test.ts`](file:///D:/github/pmflow/apps/api/test/e2e.test.ts):
+    1. **E2E 測試全數對齊通過 (`165/165` 與 `16/16`, `CR-191`)**：對齊 CR-180 跨收納盒連線隔離驗證與 CR-165 AI 技能規格探索端點測試。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-191` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-191`。
+
+### Previous Changes: Storage Box Internal Edge Distinct Color (CR-190)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **收納盒內連線專屬預設識別色 (`CR-190`)**：判定 `isInsideBox`，收納盒內部子卡片連線預設自動呈現翡翠綠 `#10b981`（左右）與青綠色 `#06b6d4`（上下），與外部大連線清晰對比。

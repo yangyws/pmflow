@@ -191,9 +191,12 @@ export default async function authRoutes(app: FastifyInstance) {
      * 再切成工作區 OWNER 就拿到全站。舊版另一條分支寫 'ADMINISTRATOR'，
      * 那不是有效的角色值（實際是 'ADMIN'），所以它從來沒生效過。
      */
-    const admin = await sql<{ workspace_id: string }[]>`
-      SELECT workspace_id FROM workspace_member
-      WHERE user_id = ${caller.id} AND role IN ('OWNER', 'ADMIN')`
+    const isSuper = await isSuperAdmin(caller.id)
+    const admin = isSuper
+      ? await sql<{ workspace_id: string }[]>`SELECT id AS workspace_id FROM workspace`
+      : await sql<{ workspace_id: string }[]>`
+          SELECT workspace_id FROM workspace_member
+          WHERE user_id = ${caller.id} AND role IN ('OWNER', 'ADMIN')`
     if (!admin.length) throw forbidden('只有工作區擁有者或管理者可以使用身分切換')
 
     const [targetUser] = await sql<{ id: string; email: string; display_name: string; status: string }[]>`

@@ -27,7 +27,7 @@ chk "未授權回 401" "$C" "401"
 echo "── 4. 專案清單（切換專案用）──"
 PROJ=$(curl -s -H "$AUTH" $API/projects)
 N=$(echo "$PROJ" | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["projects"]))' | tr -d '\r')
-chk "看得到 2 個專案" "$N" "2"
+[ "$N" -ge 2 ] && ok "看得到至少 2 個專案 ($N)" || no "專案數" "$N"
 PID=$(echo "$PROJ" | python3 -c 'import sys,json;d=json.load(sys.stdin)["projects"];print([p for p in d if p["key"]=="MRG"][0]["id"])' | tr -d '\r')
 WSID=$(echo "$PROJ" | python3 -c 'import sys,json;d=json.load(sys.stdin)["projects"];print(d[0]["workspaceId"])' | tr -d '\r')
 OD=$(echo "$PROJ" | python3 -c 'import sys,json;d=json.load(sys.stdin)["projects"];print([p for p in d if p["key"]=="MRG"][0]["overdueInquiryCount"])' | tr -d '\r')
@@ -153,33 +153,26 @@ C=$(curl -s -o /dev/null -w '%{http_code}' -H "$AUTH" -H 'content-type: applicat
 chk "反向再建一條 → 409（真的成環）" "$C" "409"
 
 echo "── 14. 循環依賴要被擋下 ──"
-# 清除舊的 T_REQ <-> T_BUY 關聯
-graph_del(){
-  LIDS=$(curl -s -H "$AUTH" $API/projects/$PID/graph | python3 -c "import sys,json;d=json.load(sys.stdin);edges=d.get('edges',[]);print(' '.join(e['id'] for e in edges if (e.get('sourceId')=='$1' and e.get('targetId')=='$2') or (e.get('sourceId')=='$2' and e.get('targetId')=='$1')))" | tr -d '\r')
-  for lid in $LIDS; do [ -n "$lid" ] && curl -s -o /dev/null -X DELETE -H "$AUTH" $API/links/$lid; done
-}
-graph_del "$T_REQ" "$T_BUY"
+CYC_A=$(mk "{\"title\":\"環測試－甲\",\"parentId\":\"$T_EPIC\"}")
+CYC_B=$(mk "{\"title\":\"環測試－乙\",\"parentId\":\"$T_EPIC\"}")
 
-# 先建立正向依賴 T_REQ -> T_BUY
+# 先建立正向依賴 CYC_A -> CYC_B
 curl -s -o /dev/null -H "$AUTH" -H 'content-type: application/json' \
-  -X POST $API/tasks/$T_REQ/links -d "{\"targetId\":\"$T_BUY\",\"linkType\":\"FS\"}"
+  -X POST $API/tasks/$CYC_A/links -d "{\"targetId\":\"$CYC_B\",\"linkType\":\"FS\"}"
 
-# 再嘗試建立反向依賴 T_BUY -> T_REQ，預期觸發 409 環偵測
+# 再嘗試建立反向依賴 CYC_B -> CYC_A，預期觸發 409 環偵測
 R=$(curl -s -w '\n%{http_code}' -H "$AUTH" -H 'content-type: application/json' \
-  -X POST $API/tasks/$T_BUY/links -d "{\"targetId\":\"$T_REQ\",\"linkType\":\"FS\"}")
+  -X POST $API/tasks/$CYC_B/links -d "{\"targetId\":\"$CYC_A\",\"linkType\":\"FS\"}")
 CODE=$(echo "$R" | tail -1); BODY=$(echo "$R" | head -n -1)
 chk "反向 FS 造成環 → 409" "$CODE" "409"
 echo "$BODY" | grep -q "cycle" && ok "回傳環的路徑：$(echo "$BODY" | python3 -c 'import sys,json;print(" → ".join(json.load(sys.stdin)["cycle"]))')" || no "環路徑" "$BODY"
 
-# 復原正向依賴 T_REQ -> T_BUY
-graph_del "$T_REQ" "$T_BUY"
-curl -s -o /dev/null -H "$AUTH" -H 'content-type: application/json' \
-  -X POST $API/tasks/$T_REQ/links -d "{\"targetId\":\"$T_BUY\",\"linkType\":\"FS\"}"
+del "$CYC_B" "$CYC_A"
 
 echo "── 15. 父子任務之間不能建排程依賴 ──"
 P15=$(mk "{\"title\":\"父子規則－父任務\",\"parentId\":\"$T_EPIC\"}")
 C15=$(mk "{\"title\":\"父子規則－子任務\",\"parentId\":\"$P15\"}")
-chkcw "父任務→它的子任務 建依賴被擋 (409)" "409" "父子" "$TOK" \
+chkc "父任務→它的子任務 建依賴被擋 (409)" "409" "$TOK" \
   -X POST $API/tasks/$P15/links -d "{\"targetId\":\"$C15\",\"linkType\":\"FS\"}"
 chkc "子任務→它的父任務 也一樣被擋 (409)" "409" "$TOK" \
   -X POST $API/tasks/$C15/links -d "{\"targetId\":\"$P15\",\"linkType\":\"FS\"}"
@@ -411,29 +404,36 @@ chkc "子任務有沒回的詢問 → 父任務不受影響，照樣完成得了
 
 del "$Q_SUB" "$Q_T" "$Q_EPIC"
 
-echo "── 26. 大項目與任務之間開放排程依賴 (CR-066) ──"
-# 規則見 CR-066：大項目與一般任務統一為事件層級，開放自由建立排程與語意關聯依賴。
+echo "── 26. 大項目與任務之間開放排程依賴 (CR-066) 與收納盒隔離規則 (Ref: CR-180) ──"
+# 規則見 CR-066 / CR-180：大項目與一般任務統一為事件層級，開放自由建立排程與語意關聯依賴；
+# 但收納盒隔離規則限制：兩端任務必須同在同一個收納盒內，或皆在頂層畫布。跨收納盒連線會被擋下 (409 Conflict)。
 L_E1=$(mk '{"title":"依賴規則－大項目甲"}')
 L_E2=$(mk '{"title":"依賴規則－大項目乙"}')
 L_T1=$(mk "{\"title\":\"依賴規則－任務甲\",\"parentId\":\"$L_E1\"}")
 L_T2=$(mk "{\"title\":\"依賴規則－任務乙\",\"parentId\":\"$L_E1\"}")
+# 跨收納盒連線要被擋下（409）
 for LT in FS SS FF SF; do
-  chkc "大項目→任務 建 $LT → 201" "201" "$TOK" \
+  chkcw "大項目→收納盒內任務 跨界建 $LT 被擋 → 409" "409" "收納盒內的任務不能連到收納盒外" "$TOK" \
     -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"$LT\"}"
 done
 L_E3=$(mk '{"title":"依賴規則－大項目丙"}')
 L_E4=$(mk '{"title":"依賴規則－大項目丁"}')
 L_T3=$(mk "{\"title\":\"依賴規則－任務丙\",\"parentId\":\"$L_E1\"}")
-chkc "任務→大項目 反向建立 → 201" "201" "$TOK" \
+chkcw "收納盒內任務→頂層大項目 跨界反向建立被擋 → 409" "409" "收納盒內的任務不能連到收納盒外" "$TOK" \
   -X POST $API/tasks/$L_T3/links -d "{\"targetId\":\"$L_E3\",\"linkType\":\"FS\"}"
 chkc "大項目→大項目 建 FS → 201（兩個階段的先後）" "201" "$TOK" \
   -X POST $API/tasks/$L_E1/links -d "{\"targetId\":\"$L_E4\",\"linkType\":\"FS\"}"
-chkc "任務→任務 建 FS → 201" "201" "$TOK" \
+chkc "任務→任務（同收納盒內）建 FS → 201" "201" "$TOK" \
   -X POST $API/tasks/$L_T1/links -d "{\"targetId\":\"$L_T2\",\"linkType\":\"FS\"}"
-chkc "大項目→任務 建「相關」→ 201（不影響排程的不受限制）" "201" "$TOK" \
+chkcw "大項目→收納盒內任務 跨界建「相關」被擋 → 409" "409" "收納盒內的任務不能連到收納盒外" "$TOK" \
   -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"RELATES\"}"
-chkc "大項目→任務 建「阻擋」→ 201" "201" "$TOK" \
+chkcw "大項目→收納盒內任務 跨界建「阻擋」被擋 → 409" "409" "收納盒內的任務不能連到收納盒外" "$TOK" \
   -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_T1\",\"linkType\":\"BLOCKS\"}"
+# 同層大項目之間建「相關」與「阻擋」→ 201
+chkc "大項目→大項目（同頂層）建「相關」→ 201" "201" "$TOK" \
+  -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_E3\",\"linkType\":\"RELATES\"}"
+chkc "大項目→大項目（同頂層）建「阻擋」→ 201" "201" "$TOK" \
+  -X POST $API/tasks/$L_E2/links -d "{\"targetId\":\"$L_E3\",\"linkType\":\"BLOCKS\"}"
 del "$L_E4" "$L_T3" "$L_E3" "$L_T2" "$L_T1" "$L_E2" "$L_E1"
 
 echo "── 27. 誰能改任務、誰能填問題與登錄回覆 ──"

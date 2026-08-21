@@ -174,7 +174,53 @@ async function run() {
     fail('排程引擎推算', `HTTP ${resSchedule.status}`)
   }
 
-  // 10. 刪除測試任務清理
+  // 10. 關聯建立與收納盒隔離規則 (Ref: CR-180)
+  if (createdTaskId) {
+    const resTask2 = await request(`/projects/${projectId}/tasks`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ title: `${testTaskTitle} 2`, type: 'TASK' }),
+    })
+    const task2Id = resTask2.data?.id
+    if (task2Id) {
+      // 同層建立關聯
+      const resLink = await request(`/tasks/${createdTaskId}/links`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ targetId: task2Id, linkType: 'FS' }),
+      })
+      if (resLink.status === 201) {
+        ok('建立同層任務關聯線成功 (201 Created)')
+      } else {
+        fail('建立同層任務關聯線', `HTTP ${resLink.status}: ${JSON.stringify(resLink.data)}`)
+      }
+
+      // 建立子任務並驗證跨收納盒關聯被擋
+      const resSubtask = await request(`/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ title: `${testTaskTitle} 子任務`, type: 'TASK', parentId: createdTaskId }),
+      })
+      const subtaskId = resSubtask.data?.id
+      if (subtaskId) {
+        const resCrossLink = await request(`/tasks/${task2Id}/links`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ targetId: subtaskId, linkType: 'FS' }),
+        })
+        if (resCrossLink.status === 409) {
+          ok('跨收納盒關聯線攔截成功 (409 Conflict - Ref: CR-180)')
+        } else {
+          fail('跨收納盒關聯線攔截', `期望 409，實得 ${resCrossLink.status}`)
+        }
+        await request(`/tasks/${subtaskId}`, { method: 'DELETE', headers: authHeaders })
+      }
+
+      await request(`/tasks/${task2Id}`, { method: 'DELETE', headers: authHeaders })
+    }
+  }
+
+  // 11. 刪除測試任務清理
   if (createdTaskId) {
     const resDelete = await request(`/tasks/${createdTaskId}`, {
       method: 'DELETE',
@@ -187,8 +233,17 @@ async function run() {
     }
   }
 
-  // 11. 即時推播與 SSE 串流 (Realtime SSE)
-  console.log('\n── 4. 即時推播與串流 (Realtime SSE) ──')
+  // 12. AI 技能規格探索 (AI Skill Discovery - Ref: CR-165)
+  console.log('\n── 4. AI 技能探索 (AI Skills Endpoint) ──')
+  const resSkills = await request('/skills', { headers: authHeaders })
+  if (resSkills.status === 200 && resSkills.data?.service && Array.isArray(resSkills.data?.projects) && resSkills.data?.endpoints) {
+    ok(`AI 技能規格探索成功 (${resSkills.data.projects.length} 個可用專案, 包含完整 API 規格)`)
+  } else {
+    fail('AI 技能規格探索', `HTTP ${resSkills.status}: ${JSON.stringify(resSkills.data)}`)
+  }
+
+  // 13. 即時推播與 SSE 串流 (Realtime SSE)
+  console.log('\n── 5. 即時推播與串流 (Realtime SSE) ──')
   const resNoAuthEvents = await request('/events')
   if (resNoAuthEvents.status === 401) {
     ok('未授權 SSE 請求攔截 (401 Unauthorized)')

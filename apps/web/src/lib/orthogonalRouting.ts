@@ -275,17 +275,33 @@ export function getPolylineMidpoint(pts: Point[]): { px: number; py: number } {
       py: Math.round((pts[0].y + pts[1].y) / 2),
     }
   }
+  if (pts.length === 3) {
+    // 2 段折線，折點直接固定在中間唯一的轉折角 pts[1]
+    return {
+      px: Math.round(pts[1].x),
+      py: Math.round(pts[1].y),
+    }
+  }
+  if (pts.length === 4) {
+    // 3 段折線（標準直角折線），折點鎖定在中間段 pts[1]~pts[2] 的正中心點
+    return {
+      px: Math.round((pts[1].x + pts[2].x) / 2),
+      py: Math.round((pts[1].y + pts[2].y) / 2),
+    }
+  }
 
-  // 尋找最長內部線段（優先選擇避障繞道通道線段）
-  let bestSegIdx = 0
-  let maxSegLen = -1
+  // 複雜多彎折避障路徑：尋找最靠近中央的長線段
+  const midIndex = Math.floor((pts.length - 1) / 2)
+  let bestSegIdx = midIndex
+  let maxScore = -1
 
-  for (let i = 0; i < pts.length - 1; i++) {
+  for (let i = 1; i < pts.length - 2; i++) {
     const len = Math.abs(pts[i + 1].x - pts[i].x) + Math.abs(pts[i + 1].y - pts[i].y)
-    const isMiddle = i > 0 && i < pts.length - 2
-    const weightedLen = isMiddle ? len * 1.3 : len
-    if (weightedLen > maxSegLen) {
-      maxSegLen = weightedLen
+    // 距離幾何中央越近、長度越長得分越高
+    const distFromCenter = Math.abs(i - midIndex)
+    const score = len / (1 + distFromCenter * 0.5)
+    if (score > maxScore) {
+      maxScore = score
       bestSegIdx = i
     }
   }
