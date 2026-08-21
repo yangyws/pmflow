@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Edge Interaction Enhancements (Plan A+B) (CR-188)
+### Latest Changes: Graph Edge Stroke, Custom Color & Handles Upgrade (CR-189)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **關聯線基礎加粗與箭頭放大 (`CR-189`)**：基礎線寬提升至 2.5px，懸停加粗至 4px，箭頭擴大至 16px。
+    2. **連線自訂變色（含收納盒內外）(`CR-189`)**：引入 `EDGE_COLOR_OPTIONS` 8 色選擇器，彈窗內可選色並持久化至 `edgeColors` 與後端 `task-graph-extra`。
+    3. **接點放大與多彩識別 (`CR-189`)**：Handles 擴大至 20px（`!w-5 !h-5`），四向區分色彩（左藍、右紅、上綠、下紫）並支援懸停縮放；折點擴大為 14px/20px 並自動同步連線色彩。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-189` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-189`。
+
+### Previous Changes: Graph Edge Interaction Enhancements (Plan A+B) (CR-188)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **全線寬幅點擊與發光高亮 (`CR-188`)**：在 `OrthogonalEdge` 增加 36px 寬幅點擊感應層，點擊全線任意位置皆可開窗刪除；懸停時全線加粗為 3.5px 並帶亮藍色柔和發光。

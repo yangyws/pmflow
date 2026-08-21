@@ -38,22 +38,22 @@ import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
-// 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線）與標頭箭頭方向產生邊樣式
-function getEdgeStyleAndMarker(sourceHandle?: string | null) {
+// 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線，或自訂顏色）與標頭箭頭方向產生邊樣式
+function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string) {
   const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
-  const strokeColor = isLeftRight ? '#ef4444' : '#8b5cf6'
+  const strokeColor = customColor || (isLeftRight ? '#ef4444' : '#8b5cf6')
   return {
     animated: false,
     style: {
-      strokeWidth: 2,
+      strokeWidth: 2.5,
       stroke: strokeColor,
       strokeDasharray: isLeftRight ? 'none' : '5 5',
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
       color: strokeColor,
-      width: 14,
-      height: 14,
+      width: 16,
+      height: 16,
     },
   }
 }
@@ -100,7 +100,7 @@ const NODE_EXTENT: CoordinateExtent = [
 const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
   type: 'orthogonal',
   animated: false,
-  style: { strokeWidth: 2, stroke: '#ef4444' },
+  style: { strokeWidth: 2.5, stroke: '#ef4444' },
 }
 const PRO_OPTIONS = { hideAttribution: true }
 
@@ -577,12 +577,13 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       )}
 
       {/* 接點 (Handles) - 渲染在卡片本體最上層，四向皆同時支援出發 (source) 與連入 (target) */}
+      {/* 接點 (Handles) - 渲染在卡片本體最上層，四向加大且顏色分明 (左藍、右紅、上綠、下紫)，支援懸停動態放大 */}
       <Handle
         type="target"
         position={Position.Left}
         id="left-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        style={{ top: '50%', backgroundColor: '#3b82f6' }}
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -591,8 +592,8 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         type="source"
         position={Position.Left}
         id="left-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        style={{ top: '50%', backgroundColor: '#3b82f6' }}
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -602,7 +603,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Right}
         id="right-in"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -612,7 +613,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Right}
         id="right-out"
         style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -621,8 +622,8 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         type="target"
         position={Position.Top}
         id="top-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        style={{ left: '50%', backgroundColor: '#10b981' }}
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -631,8 +632,8 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         type="source"
         position={Position.Top}
         id="top-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        style={{ left: '50%', backgroundColor: '#10b981' }}
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -642,7 +643,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Bottom}
         id="bottom-in"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -652,7 +653,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         position={Position.Bottom}
         id="bottom-out"
         style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-4 !h-4 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
         isConnectable={isConnectable ?? true}
         isConnectableStart={true}
         isConnectableEnd={true}
@@ -719,6 +720,45 @@ function saveEdgeTexts(projectId: string | undefined, map: EdgeTextMap) {
       localStorage.setItem(`${EDGE_TEXT_KEY_PREFIX}${projectId}`, JSON.stringify(map))
     } else {
       localStorage.removeItem(`${EDGE_TEXT_KEY_PREFIX}${projectId}`)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Ref: CR-188 關聯線顏色配置
+const EDGE_COLOR_KEY_PREFIX = 'pmflow_simple_graph_edge_colors_'
+
+type EdgeColorMap = Record<string, string>
+
+const EDGE_COLOR_OPTIONS = [
+  { name: '預設紅', color: '#ef4444' },
+  { name: '科技藍', color: '#3b82f6' },
+  { name: '翡翠綠', color: '#10b981' },
+  { name: '紫羅蘭', color: '#8b5cf6' },
+  { name: '琥珀橘', color: '#f59e0b' },
+  { name: '玫瑰粉', color: '#ec4899' },
+  { name: '青綠色', color: '#06b6d4' },
+  { name: '深岩灰', color: '#475569' },
+]
+
+function loadEdgeColors(projectId?: string): EdgeColorMap {
+  if (!projectId) return {}
+  try {
+    const raw = localStorage.getItem(`${EDGE_COLOR_KEY_PREFIX}${projectId}`)
+    return raw ? (JSON.parse(raw) as EdgeColorMap) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveEdgeColors(projectId: string | undefined, map: EdgeColorMap) {
+  if (!projectId) return
+  try {
+    if (Object.keys(map).length > 0) {
+      localStorage.setItem(`${EDGE_COLOR_KEY_PREFIX}${projectId}`, JSON.stringify(map))
+    } else {
+      localStorage.removeItem(`${EDGE_COLOR_KEY_PREFIX}${projectId}`)
     }
   } catch {
     // ignore
@@ -883,7 +923,7 @@ function OrthogonalEdge({
           className="cursor-pointer"
           pointerEvents="stroke"
         />
-        {/* 實體關聯線：懸停或選中時自動加粗為 3.5px 並帶藍色柔和發光 */}
+        {/* 實體關聯線：懸停或選中時自動加粗為 4px 並帶藍色柔和發光 */}
         <path
           id={id}
           d={path}
@@ -891,9 +931,9 @@ function OrthogonalEdge({
           markerEnd={markerEnd}
           style={{
             ...style,
-            stroke: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#94a3b8'),
-            strokeWidth: isHighlighted ? 3.5 : (style?.strokeWidth ?? 2),
-            filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))' : undefined,
+            stroke: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
+            strokeWidth: isHighlighted ? 4 : (style?.strokeWidth ?? 2.5),
+            filter: isHighlighted ? 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.6))' : undefined,
             transition: 'stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease',
           }}
           className="react-flow__edge-path cursor-pointer"
@@ -909,10 +949,11 @@ function OrthogonalEdge({
             "nodrag nopan absolute rounded-full transition-all duration-150 select-none cursor-grab active:cursor-grabbing",
             "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
             isHighlighted
-              ? "h-4 w-4 -ml-2 -mt-2 bg-blue-500 border-2 border-white dark:border-slate-900 ring-4 ring-blue-400/35 shadow-md shadow-blue-500/50 scale-125 z-[1001]"
-              : "h-2.5 w-2.5 -ml-[5px] -mt-[5px] border border-white/90 bg-slate-400/80 dark:border-slate-800 dark:bg-slate-500/80 z-[1000]"
+              ? "h-5 w-5 -ml-2.5 -mt-2.5 bg-blue-500 border-2 border-white dark:border-slate-900 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 scale-125 z-[1001]"
+              : "h-3.5 w-3.5 -ml-[7px] -mt-[7px] border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000]"
           )}
           style={{
+            backgroundColor: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
             transform: `translate(${px}px, ${py}px)`,
             pointerEvents: 'all',
           }}
@@ -1184,6 +1225,7 @@ type ConfirmDeleteEdgeState = {
   targetRef: string
   // Ref: CR-151 文字直接掛在 link id 上，不再另外組鍵
   text: string
+  color?: string
 }
 
 type LogItem = {
@@ -1833,6 +1875,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   // Ref: CR-150
   const [edgeTexts, setEdgeTexts] = useState<EdgeTextMap>(() => loadEdgeTexts(projectId))
 
+  // Ref: CR-188
+  const [edgeColors, setEdgeColors] = useState<EdgeColorMap>(() => loadEdgeColors(projectId))
+
   // Ref: CR-144
   const [annotations, setAnnotations] = useState<CanvasAnnotations>(() => loadCanvasAnnotations(projectId))
   const annotationsRef = useRef(annotations)
@@ -1852,6 +1897,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       annotations?: CanvasAnnotations
       waypoints?: WaypointMap
       edgeTexts?: EdgeTextMap
+      edgeColors?: EdgeColorMap
     }
     if (extraData && typeof extraData === 'object') {
       if (extraData.annotations && (Array.isArray(extraData.annotations.texts) || Array.isArray(extraData.annotations.frames))) {
@@ -1869,6 +1915,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       if (extraData.edgeTexts && typeof extraData.edgeTexts === 'object') {
         setEdgeTexts(extraData.edgeTexts)
         saveEdgeTexts(projectId, extraData.edgeTexts)
+      }
+      if (extraData.edgeColors && typeof extraData.edgeColors === 'object') {
+        setEdgeColors(extraData.edgeColors)
+        saveEdgeColors(projectId, extraData.edgeColors)
       }
     }
   }, [extraDocRes, projectId])
@@ -1932,9 +1982,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const lastSavedExtraJsonRef = useRef<string>('')
 
   const saveExtraToBackend = useCallback(
-    (nextAnn: CanvasAnnotations, nextWp: WaypointMap, nextTexts: EdgeTextMap) => {
+    (nextAnn: CanvasAnnotations, nextWp: WaypointMap, nextTexts: EdgeTextMap, nextColors: EdgeColorMap) => {
       if (!projectId) return
-      const payload = { annotations: nextAnn, waypoints: nextWp, edgeTexts: nextTexts }
+      const payload = { annotations: nextAnn, waypoints: nextWp, edgeTexts: nextTexts, edgeColors: nextColors }
       const json = JSON.stringify(payload)
       if (json === lastSavedExtraJsonRef.current) return
 
@@ -2055,9 +2105,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   useEffect(() => {
     queueCanvasWrite('waypoints', () => {
       saveWaypoints(projectId, waypoints)
-      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts)
+      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts, edgeColors)
     })
-  }, [waypoints, projectId, queueCanvasWrite, saveExtraToBackend, edgeTexts])
+  }, [waypoints, projectId, queueCanvasWrite, saveExtraToBackend, edgeTexts, edgeColors])
 
   const handleWaypointChange = useCallback((key: string, p: Waypoint) => {
     setWaypoints((prev) => ({ ...prev, [key]: p }))
@@ -2076,13 +2126,35 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   useEffect(() => {
     queueCanvasWrite('edgeTexts', () => {
       saveEdgeTexts(projectId, edgeTexts)
-      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts)
+      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts, edgeColors)
     })
-  }, [edgeTexts, projectId, queueCanvasWrite, saveExtraToBackend, waypoints])
+  }, [edgeTexts, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeColors])
 
   const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
     const trimmed = text.trim()
     setEdgeTexts((prev) => {
+      if ((prev[edgeId] ?? '') === trimmed) return prev
+      const next = { ...prev }
+      if (trimmed) {
+        next[edgeId] = trimmed
+      } else {
+        delete next[edgeId]
+      }
+      return next
+    })
+  }, [])
+
+  // Ref: CR-188
+  useEffect(() => {
+    queueCanvasWrite('edgeColors', () => {
+      saveEdgeColors(projectId, edgeColors)
+      saveExtraToBackend(annotationsRef.current, waypoints, edgeTexts, edgeColors)
+    })
+  }, [edgeColors, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts])
+
+  const handleSaveEdgeColor = useCallback((edgeId: string, color: string) => {
+    const trimmed = color.trim()
+    setEdgeColors((prev) => {
       if ((prev[edgeId] ?? '') === trimmed) return prev
       const next = { ...prev }
       if (trimmed) {
@@ -2099,15 +2171,16 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     if (edges.length === 0) return
     setWaypoints((prev) => migrateLegacyEdgeKeys(prev, edges))
     setEdgeTexts((prev) => migrateLegacyEdgeKeys(prev, edges))
+    setEdgeColors((prev) => migrateLegacyEdgeKeys(prev, edges))
   }, [edges])
 
   // Ref: CR-151
   useEffect(() => {
     queueCanvasWrite('annotations', () => {
       saveCanvasAnnotations(projectId, annotations)
-      saveExtraToBackend(annotations, waypoints, edgeTexts)
+      saveExtraToBackend(annotations, waypoints, edgeTexts, edgeColors)
     })
-  }, [annotations, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts])
+  }, [annotations, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts, edgeColors])
 
   const handleAddTextAnnotation = useCallback(() => {
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
@@ -3024,6 +3097,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
       const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+      const isLeftRight = !edge.sourceHandle || edge.sourceHandle.includes('left') || edge.sourceHandle.includes('right')
 
       setConfirmDeleteEdge({
         edgeId: edge.id,
@@ -3031,9 +3105,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         targetRef,
         // Ref: CR-151
         text: edgeTexts[edge.id] ?? '',
+        color: edgeColors[edge.id] ?? (isLeftRight ? '#ef4444' : '#8b5cf6'),
       })
     },
-    [nodes, edgeTexts]
+    [nodes, edgeTexts, edgeColors]
   )
 
   const isValidConnection = useCallback(
@@ -3820,13 +3895,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     const result = edges.map((e) => {
       const isHidden = hiddenNodeIds.has(String(e.source)) || hiddenNodeIds.has(String(e.target))
-      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
+      const color = edgeColors[e.id]
+      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, color)
       const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       const wp = waypoints[e.id] ?? null
       const txt = edgeTexts[e.id] ?? ''
 
       const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
-      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${obstaclesKey}`
+      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
 
       const hit = prevCache.get(e.id)
       if (hit && hit.src === e && hit.key === key) {
@@ -3859,7 +3935,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           ...e.style,
           stroke: edgeStyleAndMarker.style.stroke,
           strokeDasharray: edgeStyleAndMarker.style.strokeDasharray,
-          strokeWidth: 2,
+          strokeWidth: 2.5,
           opacity: 1,
         },
         markerEnd: edgeStyleAndMarker.markerEnd,
@@ -3878,6 +3954,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     handleWaypointReset,
     edgeTexts,
     handleSaveEdgeText,
+    edgeColors,
+    handleSaveEdgeColor,
     beginInteraction,
     endInteraction,
     onEdgeClick,
@@ -4286,9 +4364,28 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               placeholder={T.flow.relationGraph.edgeTextPlaceholder}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
-            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-              {T.flow.relationGraph.edgeTextHelp}
-            </p>
+            {/* Ref: CR-188 連線顏色選擇 */}
+            <label className="mt-4 mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              連線顏色
+            </label>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {EDGE_COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.color}
+                  type="button"
+                  onClick={() => setConfirmDeleteEdge({ ...confirmDeleteEdge, color: opt.color })}
+                  className={cx(
+                    'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                    confirmDeleteEdge.color === opt.color
+                      ? 'border-blue-500 bg-blue-50 text-slate-800 ring-2 ring-blue-500/40 dark:bg-blue-950/40 dark:text-slate-100'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60'
+                  )}
+                >
+                  <span className="h-3 w-3 shrink-0 rounded-full shadow-xs" style={{ backgroundColor: opt.color }} />
+                  <span className="truncate">{opt.name}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="mt-5 flex items-center justify-between gap-2.5">
               <button
@@ -4297,6 +4394,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                   const edgeIdToDelete = confirmDeleteEdge.edgeId
                   setEdges((eds) => eds.filter((e) => e.id !== edgeIdToDelete))
                   handleSaveEdgeText(edgeIdToDelete, '')
+                  handleSaveEdgeColor(edgeIdToDelete, '')
                   setConfirmDeleteEdge(null)
 
                   const key = `pmflow_simple_graph_edge_handles_${projectId}`
@@ -4341,6 +4439,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                   type="button"
                   onClick={() => {
                     handleSaveEdgeText(confirmDeleteEdge.edgeId, confirmDeleteEdge.text)
+                    if (confirmDeleteEdge.color) {
+                      handleSaveEdgeColor(confirmDeleteEdge.edgeId, confirmDeleteEdge.color)
+                    }
                     setConfirmDeleteEdge(null)
                   }}
                   className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm"
