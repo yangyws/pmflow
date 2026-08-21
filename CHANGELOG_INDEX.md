@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Edge Stroke, Custom Color & Handles Upgrade (CR-189)
+### Latest Changes: Storage Box Internal Edge Distinct Color (CR-190)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒內連線專屬預設識別色 (`CR-190`)**：判定 `isInsideBox`，收納盒內部子卡片連線預設自動呈現翡翠綠 `#10b981`（左右）與青綠色 `#06b6d4`（上下），與外部大連線清晰對比。
+    2. **自訂選色相容與初始高亮 (`CR-190`)**：彈窗中預設帶入盒內綠色，並完整支援使用者自訂 8 色覆蓋保存。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-190` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-190`。
+
+### Previous Changes: Graph Edge Stroke, Custom Color & Handles Upgrade (CR-189)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **關聯線基礎加粗與箭頭放大 (`CR-189`)**：基礎線寬提升至 2.5px，懸停加粗至 4px，箭頭擴大至 16px。

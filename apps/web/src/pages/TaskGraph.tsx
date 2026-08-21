@@ -38,10 +38,13 @@ import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
-// 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線，或自訂顏色）與標頭箭頭方向產生邊樣式
-function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string) {
+// 依據出發接點（左右出發為實線、上下出發為虛線，或自訂/盒內顏色）與標頭箭頭方向產生邊樣式
+function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string, isInsideBox?: boolean) {
   const isLeftRight = !sourceHandle || sourceHandle.includes('left') || sourceHandle.includes('right')
-  const strokeColor = customColor || (isLeftRight ? '#ef4444' : '#8b5cf6')
+  const defaultColor = isInsideBox
+    ? (isLeftRight ? '#10b981' : '#06b6d4') // 盒內連線專屬辨識色：翡翠綠（左右） / 青綠（上下）
+    : (isLeftRight ? '#ef4444' : '#8b5cf6') // 外部連線：珊瑚紅（左右） / 紫羅蘭（上下）
+  const strokeColor = customColor || defaultColor
   return {
     animated: false,
     style: {
@@ -3097,7 +3100,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
       const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+      const isInsideBox = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId)
       const isLeftRight = !edge.sourceHandle || edge.sourceHandle.includes('left') || edge.sourceHandle.includes('right')
+      const defaultColor = isInsideBox
+        ? (isLeftRight ? '#10b981' : '#06b6d4')
+        : (isLeftRight ? '#ef4444' : '#8b5cf6')
 
       setConfirmDeleteEdge({
         edgeId: edge.id,
@@ -3105,7 +3112,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         targetRef,
         // Ref: CR-151
         text: edgeTexts[edge.id] ?? '',
-        color: edgeColors[edge.id] ?? (isLeftRight ? '#ef4444' : '#8b5cf6'),
+        color: edgeColors[edge.id] ?? defaultColor,
       })
     },
     [nodes, edgeTexts, edgeColors]
@@ -3892,17 +3899,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const styledEdges = useMemo(() => {
     const prevCache = derivedEdgeCacheRef.current
     const nextCache = new Map<string, { src: Edge; key: string; edge: Edge }>()
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
     const result = edges.map((e) => {
       const isHidden = hiddenNodeIds.has(String(e.source)) || hiddenNodeIds.has(String(e.target))
+      const sourceNode = nodeMap.get(String(e.source))
+      const targetNode = nodeMap.get(String(e.target))
+      const isInsideBox = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId)
       const color = edgeColors[e.id]
-      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, color)
+      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, color, isInsideBox)
       const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       const wp = waypoints[e.id] ?? null
       const txt = edgeTexts[e.id] ?? ''
 
       const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
-      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
+      const key = `${isHidden}|${isInsideBox}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
 
       const hit = prevCache.get(e.id)
       if (hit && hit.src === e && hit.key === key) {
