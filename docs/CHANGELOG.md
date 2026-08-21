@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-187` | 2026-08-21 | [關聯圖全局消重繪與連線快取：解耦 tasks 監聽、組件 React.memo 化與邊線對象級快取](#cr-187) | `TaskGraph.tsx` | 已驗證 |
 | `CR-186` | 2026-08-21 | [關聯圖模式切換消閃：同步節點狀態與 handlers 模式解析，消除連線路徑重算閃爍](#cr-186) | `TaskGraph.tsx` | 已驗證 |
 | `CR-185` | 2026-08-21 | [關聯圖收納盒還原機制：巢狀收納盒轉回卡片時，子卡片自動移入上層收納盒並自動網格排版](#cr-185) | `TaskGraph.tsx` | 已驗證 |
 | `CR-184` | 2026-08-21 | [關聯圖排版優化：將「(移入卡片自動擴大容量)」提示字由頂部標頭移至收納盒底部邊框上方](#cr-184) | `TaskGraph.tsx` | 已驗證 |
@@ -244,6 +245,20 @@
 ---
 
 ## 詳細條目
+
+### <a id="cr-187"></a>CR-187 (2026-08-21) — 關聯圖全局消重繪與連線快取：解耦 tasks 監聽、組件 React.memo 化與邊線對象級快取
+
+- **使用者需求**：收納盒切換時其他卡片與關聯線仍然會閃爍，排查是否又發生全圖重繪。
+- **排查與修復實作 (`TaskGraph.tsx`)**：
+  1. **排查全圖重繪根因**：
+     - `useEffect([tasks, toggledModes, dragged, resized, project])` 在 `toggledModes` 改變時會觸發全圖 `newNodes` 重新建構，並以 `setNodes` 強制覆蓋所有節點物件引用，導致整個畫布的所有卡片被判定為全部變更。
+     - `SimpleNodeView`、`SimpleTextNode`、`SimpleFrameNode` 與 `OrthogonalEdge` 過去未包覆 `memo`，任一節點變更時會連帶觸發全圖所有節點與連線 DOM 重繪。
+     - `styledEdges` 每次生成全新陣列，連線即使端點與障礙物皆未變動也會觸發 `buildOrthogonalPath` 重新計算路徑。
+  2. **解決方案**：
+     - **解耦監聽**：`tasks` 轉換 `useEffect` 依賴縮減為 `[tasks, project?.statuses, today]`，透過 `draggedRef.current`、`resizedRef.current`、`toggledModesRef.current` 讀取即時值，杜絕模式切換或拖曳時的二次全圖銷毀重建。
+     - **組件 Memo 化**：`nodeTypes`（`SimpleNodeView`, `SimpleTextNode`, `SimpleFrameNode`）與 `edgeTypes`（`OrthogonalEdge`）全面包覆 `memo()`，未受影響節點與連線完全略過重繪。
+     - **連線對象級快取**：在 `styledEdges` 引入 `derivedEdgeCacheRef`，端點、折點、文字與周圍障礙物未變動之連線直接沿用舊物件引用，路徑 100% 穩定無跳動。
+- **異動模組**：`apps/web/src/pages/TaskGraph.tsx`。
 
 ### <a id="cr-186"></a>CR-186 (2026-08-21) — 關聯圖模式切換消閃：同步節點狀態與 handlers 模式解析，消除連線路徑重算閃爍
 

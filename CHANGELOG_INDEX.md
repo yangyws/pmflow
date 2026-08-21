@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Edge Anti-Flicker & Synchronized Mode State (CR-186)
+### Latest Changes: Graph Global Redraw Elimination & Memoization (CR-187)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **解耦 tasks 轉換與互動依賴 (`CR-187`)**：使用 refs 讀取 `dragged`、`resized` 與 `toggledModes`，防止模式切換與拖曳時觸發全圖銷毀重建。
+    2. **組件 Memo 化與連線對象快取 (`CR-187`)**：`nodeTypes` 與 `edgeTypes` 全面包覆 `memo()`；在 `styledEdges` 引入 `derivedEdgeCacheRef`，未變動連線直接重用舊物件，徹底杜絕閃爍。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-187` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-187`。
+
+### Previous Changes: Graph Edge Anti-Flicker & Synchronized Mode State (CR-186)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **模式切換原子同步更新 (`CR-186`)**：在 `executeToggleMode` 中同步更新目標節點自身尺寸與模式，並在 `nodesWithHandlers` 中即時解析 `toggledModes`，徹底消除切換時的中間幀連線重新計算跳動與閃爍。

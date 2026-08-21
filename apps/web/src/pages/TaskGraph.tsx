@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -662,10 +662,10 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
 }
 
 const nodeTypes = {
-  simpleNode: SimpleNodeView,
+  simpleNode: memo(SimpleNodeView),
   // Ref: CR-144
-  annotationText: SimpleTextNode,
-  annotationFrame: SimpleFrameNode,
+  annotationText: memo(SimpleTextNode),
+  annotationFrame: memo(SimpleFrameNode),
 }
 
 // Ref: CR-139
@@ -942,7 +942,7 @@ function OrthogonalEdge({
 }
 
 const edgeTypes = {
-  orthogonal: OrthogonalEdge,
+  orthogonal: memo(OrthogonalEdge),
 }
 
 // Ref: CR-146
@@ -2210,6 +2210,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   draggedRef.current = dragged
   const resizedRef = useRef(resized)
   resizedRef.current = resized
+  const toggledModesRef = useRef(toggledModes)
+  toggledModesRef.current = toggledModes
 
   // 切換專案時自動重置對焦狀態並載入該專案的持久化位置、尺寸與模式
   useEffect(() => {
@@ -2412,8 +2414,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       return
     }
 
-    const draggedMap = dragged
-    const resizedMap = resized
+    const draggedMap = draggedRef.current
+    const resizedMap = resizedRef.current
+    const currentModes = toggledModesRef.current
     const statusCatMap = new Map(project?.statuses?.map((s) => [s.key, s.category]) ?? [])
 
     const parentIdSet = new Set<string>()
@@ -2467,7 +2470,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const existingNode = prevNodesMap.get(t.id)
       const existingMode = (existingNode?.data as SimpleGraphNodeData)?.mode
       const isDefaultBox = parentIdSet.has(t.id)
-      const mode = toggledModes[t.id] ?? (existingMode === 'box' ? 'box' : isDefaultBox ? 'box' : 'card')
+      const mode = currentModes[t.id] ?? (existingMode === 'box' ? 'box' : isDefaultBox ? 'box' : 'card')
       const isBox = mode === 'box'
       const kids = childrenMap.get(t.id) || []
 
@@ -2629,7 +2632,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           const cRow = idx % 5
           const defaultSlotPos = { x: 24 + cCol * 280, y: 110 + cRow * 115 }
           const kDefaultBox = parentIdSet.has(k.id)
-          const kMode = toggledModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
+          const kMode = currentModes[k.id] ?? (kDefaultBox ? 'box' : 'card')
 
           if (kMode !== 'box') {
             processedTaskIds.add(k.id)
@@ -2845,7 +2848,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       return orderParentNodesFirst(merged)
     })
-  }, [tasks, toggledModes, dragged, resized, project])
+  }, [tasks, project?.statuses, today])
 
   const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
     /*
@@ -3765,12 +3768,29 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     return [...frames, ...nodesWithHandlers, ...texts]
   }, [annotationNodes, nodesWithHandlers])
 
+  const derivedEdgeCacheRef = useRef<Map<string, { src: Edge; key: string; edge: Edge }>>(new Map())
+
   const styledEdges = useMemo(() => {
-    return edges.map((e) => {
+    const prevCache = derivedEdgeCacheRef.current
+    const nextCache = new Map<string, { src: Edge; key: string; edge: Edge }>()
+
+    const result = edges.map((e) => {
       const isHidden = hiddenNodeIds.has(String(e.source)) || hiddenNodeIds.has(String(e.target))
       const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
       const obstacles = waypoints[e.id] ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
-      return {
+      const wp = waypoints[e.id] ?? null
+      const txt = edgeTexts[e.id] ?? ''
+
+      const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
+      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${obstaclesKey}`
+
+      const hit = prevCache.get(e.id)
+      if (hit && hit.src === e && hit.key === key) {
+        nextCache.set(e.id, hit)
+        return hit.edge
+      }
+
+      const built: Edge = {
         ...e,
         ...edgeStyleAndMarker,
         hidden: isHidden,
@@ -3779,11 +3799,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         data: {
           ...(e.data ?? {}),
           // Ref: CR-151 折點與文字都用 link id 當鍵
-          waypoint: waypoints[e.id] ?? null,
+          waypoint: wp,
           obstacles,
           onWaypointChange: handleWaypointChange,
           onWaypointReset: handleWaypointReset,
-          text: edgeTexts[e.id] ?? '',
+          text: txt,
           onSaveText: handleSaveEdgeText,
           onWaypointDragStart: beginInteraction,
           onWaypointDragEnd: endInteraction,
@@ -3800,7 +3820,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
         markerEnd: edgeStyleAndMarker.markerEnd,
       }
+      nextCache.set(e.id, { src: e, key, edge: built })
+      return built
     })
+
+    derivedEdgeCacheRef.current = nextCache
+    return result
   }, [
     edges,
     nodes,
