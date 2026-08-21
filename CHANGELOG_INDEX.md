@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Box & Card Nested Item Collapse / Expand (CR-182)
+### Latest Changes: Graph Collapsed Progress Bar & Header Horizontal Scroll Fixes (CR-183)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **折疊狀態進度條可見度修復 (`CR-183`)**：折疊時改為自適應自然高度（`min-h-[90px]`），解決固定 90px 導致進度條被截斷消失之問題。
+    2. **消除標頭橫向滑動與溢出拖拉 (`CR-183`)**：收納盒移除 `overflow-x-auto`，卡片標頭調整為 `flex justify-between w-full min-w-0 overflow-hidden`，消除卡片與收納盒的橫向拖拉問題。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-183` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-183`。
+
+### Previous Changes: Graph Box & Card Nested Item Collapse / Expand (CR-182)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **折疊按鈕與緊湊樣式 (`CR-182`)**：當收納盒或卡片內部包含子任務或問題單時，標頭顯示 `▲ 摺疊 / ▼ 展開` 按鈕。

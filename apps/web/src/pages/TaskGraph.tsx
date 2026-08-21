@@ -307,16 +307,16 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       onDoubleClick={handleDoubleClick}
       style={{
         width: nodeW,
-        height: isBox ? (data.isCollapsed ? 90 : nodeH) : undefined,
+        height: isBox ? (data.isCollapsed ? undefined : nodeH) : undefined,
         minHeight: 90,
       }}
-      className={cx('relative select-none pointer-events-auto', isBox ? 'w-full h-full' : 'w-full')}
+      className={cx('relative select-none pointer-events-auto', isBox ? (data.isCollapsed ? 'w-full' : 'w-full h-full') : 'w-full')}
     >
       {isBox ? (
         <div
           className={cx(
-            'relative w-full h-full min-w-[320px] rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
-            data.isCollapsed ? 'min-h-[90px]' : 'min-h-[240px]',
+            'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-grab active:cursor-grabbing pointer-events-auto overflow-hidden opacity-100',
+            data.isCollapsed ? 'min-h-[90px]' : 'h-full min-w-[320px] min-h-[240px]',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-300 dark:border-slate-700'
@@ -329,7 +329,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             />
             <div className="px-2.5 py-1.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 flex flex-col justify-start gap-1">
               <div className="flex items-center justify-between gap-1.5 w-full">
-                <div className="flex items-center gap-1.5 flex-1 min-w-0 whitespace-nowrap overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
                   <button
                     type="button"
                     onClick={handleToggle}
@@ -472,21 +472,23 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
           />
           <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
             {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 + 折疊按鈕 */}
-            <div className="flex items-center gap-1.5 w-max min-w-full whitespace-nowrap overflow-visible">
-              {data.taskType !== 'BUG' && (
-                <button
-                  type="button"
-                  onClick={handleToggle}
-                  className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-                  title={T.flow.relationGraph.cardToggleTitle}
-                >
-                  {T.flow.relationGraph.card}
-                </button>
-              )}
-              <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
-                {data.refText || 'MRG-1'}
-              </span>
-              <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
+            <div className="flex items-center justify-between gap-1 w-full min-w-0 overflow-hidden">
+              <div className="flex items-center gap-1.5 min-w-0 shrink overflow-hidden">
+                {data.taskType !== 'BUG' && (
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="nodrag shrink-0 w-[58px] inline-flex items-center justify-center rounded py-0.5 text-[9px] font-medium transition-colors cursor-pointer border text-center select-none bg-white text-slate-600 hover:bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                    title={T.flow.relationGraph.cardToggleTitle}
+                  >
+                    {T.flow.relationGraph.card}
+                  </button>
+                )}
+                <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
+                  {data.refText || 'MRG-1'}
+                </span>
+                <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
+              </div>
               {((typeof data.childCount === 'number' && data.childCount > 0) ||
                 (typeof data.problemCount === 'number' && data.problemCount > 0)) && (
                 <button
@@ -3592,12 +3594,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         draggable: !isHidden,
         selectable: !isHidden,
         width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.width,
-        height: isBox && isCollapsed ? 90 : node.height,
+        height: isBox && isCollapsed ? undefined : node.height,
         style: {
           ...node.style,
           width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.style?.width,
-          height: isBox && isCollapsed ? 90 : node.style?.height,
-          minHeight: isBox && isCollapsed ? 90 : (node.style?.minHeight ?? (isBox ? undefined : 90)),
+          height: isBox && isCollapsed ? undefined : node.style?.height,
+          minHeight: 90,
         },
         zIndex: isSelected
           ? 50
