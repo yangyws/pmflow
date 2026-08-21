@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Box Capacity Hint Relocation (CR-184)
+### Latest Changes: Graph Nested Box Unboxing to Parent Box Auto-Grid (CR-185)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **巢狀收納盒還原至上層收納盒 (`CR-185`)**：當收納盒自身位於上層收納盒時，切換為卡片會將子卡片自動移入該上層收納盒，並依序自動排列於網格槽位中。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-185` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-185`。
+
+### Previous Changes: Graph Box Capacity Hint Relocation (CR-184)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **收納盒提示字移至底框上方 (`CR-184`)**：將 `(移入卡片自動擴大容量)` 由收納盒頂部標頭移至內部最下方底框上方，大幅改善標頭視覺空間。

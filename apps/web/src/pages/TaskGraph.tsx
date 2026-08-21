@@ -1529,55 +1529,124 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         const childKids = currentNodes.filter((cn) => cn.parentId === nodeId)
         if (childKids.length > 0) {
           const childIds = new Set(childKids.map((k) => k.id))
+          const parentBoxId = targetNode?.parentId || null
 
-          // 1. 呼叫 API 將子卡片的 parentId 設為 null，並即時更新 react-query tasks 快取
-          childKids.forEach((k) => {
-            Api.moveTask(k.id, { parentId: null }).catch((err) =>
-              console.error('Failed to move task out of box:', err)
+          if (parentBoxId) {
+            // 若原收納盒自身位於上一層收納盒中，子卡片自動移入該上一層收納盒並自動網格排版
+            const parentExistingKids = currentNodes.filter(
+              (cn) => cn.parentId === parentBoxId && !childIds.has(cn.id)
             )
-          })
-
-          if (projectId) {
-            queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
-              if (!oldData || !Array.isArray(oldData.tasks)) return oldData
-              return {
-                ...oldData,
-                tasks: oldData.tasks.map((t) => (childIds.has(t.id) ? { ...t, parentId: null } : t)),
+            const occupiedSlots = new Set<string>()
+            parentExistingKids.forEach((k) => {
+              const c = Math.round(((k.position?.x ?? 24) - 24) / 280)
+              const r = Math.round(((k.position?.y ?? 110) - 110) / 115)
+              if (c >= 0 && r >= 0 && r < 5) {
+                occupiedSlots.add(`${c},${r}`)
               }
             })
-          }
 
-          // 2. 計算移出後的畫布絕對座標，同步更新 dragged 狀態避免後續切換時卡片重新跑進去
-          const boxX = targetNode?.position.x ?? 0
-          const boxY = targetNode?.position.y ?? 0
+            const newDraggedEntries: Record<string, { x: number; y: number }> = {}
+            const newPosMap = new Map<string, { x: number; y: number }>()
 
-          const newDraggedEntries: Record<string, { x: number; y: number }> = {}
-          childKids.forEach((k) => {
-            newDraggedEntries[k.id] = {
-              x: boxX + k.position.x,
-              y: boxY + k.position.y,
-            }
-          })
-          setDragged((prev) => ({
-            ...prev,
-            ...newDraggedEntries,
-          }))
-
-          setNodes((prevNodes) =>
-            prevNodes.map((n) => {
-              if (childIds.has(n.id)) {
-                return {
-                  ...n,
-                  parentId: undefined,
-                  position: {
-                    x: boxX + n.position.x,
-                    y: boxY + n.position.y,
-                  },
+            childKids.forEach((k) => {
+              let slotIdx = 0
+              let tCol = 0
+              let tRow = 0
+              while (slotIdx < 10000) {
+                tCol = Math.floor(slotIdx / 5)
+                tRow = slotIdx % 5
+                if (!occupiedSlots.has(`${tCol},${tRow}`)) {
+                  occupiedSlots.add(`${tCol},${tRow}`)
+                  break
                 }
+                slotIdx++
               }
-              return n
+              const targetSlotPos = { x: 24 + tCol * 280, y: 110 + tRow * 115 }
+              newDraggedEntries[k.id] = targetSlotPos
+              newPosMap.set(k.id, targetSlotPos)
+
+              Api.moveTask(k.id, { parentId: parentBoxId }).catch((err) =>
+                console.error('Failed to move task to parent box:', err)
+              )
             })
-          )
+
+            if (projectId) {
+              queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+                if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+                return {
+                  ...oldData,
+                  tasks: oldData.tasks.map((t) => (childIds.has(t.id) ? { ...t, parentId: parentBoxId } : t)),
+                }
+              })
+            }
+
+            setDragged((prev) => ({
+              ...prev,
+              ...newDraggedEntries,
+            }))
+
+            setNodes((prevNodes) =>
+              prevNodes.map((n) => {
+                if (childIds.has(n.id)) {
+                  const p = newPosMap.get(n.id) ?? n.position
+                  return {
+                    ...n,
+                    parentId: parentBoxId,
+                    position: p,
+                  }
+                }
+                return n
+              })
+            )
+          } else {
+            // 若原收納盒位於畫布最外層，呼叫 API 將子卡片的 parentId 設為 null，轉換為畫布絕對座標原地展開
+            childKids.forEach((k) => {
+              Api.moveTask(k.id, { parentId: null }).catch((err) =>
+                console.error('Failed to move task out of box:', err)
+              )
+            })
+
+            if (projectId) {
+              queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
+                if (!oldData || !Array.isArray(oldData.tasks)) return oldData
+                return {
+                  ...oldData,
+                  tasks: oldData.tasks.map((t) => (childIds.has(t.id) ? { ...t, parentId: null } : t)),
+                }
+              })
+            }
+
+            const boxX = targetNode?.position.x ?? 0
+            const boxY = targetNode?.position.y ?? 0
+
+            const newDraggedEntries: Record<string, { x: number; y: number }> = {}
+            childKids.forEach((k) => {
+              newDraggedEntries[k.id] = {
+                x: boxX + k.position.x,
+                y: boxY + k.position.y,
+              }
+            })
+            setDragged((prev) => ({
+              ...prev,
+              ...newDraggedEntries,
+            }))
+
+            setNodes((prevNodes) =>
+              prevNodes.map((n) => {
+                if (childIds.has(n.id)) {
+                  return {
+                    ...n,
+                    parentId: undefined,
+                    position: {
+                      x: boxX + n.position.x,
+                      y: boxY + n.position.y,
+                    },
+                  }
+                }
+                return n
+              })
+            )
+          }
         }
       }
 
