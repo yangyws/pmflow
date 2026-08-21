@@ -781,6 +781,7 @@ function OrthogonalEdge({
   targetY,
   sourcePosition,
   targetPosition,
+  selected,
   style,
   markerEnd,
   data,
@@ -789,6 +790,8 @@ function OrthogonalEdge({
   const draggingRef = useRef(false)
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
   const hasMovedRef = useRef(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const isHighlighted = isHovered || !!selected
   const eData = data as OrthogonalEdgeData | undefined
   // Ref: CR-151 折點與文字一律用這條關聯線自己的 id 當鍵（對稱型關聯的兩端會被後端對調）
   const wpKey = id
@@ -860,15 +863,58 @@ function OrthogonalEdge({
 
   return (
     <>
-      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={30} />
+      {/* 組合方案 A+B：全線 36px 寬幅點擊熱區 ＋ 懸停全線加粗發光 ＋ 折點動態放大與發光光暈 */}
+      <g
+        className="react-flow__edge"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (hasMovedRef.current || consumeWaypointClickGuard()) return
+          eData?.onEdgeClick?.()
+        }}
+      >
+        {/* 全線 36px 寬幅透明熱區：滑鼠靠近整條連線任何位置皆可輕鬆 hover 與點擊 */}
+        <path
+          d={path}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={36}
+          className="cursor-pointer"
+          pointerEvents="stroke"
+        />
+        {/* 實體關聯線：懸停或選中時自動加粗為 3.5px 並帶藍色柔和發光 */}
+        <path
+          id={id}
+          d={path}
+          fill="none"
+          markerEnd={markerEnd}
+          style={{
+            ...style,
+            stroke: isHighlighted ? '#3b82f6' : (style?.stroke ?? '#94a3b8'),
+            strokeWidth: isHighlighted ? 3.5 : (style?.strokeWidth ?? 2),
+            filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))' : undefined,
+            transition: 'stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease',
+          }}
+          className="react-flow__edge-path cursor-pointer"
+          pointerEvents="stroke"
+        />
+      </g>
+
       <EdgeLabelRenderer>
         <div
-          className="nodrag nopan absolute h-2.5 w-2.5 rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 cursor-move after:absolute after:content-[''] after:-inset-[9px] after:rounded-full"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={cx(
+            "nodrag nopan absolute rounded-full transition-all duration-150 select-none cursor-grab active:cursor-grabbing",
+            "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
+            isHighlighted
+              ? "h-4 w-4 -ml-2 -mt-2 bg-blue-500 border-2 border-white dark:border-slate-900 ring-4 ring-blue-400/35 shadow-md shadow-blue-500/50 scale-125 z-[1001]"
+              : "h-2.5 w-2.5 -ml-[5px] -mt-[5px] border border-white/90 bg-slate-400/80 dark:border-slate-800 dark:bg-slate-500/80 z-[1000]"
+          )}
           style={{
-            transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
+            transform: `translate(${px}px, ${py}px)`,
             pointerEvents: 'all',
-            // Ref: CR-151
-            zIndex: 1000,
           }}
           title={T.flow.relationGraph.waypointHint}
           onPointerDown={handlePointerDown}
@@ -876,13 +922,11 @@ function OrthogonalEdge({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onClick={(e) => {
-            // Ref: CR-141
             e.stopPropagation()
             if (hasMovedRef.current || consumeWaypointClickGuard()) return
             eData?.onEdgeClick?.()
           }}
           onDoubleClick={(e) => {
-            // Ref: CR-141
             e.stopPropagation()
             e.preventDefault()
             armWaypointClickGuard()

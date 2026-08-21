@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Global Redraw Elimination & Memoization (CR-187)
+### Latest Changes: Graph Edge Interaction Enhancements (Plan A+B) (CR-188)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **全線寬幅點擊與發光高亮 (`CR-188`)**：在 `OrthogonalEdge` 增加 36px 寬幅點擊感應層，點擊全線任意位置皆可開窗刪除；懸停時全線加粗為 3.5px 並帶亮藍色柔和發光。
+    2. **折點動態放大與光暈外圈 (`CR-188`)**：折點平時 10px，懸停或選中時平滑放大至 16px 並帶 4px 亮藍光暈與 44px 寬幅點擊/拖曳熱區。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-188` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-188`。
+
+### Previous Changes: Graph Global Redraw Elimination & Memoization (CR-187)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **解耦 tasks 轉換與互動依賴 (`CR-187`)**：使用 refs 讀取 `dragged`、`resized` 與 `toggledModes`，防止模式切換與拖曳時觸發全圖銷毀重建。
