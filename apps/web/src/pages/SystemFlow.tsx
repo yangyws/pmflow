@@ -890,30 +890,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     return undefined
   }, [projectId, activePageId])
 
-  // 共同編輯 / 唯讀檢視開關 (依專案與分頁獨立記憶於本機)
-  const getPageEditable = useCallback(
-    (pageId: string) => {
-      try {
-        const key = `pmflow_system_flow_editable_${projectId || 'default'}_${pageId}`
-        const saved = localStorage.getItem(key)
-        if (saved !== null) return saved === 'true'
-        // 兼容舊版全域 key
-        const legacy = localStorage.getItem(`pmflow_system_flow_editable_${projectId || 'default'}`)
-        return legacy !== null ? legacy === 'true' : true
-      } catch {
-        return true
-      }
-    },
-    [projectId]
-  )
-
-  const [isEditable, setIsEditable] = useState<boolean>(() => getPageEditable(activePageId))
-
-  // 當切換分頁時，自動同步為該分頁專屬的編輯開關狀態
-  useEffect(() => {
-    setIsEditable(getPageEditable(activePageId))
-  }, [getPageEditable, activePageId])
-
   // 後端畫布編輯授權白名單查詢 (Ref: CR-194)
   const { data: permData } = useQuery({
     queryKey: ['canvasPermissions', projectId, 'system-flow'],
@@ -924,22 +900,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const isAllowedToEdit = permData ? permData.isAllowed : true
   const [isPermModalOpen, setIsPermModalOpen] = useState(false)
 
-  // 實質編輯狀態：開關處於編輯且後端授權許可
-  const effectiveEditable = isEditable && isAllowedToEdit
-
-  const handleToggleEditable = useCallback(() => {
-    if (!isAllowedToEdit) return
-    setIsEditable((prev) => {
-      const next = !prev
-      try {
-        const key = `pmflow_system_flow_editable_${projectId || 'default'}_${activePageId}`
-        localStorage.setItem(key, String(next))
-      } catch {
-        // ignore
-      }
-      return next
-    })
-  }, [projectId, activePageId, isAllowedToEdit])
+  // 實質編輯狀態：依據後端授權白名單控制
+  const effectiveEditable = isAllowedToEdit
 
   const hasFittedRef = useRef<boolean>(false)
   const lastAppliedUpdatedAtRef = useRef<string | null>(null)
@@ -1072,7 +1034,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 拖曳重排頁籤
   const handleReorderTabs = (sourceId: string | null, targetId: string) => {
-    if (!isEditable || !sourceId || sourceId === targetId) return
+    if (!effectiveEditable || !sourceId || sourceId === targetId) return
     setPages((prev) => {
       const srcIdx = prev.findIndex((p) => p.id === sourceId)
       const tgtIdx = prev.findIndex((p) => p.id === targetId)
@@ -1089,7 +1051,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 左右微調移動頁籤
   const handleMoveTab = (index: number, direction: -1 | 1) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const targetIndex = index + direction
     if (targetIndex < 0 || targetIndex >= pages.length) return
     setPages((prev) => {
@@ -1187,7 +1149,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const target = pages.find((p) => p.id === targetId)
     if (!target) return
     setActivePageId(targetId)
-    setIsEditable(getPageEditable(targetId))
     setSelectedNodeId(null)
     setNodes(orderParentNodesFirst(target.nodes))
     setEdges(
@@ -1203,7 +1164,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 新增頁面
   const handleAddPage = () => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const newId = `page-${Date.now()}`
     const newTitle = T.flow.systemFlow.pageDefaultTitle(pages.length + 1)
     const newPage: FlowPage = {
@@ -1214,13 +1175,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: [],
       edges: [],
     }
-    try {
-      localStorage.setItem(`pmflow_system_flow_editable_${projectId || 'default'}_${newId}`, 'true')
-    } catch {}
     const updated = [...pages, newPage]
     setPages(updated)
     setActivePageId(newId)
-    setIsEditable(true)
     setSelectedNodeId(null)
     setNodes([])
     setEdges([])
@@ -1229,7 +1186,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 複製當前頁面
   const handleDuplicatePage = (pageId: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const source = pages.find((p) => p.id === pageId)
     if (!source) return
     const sourceNodes = pageId === activePageId ? nodes : source.nodes
@@ -1245,14 +1202,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: JSON.parse(JSON.stringify(sourceNodes)),
       edges: JSON.parse(JSON.stringify(sourceEdges)),
     }
-    try {
-      const srcEditable = getPageEditable(pageId)
-      localStorage.setItem(`pmflow_system_flow_editable_${projectId || 'default'}_${newId}`, String(srcEditable))
-    } catch {}
     const updated = [...pages, newPage]
     setPages(updated)
     setActivePageId(newId)
-    setIsEditable(getPageEditable(pageId))
     setSelectedNodeId(null)
     setNodes(newPage.nodes)
     setEdges(newPage.edges)
@@ -1264,19 +1216,17 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 刪除頁面
   const handleDeletePage = (pageId: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const target = pages.find((p) => p.id === pageId)
     if (!target || !canDeletePage(target)) return
     const nextPages = pages.filter((p) => p.id !== pageId)
     try {
-      localStorage.removeItem(`pmflow_system_flow_editable_${projectId || 'default'}_${pageId}`)
       localStorage.removeItem(`pmflow_system_flow_viewport_${projectId}_${pageId}`)
     } catch {}
     setConfirmDeletePage(null)
     if (activePageId === pageId) {
       const nextActive = nextPages[0]
       setActivePageId(nextActive.id)
-      setIsEditable(getPageEditable(nextActive.id))
       setSelectedNodeId(null)
       setNodes(orderParentNodesFirst(nextActive.nodes))
       setEdges(
@@ -1295,14 +1245,14 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 開始重新命名
   const handleStartRenamePage = (id: string, currentTitle: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     setEditingPageId(id)
     setEditingTitle(currentTitle)
   }
 
   // 完成重新命名
   const handleFinishRenamePage = () => {
-    if (!isEditable || !editingPageId) return
+    if (!effectiveEditable || !editingPageId) return
     const trimmed = editingTitle.trim()
     if (trimmed) {
       setPages((prev) => {
@@ -1317,7 +1267,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   // Ref: CR-148 dragging / resizing 旗標就是「互動中」的判準；收到 false 才放行落盤，
   // 實際寫入交給後面那個 effect (它才拿得到套用完的最新節點)
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    if (!isEditable) {
+    if (!effectiveEditable) {
       const filtered = changes.filter((c) => c.type === 'select')
       if (filtered.length) {
         setNodes((nds) => applyNodeChanges(filtered, nds))
@@ -1348,10 +1298,10 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       }
       return applyNodeChanges(changes, nds)
     })
-  }, [isEditable, beginInteraction])
+  }, [effectiveEditable, beginInteraction])
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    if (!isEditable) {
+    if (!effectiveEditable) {
       const filtered = changes.filter((c) => c.type === 'select')
       if (filtered.length) {
         setEdges((eds) => applyEdgeChanges(filtered, eds))
@@ -1359,25 +1309,25 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       return
     }
     setEdges((eds) => applyEdgeChanges(changes, eds))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   // 記住使用者是從哪一顆節點與接點開始拉線的
   const connectStartRef = useRef<{ nodeId: string | null; handleId: string | null; handleType: string | null } | null>(null)
 
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       connectStartRef.current = {
         nodeId: params?.nodeId ?? null,
         handleId: params?.handleId ?? null,
         handleType: params?.handleType ?? null,
       }
     },
-    [isEditable]
+    [effectiveEditable]
   )
 
   const onConnect = useCallback((params: Connection) => {
-    if (!isEditable || !params.source || !params.target) return
+    if (!effectiveEditable || !params.source || !params.target) return
 
     // 如果使用者是從被 React Flow 標為 target 的接點起拉，React Flow 會將 source 與 target 顛倒
     // 依據實際按下滑鼠的起點節點換回正確方向，確保箭頭永遠位於滑鼠放開的終點端（支援右到左、下到上等任意方向）
@@ -1404,11 +1354,11 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       ...edgeStyleAndMarker,
     }
     setEdges((eds) => addEdge(newEdge, eds))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   // 拖曳結束判斷：拖入容器收納 / 拖出容器為獨立節點
   const onNodeDragStop = useCallback((_event: unknown, draggedNode: Node) => {
-    if (!isEditable || draggedNode.type !== 'step') return
+    if (!effectiveEditable || draggedNode.type !== 'step') return
 
     setNodes((currentNodes) => {
       const nodeMap = new Map(currentNodes.map((n) => [n.id, n]))
@@ -1792,30 +1742,11 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             </button>
           )}
 
-          {/* 共同編輯 / 唯讀切換開關 */}
-          <button
-            type="button"
-            onClick={isAllowedToEdit ? handleToggleEditable : undefined}
-            title={
-              !isAllowedToEdit
-                ? T.flow.shared.permissions.forbiddenHint
-                : isEditable
-                ? T.flow.shared.coEditingHint
-                : T.flow.shared.readOnlyHint
-            }
-            disabled={!isAllowedToEdit}
-            className={cx(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors select-none',
-              !isAllowedToEdit
-                ? 'opacity-60 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                : isEditable
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs cursor-pointer'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
-            )}
-          >
-            <span>{effectiveEditable ? '✏️' : '🔒'}</span>
-            {effectiveEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
-          </button>
+          {!effectiveEditable && (
+            <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 select-none font-medium">
+              🔒 {T.flow.shared.readOnly}
+            </span>
+          )}
 
           {effectiveEditable && (
             <>
@@ -2051,7 +1982,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             setSelectedNodeId(null)
           }}
           onEdgeClick={(_e, edge) => {
-            if (!isEditable) return
+            if (!effectiveEditable) return
             // Ref: CR-140 這次互動是拖折點就不要開編輯視窗
             if (consumeEdgeDragGuard()) return
             setConfirmDeleteEdge({
@@ -2071,8 +2002,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.05}
           maxZoom={2.5}
-          nodesDraggable={isEditable}
-          nodesConnectable={isEditable}
+          nodesDraggable={effectiveEditable}
+          nodesConnectable={effectiveEditable}
           elementsSelectable={true}
           panOnDrag={true}
           zoomOnPinch={true}

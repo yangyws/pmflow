@@ -1300,20 +1300,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const savedViewport = useMemo(() => loadSavedViewport(projectId), [projectId])
 
-  // 共同編輯 / 唯讀檢視開關 (獨立記憶於本機)
-  const storageKeyEditable = useMemo(
-    () => `pmflow_task_graph_editable_${projectId || 'default'}`,
-    [projectId]
-  )
-  const [isEditable, setIsEditable] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(`pmflow_task_graph_editable_${projectId || 'default'}`)
-      return saved !== null ? saved === 'true' : true
-    } catch {
-      return true
-    }
-  })
-
   // 後端畫布編輯授權白名單查詢 (Ref: CR-194)
   const { data: permData } = useQuery({
     queryKey: ['canvasPermissions', projectId, 'task-graph'],
@@ -1324,21 +1310,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const isAllowedToEdit = permData ? permData.isAllowed : true
   const [isPermModalOpen, setIsPermModalOpen] = useState(false)
 
-  // 實質編輯狀態：開關處於編輯且後端授權許可
-  const effectiveEditable = isEditable && isAllowedToEdit
-
-  const handleToggleEditable = useCallback(() => {
-    if (!isAllowedToEdit) return
-    setIsEditable((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(storageKeyEditable, String(next))
-      } catch {
-        // ignore
-      }
-      return next
-    })
-  }, [storageKeyEditable, isAllowedToEdit])
+  // 實質編輯狀態：依據後端授權白名單控制
+  const effectiveEditable = isAllowedToEdit
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -3228,7 +3201,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const onConnect = useCallback(
     (params: Connection) => {
-      if (!isEditable || !params.source || !params.target || params.source === params.target) return
+      if (!effectiveEditable || !params.source || !params.target || params.source === params.target) return
 
       // 若使用者是從 target 類型接點起拉，React Flow 會將 source 與 target 顛倒
       // 依據實際按下滑鼠的起點換回正確方向，確保箭頭永遠位於滑鼠放開的終點端（支援右到左、下到上等任意方向）
@@ -4043,64 +4016,53 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Ref: CR-148 */}
-      <div className="h-12 shrink-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-end gap-2">
-        {/* 管理者授權設定按鈕 */}
-        {canManagePerms && (
-          <button
-            type="button"
-            onClick={() => setIsPermModalOpen(true)}
-            title={T.flow.shared.permissions.btnHint}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            <span>⚙️</span> {T.flow.shared.permissions.btn}
-          </button>
-        )}
+      <div className="h-12 shrink-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <span>🕸️</span> 任務關聯圖
+          </span>
+        </div>
 
-        {/* 共同編輯 / 唯讀切換開關 */}
-        <button
-          type="button"
-          onClick={isAllowedToEdit ? handleToggleEditable : undefined}
-          title={
-            !isAllowedToEdit
-              ? T.flow.shared.permissions.forbiddenHint
-              : isEditable
-              ? T.flow.shared.coEditingHint
-              : T.flow.shared.readOnlyHint
-          }
-          disabled={!isAllowedToEdit}
-          className={cx(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors select-none',
-            !isAllowedToEdit
-              ? 'opacity-60 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-              : isEditable
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs cursor-pointer'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
+        <div className="flex items-center gap-2">
+          {/* 管理者授權設定按鈕 */}
+          {canManagePerms && (
+            <button
+              type="button"
+              onClick={() => setIsPermModalOpen(true)}
+              title={T.flow.shared.permissions.btnHint}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>⚙️</span> {T.flow.shared.permissions.btn}
+            </button>
           )}
-        >
-          <span>{effectiveEditable ? '✏️' : '🔒'}</span>
-          {effectiveEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
-        </button>
 
-        {effectiveEditable && (
-          <>
-            <button
-              type="button"
-              onClick={handleAddTextAnnotation}
-              title={ANNOTATION_STRINGS.addTextHint}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <span>📝</span> {ANNOTATION_STRINGS.addText}
-            </button>
-            <button
-              type="button"
-              onClick={handleAddAreaFrame}
-              title={T.flow.relationGraph.addFrameHint}
-              className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <span>🏷️</span> {ANNOTATION_STRINGS.addFrame}
-            </button>
-          </>
-        )}
+          {!effectiveEditable && (
+            <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 select-none font-medium">
+              🔒 {T.flow.shared.readOnly}
+            </span>
+          )}
+
+          {effectiveEditable && (
+            <>
+              <button
+                type="button"
+                onClick={handleAddTextAnnotation}
+                title={ANNOTATION_STRINGS.addTextHint}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <span>📝</span> {ANNOTATION_STRINGS.addText}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddAreaFrame}
+                title={T.flow.relationGraph.addFrameHint}
+                className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <span>🏷️</span> {ANNOTATION_STRINGS.addFrame}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="relative flex-1 flex flex-row overflow-hidden">
