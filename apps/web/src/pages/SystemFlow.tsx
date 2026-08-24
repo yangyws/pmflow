@@ -889,31 +889,42 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     return undefined
   }, [projectId, activePageId])
 
-  // 共同編輯 / 唯讀檢視開關 (獨立記憶於本機)
-  const storageKeyEditable = useMemo(
-    () => `pmflow_system_flow_editable_${projectId || 'default'}`,
+  // 共同編輯 / 唯讀檢視開關 (依專案與分頁獨立記憶於本機)
+  const getPageEditable = useCallback(
+    (pageId: string) => {
+      try {
+        const key = `pmflow_system_flow_editable_${projectId || 'default'}_${pageId}`
+        const saved = localStorage.getItem(key)
+        if (saved !== null) return saved === 'true'
+        // 兼容舊版全域 key
+        const legacy = localStorage.getItem(`pmflow_system_flow_editable_${projectId || 'default'}`)
+        return legacy !== null ? legacy === 'true' : true
+      } catch {
+        return true
+      }
+    },
     [projectId]
   )
-  const [isEditable, setIsEditable] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(`pmflow_system_flow_editable_${projectId || 'default'}`)
-      return saved !== null ? saved === 'true' : true
-    } catch {
-      return true
-    }
-  })
+
+  const [isEditable, setIsEditable] = useState<boolean>(() => getPageEditable(activePageId))
+
+  // 當切換分頁時，自動同步為該分頁專屬的編輯開關狀態
+  useEffect(() => {
+    setIsEditable(getPageEditable(activePageId))
+  }, [getPageEditable, activePageId])
 
   const handleToggleEditable = useCallback(() => {
     setIsEditable((prev) => {
       const next = !prev
       try {
-        localStorage.setItem(storageKeyEditable, String(next))
+        const key = `pmflow_system_flow_editable_${projectId || 'default'}_${activePageId}`
+        localStorage.setItem(key, String(next))
       } catch {
         // ignore
       }
       return next
     })
-  }, [storageKeyEditable])
+  }, [projectId, activePageId])
 
   const hasFittedRef = useRef<boolean>(false)
   const lastAppliedUpdatedAtRef = useRef<string | null>(null)
@@ -1161,6 +1172,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const target = pages.find((p) => p.id === targetId)
     if (!target) return
     setActivePageId(targetId)
+    setIsEditable(getPageEditable(targetId))
     setSelectedNodeId(null)
     setNodes(orderParentNodesFirst(target.nodes))
     setEdges(
@@ -1187,9 +1199,13 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: [],
       edges: [],
     }
+    try {
+      localStorage.setItem(`pmflow_system_flow_editable_${projectId || 'default'}_${newId}`, 'true')
+    } catch {}
     const updated = [...pages, newPage]
     setPages(updated)
     setActivePageId(newId)
+    setIsEditable(true)
     setSelectedNodeId(null)
     setNodes([])
     setEdges([])
@@ -1214,9 +1230,14 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: JSON.parse(JSON.stringify(sourceNodes)),
       edges: JSON.parse(JSON.stringify(sourceEdges)),
     }
+    try {
+      const srcEditable = getPageEditable(pageId)
+      localStorage.setItem(`pmflow_system_flow_editable_${projectId || 'default'}_${newId}`, String(srcEditable))
+    } catch {}
     const updated = [...pages, newPage]
     setPages(updated)
     setActivePageId(newId)
+    setIsEditable(getPageEditable(pageId))
     setSelectedNodeId(null)
     setNodes(newPage.nodes)
     setEdges(newPage.edges)
@@ -1232,10 +1253,15 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const target = pages.find((p) => p.id === pageId)
     if (!target || !canDeletePage(target)) return
     const nextPages = pages.filter((p) => p.id !== pageId)
+    try {
+      localStorage.removeItem(`pmflow_system_flow_editable_${projectId || 'default'}_${pageId}`)
+      localStorage.removeItem(`pmflow_system_flow_viewport_${projectId}_${pageId}`)
+    } catch {}
     setConfirmDeletePage(null)
     if (activePageId === pageId) {
       const nextActive = nextPages[0]
       setActivePageId(nextActive.id)
+      setIsEditable(getPageEditable(nextActive.id))
       setSelectedNodeId(null)
       setNodes(orderParentNodesFirst(nextActive.nodes))
       setEdges(
