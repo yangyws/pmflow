@@ -445,7 +445,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
           )}
 
           {/* 右下角縮放控制鈕 */}
-          {!data.isCollapsed && (
+          {!data.isCollapsed && (isConnectable ?? true) && (
             <NodeResizeControl
               position="bottom-right"
               minWidth={data.minWidth ?? 340}
@@ -576,88 +576,91 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         </div>
       )}
 
-      {/* 接點 (Handles) - 渲染在卡片本體最上層，四向皆同時支援出發 (source) 與連入 (target) */}
-      {/* 接點 (Handles) - 渲染在卡片本體最上層，四向加大且顏色分明 (左藍、右紅、上綠、下紫)，支援懸停動態放大 */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-in"
-        style={{ top: '50%', backgroundColor: '#3b82f6' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-out"
-        style={{ top: '50%', backgroundColor: '#3b82f6' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-in"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-out"
-        style={{ top: '50%', backgroundColor: '#ef4444' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-in"
-        style={{ left: '50%', backgroundColor: '#10b981' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top-out"
-        style={{ left: '50%', backgroundColor: '#10b981' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-in"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-out"
-        style={{ left: '50%', backgroundColor: '#8b5cf6' }}
-        className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
-        isConnectable={isConnectable ?? true}
-        isConnectableStart={true}
-        isConnectableEnd={true}
-      />
+      {/* 接點 (Handles) - 僅在可連線狀態時渲染，四向加大且顏色分明 (左藍、右紅、上綠、下紫)，支援懸停動態放大 */}
+      {(isConnectable ?? true) && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left-in"
+            style={{ top: '50%', backgroundColor: '#3b82f6' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="source"
+            position={Position.Left}
+            id="left-out"
+            style={{ top: '50%', backgroundColor: '#3b82f6' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="target"
+            position={Position.Right}
+            id="right-in"
+            style={{ top: '50%', backgroundColor: '#ef4444' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right-out"
+            style={{ top: '50%', backgroundColor: '#ef4444' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="target"
+            position={Position.Top}
+            id="top-in"
+            style={{ left: '50%', backgroundColor: '#10b981' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="source"
+            position={Position.Top}
+            id="top-out"
+            style={{ left: '50%', backgroundColor: '#10b981' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="target"
+            position={Position.Bottom}
+            id="bottom-in"
+            style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="bottom-out"
+            style={{ left: '50%', backgroundColor: '#8b5cf6' }}
+            className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
+            isConnectable={isConnectable ?? true}
+            isConnectableStart={true}
+            isConnectableEnd={true}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -836,6 +839,7 @@ function OrthogonalEdge({
 
   // 障礙物資訊由父層 styledEdges 統一預算並帶入，避免在 Edge 內部呼叫 getNodes() 引發無窮重新渲染迴圈
   const obstacles = eData?.waypoint ? [] : (eData?.obstacles ?? [])
+  const isConnectable = (eData as any)?.isConnectable ?? true
 
   // Ref: CR-150
   const edgeText = eData?.text || ''
@@ -860,6 +864,7 @@ function OrthogonalEdge({
   )
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isConnectable) return
     e.stopPropagation()
     draggingRef.current = true
     hasMovedRef.current = false
@@ -868,7 +873,7 @@ function OrthogonalEdge({
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return
+    if (!isConnectable || !draggingRef.current) return
     e.stopPropagation()
     if (
       pointerStartRef.current &&
@@ -903,8 +908,12 @@ function OrthogonalEdge({
     <>
       {/* 組合方案 A+B：全線 36px 寬幅點擊熱區 ＋ 純 CSS 零跳動懸停加粗發光 ＋ 折點中心鎖定 */}
       <g
-        className="react-flow__edge group/edge cursor-pointer pointer-events-stroke"
+        className={cx(
+          "react-flow__edge group/edge",
+          isConnectable ? "cursor-pointer pointer-events-stroke" : "pointer-events-none"
+        )}
         onClick={(e) => {
+          if (!isConnectable) return
           e.stopPropagation()
           if (hasMovedRef.current || consumeWaypointClickGuard()) return
           eData?.onEdgeClick?.()
@@ -938,38 +947,40 @@ function OrthogonalEdge({
         />
       </g>
 
-      <EdgeLabelRenderer>
-        <div
-          className={cx(
-            "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000] select-none cursor-grab active:cursor-grabbing transition-all duration-150",
-            "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
-            "hover:scale-135 hover:!bg-blue-500 hover:ring-4 hover:ring-blue-400/40 hover:shadow-md hover:shadow-blue-500/50 hover:z-[1001]",
-            selected && "scale-135 !bg-blue-500 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 z-[1001]"
-          )}
-          style={{
-            backgroundColor: style?.stroke ?? '#ef4444',
-            transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
-            pointerEvents: 'all',
-          }}
-          title={T.flow.relationGraph.waypointHint}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (hasMovedRef.current || consumeWaypointClickGuard()) return
-            eData?.onEdgeClick?.()
-          }}
-          onDoubleClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            armWaypointClickGuard()
-            scheduleWaypointGuardRelease()
-            eData?.onWaypointReset?.(wpKey)
-          }}
-        />
-      </EdgeLabelRenderer>
+      {isConnectable && (
+        <EdgeLabelRenderer>
+          <div
+            className={cx(
+              "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000] select-none cursor-grab active:cursor-grabbing transition-all duration-150",
+              "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
+              "hover:scale-135 hover:!bg-blue-500 hover:ring-4 hover:ring-blue-400/40 hover:shadow-md hover:shadow-blue-500/50 hover:z-[1001]",
+              selected && "scale-135 !bg-blue-500 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 z-[1001]"
+            )}
+            style={{
+              backgroundColor: style?.stroke ?? '#ef4444',
+              transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
+              pointerEvents: 'all',
+            }}
+            title={T.flow.relationGraph.waypointHint}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (hasMovedRef.current || consumeWaypointClickGuard()) return
+              eData?.onEdgeClick?.()
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              armWaypointClickGuard()
+              scheduleWaypointGuardRelease()
+              eData?.onWaypointReset?.(wpKey)
+            }}
+          />
+        </EdgeLabelRenderer>
+      )}
 
       {/* Ref: CR-151 關聯線文字：版面與互動照 SystemFlow.tsx 同一套，跟著折點 (px, py) 走，空的時候完全不畫 */}
       {(edgeText || isEditingText) && (
@@ -1003,12 +1014,16 @@ function OrthogonalEdge({
               <span
                 onClick={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => {
+                  if (!isConnectable) return
                   e.stopPropagation()
                   setTextDraft(edgeText)
                   setIsEditingText(true)
                 }}
                 title={T.flow.relationGraph.edgeTextHint}
-                className="pointer-events-auto inline-block whitespace-nowrap cursor-text rounded-md border border-slate-200 bg-white/95 px-2 py-0.5 text-sm font-semibold text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+                className={cx(
+                  "pointer-events-auto inline-block whitespace-nowrap rounded-md border border-slate-200 bg-white/95 px-2 py-0.5 text-sm font-semibold text-slate-700 shadow-xs dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200",
+                  isConnectable ? "cursor-text" : "cursor-default"
+                )}
               >
                 {edgeText}
               </span>
@@ -1111,30 +1126,32 @@ function SimpleTextNode({ id, data }: NodeProps) {
       </div>
 
       {/* Ref: CR-153 兩顆鈕整組移到文字上方（bottom-full），短字時也不會壓在字上 */}
-      <div className="absolute right-0 bottom-full mb-1 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            d.onEdit?.(id)
-          }}
-          title={ANNOTATION_STRINGS.editText}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
-        >
-          ✏️
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            d.onDelete?.(id)
-          }}
-          title={ANNOTATION_STRINGS.deleteText}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-        >
-          🗑️
-        </button>
-      </div>
+      {d.onEdit && (
+        <div className="absolute right-0 bottom-full mb-1 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              d.onEdit?.(id)
+            }}
+            title={ANNOTATION_STRINGS.editText}
+            className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              d.onDelete?.(id)
+            }}
+            title={ANNOTATION_STRINGS.deleteText}
+            className="cursor-pointer rounded p-0.5 text-[11px] text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          >
+            🗑️
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1160,44 +1177,50 @@ function SimpleFrameNode({ id, data }: NodeProps) {
         <span className="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
           {d.label || ANNOTATION_STRINGS.frameFallback}
         </span>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            d.onEdit?.(id)
-          }}
-          title={ANNOTATION_STRINGS.editFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 pointer-events-auto"
-        >
-          ✏️
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            d.onDelete?.(id)
-          }}
-          title={ANNOTATION_STRINGS.deleteFrame}
-          className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 pointer-events-auto"
-        >
-          🗑️
-        </button>
+        {d.onEdit && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                d.onEdit?.(id)
+              }}
+              title={ANNOTATION_STRINGS.editFrame}
+              className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 pointer-events-auto"
+            >
+              ✏️
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                d.onDelete?.(id)
+              }}
+              title={ANNOTATION_STRINGS.deleteFrame}
+              className="cursor-pointer rounded p-0.5 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 pointer-events-auto"
+            >
+              🗑️
+            </button>
+          </>
+        )}
       </div>
 
       {/* 縮放控制點 (保留 pointer-events-auto) */}
-      <NodeResizeControl
-        minWidth={220}
-        minHeight={160}
-        style={{ background: 'transparent', border: 'none' }}
-        className="nodrag pointer-events-auto"
-      >
-        <div
-          title={T.flow.relationGraph.resizeFrame}
-          className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto"
+      {d.onEdit && (
+        <NodeResizeControl
+          minWidth={220}
+          minHeight={160}
+          style={{ background: 'transparent', border: 'none' }}
+          className="nodrag pointer-events-auto"
         >
-          ↘
-        </div>
-      </NodeResizeControl>
+          <div
+            title={T.flow.relationGraph.resizeFrame}
+            className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto"
+          >
+            ↘
+          </div>
+        </NodeResizeControl>
+      )}
     </div>
   )
 }
@@ -1275,6 +1298,32 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   }, [])
 
   const savedViewport = useMemo(() => loadSavedViewport(projectId), [projectId])
+
+  // 共同編輯 / 唯讀檢視開關 (獨立記憶於本機)
+  const storageKeyEditable = useMemo(
+    () => `pmflow_task_graph_editable_${projectId || 'default'}`,
+    [projectId]
+  )
+  const [isEditable, setIsEditable] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`pmflow_task_graph_editable_${projectId || 'default'}`)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const handleToggleEditable = useCallback(() => {
+    setIsEditable((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(storageKeyEditable, String(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [storageKeyEditable])
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -1810,6 +1859,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const handleToggleMode = useCallback(
     (nodeId: string) => {
+      if (!isEditable) return
       const currentNodes = nodesRef.current
       const targetNode = currentNodes.find((n) => n.id === nodeId)
       const nodeData = targetNode?.data as SimpleGraphNodeData
@@ -2177,6 +2227,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   }, [annotations, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts, edgeColors])
 
   const handleAddTextAnnotation = useCallback(() => {
+    if (!isEditable) return
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
     setAnnotations((prev) => ({
       ...prev,
@@ -2191,9 +2242,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
       ],
     }))
-  }, [])
+  }, [isEditable])
 
   const handleAddAreaFrame = useCallback(() => {
+    if (!isEditable) return
     const id = `${FRAME_ID_PREFIX}${Date.now()}`
     setAnnotations((prev) => ({
       ...prev,
@@ -2210,9 +2262,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
       ],
     }))
-  }, [])
+  }, [isEditable])
 
   const handleEditAnnotation = useCallback((id: string) => {
+    if (!isEditable) return
     const cur = annotationsRef.current
     const t = cur.texts.find((x) => x.id === id)
     if (t) {
@@ -2221,17 +2274,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
     const f = cur.frames.find((x) => x.id === id)
     if (f) setEditingAnnotation({ id, kind: 'frame', label: f.label, color: f.color })
-  }, [])
+  }, [isEditable])
 
   const handleDeleteAnnotation = useCallback((id: string) => {
+    if (!isEditable) return
     setAnnotations((prev) => ({
       texts: prev.texts.filter((t) => t.id !== id),
       frames: prev.frames.filter((f) => f.id !== id),
     }))
     setEditingAnnotation((prev) => (prev?.id === id ? null : prev))
-  }, [])
+  }, [isEditable])
 
   const handleSaveAnnotationEdit = useCallback(() => {
+    if (!isEditable) return
     setEditingAnnotation((cur) => {
       if (!cur) return null
       setAnnotations((prev) =>
@@ -2241,7 +2296,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       )
       return null
     })
-  }, [])
+  }, [isEditable])
 
   // Ref: CR-148
   const annotationNodeCacheRef = useRef(new Map<string, { key: string; node: Node }>())
@@ -2271,7 +2326,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
 
     const frameNodes: Node[] = annotations.frames.map((f) =>
-      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}`, () => ({
+      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}|${isEditable}`, () => ({
         id: f.id,
         type: 'annotationFrame',
         position: { x: f.x, y: f.y },
@@ -2279,33 +2334,33 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         width: f.width,
         height: f.height,
         measured: { width: f.width, height: f.height },
-        draggable: true,
+        draggable: isEditable,
         selectable: false,
         connectable: false,
         deletable: false,
         // Ref: CR-152 墊到所有卡片(1~30)與關聯線之下，框身可拖但搶不走它們的點擊
         zIndex: -1,
-        data: { label: f.label, color: f.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+        data: { label: f.label, color: f.color, onEdit: isEditable ? handleEditAnnotation : undefined, onDelete: isEditable ? handleDeleteAnnotation : undefined },
       }))
     )
     const textNodes: Node[] = annotations.texts.map((t) =>
-      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}`, () => ({
+      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}|${isEditable}`, () => ({
         id: t.id,
         type: 'annotationText',
         position: { x: t.x, y: t.y },
         // Ref: CR-153
         measured: annotationMeasuredRef.current.get(t.id),
-        draggable: true,
+        draggable: isEditable,
         selectable: false,
         connectable: false,
         deletable: false,
         zIndex: 25,
-        data: { label: t.text, color: t.color, onEdit: handleEditAnnotation, onDelete: handleDeleteAnnotation },
+        data: { label: t.text, color: t.color, onEdit: isEditable ? handleEditAnnotation : undefined, onDelete: isEditable ? handleDeleteAnnotation : undefined },
       }))
     )
     annotationNodeCacheRef.current = nextCache
     return [...frameNodes, ...textNodes]
-  }, [annotations, handleEditAnnotation, handleDeleteAnnotation])
+  }, [annotations, isEditable, handleEditAnnotation, handleDeleteAnnotation])
 
   /** 使用者手動調整大小的框。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [resized, setResized] = useState<Record<string, { width: number; height: number }>>(() => {
@@ -2962,6 +3017,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   }, [tasks, project?.statuses, today])
 
   const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
+    if (!isEditable) {
+      const selectChanges = rawChanges.filter((c) => c.type === 'select' && !('id' in c && isAnnotationId((c as { id: string }).id)))
+      if (selectChanges.length > 0) {
+        setNodes((nds) => applyNodeChanges(selectChanges, nds))
+      }
+      return
+    }
+
     /*
      * Ref: CR-151 React Flow 的拖曳會帶 dragging、NodeResizeControl 會帶 resizing
      * (`XYResizer` 的 onResize 一律 resizing: true、onEnd 補一筆 resizing: false)，
@@ -3060,15 +3123,25 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       // 關鍵修復：強制父收納盒優先排序，防止 DOM 層級蓋過子卡片造成移動畫布 (Pan)
       return orderParentNodesFirst(next)
     })
-  }, [beginInteraction, endInteraction])
+  }, [isEditable, beginInteraction, endInteraction, projectId])
 
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
+    (changes: EdgeChange[]) => {
+      if (!isEditable) {
+        const selectChanges = changes.filter((c) => c.type === 'select')
+        if (selectChanges.length > 0) {
+          setEdges((eds) => applyEdgeChanges(selectChanges, eds))
+        }
+        return
+      }
+      setEdges((eds) => applyEdgeChanges(changes, eds))
+    },
+    [isEditable]
   )
 
   const onEdgesDelete = useCallback(
     (deletedEdges: Edge[]) => {
+      if (!isEditable) return
       deletedEdges.forEach((e) => {
         Api.deleteLink(e.id).catch((err) => console.error('Failed to delete link on edge delete:', err))
         handleSaveEdgeText(e.id, '')
@@ -3080,11 +3153,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         queryClient.invalidateQueries({ queryKey: ['task'] })
       }
     },
-    [projectId, handleSaveEdgeText, queryClient]
+    [isEditable, projectId, handleSaveEdgeText, queryClient]
   )
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent | null, edge: Edge) => {
+      if (!isEditable) return
       if (consumeWaypointClickGuard()) return // Ref: CR-141
       const sourceNode = nodes.find((n) => n.id === edge.source)
       const targetNode = nodes.find((n) => n.id === edge.target)
@@ -3103,7 +3177,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         color: edgeColors[edge.id] ?? defaultColor,
       })
     },
-    [nodes, edgeTexts, edgeColors]
+    [isEditable, nodes, edgeTexts, edgeColors]
   )
 
   const isValidConnection = useCallback(
@@ -3139,18 +3213,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
+      if (!isEditable) return
       connectStartRef.current = {
         nodeId: params?.nodeId ?? null,
         handleId: params?.handleId ?? null,
         handleType: params?.handleType ?? null,
       }
     },
-    []
+    [isEditable]
   )
 
   const onConnect = useCallback(
     (params: Connection) => {
-      if (!params.source || !params.target || params.source === params.target) return
+      if (!isEditable || !params.source || !params.target || params.source === params.target) return
 
       // 若使用者是從 target 類型接點起拉，React Flow 會將 source 與 target 顛倒
       // 依據實際按下滑鼠的起點換回正確方向，確保箭頭永遠位於滑鼠放開的終點端（支援右到左、下到上等任意方向）
@@ -3259,17 +3334,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           })
       }
     },
-    [nodes, edges, projectId, queryClient]
+    [isEditable, nodes, edges, projectId, queryClient]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    if (!isEditable) return
     if (isAnnotationId(node.id)) return // Ref: CR-144
     isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
-  }, [])
+  }, [isEditable])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
+      if (!isEditable) return
       // Ref: CR-144 標示框/文字純視覺，絕不進入收納盒歸屬判定，也不打任何任務 API
       if (isAnnotationId(node.id)) return
       setTimeout(() => {
@@ -3825,8 +3902,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const built: Node = {
         ...node,
         hidden: isHidden,
-        draggable: !isHidden,
+        draggable: isEditable && !isHidden,
         selectable: !isHidden,
+        connectable: isEditable,
         width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.width,
         height: isBox && isCollapsed ? undefined : node.height,
         style: {
@@ -3873,7 +3951,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, isEditable, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
@@ -3897,7 +3975,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const txt = edgeTexts[e.id] ?? ''
 
       const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
-      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}`
+      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}|${isEditable}`
 
       const hit = prevCache.get(e.id)
       if (hit && hit.src === e && hit.key === key) {
@@ -3916,13 +3994,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           // Ref: CR-151 折點與文字都用 link id 當鍵
           waypoint: wp,
           obstacles,
-          onWaypointChange: handleWaypointChange,
-          onWaypointReset: handleWaypointReset,
+          isConnectable: isEditable,
+          onWaypointChange: isEditable ? handleWaypointChange : undefined,
+          onWaypointReset: isEditable ? handleWaypointReset : undefined,
           text: txt,
-          onSaveText: handleSaveEdgeText,
-          onWaypointDragStart: beginInteraction,
-          onWaypointDragEnd: endInteraction,
-          onEdgeClick: () => onEdgeClick(null, e),
+          onSaveText: isEditable ? handleSaveEdgeText : undefined,
+          onWaypointDragStart: isEditable ? beginInteraction : undefined,
+          onWaypointDragEnd: isEditable ? endInteraction : undefined,
+          onEdgeClick: isEditable ? () => onEdgeClick(null, e) : undefined,
         },
         animated: false,
         style: {
@@ -3945,6 +4024,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     edges,
     nodes,
     waypoints,
+    isEditable,
     handleWaypointChange,
     handleWaypointReset,
     edgeTexts,
@@ -3961,22 +4041,42 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Ref: CR-148 */}
       <div className="h-12 shrink-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-end gap-2">
+        {/* 共同編輯 / 唯讀切換開關 */}
         <button
           type="button"
-          onClick={handleAddTextAnnotation}
-          title={ANNOTATION_STRINGS.addTextHint}
-          className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          onClick={handleToggleEditable}
+          title={isEditable ? T.flow.shared.coEditingHint : T.flow.shared.readOnlyHint}
+          className={cx(
+            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer select-none',
+            isEditable
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
+          )}
         >
-          <span>📝</span> {ANNOTATION_STRINGS.addText}
+          <span>{isEditable ? '✏️' : '🔒'}</span>
+          {isEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
         </button>
-        <button
-          type="button"
-          onClick={handleAddAreaFrame}
-          title={T.flow.relationGraph.addFrameHint}
-          className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
-        >
-          <span>🏷️</span> {ANNOTATION_STRINGS.addFrame}
-        </button>
+
+        {isEditable && (
+          <>
+            <button
+              type="button"
+              onClick={handleAddTextAnnotation}
+              title={ANNOTATION_STRINGS.addTextHint}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>📝</span> {ANNOTATION_STRINGS.addText}
+            </button>
+            <button
+              type="button"
+              onClick={handleAddAreaFrame}
+              title={T.flow.relationGraph.addFrameHint}
+              className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>🏷️</span> {ANNOTATION_STRINGS.addFrame}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="relative flex-1 flex flex-row overflow-hidden">
@@ -3999,8 +4099,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}
             onMoveEnd={handleMoveEnd}
-            nodesDraggable={true}
-            nodesConnectable={true}
+            nodesDraggable={isEditable}
+            nodesConnectable={isEditable}
             elementsSelectable={true}
             defaultViewport={savedViewport}
             fitView={!savedViewport && !focusedTaskId}

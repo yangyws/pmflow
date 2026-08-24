@@ -22,6 +22,10 @@ export const flow = {
     fitAll: '顯示全部',
     legend: '圖示說明',
     confirmDelete: '確定刪除',
+    coEditing: '✏️ 共同編輯中',
+    readOnly: '🔒 唯讀檢視',
+    coEditingHint: '目前處於共同編輯狀態，所有操作將自動儲存。點擊切換為唯讀檢視模式。',
+    readOnlyHint: '目前處於唯讀檢視模式，畫布已鎖定。點擊切換為共同編輯模式。',
 
     /**
      * 文字註記與區域標示框：兩張畫布上都掛得了的附加物，說法完全一致。
