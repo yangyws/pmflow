@@ -20,6 +20,7 @@ import {
   type Node,
   type Edge,
   type NodeChange,
+  type NodeDimensionChange,
   type EdgeChange,
   type Connection,
   type NodeProps,
@@ -302,14 +303,17 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
         </div>
 
         {/* 底部邊界縮放控制柄 */}
-        {(isConnectable ?? true) && (
+        {nodeData.onEdit && (
           <NodeResizeControl
             minWidth={320}
             minHeight={220}
             style={{ background: 'transparent', border: 'none' }}
-            className="nodrag"
+            className="nodrag pointer-events-auto"
           >
-            <div className="absolute right-1 bottom-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs select-none cursor-se-resize p-1">
+            <div
+              title="拖曳縮放模組盒大小"
+              className="absolute right-1 bottom-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs select-none cursor-se-resize p-1 pointer-events-auto"
+            >
               ↘
             </div>
           </NodeResizeControl>
@@ -317,7 +321,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
       </div>
 
       {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
-      <FourWayHandles isConnectable={isConnectable ?? true} color="#4f46e5" />
+      <FourWayHandles isConnectable={Boolean(nodeData.onEdit)} color="#4f46e5" />
     </div>
   )
 }
@@ -496,21 +500,24 @@ function FlowFrameNode({ id, data, isConnectable }: NodeProps) {
       </div>
 
       {/* 縮放控制點 (保留 pointer-events-auto) */}
-      {(isConnectable ?? true) && (
+      {nodeData.onEdit && (
         <NodeResizeControl
           minWidth={220}
           minHeight={160}
           style={{ background: 'transparent', border: 'none' }}
           className="nodrag pointer-events-auto"
         >
-          <div className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto">
+          <div
+            title={T.flow.relationGraph.resizeFrame || '拖曳縮放標示框大小'}
+            className="absolute right-1 bottom-1 cursor-se-resize select-none p-1 text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 pointer-events-auto"
+          >
             ↘
           </div>
         </NodeResizeControl>
       )}
 
       {/* 四向連接點 (全功能接點：四向皆支援出發與連入) */}
-      <FourWayHandles isConnectable={isConnectable ?? true} color={color} />
+      <FourWayHandles isConnectable={Boolean(nodeData.onEdit)} color={color} />
     </div>
   )
 }
@@ -1286,17 +1293,42 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     }
     if (ended) interactingRef.current = false
     setNodes((nds) => {
+      let next = applyNodeChanges(changes, nds)
+      const dimChanges = changes.filter(
+        (c): c is NodeDimensionChange => c.type === 'dimensions' && Boolean(c.dimensions)
+      )
+      if (dimChanges.length > 0) {
+        next = next.map((n: Node) => {
+          const dc = dimChanges.find((c) => c.id === n.id)
+          if (dc?.dimensions && dc.dimensions.width && dc.dimensions.height) {
+            const nw = Math.round(dc.dimensions.width)
+            const nh = Math.round(dc.dimensions.height)
+            return {
+              ...n,
+              width: nw,
+              height: nh,
+              style: {
+                ...(n.style || {}),
+                width: nw,
+                height: nh,
+              },
+              measured: { width: nw, height: nh },
+            }
+          }
+          return n
+        })
+      }
       // Ref: CR-152
       if (changes.some((c) => c.type === 'select')) {
         const frameIds = new Set(
-          nds.filter((n) => ((n.data as FlowNodeData)?.mode || n.type) === 'frame').map((n) => n.id)
+          next.filter((n) => ((n.data as FlowNodeData)?.mode || n.type) === 'frame').map((n) => n.id)
         )
         if (frameIds.size > 0) {
           const kept = changes.filter((c) => !(c.type === 'select' && frameIds.has(c.id)))
-          return applyNodeChanges(kept, nds)
+          return applyNodeChanges(kept, next)
         }
       }
-      return applyNodeChanges(changes, nds)
+      return next
     })
   }, [effectiveEditable, beginInteraction])
 
@@ -1618,9 +1650,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       const isFrame = nodeMode === 'frame'
       const defaultW = nodeMode === 'box' ? 360 : isFrame ? 400 : 280
       const defaultH = nodeMode === 'box' ? 400 : isFrame ? 300 : 100
-      const nodeW = (node.style?.width as number) || node.width || defaultW
-      const nodeH = (node.style?.height as number) || node.height || defaultH
-      const dimObj = node.measured || { width: nodeW, height: nodeH }
+      const nodeW =
+        typeof (node.style as Record<string, unknown> | undefined)?.width === 'number' &&
+        ((node.style as Record<string, unknown>).width as number) > 0
+          ? ((node.style as Record<string, unknown>).width as number)
+          : typeof node.width === 'number' && node.width > 0
+            ? node.width
+            : defaultW
+      const nodeH =
+        typeof (node.style as Record<string, unknown> | undefined)?.height === 'number' &&
+        ((node.style as Record<string, unknown>).height as number) > 0
+          ? ((node.style as Record<string, unknown>).height as number)
+          : typeof node.height === 'number' && node.height > 0
+            ? node.height
+            : defaultH
+      const dimObj = { width: nodeW, height: nodeH }
       const style =
         isFrame && node.style && 'pointerEvents' in node.style
           ? (() => {
