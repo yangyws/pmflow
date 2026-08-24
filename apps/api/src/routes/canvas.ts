@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify'
 import type { TransactionSql } from 'postgres'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
-import { authenticate, requireProjectRole, requireTaskAccess } from '../lib/auth.js'
+import { authenticate, requireProjectRole, requireTaskAccess, isSuperAdmin, currentDeputyPrincipals } from '../lib/auth.js'
 import { emitRealtimeEvent } from '../lib/events.js'
-import { badRequest, conflict, notFound } from '../lib/errors.js'
+import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 
 /*
  * 圖的排版與整份畫布內容。Ref: CR-138
@@ -54,6 +54,10 @@ const handlesBody = z.object({
   targetHandle: z.string().max(80).nullable().optional(),
 })
 
+const canvasPermsBody = z.object({
+  allowedUserIds: z.array(z.string().uuid()).nullable(),
+})
+
 interface NodeRow {
   nodeId: string
   x: number | null
@@ -92,7 +96,116 @@ const readMeta = (projectId: string, viewKey: string) => sql<{
   WHERE c.project_id = ${projectId} AND c.view_key = ${viewKey}
   ORDER BY c.updated_at DESC LIMIT 1`
 
+/**
+ * 檢查使用者是否具備該畫布的編輯授權。
+ *
+ * 判準：
+ * 1. 專案角色必須至少為 EDITOR。
+ * 2. 若為超級管理者 (SuperAdmin) 或專案管理者 (MANAGER)，永遠具備完整編輯與授權設定權限。
+ * 3. 若該畫布由管理者設定了專屬編輯白名單 (allowedUserIds)：
+ *    使用者本人或其目前有效之代理人必須在白名單內；否則拋出 403。
+ * 4. 若未設定白名單（或為空/null），則所有 EDITOR 與 MANAGER 皆可編輯。
+ */
+async function assertCanEditCanvas(
+  userId: string,
+  projectId: string,
+  canvasKey: string
+): Promise<void> {
+  const { role } = await requireProjectRole(userId, projectId, 'EDITOR')
+  if (role === 'MANAGER' || (await isSuperAdmin(userId))) return
+
+  const permKey = `perms-${canvasKey}`
+  const [row] = await sql<{ data: { allowedUserIds?: string[] | null } | null }[]>`
+    SELECT data FROM project_canvas_doc
+    WHERE project_id = ${projectId} AND doc_key = ${permKey}`
+
+  const allowed = row?.data?.allowedUserIds
+  if (Array.isArray(allowed) && allowed.length > 0) {
+    if (allowed.includes(userId)) return
+    const principals = await currentDeputyPrincipals(userId)
+    if (principals.some(p => allowed.includes(p))) return
+    throw forbidden('此畫布已被管理者設定限制編輯名單，您目前僅具備檢視權限')
+  }
+}
+
 export default async function canvasRoutes(app: FastifyInstance) {
+
+  // ── 畫布編輯者授權名單設定 (Ref: CR-194) ────────────────────
+
+  /** 讀取特定畫布的編輯授權名單與當前使用者編輯許可 */
+  app.get<{ Params: { id: string; canvasKey: string } }>(
+    '/projects/:id/canvas-permissions/:canvasKey', async req => {
+      const user = await authenticate(req)
+      const { role } = await requireProjectRole(user.id, req.params.id, 'VIEWER')
+      const isSuper = await isSuperAdmin(user.id)
+      const canManage = isSuper || role === 'MANAGER'
+      const canvasKey = KEY.parse(req.params.canvasKey)
+      const permKey = `perms-${canvasKey}`
+
+      const [row] = await sql<{
+        data: { allowedUserIds?: string[] | null } | null
+        updatedAt: Date | null
+        updatedBy: string | null
+        updatedByName: string | null
+      }[]>`
+        SELECT d.data, d.updated_at AS "updatedAt", d.updated_by AS "updatedBy",
+               u.display_name AS "updatedByName"
+        FROM project_canvas_doc d
+        LEFT JOIN app_user u ON u.id = d.updated_by
+        WHERE d.project_id = ${req.params.id} AND d.doc_key = ${permKey}`
+
+      const allowedUserIds = row?.data?.allowedUserIds ?? null
+
+      let isAllowed = false
+      if (canManage) {
+        isAllowed = true
+      } else if (role === 'EDITOR') {
+        if (!allowedUserIds || allowedUserIds.length === 0) {
+          isAllowed = true
+        } else {
+          const principals = await currentDeputyPrincipals(user.id)
+          isAllowed = allowedUserIds.includes(user.id) || principals.some(p => allowedUserIds.includes(p))
+        }
+      }
+
+      return {
+        canvasKey,
+        allowedUserIds,
+        canManage,
+        isAllowed,
+        updatedAt: row?.updatedAt ?? null,
+        updatedBy: row?.updatedBy ?? null,
+        updatedByName: row?.updatedByName ?? null,
+      }
+    })
+
+  /** 設定特定畫布的編輯授權名單 (僅超級管理員或專案管理者可設定) */
+  app.put<{ Params: { id: string; canvasKey: string } }>(
+    '/projects/:id/canvas-permissions/:canvasKey', async req => {
+      const user = await authenticate(req)
+      await requireProjectRole(user.id, req.params.id, 'MANAGER')
+      const canvasKey = KEY.parse(req.params.canvasKey)
+      const permKey = `perms-${canvasKey}`
+      const b = canvasPermsBody.parse(req.body)
+
+      const docData = { allowedUserIds: b.allowedUserIds }
+
+      await sql`
+        INSERT INTO project_canvas_doc (project_id, doc_key, data, updated_by)
+        VALUES (${req.params.id}, ${permKey}, ${sql.json(docData as never)}, ${user.id})
+        ON CONFLICT (project_id, doc_key) DO UPDATE
+          SET data = EXCLUDED.data, updated_by = EXCLUDED.updated_by, updated_at = now()`
+
+      emitRealtimeEvent({
+        type: 'canvas:changed',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'update_permissions', canvasKey, allowedUserIds: b.allowedUserIds },
+      })
+
+      return { canvasKey, allowedUserIds: b.allowedUserIds }
+    })
 
   // ── 每個節點一列的排版（座標、寬高、收納模式）─────────────
 
@@ -123,8 +236,8 @@ export default async function canvasRoutes(app: FastifyInstance) {
   app.put<{ Params: { id: string; viewKey: string } }>(
     '/projects/:id/canvas/:viewKey', async req => {
       const user = await authenticate(req)
-      await requireProjectRole(user.id, req.params.id, 'EDITOR')
       const viewKey = KEY.parse(req.params.viewKey)
+      await assertCanEditCanvas(user.id, req.params.id, viewKey)
       const b = nodesBody.parse(req.body)
       const entries = Object.entries(b.nodes)
 
@@ -164,8 +277,8 @@ export default async function canvasRoutes(app: FastifyInstance) {
   app.patch<{ Params: { id: string; viewKey: string } }>(
     '/projects/:id/canvas/:viewKey', async req => {
       const user = await authenticate(req)
-      await requireProjectRole(user.id, req.params.id, 'EDITOR')
       const viewKey = KEY.parse(req.params.viewKey)
+      await assertCanEditCanvas(user.id, req.params.id, viewKey)
       const b = nodesBody.parse(req.body)
       const entries = Object.entries(b.nodes)
 
@@ -248,8 +361,8 @@ export default async function canvasRoutes(app: FastifyInstance) {
   app.put<{ Params: { id: string; docKey: string } }>(
     '/projects/:id/canvas-docs/:docKey', async req => {
       const user = await authenticate(req)
-      await requireProjectRole(user.id, req.params.id, 'EDITOR')
       const docKey = KEY.parse(req.params.docKey)
+      await assertCanEditCanvas(user.id, req.params.id, docKey)
       const b = docBody.parse(req.body)
 
       const json = JSON.stringify(b.data)
@@ -289,8 +402,8 @@ export default async function canvasRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string; docKey: string } }>(
     '/projects/:id/canvas-docs/:docKey', async (req, reply) => {
       const user = await authenticate(req)
-      await requireProjectRole(user.id, req.params.id, 'EDITOR')
       const docKey = KEY.parse(req.params.docKey)
+      await assertCanEditCanvas(user.id, req.params.id, docKey)
       await sql`
         DELETE FROM project_canvas_doc
         WHERE project_id = ${req.params.id} AND doc_key = ${docKey}`
@@ -325,6 +438,7 @@ export default async function canvasRoutes(app: FastifyInstance) {
       SELECT source_id AS "sourceId" FROM task_link WHERE id = ${req.params.id}`
     if (!l) throw notFound('找不到這條關聯')
     const { projectId, workspaceId } = await requireTaskAccess(user.id, l.sourceId, 'EDITOR')
+    await assertCanEditCanvas(user.id, projectId, 'task-graph')
 
     const [row] = await sql`
       UPDATE task_link SET

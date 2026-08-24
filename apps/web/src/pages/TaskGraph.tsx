@@ -34,6 +34,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
 import { cx, ProblemBadge, TypeBadge } from '../components/ui'
+import { CanvasPermissionModal } from '../components/CanvasPermissionModal'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
@@ -1313,7 +1314,21 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
   })
 
+  // 後端畫布編輯授權白名單查詢 (Ref: CR-194)
+  const { data: permData } = useQuery({
+    queryKey: ['canvasPermissions', projectId, 'task-graph'],
+    queryFn: () => Api.canvasPermissions(projectId!, 'task-graph'),
+    enabled: !!projectId,
+  })
+  const canManagePerms = Boolean(project?.isCreator || permData?.canManage)
+  const isAllowedToEdit = permData ? permData.isAllowed : true
+  const [isPermModalOpen, setIsPermModalOpen] = useState(false)
+
+  // 實質編輯狀態：開關處於編輯且後端授權許可
+  const effectiveEditable = isEditable && isAllowedToEdit
+
   const handleToggleEditable = useCallback(() => {
+    if (!isAllowedToEdit) return
     setIsEditable((prev) => {
       const next = !prev
       try {
@@ -1323,7 +1338,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       }
       return next
     })
-  }, [storageKeyEditable])
+  }, [storageKeyEditable, isAllowedToEdit])
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -1859,7 +1874,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const handleToggleMode = useCallback(
     (nodeId: string) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       const currentNodes = nodesRef.current
       const targetNode = currentNodes.find((n) => n.id === nodeId)
       const nodeData = targetNode?.data as SimpleGraphNodeData
@@ -2227,7 +2242,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   }, [annotations, projectId, queueCanvasWrite, saveExtraToBackend, waypoints, edgeTexts, edgeColors])
 
   const handleAddTextAnnotation = useCallback(() => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const id = `${TEXT_ID_PREFIX}${Date.now()}`
     setAnnotations((prev) => ({
       ...prev,
@@ -2242,10 +2257,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
       ],
     }))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const handleAddAreaFrame = useCallback(() => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const id = `${FRAME_ID_PREFIX}${Date.now()}`
     setAnnotations((prev) => ({
       ...prev,
@@ -2262,10 +2277,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         },
       ],
     }))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const handleEditAnnotation = useCallback((id: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const cur = annotationsRef.current
     const t = cur.texts.find((x) => x.id === id)
     if (t) {
@@ -2274,19 +2289,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
     const f = cur.frames.find((x) => x.id === id)
     if (f) setEditingAnnotation({ id, kind: 'frame', label: f.label, color: f.color })
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const handleDeleteAnnotation = useCallback((id: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     setAnnotations((prev) => ({
       texts: prev.texts.filter((t) => t.id !== id),
       frames: prev.frames.filter((f) => f.id !== id),
     }))
     setEditingAnnotation((prev) => (prev?.id === id ? null : prev))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const handleSaveAnnotationEdit = useCallback(() => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     setEditingAnnotation((cur) => {
       if (!cur) return null
       setAnnotations((prev) =>
@@ -2296,7 +2311,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       )
       return null
     })
-  }, [isEditable])
+  }, [effectiveEditable])
 
   // Ref: CR-148
   const annotationNodeCacheRef = useRef(new Map<string, { key: string; node: Node }>())
@@ -2326,7 +2341,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
 
     const frameNodes: Node[] = annotations.frames.map((f) =>
-      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}|${isEditable}`, () => ({
+      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}|${effectiveEditable}`, () => ({
         id: f.id,
         type: 'annotationFrame',
         position: { x: f.x, y: f.y },
@@ -2334,33 +2349,33 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         width: f.width,
         height: f.height,
         measured: { width: f.width, height: f.height },
-        draggable: isEditable,
+        draggable: effectiveEditable,
         selectable: false,
         connectable: false,
         deletable: false,
         // Ref: CR-152 墊到所有卡片(1~30)與關聯線之下，框身可拖但搶不走它們的點擊
         zIndex: -1,
-        data: { label: f.label, color: f.color, onEdit: isEditable ? handleEditAnnotation : undefined, onDelete: isEditable ? handleDeleteAnnotation : undefined },
+        data: { label: f.label, color: f.color, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
       }))
     )
     const textNodes: Node[] = annotations.texts.map((t) =>
-      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}|${isEditable}`, () => ({
+      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}|${effectiveEditable}`, () => ({
         id: t.id,
         type: 'annotationText',
         position: { x: t.x, y: t.y },
         // Ref: CR-153
         measured: annotationMeasuredRef.current.get(t.id),
-        draggable: isEditable,
+        draggable: effectiveEditable,
         selectable: false,
         connectable: false,
         deletable: false,
         zIndex: 25,
-        data: { label: t.text, color: t.color, onEdit: isEditable ? handleEditAnnotation : undefined, onDelete: isEditable ? handleDeleteAnnotation : undefined },
+        data: { label: t.text, color: t.color, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
       }))
     )
     annotationNodeCacheRef.current = nextCache
     return [...frameNodes, ...textNodes]
-  }, [annotations, isEditable, handleEditAnnotation, handleDeleteAnnotation])
+  }, [annotations, effectiveEditable, handleEditAnnotation, handleDeleteAnnotation])
 
   /** 使用者手動調整大小的框。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [resized, setResized] = useState<Record<string, { width: number; height: number }>>(() => {
@@ -3017,7 +3032,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   }, [tasks, project?.statuses, today])
 
   const onNodesChange = useCallback((rawChanges: NodeChange[]) => {
-    if (!isEditable) {
+    if (!effectiveEditable) {
       const selectChanges = rawChanges.filter((c) => c.type === 'select' && !('id' in c && isAnnotationId((c as { id: string }).id)))
       if (selectChanges.length > 0) {
         setNodes((nds) => applyNodeChanges(selectChanges, nds))
@@ -3123,11 +3138,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       // 關鍵修復：強制父收納盒優先排序，防止 DOM 層級蓋過子卡片造成移動畫布 (Pan)
       return orderParentNodesFirst(next)
     })
-  }, [isEditable, beginInteraction, endInteraction, projectId])
+  }, [effectiveEditable, beginInteraction, endInteraction, projectId])
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      if (!isEditable) {
+      if (!effectiveEditable) {
         const selectChanges = changes.filter((c) => c.type === 'select')
         if (selectChanges.length > 0) {
           setEdges((eds) => applyEdgeChanges(selectChanges, eds))
@@ -3136,12 +3151,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       }
       setEdges((eds) => applyEdgeChanges(changes, eds))
     },
-    [isEditable]
+    [effectiveEditable]
   )
 
   const onEdgesDelete = useCallback(
     (deletedEdges: Edge[]) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       deletedEdges.forEach((e) => {
         Api.deleteLink(e.id).catch((err) => console.error('Failed to delete link on edge delete:', err))
         handleSaveEdgeText(e.id, '')
@@ -3153,12 +3168,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         queryClient.invalidateQueries({ queryKey: ['task'] })
       }
     },
-    [isEditable, projectId, handleSaveEdgeText, queryClient]
+    [effectiveEditable, projectId, handleSaveEdgeText, queryClient]
   )
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent | null, edge: Edge) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       if (consumeWaypointClickGuard()) return // Ref: CR-141
       const sourceNode = nodes.find((n) => n.id === edge.source)
       const targetNode = nodes.find((n) => n.id === edge.target)
@@ -3177,31 +3192,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         color: edgeColors[edge.id] ?? defaultColor,
       })
     },
-    [isEditable, nodes, edgeTexts, edgeColors]
+    [effectiveEditable, nodes, edgeTexts, edgeColors]
   )
 
   const isValidConnection = useCallback(
     (connection: Edge | Connection) => {
       if (!connection.source || !connection.target || connection.source === connection.target) return false
 
-      const sHandle = connection.sourceHandle ?? ''
-      const tHandle = connection.targetHandle ?? ''
-
-      const sIsHoriz = !sHandle || sHandle.includes('left') || sHandle.includes('right')
-      const tIsHoriz = !tHandle || tHandle.includes('left') || tHandle.includes('right')
-
-      // 任務關聯圖：左右接點只能連左右接點，上下接點只能連上下接點
-      if (sIsHoriz !== tIsHoriz) return false
-
-      const sourceNode = nodes.find((n) => n.id === connection.source)
-      const targetNode = nodes.find((n) => n.id === connection.target)
-
-      const sourceParent = sourceNode?.parentId
-      const targetParent = targetNode?.parentId
-
+      // 嚴格阻擋跨收納盒連線 (Ref: CR-180)
+      const srcNode = nodes.find((n) => n.id === connection.source)
+      const tgtNode = nodes.find((n) => n.id === connection.target)
       if (
-        (sourceParent && sourceParent !== targetParent) ||
-        (targetParent && targetParent !== sourceParent)
+        (srcNode?.parentId && srcNode.parentId !== tgtNode?.parentId) ||
+        (tgtNode?.parentId && tgtNode.parentId !== srcNode?.parentId)
       ) {
         return false
       }
@@ -3213,14 +3216,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null; handleType: string | null }) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       connectStartRef.current = {
         nodeId: params?.nodeId ?? null,
         handleId: params?.handleId ?? null,
         handleType: params?.handleType ?? null,
       }
     },
-    [isEditable]
+    [effectiveEditable]
   )
 
   const onConnect = useCallback(
@@ -3334,19 +3337,19 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           })
       }
     },
-    [isEditable, nodes, edges, projectId, queryClient]
+    [effectiveEditable, nodes, edges, projectId, queryClient]
   )
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     if (isAnnotationId(node.id)) return // Ref: CR-144
     isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
-      if (!isEditable) return
+      if (!effectiveEditable) return
       // Ref: CR-144 標示框/文字純視覺，絕不進入收納盒歸屬判定，也不打任何任務 API
       if (isAnnotationId(node.id)) return
       setTimeout(() => {
@@ -3902,9 +3905,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const built: Node = {
         ...node,
         hidden: isHidden,
-        draggable: isEditable && !isHidden,
+        draggable: effectiveEditable && !isHidden,
         selectable: !isHidden,
-        connectable: isEditable,
+        connectable: effectiveEditable,
         width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.width,
         height: isBox && isCollapsed ? undefined : node.height,
         style: {
@@ -3951,7 +3954,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, isEditable, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, effectiveEditable, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
@@ -3975,7 +3978,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const txt = edgeTexts[e.id] ?? ''
 
       const obstaclesKey = obstacles.map((o) => `${o.id}:${o.left},${o.top},${o.right},${o.bottom}`).join(';')
-      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}|${isEditable}`
+      const key = `${isHidden}|${e.sourceHandle}|${e.targetHandle}|${wp ? `${wp.x},${wp.y}` : ''}|${txt}|${color ?? ''}|${obstaclesKey}|${effectiveEditable}`
 
       const hit = prevCache.get(e.id)
       if (hit && hit.src === e && hit.key === key) {
@@ -3994,14 +3997,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           // Ref: CR-151 折點與文字都用 link id 當鍵
           waypoint: wp,
           obstacles,
-          isConnectable: isEditable,
-          onWaypointChange: isEditable ? handleWaypointChange : undefined,
-          onWaypointReset: isEditable ? handleWaypointReset : undefined,
+          isConnectable: effectiveEditable,
+          onWaypointChange: effectiveEditable ? handleWaypointChange : undefined,
+          onWaypointReset: effectiveEditable ? handleWaypointReset : undefined,
           text: txt,
-          onSaveText: isEditable ? handleSaveEdgeText : undefined,
-          onWaypointDragStart: isEditable ? beginInteraction : undefined,
-          onWaypointDragEnd: isEditable ? endInteraction : undefined,
-          onEdgeClick: isEditable ? () => onEdgeClick(null, e) : undefined,
+          onSaveText: effectiveEditable ? handleSaveEdgeText : undefined,
+          onWaypointDragStart: effectiveEditable ? beginInteraction : undefined,
+          onWaypointDragEnd: effectiveEditable ? endInteraction : undefined,
+          onEdgeClick: effectiveEditable ? () => onEdgeClick(null, e) : undefined,
         },
         animated: false,
         style: {
@@ -4024,7 +4027,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     edges,
     nodes,
     waypoints,
-    isEditable,
+    effectiveEditable,
     handleWaypointChange,
     handleWaypointReset,
     edgeTexts,
@@ -4041,23 +4044,44 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Ref: CR-148 */}
       <div className="h-12 shrink-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-end gap-2">
+        {/* 管理者授權設定按鈕 */}
+        {canManagePerms && (
+          <button
+            type="button"
+            onClick={() => setIsPermModalOpen(true)}
+            title={T.flow.shared.permissions.btnHint}
+            className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <span>⚙️</span> {T.flow.shared.permissions.btn}
+          </button>
+        )}
+
         {/* 共同編輯 / 唯讀切換開關 */}
         <button
           type="button"
-          onClick={handleToggleEditable}
-          title={isEditable ? T.flow.shared.coEditingHint : T.flow.shared.readOnlyHint}
+          onClick={isAllowedToEdit ? handleToggleEditable : undefined}
+          title={
+            !isAllowedToEdit
+              ? T.flow.shared.permissions.forbiddenHint
+              : isEditable
+              ? T.flow.shared.coEditingHint
+              : T.flow.shared.readOnlyHint
+          }
+          disabled={!isAllowedToEdit}
           className={cx(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer select-none',
-            isEditable
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
+            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors select-none',
+            !isAllowedToEdit
+              ? 'opacity-60 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+              : isEditable
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs cursor-pointer'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
           )}
         >
-          <span>{isEditable ? '✏️' : '🔒'}</span>
-          {isEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
+          <span>{effectiveEditable ? '✏️' : '🔒'}</span>
+          {effectiveEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
         </button>
 
-        {isEditable && (
+        {effectiveEditable && (
           <>
             <button
               type="button"
@@ -4099,8 +4123,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}
             onMoveEnd={handleMoveEnd}
-            nodesDraggable={isEditable}
-            nodesConnectable={isEditable}
+            nodesDraggable={effectiveEditable}
+            nodesConnectable={effectiveEditable}
             elementsSelectable={true}
             defaultViewport={savedViewport}
             fitView={!savedViewport && !focusedTaskId}
@@ -4609,6 +4633,15 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           </div>
         </div>
       )}
+
+      {/* 畫布共同編輯授權名單 Modal (Ref: CR-194) */}
+      <CanvasPermissionModal
+        open={isPermModalOpen}
+        onClose={() => setIsPermModalOpen(false)}
+        projectId={projectId || ''}
+        canvasKey="task-graph"
+        canvasTitle="任務關聯圖"
+      />
     </div>
   )
 }

@@ -32,6 +32,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { Api } from '../lib/api'
 import { cx } from '../components/ui'
+import { CanvasPermissionModal } from '../components/CanvasPermissionModal'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
 
@@ -913,7 +914,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setIsEditable(getPageEditable(activePageId))
   }, [getPageEditable, activePageId])
 
+  // 後端畫布編輯授權白名單查詢 (Ref: CR-194)
+  const { data: permData } = useQuery({
+    queryKey: ['canvasPermissions', projectId, 'system-flow'],
+    queryFn: () => Api.canvasPermissions(projectId, 'system-flow'),
+    enabled: !!projectId,
+  })
+  const canManagePerms = Boolean(isProjectCreator || permData?.canManage)
+  const isAllowedToEdit = permData ? permData.isAllowed : true
+  const [isPermModalOpen, setIsPermModalOpen] = useState(false)
+
+  // 實質編輯狀態：開關處於編輯且後端授權許可
+  const effectiveEditable = isEditable && isAllowedToEdit
+
   const handleToggleEditable = useCallback(() => {
+    if (!isAllowedToEdit) return
     setIsEditable((prev) => {
       const next = !prev
       try {
@@ -924,7 +939,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       }
       return next
     })
-  }, [projectId, activePageId])
+  }, [projectId, activePageId, isAllowedToEdit])
 
   const hasFittedRef = useRef<boolean>(false)
   const lastAppliedUpdatedAtRef = useRef<string | null>(null)
@@ -1477,7 +1492,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   }, [])
 
   const handleEditNode = useCallback((nodeId: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     setNodes((currentNodes) => {
       const target = currentNodes.find((n) => n.id === nodeId)
       if (target) {
@@ -1492,18 +1507,18 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       }
       return currentNodes
     })
-  }, [isEditable])
+  }, [effectiveEditable])
 
   // Ref: CR-148 改成函式式更新讓這個 callback 永久穩定，下面的節點快取才不會發到過期的處理函式
   const handleDeleteNode = useCallback((nodeId: string) => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     setNodes((nds) => nds.filter((n) => n.id !== nodeId && n.parentId !== nodeId))
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
     setSelectedNodeId((cur) => (cur === nodeId ? null : cur))
-  }, [isEditable])
+  }, [effectiveEditable])
 
   const handleSaveEdit = () => {
-    if (!isEditable || !editingNode) return
+    if (!effectiveEditable || !editingNode) return
     setNodes((nds) =>
       nds.map((n) =>
         n.id === editingNode.id
@@ -1522,9 +1537,53 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEditingNode(null)
   }
 
+  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.id !== edgeId) return e
+        return {
+          ...e,
+          data: {
+            ...(e.data || {}),
+            text,
+          },
+        }
+      })
+    )
+  }, [])
+
+  const handleWaypointChange = useCallback((edgeId: string, waypoint: { x: number; y: number } | null) => {
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.id !== edgeId) return e
+        return {
+          ...e,
+          data: {
+            ...(e.data || {}),
+            waypoint,
+          },
+        }
+      })
+    )
+  }, [])
+
+  const handleWaypointReset = useCallback((edgeId: string) => {
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.id !== edgeId) return e
+        const nextData = { ...(e.data || {}) }
+        delete (nextData as any).waypoint
+        return {
+          ...e,
+          data: nextData,
+        }
+      })
+    )
+  }, [])
+
   // 新增步驟節點
   const handleAddStep = () => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const newId = `step-${Date.now()}`
     const newNode: Node = {
       id: newId,
@@ -1543,7 +1602,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   // 新增模組容器盒
   const handleAddBox = () => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const newId = `box-${Date.now()}`
     const newNode: Node = {
       id: newId,
@@ -1556,95 +1615,62 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         mode: 'box',
       },
     }
-    setNodes((nds) => orderParentNodesFirst([newNode, ...nds]))
-    setSelectedNodeId(newId)
-  }
-
-  // Ref: CR-140 新增純文字註記
-  const handleAddText = () => {
-    if (!isEditable) return
-    const newId = `text-${Date.now()}`
-    const newNode: Node = {
-      id: newId,
-      type: 'text',
-      position: { x: 220 + Math.random() * 80, y: 120 + Math.random() * 80 },
-      data: {
-        label: T.flow.shared.annotation.newTextDefault,
-        color: '',
-        mode: 'text',
-      },
-    }
     setNodes((nds) => orderParentNodesFirst([...nds, newNode]))
     setSelectedNodeId(newId)
   }
 
-  // Ref: CR-140 新增區域標示框 (只做視覺圈選，不建立隸屬關係)
+  const handleAddText = () => {
+    if (!effectiveEditable) return
+    const newId = `text-${Date.now()}`
+    const newNode: Node = {
+      id: newId,
+      type: 'text',
+      position: { x: 120 + (nodes.length % 5) * 30, y: 120 + (nodes.length % 5) * 30 },
+      data: {
+        label: T.flow.shared.annotation.newTextDefault,
+        color: '#475569',
+      },
+    }
+    setNodes((nds) => [...nds, newNode])
+  }
+
   const handleAddFrame = () => {
-    if (!isEditable) return
+    if (!effectiveEditable) return
     const newId = `frame-${Date.now()}`
     const newNode: Node = {
       id: newId,
       type: 'frame',
-      position: { x: 140 + Math.random() * 60, y: 80 + Math.random() * 60 },
-      // Ref: CR-152
-      style: { width: 420, height: 300 },
+      position: { x: 60 + (nodes.length % 4) * 40, y: 60 + (nodes.length % 4) * 40 },
+      style: { width: 400, height: 300 },
       data: {
         label: T.flow.shared.annotation.newFrameDefault,
         color: '#8b5cf6',
-        mode: 'frame',
       },
     }
     setNodes((nds) => orderParentNodesFirst([newNode, ...nds]))
-    setSelectedNodeId(newId)
   }
 
-  // Ref: CR-140 連線文字寫回 edge.data，跟著整份文件一起存
-  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
-    const trimmed = text.trim()
-    setEdges((eds) =>
-      eds.map((e) =>
-        e.id === edgeId ? { ...e, data: { ...(e.data || {}), text: trimmed } } : e
-      )
-    )
-  }, [])
-
-  // Ref: CR-140 折點位置寫回 edge.data，跟著整份文件一起存
-  const handleWaypointChange = useCallback((edgeId: string, point: { x: number; y: number }) => {
-    setEdges((eds) =>
-      eds.map((e) => (e.id === edgeId ? { ...e, data: { ...(e.data || {}), waypoint: point } } : e))
-    )
-  }, [])
-
-  const handleWaypointReset = useCallback((edgeId: string) => {
-    setEdges((eds) =>
-      eds.map((e) => (e.id === edgeId ? { ...e, data: { ...(e.data || {}), waypoint: null } } : e))
-    )
-  }, [])
-
-  // Ref: CR-148 來源節點與選取狀態沒變就重用上一輪算好的物件 (measured 靠展開原節點原封帶過)，
-  // 否則每次拖曳都會讓每一個節點換新參照而整片重繪
   const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; out: Node }>())
 
   const nodesWithHandlers = useMemo(() => {
     const prevCache = nodeViewCacheRef.current
     const nextCache = new Map<string, { src: Node; selected: boolean; out: Node }>()
+
     const mapped = nodes.map((node) => {
       const selected = node.id === selectedNodeId
-      const cached = prevCache.get(node.id)
-      if (cached && cached.src === node && cached.selected === selected) {
-        nextCache.set(node.id, cached)
-        return cached.out
+      const hit = prevCache.get(node.id)
+      if (hit && hit.src === node && hit.selected === selected) {
+        nextCache.set(node.id, hit)
+        return hit.out
       }
-      // Ref: CR-140 區域標示框永遠墊在最底層
-      const nodeMode = (node.data as FlowNodeData)?.mode || node.type
+
+      const nodeMode = (node.type as FlowNodeType) || 'step'
       const isFrame = nodeMode === 'frame'
-      const isBox = nodeMode === 'box'
-      const defaultW = isFrame ? 320 : isBox ? 360 : 260
-      const defaultH = isFrame ? 220 : isBox ? 260 : 96
+      const defaultW = nodeMode === 'box' ? 360 : isFrame ? 400 : 280
+      const defaultH = nodeMode === 'box' ? 400 : isFrame ? 300 : 100
       const nodeW = (node.style?.width as number) || node.width || defaultW
       const nodeH = (node.style?.height as number) || node.height || defaultH
       const dimObj = node.measured || { width: nodeW, height: nodeH }
-      // Ref: CR-152
       const style =
         isFrame && node.style && 'pointerEvents' in node.style
           ? (() => {
@@ -1662,10 +1688,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         width: nodeMode !== 'text' ? nodeW : node.width,
         height: nodeMode !== 'text' ? nodeH : node.height,
         measured: dimObj,
-        draggable: isEditable,
+        draggable: effectiveEditable,
         selectable: true,
-        connectable: isEditable,
-        // Ref: CR-152
+        connectable: effectiveEditable,
         selected: isFrame ? false : node.selected,
         zIndex: isFrame
           ? 0
@@ -1679,8 +1704,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         data: {
           ...node.data,
           isSelected: selected,
-          onEdit: isEditable ? handleEditNode : undefined,
-          onDelete: isEditable ? handleDeleteNode : undefined,
+          onEdit: effectiveEditable ? handleEditNode : undefined,
+          onDelete: effectiveEditable ? handleDeleteNode : undefined,
         },
       }
       nextCache.set(node.id, { src: node, selected, out })
@@ -1688,15 +1713,14 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     })
     nodeViewCacheRef.current = nextCache
     return orderParentNodesFirst(mapped)
-  }, [nodes, selectedNodeId, isEditable, handleEditNode, handleDeleteNode])
+  }, [nodes, selectedNodeId, effectiveEditable, handleEditNode, handleDeleteNode])
 
-  // Ref: CR-152
   const edgeViewCacheRef = useRef(new Map<string, { src: Edge; out: Edge }>())
   const edgeHandlersRef = useRef<unknown[]>([])
 
   const styledEdges = useMemo(() => {
     const handlers: unknown[] = [
-      isEditable,
+      effectiveEditable,
       handleSaveEdgeText,
       handleWaypointChange,
       handleWaypointReset,
@@ -1716,19 +1740,17 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       const out: Edge = {
         ...e,
         ...edgeStyleAndMarker,
-        // Ref: CR-140 改用可掛文字的自訂連線
         type: 'flowEdge',
         animated: false,
         data: {
           ...(e.data || {}),
           obstacles,
-          isConnectable: isEditable,
-          onSaveText: isEditable ? handleSaveEdgeText : undefined,
-          onWaypointChange: isEditable ? handleWaypointChange : undefined,
-          onWaypointReset: isEditable ? handleWaypointReset : undefined,
-          // Ref: CR-148
-          onWaypointDragStart: isEditable ? beginInteraction : undefined,
-          onWaypointDragEnd: isEditable ? endInteraction : undefined,
+          isConnectable: effectiveEditable,
+          onSaveText: effectiveEditable ? handleSaveEdgeText : undefined,
+          onWaypointChange: effectiveEditable ? handleWaypointChange : undefined,
+          onWaypointReset: effectiveEditable ? handleWaypointReset : undefined,
+          onWaypointDragStart: effectiveEditable ? beginInteraction : undefined,
+          onWaypointDragEnd: effectiveEditable ? endInteraction : undefined,
         },
         style: {
           ...edgeStyleAndMarker.style,
@@ -1742,7 +1764,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
     edgeViewCacheRef.current = nextCache
     return mapped
-  }, [nodes, edges, isEditable, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
+  }, [nodes, edges, effectiveEditable, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
 
   return (
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -1758,23 +1780,44 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* 管理者授權設定按鈕 */}
+          {canManagePerms && (
+            <button
+              type="button"
+              onClick={() => setIsPermModalOpen(true)}
+              title={T.flow.shared.permissions.btnHint}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>⚙️</span> {T.flow.shared.permissions.btn}
+            </button>
+          )}
+
           {/* 共同編輯 / 唯讀切換開關 */}
           <button
             type="button"
-            onClick={handleToggleEditable}
-            title={isEditable ? T.flow.shared.coEditingHint : T.flow.shared.readOnlyHint}
+            onClick={isAllowedToEdit ? handleToggleEditable : undefined}
+            title={
+              !isAllowedToEdit
+                ? T.flow.shared.permissions.forbiddenHint
+                : isEditable
+                ? T.flow.shared.coEditingHint
+                : T.flow.shared.readOnlyHint
+            }
+            disabled={!isAllowedToEdit}
             className={cx(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer select-none',
-              isEditable
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors select-none',
+              !isAllowedToEdit
+                ? 'opacity-60 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                : isEditable
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-xs cursor-pointer'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
             )}
           >
-            <span>{isEditable ? '✏️' : '🔒'}</span>
-            {isEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
+            <span>{effectiveEditable ? '✏️' : '🔒'}</span>
+            {effectiveEditable ? T.flow.shared.coEditing : T.flow.shared.readOnly}
           </button>
 
-          {isEditable && (
+          {effectiveEditable && (
             <>
               <button
                 type="button"
@@ -1790,7 +1833,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               >
                 <span>📦</span> {T.flow.systemFlow.addBox}
               </button>
-              {/* Ref: CR-140 */}
               <button
                 type="button"
                 onClick={handleAddText}
@@ -1828,15 +1870,15 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           return (
             <div
               key={p.id}
-              draggable={isEditable && !isEditing}
+              draggable={effectiveEditable && !isEditing}
               onDragStart={(e) => {
-                if (!isEditable) return
+                if (!effectiveEditable) return
                 setDraggedTabId(p.id)
                 e.dataTransfer.effectAllowed = 'move'
                 e.dataTransfer.setData('text/plain', p.id)
               }}
               onDragOver={(e) => {
-                if (!isEditable) return
+                if (!effectiveEditable) return
                 e.preventDefault()
                 e.dataTransfer.dropEffect = 'move'
                 if (dragOverTabId !== p.id) setDragOverTabId(p.id)
@@ -1845,7 +1887,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 if (dragOverTabId === p.id) setDragOverTabId(null)
               }}
               onDrop={(e) => {
-                if (!isEditable) return
+                if (!effectiveEditable) return
                 e.preventDefault()
                 handleReorderTabs(draggedTabId, p.id)
               }}
@@ -1857,7 +1899,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 if (!isActive && !isEditing) handleSwitchPage(p.id)
               }}
               onDoubleClick={() => {
-                if (isEditable) handleStartRenamePage(p.id, p.title)
+                if (effectiveEditable) handleStartRenamePage(p.id, p.title)
               }}
               className={cx(
                 'group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer border shrink-0',
@@ -1869,7 +1911,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               )}
             >
               {/* 拖曳手柄圖示 */}
-              {isEditable && (
+              {effectiveEditable && (
                 <span
                   className="text-[10px] text-slate-400/80 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing select-none"
                   title={T.flow.systemFlow.tabDragHint}
@@ -1898,7 +1940,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                     {T.flow.systemFlow.nodeCount(nodeCount)}
                   </span>
 
-                  {isEditable && (
+                  {effectiveEditable && (
                     <>
                       {/* 左右微調移動按鈕 */}
                       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
@@ -1978,7 +2020,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           )
         })}
 
-        {isEditable && (
+        {effectiveEditable && (
           <button
             type="button"
             onClick={handleAddPage}
@@ -2358,6 +2400,15 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           </div>
         </div>
       )}
+
+      {/* 畫布共同編輯授權名單 Modal (Ref: CR-194) */}
+      <CanvasPermissionModal
+        open={isPermModalOpen}
+        onClose={() => setIsPermModalOpen(false)}
+        projectId={projectId || ''}
+        canvasKey="system-flow"
+        canvasTitle={T.flow.systemFlow.title || '系統流程圖'}
+      />
     </div>
   )
 }

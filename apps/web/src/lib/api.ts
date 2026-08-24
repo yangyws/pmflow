@@ -771,6 +771,21 @@ export const Api = {
       `/projects/${projectId}/canvas-docs/${docKey}`, { method: 'PUT', json }),
   deleteCanvasDoc: (projectId: string, docKey: string) =>
     api(`/projects/${projectId}/canvas-docs/${docKey}`, { method: 'DELETE' }),
+  canvasPermissions: (projectId: string, canvasKey: string) =>
+    api<{
+      canvasKey: string
+      allowedUserIds: string[] | null
+      canManage: boolean
+      isAllowed: boolean
+      updatedAt: string | null
+      updatedBy: string | null
+      updatedByName: string | null
+    }>(`/projects/${projectId}/canvas-permissions/${canvasKey}`),
+  saveCanvasPermissions: (projectId: string, canvasKey: string, json: { allowedUserIds: string[] | null }) =>
+    api<{ canvasKey: string; allowedUserIds: string[] | null }>(
+      `/projects/${projectId}/canvas-permissions/${canvasKey}`,
+      { method: 'PUT', json }
+    ),
   patchLinkHandles: (linkId: string, json: { sourceHandle?: string | null; targetHandle?: string | null }) =>
     api<{ id: string; sourceHandle: string | null; targetHandle: string | null }>(`/links/${linkId}/handles`, { method: 'PATCH', json }),
 }

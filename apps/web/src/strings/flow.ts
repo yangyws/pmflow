@@ -26,6 +26,21 @@ export const flow = {
     readOnly: '🔒 唯讀檢視',
     coEditingHint: '目前處於共同編輯狀態，所有操作將自動儲存。點擊切換為唯讀檢視模式。',
     readOnlyHint: '目前處於唯讀檢視模式，畫布已鎖定。點擊切換為共同編輯模式。',
+    permissions: {
+      btn: '⚙️ 授權',
+      btnHint: '設定可編輯此畫布的成員名單',
+      title: (name: string) => `${name} 共同編輯授權設定`,
+      modeAll: '全體專案編輯者可編輯（預設）',
+      modeAllHint: '專案內具備 EDITOR 與 MANAGER 權限的所有成員皆可編輯。',
+      modeWhitelist: '指定成員名單可編輯',
+      modeWhitelistHint: '僅有被勾選的成員（以及專案管理者）可以編輯此畫布，其他人僅能檢視。',
+      searchPlaceholder: '搜尋成員姓名或 Email…',
+      selectAll: '全選',
+      clearAll: '全不選',
+      managerBadge: '管理者（永久具備權限）',
+      saveSuccess: '授權設定已儲存',
+      forbiddenHint: '此畫布已被專案管理者限制編輯名單，您目前僅具備檢視權限。',
+    },
 
     /**
      * 文字註記與區域標示框：兩張畫布上都掛得了的附加物，說法完全一致。
