@@ -1720,34 +1720,35 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* 頂部獨立工具列 */}
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5 shrink-0">
             <span>🗺️</span> {T.flow.systemFlow.title}
           </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-            {T.flow.systemFlow.subtitle}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* 管理者授權設定按鈕 */}
+          {/* 管理者授權設定按鈕 (固定於左側標題旁) */}
           {canManagePerms && (
             <button
               type="button"
               onClick={() => setIsPermModalOpen(true)}
               title={T.flow.shared.permissions.btnHint}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer shrink-0"
             >
               <span>⚙️</span> {T.flow.shared.permissions.btn}
             </button>
           )}
 
           {!effectiveEditable && (
-            <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 select-none font-medium">
+            <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 select-none font-medium shrink-0">
               🔒 {T.flow.shared.readOnly}
             </span>
           )}
 
+          <span className="text-xs text-slate-400 dark:text-slate-500 hidden md:inline truncate">
+            {T.flow.systemFlow.subtitle}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
           {effectiveEditable && (
             <>
               <button

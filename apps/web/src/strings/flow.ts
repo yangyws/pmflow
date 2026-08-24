@@ -27,7 +27,7 @@ export const flow = {
     coEditingHint: '目前處於共同編輯狀態，所有操作將自動儲存。點擊切換為唯讀檢視模式。',
     readOnlyHint: '目前處於唯讀檢視模式，畫布已鎖定。點擊切換為共同編輯模式。',
     permissions: {
-      btn: '⚙️ 授權',
+      btn: '授權',
       btnHint: '設定可編輯此畫布的成員名單',
       title: (name: string) => `${name} 共同編輯授權設定`,
       modeAll: '全體專案編輯者可編輯（預設）',
