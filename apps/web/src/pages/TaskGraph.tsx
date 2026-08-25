@@ -316,7 +316,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       {isBox ? (
         <div
           className={cx(
-            'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden opacity-100',
+            'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-colors duration-150 flex flex-col justify-between overflow-hidden opacity-100',
             data.isCollapsed ? 'min-h-[90px] pointer-events-auto cursor-grab active:cursor-grabbing' : 'h-full min-w-[320px] min-h-[240px] pointer-events-none',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
@@ -465,7 +465,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       ) : (
         <div
           className={cx(
-            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-all duration-200 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
+            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-colors duration-150 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-200 dark:border-slate-800'
@@ -941,7 +941,7 @@ function OrthogonalEdge({
             filter: selected ? 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.6))' : undefined,
           }}
           className={cx(
-            "react-flow__edge-path cursor-pointer pointer-events-stroke transition-all duration-150",
+            "react-flow__edge-path cursor-pointer pointer-events-stroke",
             "peer-hover/hit:!stroke-[#3b82f6] peer-hover/hit:!stroke-[4px] peer-hover/hit:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]",
             "hover:!stroke-[#3b82f6] hover:!stroke-[4px] hover:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]"
           )}
@@ -952,7 +952,7 @@ function OrthogonalEdge({
         <EdgeLabelRenderer>
           <div
             className={cx(
-              "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000] select-none cursor-grab active:cursor-grabbing transition-all duration-150",
+              "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-xs z-[1000] select-none cursor-grab active:cursor-grabbing",
               "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
               "hover:scale-135 hover:!bg-blue-500 hover:ring-4 hover:ring-blue-400/40 hover:shadow-md hover:shadow-blue-500/50 hover:z-[1001]",
               selected && "scale-135 !bg-blue-500 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 z-[1001]"
