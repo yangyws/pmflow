@@ -858,7 +858,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     [storageKeyPages, savePagesToBackend]
   )
 
-  const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow()
+  const { fitView, zoomIn, zoomOut, setCenter, setViewport } = useReactFlow()
   const { user } = useAuth()
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -1088,6 +1088,26 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const pendingSaveRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // 立即將目前進行中／尚未落盤的分頁畫布變更刷新至 pages 與 store (避免換頁時被非同步定時器寫錯頁)
+  const flushCurrentPageChanges = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    if (!pendingSaveRef.current) return pages
+    pendingSaveRef.current = false
+    const currentNodes = nodesRef.current
+    const currentEdges = edgesRef.current
+    const updated = pages.map((p) => {
+      if (p.id === activePageId) {
+        return { ...p, nodes: currentNodes, edges: currentEdges }
+      }
+      return p
+    })
+    savePagesToStore(updated)
+    return updated
+  }, [pages, activePageId, savePagesToStore])
+
   // Ref: CR-148 整份文件的組裝與寫入集中在這裡，出口仍然只有 savePagesToStore 一個
   const commitCanvas = useCallback(() => {
     pendingSaveRef.current = false
@@ -1160,30 +1180,58 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     }
   }, [commitCanvas])
 
-  // 切換頁面
+  // 切換頁面 (完整重置上一頁的暫存、快取與彈窗狀態，避免跨頁資訊殘留)
   const handleSwitchPage = (targetId: string) => {
     if (targetId === activePageId) return
-    const target = pages.find((p) => p.id === targetId)
+    const currentPages = flushCurrentPageChanges()
+    const target = currentPages.find((p) => p.id === targetId)
     if (!target) return
-    setActivePageId(targetId)
+
+    // 1. 清理跨頁殘留的選取、連線、編輯快取與彈窗狀態
     setSelectedNodeId(null)
-    setNodes(orderParentNodesFirst(target.nodes))
-    setEdges(
-      target.edges.map((e: Edge) => ({
-        ...e,
-        ...getEdgeStyleAndMarker(e.sourceHandle),
-      }))
-    )
+    setEditingNode(null)
+    setConfirmDeleteEdge(null)
+    setEditingPageId(null)
+    connectStartRef.current = null
+    interactingRef.current = false
+    nodeViewCacheRef.current.clear()
+    edgeViewCacheRef.current.clear()
+
+    // 2. 載入目標分頁節點與連線
+    const nextNodes = orderParentNodesFirst(target.nodes)
+    const nextEdges = target.edges.map((e: Edge) => ({
+      ...e,
+      ...getEdgeStyleAndMarker(e.sourceHandle),
+    }))
+
+    nodesRef.current = nextNodes
+    edgesRef.current = nextEdges
+    setActivePageId(targetId)
+    setNodes(nextNodes)
+    setEdges(nextEdges)
+
+    // 3. Viewport: 若目標分頁已有儲存的視角則還原，若無則執行置中適應
     setTimeout(() => {
-      fitView({ padding: 0.2, duration: 300 })
+      try {
+        const raw = localStorage.getItem(`pmflow_system_flow_viewport_${projectId}_${targetId}`)
+        if (raw) {
+          const vp = JSON.parse(raw) as Viewport
+          if (vp && typeof vp.zoom === 'number' && vp.zoom >= 0.05) {
+            setViewport(vp, { duration: 200 })
+            return
+          }
+        }
+      } catch {}
+      fitView({ padding: 0.2, duration: 250 })
     }, 50)
   }
 
   // 新增頁面
   const handleAddPage = () => {
     if (!effectiveEditable) return
+    const currentPages = flushCurrentPageChanges()
     const newId = `page-${Date.now()}`
-    const newTitle = T.flow.systemFlow.pageDefaultTitle(pages.length + 1)
+    const newTitle = T.flow.systemFlow.pageDefaultTitle(currentPages.length + 1)
     const newPage: FlowPage = {
       id: newId,
       title: newTitle,
@@ -1192,10 +1240,20 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: [],
       edges: [],
     }
-    const updated = [...pages, newPage]
+    const updated = [...currentPages, newPage]
+    setSelectedNodeId(null)
+    setEditingNode(null)
+    setConfirmDeleteEdge(null)
+    setEditingPageId(null)
+    connectStartRef.current = null
+    interactingRef.current = false
+    nodeViewCacheRef.current.clear()
+    edgeViewCacheRef.current.clear()
+
+    nodesRef.current = []
+    edgesRef.current = []
     setPages(updated)
     setActivePageId(newId)
-    setSelectedNodeId(null)
     setNodes([])
     setEdges([])
     savePagesToStore(updated)
@@ -1204,10 +1262,11 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   // 複製當前頁面
   const handleDuplicatePage = (pageId: string) => {
     if (!effectiveEditable) return
-    const source = pages.find((p) => p.id === pageId)
+    const currentPages = flushCurrentPageChanges()
+    const source = currentPages.find((p) => p.id === pageId)
     if (!source) return
-    const sourceNodes = pageId === activePageId ? nodes : source.nodes
-    const sourceEdges = pageId === activePageId ? edges : source.edges
+    const sourceNodes = pageId === activePageId ? nodesRef.current : source.nodes
+    const sourceEdges = pageId === activePageId ? edgesRef.current : source.edges
 
     const newId = `page-${Date.now()}`
     const newTitle = T.flow.systemFlow.duplicateTitle(source.title)
@@ -1219,41 +1278,72 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       nodes: JSON.parse(JSON.stringify(sourceNodes)),
       edges: JSON.parse(JSON.stringify(sourceEdges)),
     }
-    const updated = [...pages, newPage]
+    const updated = [...currentPages, newPage]
+    setSelectedNodeId(null)
+    setEditingNode(null)
+    setConfirmDeleteEdge(null)
+    setEditingPageId(null)
+    connectStartRef.current = null
+    interactingRef.current = false
+    nodeViewCacheRef.current.clear()
+    edgeViewCacheRef.current.clear()
+
+    nodesRef.current = newPage.nodes
+    edgesRef.current = newPage.edges
     setPages(updated)
     setActivePageId(newId)
-    setSelectedNodeId(null)
     setNodes(newPage.nodes)
     setEdges(newPage.edges)
     savePagesToStore(updated)
     setTimeout(() => {
-      fitView({ padding: 0.2, duration: 300 })
+      fitView({ padding: 0.2, duration: 250 })
     }, 50)
   }
 
   // 刪除頁面
   const handleDeletePage = (pageId: string) => {
     if (!effectiveEditable) return
-    const target = pages.find((p) => p.id === pageId)
+    const currentPages = flushCurrentPageChanges()
+    const target = currentPages.find((p) => p.id === pageId)
     if (!target || !canDeletePage(target)) return
-    const nextPages = pages.filter((p) => p.id !== pageId)
+    const nextPages = currentPages.filter((p) => p.id !== pageId)
     try {
       localStorage.removeItem(`pmflow_system_flow_viewport_${projectId}_${pageId}`)
     } catch {}
     setConfirmDeletePage(null)
+    setSelectedNodeId(null)
+    setEditingNode(null)
+    setConfirmDeleteEdge(null)
+    setEditingPageId(null)
+    connectStartRef.current = null
+    interactingRef.current = false
+    nodeViewCacheRef.current.clear()
+    edgeViewCacheRef.current.clear()
+
     if (activePageId === pageId) {
       const nextActive = nextPages[0]
+      const nextNodes = orderParentNodesFirst(nextActive.nodes)
+      const nextEdges = nextActive.edges.map((e: Edge) => ({
+        ...e,
+        ...getEdgeStyleAndMarker(e.sourceHandle),
+      }))
+      nodesRef.current = nextNodes
+      edgesRef.current = nextEdges
       setActivePageId(nextActive.id)
-      setSelectedNodeId(null)
-      setNodes(orderParentNodesFirst(nextActive.nodes))
-      setEdges(
-        nextActive.edges.map((e: Edge) => ({
-          ...e,
-          ...getEdgeStyleAndMarker(e.sourceHandle),
-        }))
-      )
+      setNodes(nextNodes)
+      setEdges(nextEdges)
       setTimeout(() => {
-        fitView({ padding: 0.2, duration: 300 })
+        try {
+          const raw = localStorage.getItem(`pmflow_system_flow_viewport_${projectId}_${nextActive.id}`)
+          if (raw) {
+            const vp = JSON.parse(raw) as Viewport
+            if (vp && typeof vp.zoom === 'number' && vp.zoom >= 0.05) {
+              setViewport(vp, { duration: 200 })
+              return
+            }
+          }
+        } catch {}
+        fitView({ padding: 0.2, duration: 250 })
       }, 50)
     }
     setPages(nextPages)
