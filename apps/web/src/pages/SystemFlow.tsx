@@ -879,15 +879,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const [pages, setPages] = useState<FlowPage[]>(() => loadInitialPages(projectId))
 
-  // 建立者以上權限 (專案建立者、Owner、Manager) 或「該分頁建立者」可刪除分頁
-  const canDeletePage = useCallback(
-    (p?: FlowPage | null) => {
-      if (!p || pages.length <= 1) return false
-      const isPageCreator = Boolean(p.createdById && user?.id && p.createdById === user.id)
-      return isManager || isOwner || isProjectCreator || isPageCreator
-    },
-    [user?.id, isManager, isOwner, isProjectCreator, pages.length]
-  )
   const [activePageId, setActivePageId] = useState<string>(() => {
     const initPages = loadInitialPages(projectId)
     return initPages[0]?.id || 'page-1'
@@ -1244,13 +1235,13 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     savePagesToStore(updated)
   }
 
-  // 刪除頁面
+  // 刪除頁面 (若刪除唯一／最後一個分頁，將自動建立全新空白分頁)
   const handleDeletePage = (pageId: string) => {
     if (!effectiveEditable) return
     const currentPages = flushCurrentPageChanges()
     const target = currentPages.find((p) => p.id === pageId)
-    if (!target || !canDeletePage(target)) return
-    const nextPages = currentPages.filter((p) => p.id !== pageId)
+    if (!target) return
+    let nextPages = currentPages.filter((p) => p.id !== pageId)
     try {
       localStorage.removeItem(`pmflow_system_flow_viewport_${projectId}_${pageId}`)
     } catch {}
@@ -1263,6 +1254,28 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     interactingRef.current = false
     nodeViewCacheRef.current.clear()
     edgeViewCacheRef.current.clear()
+
+    // 若所有分頁皆被刪除，自動產生一個全新空白分頁
+    if (nextPages.length === 0) {
+      const newId = `page-${Date.now()}`
+      const fallbackPage: FlowPage = {
+        id: newId,
+        title: T.flow.systemFlow.pageDefaultTitle(1),
+        createdById: user?.id || null,
+        createdByName: user?.displayName || user?.email || null,
+        nodes: [],
+        edges: [],
+      }
+      nextPages = [fallbackPage]
+      nodesRef.current = []
+      edgesRef.current = []
+      setActivePageId(newId)
+      setNodes([])
+      setEdges([])
+      setPages(nextPages)
+      savePagesToStore(nextPages)
+      return
+    }
 
     if (activePageId === pageId) {
       const nextActive = nextPages[0]
@@ -1961,8 +1974,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                     {T.flow.systemFlow.nodeCount(nodeCount)}
                   </span>
 
-                  {/* 常駐刪除按鈕 (大於1頁且具備建立者以上權限或分頁建立者時可刪) */}
-                  {effectiveEditable && pages.length > 1 && canDeletePage(p) && (
+                  {/* 常駐刪除按鈕 (刪除最後一個分頁時將自動產生全新空白分頁) */}
+                  {effectiveEditable && (
                     <button
                       type="button"
                       onClick={(e) => {
