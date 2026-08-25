@@ -1066,21 +1066,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setDragOverTabId(null)
   }
 
-  // 左右微調移動頁籤
-  const handleMoveTab = (index: number, direction: -1 | 1) => {
-    if (!effectiveEditable) return
-    const targetIndex = index + direction
-    if (targetIndex < 0 || targetIndex >= pages.length) return
-    setPages((prev) => {
-      const next = [...prev]
-      const temp = next[index]
-      next[index] = next[targetIndex]
-      next[targetIndex] = temp
-      savePagesToStore(next)
-      return next
-    })
-  }
-
   // Ref: CR-148
   const nodesRef = useRef(nodes)
   const edgesRef = useRef(edges)
@@ -1257,47 +1242,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setNodes([])
     setEdges([])
     savePagesToStore(updated)
-  }
-
-  // 複製當前頁面
-  const handleDuplicatePage = (pageId: string) => {
-    if (!effectiveEditable) return
-    const currentPages = flushCurrentPageChanges()
-    const source = currentPages.find((p) => p.id === pageId)
-    if (!source) return
-    const sourceNodes = pageId === activePageId ? nodesRef.current : source.nodes
-    const sourceEdges = pageId === activePageId ? edgesRef.current : source.edges
-
-    const newId = `page-${Date.now()}`
-    const newTitle = T.flow.systemFlow.duplicateTitle(source.title)
-    const newPage: FlowPage = {
-      id: newId,
-      title: newTitle,
-      createdById: user?.id || null,
-      createdByName: user?.displayName || user?.email || null,
-      nodes: JSON.parse(JSON.stringify(sourceNodes)),
-      edges: JSON.parse(JSON.stringify(sourceEdges)),
-    }
-    const updated = [...currentPages, newPage]
-    setSelectedNodeId(null)
-    setEditingNode(null)
-    setConfirmDeleteEdge(null)
-    setEditingPageId(null)
-    connectStartRef.current = null
-    interactingRef.current = false
-    nodeViewCacheRef.current.clear()
-    edgeViewCacheRef.current.clear()
-
-    nodesRef.current = newPage.nodes
-    edgesRef.current = newPage.edges
-    setPages(updated)
-    setActivePageId(newId)
-    setNodes(newPage.nodes)
-    setEdges(newPage.edges)
-    savePagesToStore(updated)
-    setTimeout(() => {
-      fitView({ padding: 0.2, duration: 250 })
-    }, 50)
   }
 
   // 刪除頁面
@@ -2017,79 +1961,19 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                     {T.flow.systemFlow.nodeCount(nodeCount)}
                   </span>
 
-                  {effectiveEditable && (
-                    <>
-                      {/* 左右微調移動按鈕 */}
-                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                        {idx > 0 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleMoveTab(idx, -1)
-                            }}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
-                            title={T.flow.systemFlow.tabMoveLeft}
-                          >
-                            ◀
-                          </button>
-                        )}
-                        {idx < pages.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleMoveTab(idx, 1)
-                            }}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer text-[10px]"
-                            title={T.flow.systemFlow.tabMoveRight}
-                          >
-                            ▶
-                          </button>
-                        )}
-                      </div>
-
-                      {/* 重新命名按鈕 */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleStartRenamePage(p.id, p.title)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 hover:text-blue-600 dark:hover:text-blue-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
-                        title={T.flow.systemFlow.tabRename}
-                      >
-                        ✏️
-                      </button>
-
-                      {/* 複製頁面按鈕 */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDuplicatePage(p.id)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 p-0.5 rounded transition cursor-pointer"
-                        title={T.flow.systemFlow.tabDuplicate}
-                      >
-                        📑
-                      </button>
-
-                      {/* 刪除按鈕 (大於1頁且具備建立者以上權限或分頁建立者時可刪) */}
-                      {pages.length > 1 && canDeletePage(p) && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setConfirmDeletePage(p)
-                          }}
-                          className="opacity-0 group-hover:opacity-100 hover:text-red-600 dark:hover:text-red-400 text-slate-400 p-0.5 rounded transition ml-0.5 cursor-pointer font-bold text-sm"
-                          title={T.flow.systemFlow.tabDelete}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </>
+                  {/* 常駐刪除按鈕 (大於1頁且具備建立者以上權限或分頁建立者時可刪) */}
+                  {effectiveEditable && pages.length > 1 && canDeletePage(p) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmDeletePage(p)
+                      }}
+                      className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 rounded p-0.5 transition ml-0.5 cursor-pointer font-bold text-xs flex items-center justify-center w-4 h-4 shrink-0"
+                      title={T.flow.systemFlow.tabDelete}
+                    >
+                      ×
+                    </button>
                   )}
                 </>
               )}
