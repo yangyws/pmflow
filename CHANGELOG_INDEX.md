@@ -22,7 +22,21 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Edge Revert & Waypoint Stability & Pure CSS Hover & E2E Test Alignments (CR-191)
+### Latest Changes: Canvas Whitelist Authorization, Frame Stacking Layer Fix & Page Lifecycle Refactor (CR-194)
+- **變更檔案**:
+  - [`canvas_permissions.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0028_canvas_permissions.sql) & [`routes/canvas.ts`](file:///D:/github/pmflow/apps/api/src/routes/canvas.ts):
+    1. **畫布編輯權限白名單體系 (`CR-194`)**：建立 `canvas_permission` 資料表，實作 `GET/PUT /api/v1/projects/:projectId/canvas-permissions/:canvasKey` 端點，專案建立者、Owner、Manager 或系統管理員可配置各畫布（`task-graph` 與 `system-flow`）之成員白名單。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx) & [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **工具列解耦與位置鎖定 (`CR-194`)**：統一移除本機編輯開關，權限完全由後端白名單驅動；「⚙️ 授權」按鈕固定錨定在頂部左側標題旁，不再因右側工具數量不同產生水平位移。
+    2. **區域標示框（Frame）移動與靜止永遠置底 (`CR-194`)**：`orderParentNodesFirst` 排序將 Frame 節點置於陣列最底層（`zIndex: -1`）；在全域 CSS 中為 `.react-flow__node-frame.dragging` 與 `[data-type="frame"].dragging` 鎖定 `z-index: -1 !important`，拖曳移動時絕不遮蔽卡片、模組盒與連線。
+    3. **流程圖分頁切換資料隔離與防抖落盤 (`CR-194`)**：新增 `flushCurrentPageChanges`，切換分頁時立即結算前頁未存變更，重置選取、拖曳暫存、拉線起點與彈窗狀態；依分頁個別儲存與還原 Viewport 焦點視角。
+    4. **流程圖分頁操作簡化與常駐刪除 (`CR-194`)**：移除微調按鈕（`◀`/`▶`）與複製按鈕（`📑`），支援雙擊直接編輯標籤名稱；刪除按鈕（`×`）常駐顯示，授權編輯者可刪除所有分頁（包含第 1 頁），刪除最後一個分頁時自動產生全新空白「流程圖 1」分頁。
+  - [`routes/skills.ts`](file:///D:/github/pmflow/apps/api/src/routes/skills.ts):
+    1. **AI 技能規格端點擴充 (`CR-194`)**：在 `/skills` 探索端點中加入 `get_canvas_doc`、`save_canvas_doc`、`get_canvas_permissions` 與 `update_canvas_permissions` 規格定義。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-194` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-194`。
+
+### Previous Changes: Edge Revert & Waypoint Stability & Pure CSS Hover & E2E Test Alignments (CR-191)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **收納盒連線預設顏色還原 (`CR-191`)**：還原為標準紅（左右）/紫（上下）配色，保留 8 色自訂變色支援。

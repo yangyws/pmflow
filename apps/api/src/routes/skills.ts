@@ -138,6 +138,32 @@ export default async function skillRoutes(app: FastifyInstance) {
             newOwnerId: 'string uuid (必填，新擁有者 ID)',
           },
         },
+        get_canvas_doc: {
+          method: 'GET',
+          path: '/api/v1/projects/:projectId/canvas-docs/:canvasKey',
+          description: '取得任務關聯圖 (task-graph) 或系統流程圖 (system-flow) 的持久化節點與排版資料',
+        },
+        save_canvas_doc: {
+          method: 'PUT',
+          path: '/api/v1/projects/:projectId/canvas-docs/:canvasKey',
+          description: '儲存任務關聯圖或系統流程圖的節點與排版資料 (需具備畫布編輯權限)',
+          body: {
+            data: 'any (必填，包含 nodes, edges 或 pages 陣列結構之 JSON 物件)',
+          },
+        },
+        get_canvas_permissions: {
+          method: 'GET',
+          path: '/api/v1/projects/:projectId/canvas-permissions/:canvasKey',
+          description: '查詢當前使用者對該畫布的編輯權限與管理權限',
+        },
+        update_canvas_permissions: {
+          method: 'PUT',
+          path: '/api/v1/projects/:projectId/canvas-permissions/:canvasKey',
+          description: '設定指定畫布的共同編輯成員白名單 (需為專案建立者、管理者或系統管理員)',
+          body: {
+            allowedUserIds: 'string[] (必填，允許編輯的成員 ID 陣列)',
+          },
+        },
       },
     }
   })

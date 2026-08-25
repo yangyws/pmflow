@@ -83,13 +83,15 @@ routes/
   links.ts         101   任務關聯
   inquiries.ts     264   發文追蹤與跨專案看板、單位統計
   dashboard.ts     190   /burndown 與 /workload 兩支計算端點
-migrations/              0001_init.sql、0002_project_membership.sql
+  canvas.ts        165   畫布排版持久化與畫布授權白名單 (CR-194)
+  skills.ts        170   AI 技能與 API 規格探索端點 (CR-165, CR-194)
+migrations/              0001_init.sql ~ 0028_canvas_permissions.sql
 seed.ts           150   示範帳號與兩個示範專案
 ```
 
 **資料表**：`workspace` / `app_user` / `workspace_member` / `refresh_token` / `project` /
 `project_member` / `project_join_request` / `task_status` / `task` / `task_closure` /
-`task_link` / `task_inquiry` / `activity` / `label` / `task_label`。
+`task_link` / `task_inquiry` / `activity` / `label` / `task_label` / `canvas_permission`。
 
 **改 API 的固定動作**：路由加欄位 → `lib/api.ts` 的型別與函式跟著改 → 用到的頁面改。
 前端**只**透過 `lib/api.ts` 打 API，沒有第二條路。
@@ -100,10 +102,10 @@ seed.ts           150   示範帳號與兩個示範專案
 
 ```
 main.tsx           31   掛 QueryClientProvider 與 AuthProvider
-App.tsx           355   登入判斷、選專案、頁籤（清單/看板/行事曆/甘特/關聯圖/發文/成員）、
+App.tsx           355   登入判斷、選專案、頁籤（清單/看板/行事曆/甘特/關聯圖/系統流程圖/發文/成員）、
                         側欄、任務抽屜的開關 ← 加一個新畫面就是動這裡的 View 與 VIEWS
 lib/
-  api.ts          256   所有型別 + 所有端點；401 會自動 refresh 一次
+  api.ts          320   所有型別 + 所有端點；401 會自動 refresh 一次
   auth.tsx         82   登入狀態；換帳號時 qc.clear() 清整份快取
   date.ts          62   日期顯示與工作日
   rollup.ts       109   父任務的進度／日期由子任務推算
@@ -113,6 +115,7 @@ components/
   TaskDrawer.tsx  325   右側任務詳情
   InquiryTable.tsx325   發文追蹤表格
   MembersPanel.tsx250   成員與加入申請（按鈕都掛在後端回的 canManage 底下）
+  CanvasPermissionModal.tsx 145 畫布授權白名單管理彈窗 (CR-194)
 pages/
   Login.tsx        74
   ProjectPicker.tsx248  選專案 + 「其他專案／申請加入」
@@ -120,8 +123,8 @@ pages/
   Board.tsx       203   看板拖拉
   Calendar.tsx    532   月曆，會拖拉改期
   Gantt.tsx       228
-  TaskGraph.tsx   3858  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、動態子樹計算、Viewport 持久化
-  SystemFlow.tsx  2176  系統流程圖：模組容器、流程步驟、註記、區域標示框、可拖折點連線
+  TaskGraph.tsx   4050  任務關聯圖：收納盒、四向 Handles、90 度避讓折線、動態子樹計算、畫布編輯白名單授權
+  SystemFlow.tsx  2400  系統流程圖：多頁面流程圖、模組容器、流程步驟、標示框置底、常駐刪除與自動新建、畫布編輯白名單授權
   Playground.tsx  953   各語法範例：Markdown／SQL／Java／網頁語法範例與即時預覽
   InquiryBoard.tsx194   跨專案發文追蹤
   Week.tsx        340   這一週有哪些任務在跑：依狀態或依類型分組，組可以收合
