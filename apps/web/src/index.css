@@ -228,3 +228,15 @@ body {
 .react-flow__handle::after {
   cursor: crosshair !important;
 }
+
+/* ── React Flow 區域標示框（Frame）：移動、選取或靜止時始終鎖定在最底層 ── */
+.react-flow__node-frame,
+.react-flow__node-annotationFrame,
+.react-flow__node[data-type="frame"],
+.react-flow__node[data-type="annotationFrame"],
+.react-flow__node-frame.dragging,
+.react-flow__node-annotationFrame.dragging,
+.react-flow__node[data-type="frame"].dragging,
+.react-flow__node[data-type="annotationFrame"].dragging {
+  z-index: -1 !important;
+}

@@ -111,7 +111,7 @@ function consumeEdgeDragGuard(): boolean {
 }
 
 
-// 確保父收納盒節點在 nodes 陣列中優先於子卡片 (對齊 TaskGraph: React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
+// 確保區域標示框墊底、父收納盒優先於子卡片、文字註記疊頂 (React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
 function orderParentNodesFirst(nodes: Node[]): Node[] {
   const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
   const getDepth = (id: string) => {
@@ -123,7 +123,17 @@ function orderParentNodesFirst(nodes: Node[]): Node[] {
     }
     return d
   }
-  return [...nodes].sort((a, b) => getDepth(a.id) - getDepth(b.id))
+  return [...nodes].sort((a, b) => {
+    const isFrameA = ((a.data as FlowNodeData)?.mode || a.type) === 'frame'
+    const isFrameB = ((b.data as FlowNodeData)?.mode || b.type) === 'frame'
+    if (isFrameA && !isFrameB) return -1
+    if (!isFrameA && isFrameB) return 1
+    const isTextA = a.type === 'text'
+    const isTextB = b.type === 'text'
+    if (isTextA && !isTextB) return 1
+    if (!isTextA && isTextB) return -1
+    return getDepth(a.id) - getDepth(b.id)
+  })
 }
 
 // 四向全功能雙向接點元件 (每個方向同時掛載 in 與 out Handles，支援任意方向 16 種組合起拉與連入)
@@ -1683,11 +1693,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         height: nodeMode !== 'text' ? nodeH : node.height,
         measured: dimObj,
         draggable: effectiveEditable,
-        selectable: true,
+        selectable: isFrame ? false : true,
         connectable: effectiveEditable,
         selected: isFrame ? false : node.selected,
+        // Ref: CR-152 標示框墊最底(-1)，框身可拖但搶不走卡片、收納盒與關聯線的點擊
         zIndex: isFrame
-          ? 0
+          ? -1
           : selected
             ? 50
             : nodeMode === 'box'
