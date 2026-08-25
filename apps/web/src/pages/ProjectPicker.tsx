@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type Project } from '../lib/api'
 import { T } from '../strings'
 import { Button, Input, cx } from '../components/ui'
+import { FULL_VERSION_LABEL } from '../version'
 
 /**
  * 登入後的第一個畫面：選一個專案再進去。
@@ -348,6 +349,9 @@ export default function ProjectPicker({
           )}
         </div>
 
+        <div className="mt-8 pb-4 text-center text-xs text-slate-400 dark:text-slate-500 select-none">
+          {FULL_VERSION_LABEL}
+        </div>
       </div>
     </div>
   )

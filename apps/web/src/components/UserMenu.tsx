@@ -6,6 +6,7 @@ import { T } from '../strings'
 import { useAuth } from '../lib/auth'
 import { Avatar } from './Avatar'
 import { Button, cx } from './ui'
+import { FULL_VERSION_LABEL } from '../version'
 
 /**
  * 右上角的頭像選單。
@@ -193,9 +194,14 @@ export function UserMenu({
             </div>
           </div>
 
-          <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-
           <MenuItem onClick={go(onLogout)} danger>{T.account.menu.logout}</MenuItem>
+
+          <div className="my-1 border-t border-slate-100 dark:border-slate-700/60" />
+
+          {/* 版本號與建置時間 */}
+          <div className="px-3 py-1 text-center text-[10px] text-slate-400 dark:text-slate-500 select-none">
+            {FULL_VERSION_LABEL}
+          </div>
         </div>
       )}
 

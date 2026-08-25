@@ -5,6 +5,7 @@ import { Button, Input, Field } from '../components/ui'
 import { ProviderIcon } from '../components/ProviderIcon'
 import { T } from '../strings'
 import { Api, ApiError } from '../lib/api'
+import { FULL_VERSION_LABEL } from '../version'
 
 export default function Login() {
   const { login, register } = useAuth()
@@ -151,6 +152,10 @@ export default function Login() {
             {T.nav.login.demoHint}
           </p>
         )}
+
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 select-none">
+          {FULL_VERSION_LABEL}
+        </div>
       </form>
     </div>
   )
