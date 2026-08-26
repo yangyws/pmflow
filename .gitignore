@@ -3,3 +3,11 @@ dist/
 .env
 *.log
 .DS_Store
+*.docx
+*.doc
+*.pdf
+ch*_body.txt
+ch*_flows.*
+ch*_apis.txt
+docx_parsed.txt
+docx_*.txt
