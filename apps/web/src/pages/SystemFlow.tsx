@@ -605,24 +605,26 @@ function FlowLabeledEdge({
     setIsEditing(false)
   }
 
-  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     e.stopPropagation()
     e.preventDefault()
     draggingRef.current = true
     armEdgeDragGuard()
     // Ref: CR-148
     edgeData?.onWaypointDragStart?.()
+    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
-  const onHandlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onHandlePointerMove = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     if (!draggingRef.current) return
     e.stopPropagation()
     const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
     edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
   }
 
-  const onHandlePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onHandlePointerUp = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     if (!draggingRef.current) return
     draggingRef.current = false
     e.stopPropagation()
@@ -640,13 +642,44 @@ function FlowLabeledEdge({
 
   return (
     <>
-      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={20} />
+      <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={0} />
+
+      {/* 寬幅連線拖曳感應熱區：滑鼠懸浮或按住任意線條區段皆可直接拖曳拉動折線 */}
+      {isConnectable && (
+        <path
+          d={path}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={24}
+          className="cursor-grab active:cursor-grabbing hover:stroke-blue-400/20 transition-colors pointer-events-stroke"
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={onHandlePointerUp}
+          onPointerCancel={onHandlePointerUp}
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            armEdgeDragGuard()
+            edgeData?.onWaypointReset?.(id)
+          }}
+        />
+      )}
+
       {isConnectable && (
         <EdgeLabelRenderer>
-          {/* Ref: CR-140 轉角把手：拖曳移動、連點兩下復位 */}
+          {/* 轉角控制把手：高對比顯色、懸浮放大、按住拖曳、雙擊還原 */}
           <div
-            className="nodrag nopan absolute h-2.5 w-2.5 cursor-move rounded-full border border-white/80 bg-slate-400/70 hover:bg-blue-500 dark:border-slate-900/80 dark:bg-slate-500/70 after:absolute after:-inset-[9px] after:rounded-full after:content-['']"
-            style={{ transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`, pointerEvents: 'all' }}
+            className={cx(
+              "nodrag nopan absolute h-3.5 w-3.5 rounded-full border-2 border-white/95 dark:border-slate-800 shadow-md z-[1000] select-none cursor-grab active:cursor-grabbing",
+              "after:absolute after:content-[''] after:-inset-[14px] after:rounded-full after:cursor-grab active:after:cursor-grabbing",
+              "hover:scale-135 hover:!bg-blue-500 hover:ring-4 hover:ring-blue-400/40 hover:shadow-md hover:shadow-blue-500/50 hover:z-[1001]",
+              draggingRef.current && "scale-135 !bg-blue-500 ring-4 ring-blue-400/40 shadow-md shadow-blue-500/50 z-[1001]"
+            )}
+            style={{
+              backgroundColor: style?.stroke ?? '#6366f1',
+              transform: `translate(-50%, -50%) translate(${px}px, ${py}px)`,
+              pointerEvents: 'all'
+            }}
             title={T.flow.systemFlow.waypointHint}
             onPointerDown={onHandlePointerDown}
             onPointerMove={onHandlePointerMove}
