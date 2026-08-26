@@ -932,6 +932,26 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const isAllowedToEdit = permData ? permData.isAllowed : true
   const [isPermModalOpen, setIsPermModalOpen] = useState(false)
 
+  // 全螢幕檢視狀態控制
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.().catch(() => {})
+    } else {
+      document.exitFullscreen?.().catch(() => {})
+    }
+  }, [])
+
   // 實質編輯狀態：依據後端授權白名單控制
   const effectiveEditable = isAllowedToEdit
 
@@ -1846,7 +1866,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   }, [nodes, edges, effectiveEditable, handleSaveEdgeText, handleWaypointChange, handleWaypointReset, beginInteraction, endInteraction])
 
   return (
-    <div className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div ref={containerRef} className="relative h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* 頂部獨立工具列 */}
       <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-4 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-3">
@@ -1912,6 +1932,32 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               </button>
             </>
           )}
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          {/* 全螢幕切換按鈕 */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? '結束全螢幕 (Esc)' : '全螢幕檢視'}
+            className="flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+          >
+            {isFullscreen ? (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                </svg>
+                <span>縮小</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+                <span>全螢幕</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -2140,6 +2186,21 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               className="!text-amber-500 font-bold"
             >
               ℹ️
+            </ControlButton>
+            <ControlButton
+              onClick={toggleFullscreen}
+              title={isFullscreen ? '結束全螢幕 (Esc)' : '全螢幕檢視'}
+              aria-label={isFullscreen ? '縮小' : '全螢幕'}
+            >
+              {isFullscreen ? (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+              )}
             </ControlButton>
           </Controls>
         </ReactFlow>
