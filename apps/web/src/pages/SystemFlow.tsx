@@ -115,7 +115,7 @@ function consumeEdgeDragGuard(): boolean {
 }
 
 
-// 確保區域標示框墊底、父收納盒優先於子卡片、文字註記疊頂 (React Flow 要求父節點排在子節點前面，否則子節點座標對不上且會鎖死拖曳)
+// 確保區域標示框墊底、模組泳道盒置底、父節點優先於子卡片、文字註記疊頂
 function orderParentNodesFirst(nodes: Node[]): Node[] {
   const parentMap = new Map(nodes.map((n) => [n.id, n.parentId]))
   const getDepth = (id: string) => {
@@ -132,10 +132,17 @@ function orderParentNodesFirst(nodes: Node[]): Node[] {
     const isFrameB = ((b.data as FlowNodeData)?.mode || b.type) === 'frame'
     if (isFrameA && !isFrameB) return -1
     if (!isFrameA && isFrameB) return 1
+
+    const isBoxA = ((a.data as FlowNodeData)?.mode || a.type) === 'box'
+    const isBoxB = ((b.data as FlowNodeData)?.mode || b.type) === 'box'
+    if (isBoxA && !isBoxB) return -1
+    if (!isBoxA && isBoxB) return 1
+
     const isTextA = a.type === 'text'
     const isTextB = b.type === 'text'
     if (isTextA && !isTextB) return 1
     if (!isTextA && isTextB) return -1
+
     return getDepth(a.id) - getDepth(b.id)
   })
 }
@@ -1401,6 +1408,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           const kept = changes.filter((c) => !(c.type === 'select' && frameIds.has(c.id)))
           return applyNodeChanges(kept, next)
         }
+      }
+      if (ended) {
+        return orderParentNodesFirst(next)
       }
       return next
     })

@@ -203,9 +203,9 @@ body {
   cursor: move !important;
 }
 
-/* ── React Flow 關聯線層級與點擊刪除響應 ── */
+/* ── React Flow 關聯線層級與點擊刪除響應 (置於框體之上) ── */
 .react-flow__edges {
-  z-index: 10 !important;
+  z-index: 15 !important;
   pointer-events: none !important;
 }
 
@@ -214,6 +214,11 @@ body {
 .react-flow__edge-interaction {
   pointer-events: stroke !important;
   cursor: pointer !important;
+}
+
+.react-flow__edge-labels,
+.react-flow__edgelabel-renderer {
+  z-index: 25 !important;
 }
 
 /* ── React Flow 接點 (Handles) 強制十字游標與互動響應 ── */
@@ -229,7 +234,7 @@ body {
   cursor: crosshair !important;
 }
 
-/* ── React Flow 區域標示框（Frame）：移動、選取或靜止時始終鎖定在最底層 ── */
+/* ── React Flow 區域標示框（Frame）：移動、選取或靜止時始終鎖定在最底層 (-2) ── */
 .react-flow__node-frame,
 .react-flow__node-annotationFrame,
 .react-flow__node[data-type="frame"],
@@ -237,6 +242,42 @@ body {
 .react-flow__node-frame.dragging,
 .react-flow__node-annotationFrame.dragging,
 .react-flow__node[data-type="frame"].dragging,
-.react-flow__node[data-type="annotationFrame"].dragging {
-  z-index: -1 !important;
+.react-flow__node[data-type="annotationFrame"].dragging,
+.react-flow__node-frame.selected,
+.react-flow__node-annotationFrame.selected,
+.react-flow__node[data-type="frame"].selected,
+.react-flow__node[data-type="annotationFrame"].selected {
+  z-index: -2 !important;
 }
+
+/* ── React Flow 模組收納盒 / 泳道框（Box）：移動、選取或靜止時始終保持在底層 (0)，永不遮蔽連線與卡片 ── */
+.react-flow__node-box,
+.react-flow__node-container,
+.react-flow__node[data-type="box"],
+.react-flow__node[data-type="container"],
+.react-flow__node-box.dragging,
+.react-flow__node-container.dragging,
+.react-flow__node[data-type="box"].dragging,
+.react-flow__node[data-type="container"].dragging,
+.react-flow__node-box.selected,
+.react-flow__node-container.selected,
+.react-flow__node[data-type="box"].selected,
+.react-flow__node[data-type="container"].selected {
+  z-index: 0 !important;
+}
+
+/* ── React Flow 流程卡片與任務節點：靜止時 (5)，拖曳時 (20) ── */
+.react-flow__node-step,
+.react-flow__node-task,
+.react-flow__node[data-type="step"],
+.react-flow__node[data-type="task"] {
+  z-index: 5 !important;
+}
+
+.react-flow__node-step.dragging,
+.react-flow__node-task.dragging,
+.react-flow__node[data-type="step"].dragging,
+.react-flow__node[data-type="task"].dragging {
+  z-index: 20 !important;
+}
+
