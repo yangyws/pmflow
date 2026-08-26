@@ -62,6 +62,7 @@ export default async function skillRoutes(app: FastifyInstance) {
         '4. When creating dependency links (POST /api/v1/tasks/:sourceTaskId/links), use "FS" for sequential dependencies ("A finishes before B starts"), "SS" for parallel starts, "FF" for parallel finishes, or "RELATES" for semantic links.',
         '5. To create subtasks, specify the "parentId" of the parent task.',
         '6. Always check if a task with the same title already exists in the project before creating it to ensure idempotency.',
+        '7. To generate or update Architecture & System Flow Diagrams, use PUT /api/v1/projects/:projectId/canvas-docs/system-flow with an array of page objects `{ id: "page-1", title: "...", nodes: [...], edges: [...] }`. Nodes support types "step", "box", "frame", "text" with roles, icons, and four-way handles (`left/right/top/bottom-in/out`).',
       ],
       projects: enrichedProjects,
       endpoints: {
@@ -129,6 +130,9 @@ export default async function skillRoutes(app: FastifyInstance) {
           method: 'POST',
           path: '/api/v1/tasks/:taskId/restore',
           description: '還原指定的已軟刪除任務及其所有子孫任務',
+          body: {
+            mode: '"all" (連帶還原所有子孫) | "self_only" (僅還原自身) | "detach_parent" (還原並脫離父收納盒成為頂層卡片) (選填，預設 all)',
+          },
         },
         permanent_delete_task: {
           method: 'DELETE',
@@ -168,7 +172,7 @@ export default async function skillRoutes(app: FastifyInstance) {
           path: '/api/v1/projects/:projectId/canvas-docs/:canvasKey',
           description: '儲存任務關聯圖或系統流程圖的節點與排版資料 (需具備畫布編輯權限)',
           body: {
-            data: 'any (必填，包含 nodes, edges 或 pages 陣列結構之 JSON 物件)',
+            data: 'any (必填，system-flow 為包含 pages 陣列之物件或 pages 陣列；task-graph 為包含 annotations, waypoints, edgeTexts, edgeColors 之物件)',
           },
         },
         get_canvas_permissions: {

@@ -122,6 +122,60 @@ curl -s -X POST "$BASE/inquiries/$IID/mark-replied" "${auth[@]}" "${json[@]}" -d
 **只要還有詢問沒回，那張任務就不能改成「做完了」那一類的狀態**（會被擋下來）。
 「沒回」指的是還在等與逾期兩種，已回覆的不算。
 
+### 建立與更新系統架構流程圖 (System Flow Canvas)
+
+`PUT /projects/{專案 id}/canvas-docs/system-flow`（需要該專案畫布編輯權限）
+
+```bash
+# 儲存多頁系統架構圖 (Page Tabs)
+curl -s -X PUT "$BASE/projects/$PID/canvas-docs/system-flow" "${auth[@]}" "${json[@]}" -d '{
+  "data": [
+    {
+      "id": "page-1",
+      "title": "01. 端對端全流程架構",
+      "nodes": [
+        {
+          "id": "frame-left",
+          "type": "frame",
+          "position": { "x": 50, "y": 50 },
+          "style": { "width": 3600, "height": 1400 },
+          "data": { "label": "【前端應用區域】", "color": "#3b82f6", "mode": "frame" }
+        },
+        {
+          "id": "box-client",
+          "type": "box",
+          "position": { "x": 80, "y": 120 },
+          "style": { "width": 3500, "height": 360 },
+          "data": { "label": "【業務端 (meet 前端)】", "desc": "業務員操作介面", "color": "#6366f1", "icon": "🧑‍💼", "mode": "box" }
+        },
+        {
+          "id": "step-1",
+          "type": "step",
+          "position": { "x": 120, "y": 240 },
+          "data": { "label": "【階段 1】開啟視訊", "desc": "載入會議室", "role": "🧑‍💼 業務員", "color": "#6366f1", "icon": "🎥", "mode": "step" }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-1",
+          "source": "step-1",
+          "target": "step-2",
+          "sourceHandle": "right-out",
+          "targetHandle": "left-in",
+          "data": { "label": "連線說明" }
+        }
+      ]
+    }
+  ]
+}'
+```
+
+> **節點層級與接點規則**：
+> - `frame`：區域標示框（置底 `z-index: -2`）。
+> - `box`：模組收納盒／泳道框（置底 `z-index: 0`）。
+> - `step`：流程卡片（`z-index: 5`）。
+> - 四向接點 Handle ID 一律為 `left-in` / `left-out`、`right-in` / `right-out`、`top-in` / `top-out`、`bottom-in` / `bottom-out`。
+
 ## 四、寫成腳本的規矩（專案硬規定）
 
 **會再跑第二次的東西一律寫成可以重複執行的腳本**，不要留一串「照著貼」的指令。

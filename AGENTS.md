@@ -38,9 +38,16 @@ This file documents the long-term memory, project guidelines, user preferences, 
 2. **Delete Line Modal Text**:
    - The deletion modal prompt MUST state: `是否刪除 [上游卡片Ref] 與 [下游卡片Ref] 的關聯？` (e.g. `是否刪除 MRG-1 與 MRG-2 的關聯？`).
 
-### D. ReactFlow Essential CSS & Canvas Rules (畫布梯形散落與鎖死防範)
+### D. ReactFlow Essential CSS & Canvas Rules (畫布梯形散落、層級遮蔽與鎖死防範)
 1. **Mandatory CSS Import**: All ReactFlow views (`Graph`, `SimpleGraph`, `SystemFlow`, etc.) and `main.tsx` MUST import `@xyflow/react/dist/style.css`. Without it, nodes lose `position: absolute` (forming a diagonal staircase/ladder breakdown) and the canvas pane locks pointer events (cannot pan or drag).
-2. **Strict Parent-First Depth Ordering**: `orderParentNodesFirst` MUST sort nodes by ancestor depth before passing to ReactFlow, ensuring parent boxes are created before child cards.
+2. **Strict Layering & z-index Hierarchy (CR-207)**:
+   - **Frame (區域標示框)**: `z-index: -2 !important` (底層墊底)。
+   - **Box (模組收納盒／泳道框)**: `z-index: 0 !important` (拖曳或選取中始終置底，永不遮蔽連線或卡片)。
+   - **Step / Task (卡片節點)**: `z-index: 5 !important` (拖曳時 `20 !important`)。
+   - **Edges (關聯線)**: `z-index: 15 !important` (覆蓋於框體上方)。
+   - **Labels / Handles (線段文字、折點把手與接點)**: `z-index: 25 ~ 50 !important`。
+3. **Strict Parent-First Depth Ordering**: `orderParentNodesFirst` MUST sort nodes by ancestor depth before passing to ReactFlow, ensuring parent boxes are created before child cards.
+4. **Fullscreen vs FitView Icon Distinction (CR-207)**: Fullscreen MUST use standard diagonal expand/shrink arrows (`⤢` / `⤡`), distinctly separate from FitAll framing corner brackets (`[ ▢ ]`).
 
 ---
 
@@ -54,5 +61,5 @@ The menu sidebar follows a strict 3-tier group sorting hierarchy:
 ---
 
 ## 4. Change History & Code Index Pointer (AI 啟動必載入導引)
-- **Change Log & Code Index**: All feature modification logs, bug fixes, and exact file/line number indexes are documented in [CHANGELOG_INDEX.md](file:///D:/NewProject/pmflow-git/CHANGELOG_INDEX.md).
-- **AI Startup Requirement**: On every startup or when asked to locate/modify code, AI MUST consult [CHANGELOG_INDEX.md](file:///D:/NewProject/pmflow-git/CHANGELOG_INDEX.md) to quickly pinpoint affected modules and review historical implementation rules before making edits.
+- **Change Log & Code Index**: All feature modification logs, bug fixes, and exact file/line number indexes are documented in [CHANGELOG_INDEX.md](file:///D:/github/pmflow/CHANGELOG_INDEX.md).
+- **AI Startup Requirement**: On every startup or when asked to locate/modify code, AI MUST consult [CHANGELOG_INDEX.md](file:///D:/github/pmflow/CHANGELOG_INDEX.md) to quickly pinpoint affected modules and review historical implementation rules before making edits.
