@@ -759,7 +759,7 @@ export default async function taskRoutes(app: FastifyInstance) {
   // ── 還原已刪除事件 ────────────────────────────────────
   app.post<{ Params: { id: string } }>('/tasks/:id/restore', async (req, reply) => {
     const user = await authenticate(req)
-    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR', true)
     await assertCanDeleteTask(req.params.id, user.id, role)
 
     // 連帶還原該任務與其所有子孫任務
@@ -842,7 +842,7 @@ export default async function taskRoutes(app: FastifyInstance) {
   // ── 永久刪除事件 ────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/tasks/:id/permanent', async (req, reply) => {
     const user = await authenticate(req)
-    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR', true)
     await assertCanDeleteTask(req.params.id, user.id, role)
 
     // 連帶永久刪除該任務與其所有子孫任務

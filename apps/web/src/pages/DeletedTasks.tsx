@@ -21,6 +21,8 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deletedTasks', projectId] })
       queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
     },
   })
 
@@ -28,6 +30,9 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     mutationFn: (taskId: string) => Api.permanentDeleteTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deletedTasks', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
     },
   })
 

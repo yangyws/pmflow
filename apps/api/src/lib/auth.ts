@@ -380,10 +380,10 @@ export async function requireWorkspaceOwner(
  * 不能因為前端拿得到 id 就放行 —— 這正是 Vikunja 2026 那個關聯 IDOR 的成因。
  */
 export async function requireTaskAccess(
-  userId: string, taskId: string, min: ProjectRole
+  userId: string, taskId: string, min: ProjectRole, allowDeleted = false
 ): Promise<{ role: ProjectRole; workspaceId: string; projectId: string }> {
   const rows = await sql<{ project_id: string }[]>`
-    SELECT project_id FROM task WHERE id = ${taskId} AND deleted_at IS NULL`
+    SELECT project_id FROM task WHERE id = ${taskId} ${allowDeleted ? sql`` : sql`AND deleted_at IS NULL`}`
   if (!rows.length) throw forbidden('找不到任務，或你沒有權限')
   const projectId = rows[0].project_id
   const r = await requireProjectRole(userId, projectId, min)
