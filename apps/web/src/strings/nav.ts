@@ -70,11 +70,11 @@ export const nav = {
 
   sidebar: {
     switchProject: '切換專案',
-    epics: '大項目',
-    epicsHint: '點大項目看總覽，點小項目在右邊開詳情',
+    epics: '專案任務',
+    epicsHint: '點擊項目看總覽，點小項目在右邊開詳情',
     allTasks: '全部任務',
-    emptyTitle: '還沒有大項目。',
-    emptyHint: '大項目就是把一件大事分成幾塊，例如「機房搬遷」底下掛盤點、採購、搬運。',
+    emptyTitle: '目前專案尚無任務。',
+    emptyHint: '點擊右上角「＋」建立第一張任務，可於任務內掛載子任務或切換為收納盒進行分工組織。',
     /** 大項目樹上的展開／收合箭頭 */
     expandEpic: '展開',
     collapseEpic: '收合',
@@ -106,8 +106,8 @@ export const nav = {
     overdueUnder: (n: number) => `這一支有 ${n} 件對外詢問逾期未回`,
     taskTitle: (ref: string, title: string) => `${ref}　${title}`,
     loose: (n: number) => `另有 ${n} 個任務的上層已被刪除，在「全部任務」裡找得到`,
-    epicNamePlaceholder: '大項目名稱',
-    addEpic: '新增大項目',
+    epicNamePlaceholder: '任務名稱',
+    addEpic: '新增任務',
     /**
      * 每一列滑鼠移過去才冒出來的「＋」。
      *
