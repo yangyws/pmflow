@@ -22,7 +22,23 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Sub-Task Type Breakdown & Preview in Delete & Restore Modals (CR-206)
+### Latest Changes: System Flow & Graph View Fullscreen, Line Dragging & Layering Enhancements (CR-207)
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **全螢幕切換支援 (`CR-207`)**：頂部工具列與左下角 Controls 均配置全螢幕切換按鈕，採用標準對角擴展/縮小箭頭圖示，並支援鍵盤 Esc 同步。
+    2. **全線段拖曳熱區與高亮把手 (`CR-207`)**：新增 24px 寬幅透明感應軌道，滑鼠按住線條任意處皆可直接拉動產生折點（Waypoint）；加大同色發光轉角把手與雙擊重設。
+    3. **節點渲染模式與角色徽章升級 (`CR-207`)**：`FlowStepNode` 與 `FlowBoxNode` 支援 `label`/`title`、`desc`/`subtitle` 相容 fallback、角色膠囊標籤（Role Badge）與多行折行排版。
+    4. **框體置底排序維護 (`CR-207`)**：`orderParentNodesFirst` 與 `onNodesChange` 拖曳結束時自動維護 Frame ➔ Box ➔ Step 節點陣列順序。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **全螢幕切換與圖示區隔 (`CR-207`)**：頂部工具列與 Controls 同步配置全螢幕切換按鈕，圖示與「顯示全部（FitAll）」做出明確視覺區隔。
+  - [`index.css`](file:///D:/github/pmflow/apps/web/src/index.css):
+    1. **嚴格層級鎖定 (z-index) (`CR-207`)**：Frame (`-2`) ➔ Box/Container (`0`) ➔ Step/Task (`5` 拖曳時 `20`) ➔ Edges (`15`) ➔ Labels/Handles (`25`~`50`)，徹底解決移動框體遮蔽連線問題。
+  - [`.gitignore`](file:///D:/github/pmflow/.gitignore):
+    1. **過濾大檔與文件 (`CR-207`)**：納入 `*.docx`、`*.doc`、`*.pdf` 與暫存解析檔，保護專案版本庫。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-207` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-207`。
+
+### Previous Changes: Sub-Task Type Breakdown & Preview in Delete & Restore Modals (CR-206)
 - **變更檔案**:
   - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **子項目分類統計與列表預覽 (`CR-206`)**：刪除收納盒時清楚標註「底下包含 N 個子項目（X 個任務單、Y 個問題單）」，並條列徽章、編號與標題。
