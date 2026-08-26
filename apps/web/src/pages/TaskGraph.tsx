@@ -2623,10 +2623,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
       const existingNode = prevNodesMap.get(t.id)
       const existingMode = (existingNode?.data as SimpleGraphNodeData)?.mode
-      const isDefaultBox = parentIdSet.has(t.id)
-      const mode = currentModes[t.id] ?? (existingMode === 'box' ? 'box' : isDefaultBox ? 'box' : 'card')
-      const isBox = mode === 'box'
       const kids = childrenMap.get(t.id) || []
+      const hasKids = kids.length > 0
+      const isDefaultBox = parentIdSet.has(t.id) || hasKids
+      // 只要該任務底下有子卡片，一律自動恢復為收納盒 (box) 模式呈現，完整組織盒內子卡片；空盒或單卡才套用記憶模式
+      const mode = hasKids ? 'box' : (currentModes[t.id] ?? (existingMode === 'box' ? 'box' : isDefaultBox ? 'box' : 'card'))
+      const isBox = mode === 'box'
 
       if (isBox) {
         const rawBoxPos = draggedMap[t.id]
