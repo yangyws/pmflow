@@ -482,26 +482,16 @@ export function TaskDrawer({
                   <Button className="text-xs py-1.5 px-2.5" onClick={() => setDraft({})}>{T.task.drawer.discard}</Button>
                 )}
 
-                {/* 刪除兩段式：按一次問一句，再按一次才真的刪。
-                    只有建立者、專案建立者或管理者以上有權限刪除 */}
-                {canDelete && (confirmDelete ? (
-                  <>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {(data.children?.length ?? 0) > 0
-                        ? T.task.drawer.deleteHasChildren(data.children.length)
-                        : T.task.drawer.deleteConfirm}
-                    </span>
-                    <Button variant="danger" className="text-xs py-1.5 px-2.5" disabled={remove.isPending}
-                            onClick={() => remove.mutate()}>
-                      {T.task.drawer.deleteYes}
-                    </Button>
-                    <Button className="text-xs py-1.5 px-2.5" onClick={() => setConfirmDelete(false)}>{T.common.cancel}</Button>
-                  </>
-                ) : (
-                  <Button variant="danger" className="text-xs py-1.5 px-2.5" onClick={() => setConfirmDelete(true)}>
+                {/* 刪除按鈕：點擊開啟刪除確認提示彈窗 */}
+                {canDelete && (
+                  <Button
+                    variant="danger"
+                    className="text-xs py-1.5 px-2.5"
+                    onClick={() => setConfirmDelete(true)}
+                  >
                     {T.task.drawer.delete}
                   </Button>
-                ))}
+                )}
 
                 <Button variant="ghost" onClick={onClose} className="text-base sm:text-lg leading-none p-1 sm:p-1.5">✕</Button>
               </div>
@@ -1056,6 +1046,54 @@ export function TaskDrawer({
                 </ul>
               </div>
             </div>
+
+            {/* 刪除任務確認提示框 (Ref: CR-204) */}
+            {confirmDelete && (
+              <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+                <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                    <span className="text-xl">🗑️</span>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                        刪除任務確認
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {data?.ref ? `【${data.ref}】` : ''} {data?.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  {(data?.children?.length ?? 0) > 0 ? (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                      ⚠️ 此任務為收納盒，底下包含 <strong className="font-bold underline">{data!.children!.length}</strong> 個子任務，刪除時將<strong>一併連帶移至「已刪除事件」</strong>。
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
+                      確定要將此任務移至「已刪除事件」嗎？被刪除的任務會保存在「已刪除事件」中，您可以隨時進行還原。
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={remove.isPending}
+                      className="text-xs"
+                    >
+                      {T.common.cancel}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => remove.mutate()}
+                      disabled={remove.isPending}
+                      className="text-xs bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      {remove.isPending ? <Spinner /> : '確定刪除'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
     </TaskDrawerShell>

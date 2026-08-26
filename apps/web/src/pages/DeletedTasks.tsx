@@ -29,6 +29,7 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
       }
     | null
   >(null)
+  const [permanentDeletePrompt, setPermanentDeletePrompt] = useState<any | null>(null)
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -296,7 +297,7 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
                           </Button>
                           <Button
                             variant="ghost"
-                            onClick={() => handlePermanentDelete(t.id, t.title)}
+                            onClick={() => setPermanentDeletePrompt(t)}
                             disabled={permanentDeleteMutation.isPending}
                             className="text-xs py-1 px-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                             title="永久刪除"
@@ -501,6 +502,51 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 永久刪除確認提示框 (Ref: CR-204) */}
+      {permanentDeletePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-2xl dark:border-red-900/50 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-red-100 dark:border-red-950 mb-4">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <h3 className="text-base font-bold text-red-600 dark:text-red-400">
+                  永久刪除確認
+                </h3>
+                <p className="text-xs text-slate-400">
+                  事件：{permanentDeletePrompt.ref || ''} {permanentDeletePrompt.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 p-3 mb-5 text-xs text-red-800 dark:text-red-200 leading-relaxed">
+              ⚠️ <strong>警告：此操作將徹底從資料庫中清除此事件及其全部關聯與活動紀錄，無法復原！</strong>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setPermanentDeletePrompt(null)}
+                disabled={permanentDeleteMutation.isPending}
+                className="text-xs"
+              >
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  permanentDeleteMutation.mutate(permanentDeletePrompt.id)
+                  setPermanentDeletePrompt(null)
+                }}
+                disabled={permanentDeleteMutation.isPending}
+                className="text-xs bg-red-600 hover:bg-red-700 text-white"
+              >
+                {permanentDeleteMutation.isPending ? <Spinner /> : '確定永久刪除'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

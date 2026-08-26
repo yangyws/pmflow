@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Storage Box & Sub-Task Restore Interactive Modals & Isolation (CR-203)
+### Latest Changes: Dedicated Delete & Permanent Delete Modals Across UI (CR-204)
+- **變更檔案**:
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **抽屜刪除提示彈窗 (`CR-204`)**：移除標題列行內確認，改為獨立 Modal 提示窗，清晰展示包含子任務連帶移至已刪除清單的警告與說明。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **永久刪除提示彈窗 (`CR-204`)**：移除 `window.confirm`，改用紅色獨立 Modal 提示窗確認不可復原之徹底刪除。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-204` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-204`。
+
+### Previous Changes: Storage Box & Sub-Task Restore Interactive Modals & Isolation (CR-203)
 - **變更檔案**:
   - [`tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
     1. **還原模式擴充 (`CR-203`)**：`POST /tasks/:id/restore` 支援 `mode: 'all' | 'self_only' | 'detach_parent'`，可選擇連帶還原、僅還原收納盒自身，或還原子卡片並自動清除 `parent_id` 成為頂層卡片。
