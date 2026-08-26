@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Deleted Tasks UI Enhancement & Deprecated Epic Strings Cleanup (CR-200)
+### Latest Changes: Relation Graph Handles Color Alignment (CR-201)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **接點配色還原標準規則 (`CR-201`)**：左右接點（`left/right-in/out`）設為紅色（`#ef4444`，排程相依），上下接點（`top/bottom-in/out`）設為紫色（`#8b5cf6`，階層關係），與出發連線樣式（紅實線/紫虛線）100% 保持一致。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-201` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-201`。
+
+### Previous Changes: Deleted Tasks UI Enhancement & Deprecated Epic Strings Cleanup (CR-200)
 - **變更檔案**:
   - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
     1. **種類徽章與問題單指示 (`CR-200`)**：新增「種類」欄位並渲染 `<TypeBadge />`，標題旁附帶 `<ProblemBadge />`。

@@ -577,14 +577,14 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         </div>
       )}
 
-      {/* 接點 (Handles) - 僅在可連線狀態時渲染，四向加大且顏色分明 (左藍、右紅、上綠、下紫)，支援懸停動態放大 */}
+      {/* 接點 (Handles) - 僅在可連線狀態時渲染，四向加大且顏色分明 (左右紅色排程相依、上下紫色階層關係)，支援懸停動態放大 */}
       {(isConnectable ?? true) && (
         <>
           <Handle
             type="target"
             position={Position.Left}
             id="left-in"
-            style={{ top: '50%', backgroundColor: '#3b82f6' }}
+            style={{ top: '50%', backgroundColor: '#ef4444' }}
             className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
             isConnectable={isConnectable ?? true}
             isConnectableStart={true}
@@ -594,7 +594,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             type="source"
             position={Position.Left}
             id="left-out"
-            style={{ top: '50%', backgroundColor: '#3b82f6' }}
+            style={{ top: '50%', backgroundColor: '#ef4444' }}
             className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
             isConnectable={isConnectable ?? true}
             isConnectableStart={true}
@@ -624,7 +624,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             type="target"
             position={Position.Top}
             id="top-in"
-            style={{ left: '50%', backgroundColor: '#10b981' }}
+            style={{ left: '50%', backgroundColor: '#8b5cf6' }}
             className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
             isConnectable={isConnectable ?? true}
             isConnectableStart={true}
@@ -634,7 +634,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             type="source"
             position={Position.Top}
             id="top-out"
-            style={{ left: '50%', backgroundColor: '#10b981' }}
+            style={{ left: '50%', backgroundColor: '#8b5cf6' }}
             className="!w-5 !h-5 !border-2 !border-white dark:!border-slate-900 !z-50 !cursor-crosshair cursor-crosshair nodrag shadow-sm transition-transform hover:scale-125 after:absolute after:content-[''] after:-inset-3 after:rounded-full after:cursor-crosshair"
             isConnectable={isConnectable ?? true}
             isConnectableStart={true}
