@@ -22,7 +22,53 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Canvas Whitelist Authorization, Frame Stacking Layer Fix & Page Lifecycle Refactor (CR-194)
+### Latest Changes: Instant DeletedTasks Cache Invalidation & Zero-Latency Switch (CR-199)
+- **變更檔案**:
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **刪除操作同步失效快取 (`CR-199`)**：在 `invalidate()` 中加入 `qc.invalidateQueries({ queryKey: ['deletedTasks'] })`，確保刪除/保存/關聯變更時即時刷新已刪除清單。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **零延遲即時呈現 (`CR-199`)**：將 `useQuery` 設定 `staleTime: 0` 與 `refetchOnMount: 'always'`，切換進入已刪除事件頁籤時 0ms 即時拉取最新項目。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-199` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-199`。
+
+### Previous Changes: Restore & Permanent Delete Endpoint Permission Unlock (CR-198)
+- **變更檔案**:
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts):
+    1. **權限檢驗支援已刪除任務 (`CR-198`)**：在 `requireTaskAccess` 中擴充 `allowDeleted = false` 參數，解除還原與永久刪除被 403 阻擋問題。
+  - [`routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **還原與永久刪除端點調用升級 (`CR-198`)**：在 `POST /tasks/:id/restore` 與 `DELETE /tasks/:id/permanent` 中傳入 `allowDeleted = true`。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **多重快取同步刷新 (`CR-198`)**：還原或永久刪除任務時，同步失效 `deletedTasks`、`tasks`、`graph` 與 `schedule` 查詢。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-198` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-198`。
+
+### Previous Changes: Task Hierarchy Cascading Soft-Delete, Restore & Permanent Delete (CR-197)
+- **變更檔案**:
+  - [`routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **閉包表連帶軟刪除與還原 (`CR-197`)**：軟刪除、還原與永久刪除父任務時，透過 `task_closure` 遞迴連帶處理所有子孫任務，徹底杜絕孤兒任務殘留於清單中。
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **側欄孤兒任務容錯展示 (`CR-197`)**：`rawEpics` 過濾規則放寬為 `!t.parentId || !ids.has(t.parentId)`，歷史孤兒任務一律提升至頂層展示，選單與清單視圖 100% 同步。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-197` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-197`。
+
+### Previous Changes: Eliminate Transition Lag on Dependency Line Dragging (CR-196)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **移除幾何動畫過渡 (`CR-196`)**：移除 `OrthogonalEdge` 的 `<path>` 及 Waypoint `<div>` 之 `transition-all duration-150`，消除拖曳節點時 SVG `d` 屬性補間動畫延遲，實現 0ms 即時吸附跟隨。
+    2. **節點樣式過渡微調 (`CR-196`)**：節點外層 div 改用 `transition-colors duration-150`。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-196` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-196`。
+
+### Previous Changes: App Version & Build Time Multi-Entry Presentation (CR-195)
+- **變更檔案**:
+  - [`version.ts`](file:///D:/github/pmflow/apps/web/src/version.ts) & [`vite.config.ts`](file:///D:/github/pmflow/apps/web/vite.config.ts):
+    1. **版本號與編譯時間自動注入 (`CR-195`)**：透過 Vite `define` 注入 `__APP_VERSION__` 與 `__BUILD_TIME__`，定義 `FULL_VERSION_LABEL`。
+  - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx), [`UserMenu.tsx`](file:///D:/github/pmflow/apps/web/src/components/UserMenu.tsx), [`ProjectPicker.tsx`](file:///D:/github/pmflow/apps/web/src/pages/ProjectPicker.tsx):
+    1. **全站多端展示 (`CR-195`)**：於登入頁底部、專案選擇頁底部與頭像下拉選單底部展示版本號與建置時間。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-195` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-195`。
+
+### Previous Changes: Canvas Whitelist Authorization, Frame Stacking Layer Fix & Page Lifecycle Refactor (CR-194)
 - **變更檔案**:
   - [`canvas_permissions.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0028_canvas_permissions.sql) & [`routes/canvas.ts`](file:///D:/github/pmflow/apps/api/src/routes/canvas.ts):
     1. **畫布編輯權限白名單體系 (`CR-194`)**：建立 `canvas_permission` 資料表，實作 `GET/PUT /api/v1/projects/:projectId/canvas-permissions/:canvasKey` 端點，專案建立者、Owner、Manager 或系統管理員可配置各畫布（`task-graph` 與 `system-flow`）之成員白名單。

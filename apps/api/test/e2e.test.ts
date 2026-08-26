@@ -220,16 +220,60 @@ async function run() {
     }
   }
 
-  // 11. 刪除測試任務清理
+  // 11. 連帶軟刪除、已刪除清單、還原與永久刪除驗證 (Ref: CR-197, CR-198, CR-199)
   if (createdTaskId) {
+    // 建立一個掛在 createdTaskId 底下的子任務以驗證連帶刪除/還原
+    const resChild = await request(`/projects/${projectId}/tasks`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ title: `${testTaskTitle} 階層驗證子任務`, type: 'TASK', parentId: createdTaskId }),
+    })
+    const childId = resChild.data?.id
+
+    // 軟刪除父任務
     const resDelete = await request(`/tasks/${createdTaskId}`, {
       method: 'DELETE',
       headers: authHeaders,
     })
     if (resDelete.status === 200 || resDelete.status === 204) {
-      ok('刪除測試任務清理完成')
+      ok('軟刪除父任務成功 (204 No Content)')
     } else {
-      fail('刪除測試任務', `HTTP ${resDelete.status}: ${JSON.stringify(resDelete.data)}`)
+      fail('軟刪除父任務', `HTTP ${resDelete.status}: ${JSON.stringify(resDelete.data)}`)
+    }
+
+    // 驗證已刪除任務清單中包含父任務與子任務 (CR-197)
+    const resDeletedList = await request(`/projects/${projectId}/deleted-tasks`, { headers: authHeaders })
+    if (resDeletedList.status === 200 && Array.isArray(resDeletedList.data?.tasks)) {
+      const deletedIds = new Set(resDeletedList.data.tasks.map((t: any) => t.id))
+      if (deletedIds.has(createdTaskId) && (!childId || deletedIds.has(childId))) {
+        ok('連帶軟刪除驗證成功：已刪除清單中包含父任務與其所有子任務 (CR-197)')
+      } else {
+        fail('連帶軟刪除驗證', '已刪除清單未包含所有子孫任務')
+      }
+    } else {
+      fail('取得已刪除任務清單', `HTTP ${resDeletedList.status}`)
+    }
+
+    // 還原父任務 (CR-198)
+    const resRestore = await request(`/tasks/${createdTaskId}/restore`, {
+      method: 'POST',
+      headers: authHeaders,
+    })
+    if (resRestore.status === 200) {
+      ok('還原已刪除任務成功 (200 OK - Ref: CR-198)')
+    } else {
+      fail('還原已刪除任務', `HTTP ${resRestore.status}: ${JSON.stringify(resRestore.data)}`)
+    }
+
+    // 永久刪除父任務及其所有子任務
+    const resPermDelete = await request(`/tasks/${createdTaskId}/permanent`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    })
+    if (resPermDelete.status === 200 || resPermDelete.status === 204) {
+      ok('連帶永久刪除父任務與子任務清理完成 (204 No Content)')
+    } else {
+      fail('永久刪除任務', `HTTP ${resPermDelete.status}: ${JSON.stringify(resPermDelete.data)}`)
     }
   }
 

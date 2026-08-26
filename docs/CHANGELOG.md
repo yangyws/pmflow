@@ -8,6 +8,11 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-199` | 2026-08-26 | [已刪除事件即時快取刷新：任務刪除時同步失效 deletedTasks 查詢，staleTime: 0 達成零延遲切換呈現](#cr-199) | `TaskDrawer.tsx`, `DeletedTasks.tsx` | 已驗證 |
+| `CR-198` | 2026-08-26 | [已刪除事件還原與永久刪除：requireTaskAccess 支援 allowDeleted 參數，修復 403 阻擋無法還原問題](#cr-198) | `auth.ts`, `routes/tasks.ts`, `DeletedTasks.tsx` | 已驗證 |
+| `CR-197` | 2026-08-26 | [任務層級連帶軟刪除與還原：透過 task_closure 連帶處理所有子孫任務，側欄孤兒任務容錯提升至頂層](#cr-197) | `routes/tasks.ts`, `EpicSidebar.tsx` | 已驗證 |
+| `CR-196` | 2026-08-25 | [關聯圖拖曳連線延遲消除：移除 OrthogonalEdge SVG 路徑動畫過渡，連線與折點 0ms 即時吸附跟隨](#cr-196) | `TaskGraph.tsx` | 已驗證 |
+| `CR-195` | 2026-08-25 | [版本號與編譯時間自動注入：全站多端展示（登入頁、專案選擇頁、頭像選單）](#cr-195) | `version.ts`, `vite.config.ts`, `Login.tsx`, `UserMenu.tsx`, `ProjectPicker.tsx` | 已驗證 |
 | `CR-194` | 2026-08-25 | [畫布權限白名單體系、標示框最底層鎖定、分頁切換防抖落盤與常駐刪除自動新建](#cr-194) | `SystemFlow.tsx`, `TaskGraph.tsx`, `canvas.ts`, `skills.ts`, `0028_canvas_permissions.sql` | 已驗證 |
 | `CR-191` | 2026-08-21 | [關聯圖收納盒連線顏色還原、純 CSS 零跳動懸停發光與折點中心鎖定穩定化](#cr-191) | `TaskGraph.tsx`, `orthogonalRouting.ts` | 已驗證 |
 | `CR-190` | 2026-08-21 | [關聯圖收納盒內連線專屬辨識色：預設自動賦予翡翠綠/青綠區隔色彩，並完整支援自訂選色](#cr-190) | `TaskGraph.tsx` | 已驗證 |
@@ -249,7 +254,40 @@
 
 ---
 
-## 詳細條目
+### <a id="cr-199"></a>CR-199 (2026-08-26) — 已刪除事件即時快取刷新與零延遲呈現
+
+- **使用者需求**：刪除任務後切換至「已刪除事件」，需要等待一段時間才會有項目出現，詢問是否正常。
+- **排查與修復實作 (`TaskDrawer.tsx`, `DeletedTasks.tsx`)**：
+  1. **即時失效快取**：在 `TaskDrawer.tsx` 執行刪除、保存或關聯變更時，`invalidate()` 同步觸發 `deletedTasks` 查詢失效。
+  2. **零延遲呈現**：在 `DeletedTasks.tsx` 中將查詢設定為 `staleTime: 0` 與 `refetchOnMount: 'always'`，點擊進入已刪除清單時 0ms 即時拉取最新數據。
+
+### <a id="cr-198"></a>CR-198 (2026-08-26) — 已刪除事件還原與永久刪除支援（解除權限阻擋）
+
+- **使用者需求**：在已刪除事件頁面點擊「還原」並確認後，沒有任何反應。
+- **排查與修復實作 (`auth.ts`, `routes/tasks.ts`, `DeletedTasks.tsx`)**：
+  1. **後端權限檢驗解鎖**：`requireTaskAccess` 原先預設過濾 `deleted_at IS NULL`，導致已刪除任務在執行 `POST /tasks/:id/restore` 與 `DELETE /tasks/:id/permanent` 時被判定為不存在（403 阻擋）。擴充 `allowDeleted` 參數以正確放行。
+  2. **多重查詢快取同步**：還原或永久刪除任務時，同步失效 `['deletedTasks']`、`['tasks']`、`['graph']` 與 `['schedule']` 查詢快取。
+
+### <a id="cr-197"></a>CR-197 (2026-08-26) — 任務層級連帶軟刪除與還原（杜絕孤兒任務殘留）
+
+- **使用者需求**：側欄 Menu 刪除大項目/收納盒後，清單（List）全專案總表中仍殘留其子任務。
+- **排查與修復實作 (`routes/tasks.ts`, `EpicSidebar.tsx`)**：
+  1. **後端閉包表遞迴處理**：透過 `task_closure`，刪除、還原或永久刪除父任務時，連帶處理該節點的所有子孫任務（`descendant_id IN (SELECT descendant_id FROM task_closure WHERE ancestor_id = :id)`）。
+  2. **前端側欄容錯防禦**：`EpicSidebar.tsx` 的 `rawEpics` 過濾規則放寬為 `!t.parentId || !ids.has(t.parentId)`，歷史孤兒任務一律提升至頂層展示，徹底杜絕 Menu 與 List 視圖不同步。
+
+### <a id="cr-196"></a>CR-196 (2026-08-25) — 關聯圖拖曳連線延遲消除（SVG Path 動畫過渡修復）
+
+- **使用者需求**：關聯圖拖曳卡片時，關聯線沒有即時跟著卡片移動。
+- **排查與修復實作 (`TaskGraph.tsx`)**：
+  1. **移除幾何動畫過渡**：排查發現 `OrthogonalEdge` 的 `<path>` 及 Waypoint `<div>` 誤用了 `transition-all duration-150`，導致拖曳變更 `d` 屬性時產生 150ms 插值延遲。移除路徑上的過渡動畫，連線與折點即時 0ms 緊密吸附跟隨。
+  2. **節點樣式微調**：節點容器外層由 `transition-all duration-200` 調整為 `transition-colors duration-150`，避免影響 React Flow 座標計算。
+
+### <a id="cr-195"></a>CR-195 (2026-08-25) — 版本號與編譯時間自動注入與全站多端展示
+
+- **使用者需求**：在畫面適合位置加上版本號與建置時間，以便辨識 NAS 部署是否已成功更新。
+- **排查與修復實作 (`version.ts`, `vite.config.ts`, `Login.tsx`, `UserMenu.tsx`, `ProjectPicker.tsx`)**：
+  1. **編譯時變數注入**：在 `vite.config.ts` 透過 `define` 自動注入 `__APP_VERSION__`（讀自 `package.json`）與 `__BUILD_TIME__`（當前編譯時間 ISO 字串）。
+  2. **全站多端顯示**：新增 `version.ts` 提供 `FULL_VERSION_LABEL`，並於「登入頁表單下方」、「專案選擇頁底部」與「右上角頭像選單底部」展示版本號與建置時間。
 
 ### <a id="cr-194"></a>CR-194 (2026-08-25) — 畫布授權白名單體系、標示框最底層層級鎖定、分頁切換防抖落盤與常駐刪除自動新建
 

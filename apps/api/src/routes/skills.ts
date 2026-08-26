@@ -115,6 +115,26 @@ export default async function skillRoutes(app: FastifyInstance) {
             lagDays: 'number (選填，延遲天數，預設 0)',
           },
         },
+        delete_task: {
+          method: 'DELETE',
+          path: '/api/v1/tasks/:taskId',
+          description: '軟刪除指定的任務及其所有子孫任務（可於已刪除事件中還原）',
+        },
+        list_deleted_tasks: {
+          method: 'GET',
+          path: '/api/v1/projects/:projectId/deleted-tasks',
+          description: '取得專案內所有已軟刪除的事件清單',
+        },
+        restore_task: {
+          method: 'POST',
+          path: '/api/v1/tasks/:taskId/restore',
+          description: '還原指定的已軟刪除任務及其所有子孫任務',
+        },
+        permanent_delete_task: {
+          method: 'DELETE',
+          path: '/api/v1/tasks/:taskId/permanent',
+          description: '永久刪除指定的任務及其所有子孫任務（此操作無法復原）',
+        },
         delete_link: {
           method: 'DELETE',
           path: '/api/v1/links/:linkId',
