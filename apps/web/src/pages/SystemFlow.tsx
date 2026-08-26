@@ -46,7 +46,11 @@ export type FlowNodeType = 'step' | 'box' | 'text' | 'frame'
 
 export interface FlowNodeData extends Record<string, unknown> {
   label: string
+  title?: string
   desc?: string
+  subtitle?: string
+  role?: string
+  icon?: string
   color: string
   mode: FlowNodeType
   isSelected?: boolean
@@ -252,6 +256,9 @@ function FourWayHandles({
 // 系統流程圖：模組/收納盒節點
 function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
+  const title = (nodeData.label || nodeData.title || T.flow.systemFlow.boxFallback) as string
+  const desc = (nodeData.desc || nodeData.subtitle) as string | undefined
+  const icon = (nodeData.icon || '📦') as string
   return (
     <div className="relative w-full h-full group">
       <div
@@ -267,18 +274,18 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
           <div className="px-3.5 py-2 border-b border-indigo-200/60 dark:border-indigo-900/60 bg-white/80 dark:bg-slate-900/80 flex items-start justify-between gap-2">
             <div className="flex flex-col gap-0.5 min-w-0 flex-1">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-base shrink-0">📦</span>
+                <span className="text-base shrink-0">{icon}</span>
                 <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
-                  {nodeData.label || T.flow.systemFlow.boxFallback}
+                  {title}
                 </span>
               </div>
               {/* Ref: CR-140 */}
-              {nodeData.desc && (
+              {desc && (
                 <p
-                  title={nodeData.desc}
+                  title={desc}
                   className="pl-6 text-xs text-slate-500 dark:text-slate-400 leading-snug line-clamp-2 break-words"
                 >
-                  {nodeData.desc}
+                  {desc}
                 </p>
               )}
             </div>
@@ -339,24 +346,34 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
 // 系統流程圖：流程步驟/卡片節點
 function FlowStepNode({ id, data, isConnectable }: NodeProps) {
   const nodeData = data as FlowNodeData
+  const title = (nodeData.label || nodeData.title || T.flow.systemFlow.stepFallback) as string
+  const desc = (nodeData.desc || nodeData.subtitle) as string | undefined
+  const icon = (nodeData.icon || '⚡') as string
+  const role = nodeData.role as string | undefined
+
   return (
     <div className="relative group w-full h-full">
       <div
         className={cx(
-          'w-full h-full min-w-[240px] max-w-[360px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
+          'w-full h-full min-w-[240px] max-w-[380px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
           nodeData.isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-xl' : 'border-slate-200 dark:border-slate-800'
         )}
       >
         {/* 頂部彩色條 */}
         <div className="h-1.5 rounded-t-xl" style={{ backgroundColor: nodeData.color || '#3b82f6' }} />
 
-        <div className="p-3.5 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="text-base shrink-0">⚡</span>
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
-                {nodeData.label || T.flow.systemFlow.stepFallback}
+        <div className="p-3 flex flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+              <span className="text-base shrink-0">{icon}</span>
+              <span className="font-bold text-sm text-slate-800 dark:text-slate-100 break-words leading-tight">
+                {title}
               </span>
+              {role && (
+                <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300 shrink-0">
+                  {role}
+                </span>
+              )}
             </div>
 
             {nodeData.onEdit && (
@@ -387,9 +404,9 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
             )}
           </div>
 
-          {nodeData.desc && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-              {nodeData.desc}
+          {desc && (
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line break-words border-t border-slate-100 dark:border-slate-800/80 pt-1.5">
+              {desc}
             </p>
           )}
         </div>
