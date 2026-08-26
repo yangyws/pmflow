@@ -162,7 +162,9 @@ curl -s -X PUT "$BASE/projects/$PID/canvas-docs/system-flow" "${auth[@]}" "${jso
           "target": "step-2",
           "sourceHandle": "right-out",
           "targetHandle": "left-in",
-          "data": { "label": "連線說明" }
+          "type": "flowEdge",
+          "data": { "text": "發起 API 請求", "color": "#4f46e5", "waypoint": { "x": 400, "y": 240 } },
+          "style": { "stroke": "#4f46e5", "strokeWidth": 2 }
         }
       ]
     }
@@ -170,11 +172,23 @@ curl -s -X PUT "$BASE/projects/$PID/canvas-docs/system-flow" "${auth[@]}" "${jso
 }'
 ```
 
-> **節點層級與接點規則**：
+> **節點層級、接點與連線樣式規則 (CR-207, CR-208)**：
 > - `frame`：區域標示框（置底 `z-index: -2`）。
 > - `box`：模組收納盒／泳道框（置底 `z-index: 0`）。
 > - `step`：流程卡片（`z-index: 5`）。
 > - 四向接點 Handle ID 一律為 `left-in` / `left-out`、`right-in` / `right-out`、`top-in` / `top-out`、`bottom-in` / `bottom-out`。
+> - 連線樣式：`data.color` 支援 9 色（`#4f46e5` 靛青藍、`#3b82f6` 經典藍、`#10b981` 翠玉綠、`#8b5cf6` 優雅紫、`#f97316` 活力橘、`#ef4444` 熱情紅、`#64748b` 深沉灰、`#06b6d4` 晴空青、`#ec4899` 玫瑰粉）；未手動拉折點且距離 `< 70px` 時自動隱藏中央折點圓點。
+
+### 還原已軟刪除的任務與收納盒 (Restore Task)
+
+`POST /tasks/{任務 id}/restore`
+
+```bash
+# 模式可選：all（連帶還原所有子孫）、self_only（僅還原自身）、detach_parent（還原並脫離父收納盒成為頂層獨立卡片）
+curl -s -X POST "$BASE/tasks/$TID/restore" "${auth[@]}" "${json[@]}" -d '{
+  "mode": "all"
+}'
+```
 
 ## 四、寫成腳本的規矩（專案硬規定）
 

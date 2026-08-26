@@ -62,7 +62,8 @@ export default async function skillRoutes(app: FastifyInstance) {
         '4. When creating dependency links (POST /api/v1/tasks/:sourceTaskId/links), use "FS" for sequential dependencies ("A finishes before B starts"), "SS" for parallel starts, "FF" for parallel finishes, or "RELATES" for semantic links.',
         '5. To create subtasks, specify the "parentId" of the parent task.',
         '6. Always check if a task with the same title already exists in the project before creating it to ensure idempotency.',
-        '7. To generate or update Architecture & System Flow Diagrams, use PUT /api/v1/projects/:projectId/canvas-docs/system-flow with an array of page objects `{ id: "page-1", title: "...", nodes: [...], edges: [...] }`. Nodes support types "step", "box", "frame", "text" with roles, icons, and four-way handles (`left/right/top/bottom-in/out`).',
+        '7. To generate or update Architecture & System Flow Diagrams, use PUT /api/v1/projects/:projectId/canvas-docs/system-flow with an array of page objects `{ id: "page-1", title: "...", nodes: [...], edges: [...] }`. Nodes support types "step", "box", "frame", "text" with roles, icons, and four-way handles (`left/right/top/bottom-in/out`). Edges support `data.text`, `data.color` (custom hex like #4f46e5, #3b82f6, #10b981, #ef4444, #8b5cf6), `style.stroke`, `markerEnd.color`, and waypoints (`data.waypoint: {x, y}`).',
+        '8. To update Relation Graph (Task Graph) annotations and custom edge styles, use PUT /api/v1/projects/:projectId/canvas-docs/task-graph with `{ annotations: [...], waypoints: {...}, edgeTexts: {...}, edgeColors: {...} }`.',
       ],
       projects: enrichedProjects,
       endpoints: {
