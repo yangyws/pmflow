@@ -7,12 +7,41 @@ import { T } from '../strings'
 export default function DeletedTasks({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [restorePrompt, setRestorePrompt] = useState<
+    | {
+        type: 'box'
+        task: any
+        deletedKids: any[]
+      }
+    | {
+        type: 'child_with_deleted_parent'
+        task: any
+        deletedParent: any
+      }
+    | {
+        type: 'child_with_active_parent'
+        task: any
+        activeParent: any
+      }
+    | {
+        type: 'simple'
+        task: any
+      }
+    | null
+  >(null)
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId),
     enabled: !!projectId,
   })
+
+  const { data: activeTasksData } = useQuery({
+    queryKey: ['tasks', projectId],
+    queryFn: () => Api.tasks(projectId),
+    enabled: !!projectId,
+  })
+  const activeTasks = activeTasksData?.tasks ?? []
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['deletedTasks', projectId],
@@ -46,12 +75,14 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
   }, [project?.statuses])
 
   const restoreMutation = useMutation({
-    mutationFn: (taskId: string) => Api.restoreTask(taskId),
+    mutationFn: ({ taskId, mode }: { taskId: string; mode?: 'all' | 'self_only' | 'detach_parent' }) =>
+      Api.restoreTask(taskId, { mode }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deletedTasks', projectId] })
       queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
       queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
       queryClient.invalidateQueries({ queryKey: ['schedule', projectId] })
+      setRestorePrompt(null)
     },
   })
 
@@ -82,10 +113,27 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     })
   }, [tasks, search, typesMap, statusesMap])
 
-  const handleRestore = (taskId: string, title: string) => {
-    if (confirm(`確定要還原事件「${title}」嗎？`)) {
-      restoreMutation.mutate(taskId)
+  const handleRestoreClick = (t: any) => {
+    const deletedKids = tasks.filter((d) => d.parentId === t.id)
+    if (deletedKids.length > 0) {
+      setRestorePrompt({ type: 'box', task: t, deletedKids })
+      return
     }
+
+    if (t.parentId) {
+      const deletedParent = tasks.find((d) => d.id === t.parentId)
+      if (deletedParent) {
+        setRestorePrompt({ type: 'child_with_deleted_parent', task: t, deletedParent })
+        return
+      }
+      const activeParent = activeTasks.find((a) => a.id === t.parentId)
+      if (activeParent) {
+        setRestorePrompt({ type: 'child_with_active_parent', task: t, activeParent })
+        return
+      }
+    }
+
+    setRestorePrompt({ type: 'simple', task: t })
   }
 
   const handlePermanentDelete = (taskId: string, title: string) => {
@@ -240,7 +288,7 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="default"
-                            onClick={() => handleRestore(t.id, t.title)}
+                            onClick={() => handleRestoreClick(t)}
                             disabled={restoreMutation.isPending}
                             className="text-xs py-1 px-2.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border-emerald-200 dark:border-emerald-800"
                           >
@@ -265,6 +313,197 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
+
+      {/* 還原互動確認彈窗 */}
+      {restorePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150">
+            {restorePrompt.type === 'box' && (
+              <>
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                  <span className="text-xl">📦</span>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                      還原收納盒確認
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      收納盒：{restorePrompt.task.ref || ''} {restorePrompt.task.title}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                  此收納盒底下包含 <strong className="font-bold underline">{restorePrompt.deletedKids.length}</strong> 張處於已刪除狀態的子卡片。請選擇還原方式：
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.task.id, mode: 'all' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <span>📦 一併還原收納盒與全部子卡片</span>
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.task.id, mode: 'self_only' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700"
+                  >
+                    <span>🗃️ 僅還原收納盒自己（子卡片保留已刪除）</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setRestorePrompt(null)}
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mt-1"
+                  >
+                    取消
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {restorePrompt.type === 'child_with_deleted_parent' && (
+              <>
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                  <span className="text-xl">📄</span>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                      還原子卡片確認
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      子卡片：{restorePrompt.task.ref || ''} {restorePrompt.task.title}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 p-3 mb-5 text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                  此子卡片原屬於已刪除的收納盒「<strong className="font-bold">{restorePrompt.deletedParent.ref || ''} {restorePrompt.deletedParent.title}</strong>」。請選擇還原方式：
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.deletedParent.id, mode: 'all' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <span>📦 連同收納盒一起還原（卡片放回收納盒內）</span>
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.task.id, mode: 'detach_parent' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700"
+                  >
+                    <span>📄 僅還原此子卡片（移至最外層獨立卡片）</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setRestorePrompt(null)}
+                    disabled={restoreMutation.isPending}
+                    className="w-full justify-center py-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mt-1"
+                  >
+                    取消
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {restorePrompt.type === 'child_with_active_parent' && (
+              <>
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                  <span className="text-xl">🔄</span>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                      還原子卡片確認
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      事件：{restorePrompt.task.ref || ''} {restorePrompt.task.title}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
+                  確定要還原此事件並放回所屬收納盒「<strong className="font-bold">{restorePrompt.activeParent.ref || ''} {restorePrompt.activeParent.title}</strong>」內嗎？
+                </p>
+
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setRestorePrompt(null)}
+                    disabled={restoreMutation.isPending}
+                    className="text-xs"
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.task.id, mode: 'all' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    確定還原
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {restorePrompt.type === 'simple' && (
+              <>
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                  <span className="text-xl">🔄</span>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                      還原事件確認
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      事件：{restorePrompt.task.ref || ''} {restorePrompt.task.title}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
+                  確定要還原事件「<strong>{restorePrompt.task.title}</strong>」嗎？
+                </p>
+
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setRestorePrompt(null)}
+                    disabled={restoreMutation.isPending}
+                    className="text-xs"
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      restoreMutation.mutate({ taskId: restorePrompt.task.id, mode: 'all' })
+                    }
+                    disabled={restoreMutation.isPending}
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    確定還原
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

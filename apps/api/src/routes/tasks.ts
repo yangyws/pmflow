@@ -757,19 +757,61 @@ export default async function taskRoutes(app: FastifyInstance) {
   })
 
   // ── 還原已刪除事件 ────────────────────────────────────
-  app.post<{ Params: { id: string } }>('/tasks/:id/restore', async (req, reply) => {
+  app.post<{
+    Params: { id: string }
+    Body?: {
+      mode?: 'all' | 'self_only' | 'detach_parent'
+    }
+  }>('/tasks/:id/restore', async (req, reply) => {
     const user = await authenticate(req)
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR', true)
     await assertCanDeleteTask(req.params.id, user.id, role)
 
-    // 連帶還原該任務與其所有子孫任務
-    const affected = await sql<{ id: string }[]>`
-      UPDATE task SET deleted_at = NULL
-      WHERE id IN (
-        SELECT descendant_id FROM task_closure WHERE ancestor_id = ${req.params.id}
-      )
-      AND deleted_at IS NOT NULL
-      RETURNING id`
+    const { mode = 'all' } = z.object({
+      mode: z.enum(['all', 'self_only', 'detach_parent']).optional(),
+    }).parse(req.body || {})
+
+    let affectedIds: string[] = []
+
+    await sql.begin(async tx => {
+      if (mode === 'detach_parent') {
+        // 單獨還原子卡片：脫離父收納盒，成為最外層獨立卡片
+        const [updated] = await tx<{ id: string }[]>`
+          UPDATE task SET
+            deleted_at = NULL,
+            parent_id  = NULL,
+            updated_at = now()
+          WHERE id = ${req.params.id}
+          RETURNING id`
+        if (updated) {
+          affectedIds.push(updated.id)
+          await rebuildClosure(tx, req.params.id)
+        }
+      } else if (mode === 'self_only') {
+        // 單獨還原收納盒：只還原自身，子卡片仍保留已刪除狀態
+        const [updated] = await tx<{ id: string }[]>`
+          UPDATE task SET
+            deleted_at = NULL,
+            updated_at = now()
+          WHERE id = ${req.params.id}
+          RETURNING id`
+        if (updated) {
+          affectedIds.push(updated.id)
+        }
+      } else {
+        // mode === 'all'：連帶還原自身與其所有子孫任務
+        const affected = await tx<{ id: string }[]>`
+          UPDATE task SET
+            deleted_at = NULL,
+            updated_at = now()
+          WHERE id IN (
+            SELECT descendant_id FROM task_closure WHERE ancestor_id = ${req.params.id}
+          )
+          AND deleted_at IS NOT NULL
+          RETURNING id`
+        affectedIds = affected.map(r => r.id)
+      }
+    })
 
     emitRealtimeEvent({
       type: 'task:changed',
@@ -777,10 +819,10 @@ export default async function taskRoutes(app: FastifyInstance) {
       workspaceId,
       actorId: user.id,
       actorName: user.displayName,
-      payload: { action: 'restored', taskId: req.params.id, affectedTaskIds: affected.map(r => r.id) },
+      payload: { action: 'restored', taskId: req.params.id, mode, affectedTaskIds: affectedIds },
     })
 
-    return reply.code(200).send({ ok: true })
+    return reply.code(200).send({ ok: true, affectedTaskIds: affectedIds })
   })
 
   // ── 關閉/解決遭遇問題 ──────────────────────────────────

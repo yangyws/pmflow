@@ -22,7 +22,20 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Relation Graph Handles Color Alignment (CR-201)
+### Latest Changes: Storage Box & Sub-Task Restore Interactive Modals & Isolation (CR-203)
+- **變更檔案**:
+  - [`tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **還原模式擴充 (`CR-203`)**：`POST /tasks/:id/restore` 支援 `mode: 'all' | 'self_only' | 'detach_parent'`，可選擇連帶還原、僅還原收納盒自身，或還原子卡片並自動清除 `parent_id` 成為頂層卡片。
+  - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **API 簽名更新 (`CR-203`)**：`Api.restoreTask(id, { mode })` 支援傳遞還原模式。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **階層還原確認彈窗 (`CR-203`)**：收納盒底下有刪除卡片時提供「一併還原」或「僅還原收納盒」；子卡片之收納盒已被刪除時提供「連同收納盒一起還原」或「僅還原子卡片（移至外層）」；收納盒仍存在時則直接確認放回盒內。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **收納盒功能自動保證 (`CR-203`)**：只要任務底下有子卡片（`kids.length > 0`），強制以 `box` 模式呈現，杜絕塌陷為單卡。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-203` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-203`。
+
+### Previous Changes: Relation Graph Handles Color Alignment (CR-201)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **接點配色還原標準規則 (`CR-201`)**：左右接點（`left/right-in/out`）設為紅色（`#ef4444`，排程相依），上下接點（`top/bottom-in/out`）設為紫色（`#8b5cf6`，階層關係），與出發連線樣式（紅實線/紫虛線）100% 保持一致。

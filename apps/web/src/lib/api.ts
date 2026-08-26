@@ -685,8 +685,8 @@ export const Api = {
     api<{ ok: boolean }>(`/tasks/${id}/resolve-problem`, { method: 'POST', json }),
   deletedTasks: (projectId: string) =>
     api<{ tasks: Task[] }>(`/projects/${projectId}/deleted-tasks`),
-  restoreTask: (id: string) =>
-    api<{ ok: boolean }>(`/tasks/${id}/restore`, { method: 'POST' }),
+  restoreTask: (id: string, json?: { mode?: 'all' | 'self_only' | 'detach_parent' }) =>
+    api<{ ok: boolean; affectedTaskIds?: string[] }>(`/tasks/${id}/restore`, { method: 'POST', json }),
   permanentDeleteTask: (id: string) =>
     api(`/tasks/${id}/permanent`, { method: 'DELETE' }),
   /**
