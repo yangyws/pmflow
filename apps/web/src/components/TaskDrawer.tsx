@@ -158,9 +158,8 @@ export function TaskDrawer({
     qc.invalidateQueries({ queryKey: ['task', taskId] })
     qc.invalidateQueries({ queryKey: ['tasks'] })
     qc.invalidateQueries({ queryKey: ['schedule'] })
-    // 關聯圖是另一支查詢，節點上也掛著任務的標記（例如「有問題」），
-    // 不一起失效的話，改完切過去看到的還是舊的那一張圖
     qc.invalidateQueries({ queryKey: ['graph'] })
+    qc.invalidateQueries({ queryKey: ['deletedTasks'] })
   }
   const patch = useMutation({
     mutationFn: (v: Record<string, unknown>) => Api.patchTask(taskId, v), onSuccess: invalidate,

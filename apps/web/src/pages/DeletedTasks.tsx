@@ -12,6 +12,8 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     queryKey: ['deletedTasks', projectId],
     queryFn: () => Api.deletedTasks(projectId),
     enabled: !!projectId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const tasks = data?.tasks ?? []
