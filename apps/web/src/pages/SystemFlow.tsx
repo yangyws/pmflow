@@ -940,6 +940,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const initPages = loadInitialPages(projectId)
     return initPages[0]?.id || 'page-1'
   })
+  const activePageIdRef = useRef<string>(activePageId)
+  activePageIdRef.current = activePageId
 
   // 讀取先前儲存的畫面焦點與縮放比例 (Viewport)
   const savedViewport = useMemo(() => {
@@ -1026,21 +1028,20 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       try {
         localStorage.setItem(storageKeyPages, JSON.stringify(serverPages))
       } catch {}
-      setActivePageId((currentId) => {
-        const found = serverPages.find((p) => p.id === currentId)
-        const nextId = found ? currentId : serverPages[0].id
-        const targetPage = serverPages.find((p) => p.id === nextId) || serverPages[0]
-        setNodes(orderParentNodesFirst(targetPage.nodes))
-        setEdges(
-          targetPage.edges.map((e: Edge) => ({
-            ...e,
-            ...getEdgeStyleAndMarker(e.sourceHandle),
-          }))
-        )
-        return nextId
-      })
+      const curPageId = activePageIdRef.current || activePageId || 'page-1'
+      const found = serverPages.find((p) => p.id === curPageId)
+      const nextId = found ? curPageId : serverPages[0].id
+      const targetPage = serverPages.find((p) => p.id === nextId) || serverPages[0]
+      setActivePageId(nextId)
+      setNodes(orderParentNodesFirst(targetPage.nodes))
+      setEdges(
+        targetPage.edges.map((e: Edge) => ({
+          ...e,
+          ...getEdgeStyleAndMarker(e.sourceHandle),
+        }))
+      )
     }
-  }, [canvasDocRes, projectId, storageKeyPages])
+  }, [canvasDocRes, projectId, storageKeyPages, activePageId])
 
   // 當元件卸載或切換專案時，若有未送出的排程儲存則立刻寫回後端
   useEffect(() => {
