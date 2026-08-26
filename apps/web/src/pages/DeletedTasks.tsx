@@ -469,9 +469,28 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
                   </div>
                 </div>
 
-                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                  此收納盒底下包含 <strong className="font-bold underline">{restorePrompt.deletedKids.length}</strong> 張處於已刪除狀態的子卡片。請選擇還原方式：
-                </div>
+                {(() => {
+                  const breakdown = getKidsTypeBreakdown(restorePrompt.deletedKids)
+                  return (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed space-y-2">
+                      <p>
+                        此收納盒底下包含 <strong className="font-bold underline">{restorePrompt.deletedKids.length}</strong> 個已刪除子項目（<strong className="text-amber-900 dark:text-amber-100">{breakdown}</strong>）。請選擇還原方式：
+                      </p>
+                      <div className="max-h-28 overflow-y-auto rounded-md bg-white/70 dark:bg-slate-900/70 p-2 border border-amber-200/60 dark:border-amber-800/40 space-y-1">
+                        {restorePrompt.deletedKids.map((k: any) => {
+                          const typeInfo = typesMap.get(k.type || 'TASK')
+                          return (
+                            <div key={k.id} className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                              {typeInfo && <TypeBadge name={typeInfo.name} color={typeInfo.color} />}
+                              <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-bold">{k.ref || ''}</span>
+                              <span className="truncate">{k.title}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="flex flex-col gap-2.5">
                   <Button
@@ -658,9 +677,37 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
               </div>
             </div>
 
-            <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 p-3 mb-5 text-xs text-red-800 dark:text-red-200 leading-relaxed">
-              ⚠️ <strong>警告：此操作將徹底從資料庫中清除此事件及其全部關聯與活動紀錄，無法復原！</strong>
-            </div>
+            {(() => {
+              const deletedKids = tasks.filter((k) => k.parentId === permanentDeletePrompt.id)
+              const hasKids = deletedKids.length > 0
+              const breakdown = hasKids ? getKidsTypeBreakdown(deletedKids) : ''
+              return (
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 p-3 mb-5 text-xs text-red-800 dark:text-red-200 leading-relaxed space-y-2">
+                  <p>
+                    ⚠️ <strong>警告：此操作將徹底從資料庫中清除此事件及其全部關聯與活動紀錄，無法復原！</strong>
+                  </p>
+                  {hasKids && (
+                    <>
+                      <p className="text-red-900 dark:text-red-100 font-semibold">
+                        包含連帶清除底下 <strong className="underline">{deletedKids.length}</strong> 個已刪除子項目（{breakdown}）：
+                      </p>
+                      <div className="max-h-28 overflow-y-auto rounded-md bg-white/70 dark:bg-slate-900/70 p-2 border border-red-200/60 dark:border-red-800/40 space-y-1">
+                        {deletedKids.map((k) => {
+                          const typeInfo = typesMap.get(k.type || 'TASK')
+                          return (
+                            <div key={k.id} className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                              {typeInfo && <TypeBadge name={typeInfo.name} color={typeInfo.color} />}
+                              <span className="font-mono text-[10px] text-red-600 dark:text-red-400 font-bold">{k.ref || ''}</span>
+                              <span className="truncate">{k.title}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="flex items-center justify-end gap-2">
               <Button

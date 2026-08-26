@@ -1091,8 +1091,8 @@ export function TaskDrawer({
                       <div className="max-h-32 overflow-y-auto rounded-md bg-white/70 dark:bg-slate-900/70 p-2 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
                         {childTypeSummary.list.map((c) => (
                           <div key={c.id} className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
-                            {typeOf(c.type) && (
-                              <TypeBadge name={typeOf(c.type)} color={types.find(t => t.key === c.type)?.color ?? '#94a3b8'} />
+                            {typeOf(c.type || 'TASK') && (
+                              <TypeBadge name={typeOf(c.type || 'TASK')} color={types.find(t => t.key === c.type)?.color ?? '#94a3b8'} />
                             )}
                             <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-bold">{c.ref}</span>
                             <span className="truncate">{c.title}</span>

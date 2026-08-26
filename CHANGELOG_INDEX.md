@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Tree Hierarchy View for Deleted Tasks (CR-205)
+### Latest Changes: Sub-Task Type Breakdown & Preview in Delete & Restore Modals (CR-206)
+- **變更檔案**:
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **子項目分類統計與列表預覽 (`CR-206`)**：刪除收納盒時清楚標註「底下包含 N 個子項目（X 個任務單、Y 個問題單）」，並條列徽章、編號與標題。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **還原與永久刪除子項目分類統計 (`CR-206`)**：還原收納盒與永久刪除時同步展示子項目種類分類統計與列表預覽。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-206` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-206`。
+
+### Previous Changes: Tree Hierarchy View for Deleted Tasks (CR-205)
 - **變更檔案**:
   - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
     1. **清單階層樹狀呈現 (`CR-205`)**：比照清單視圖實作 DFS 階層展開，子卡片縮排並繪製分支導引線；收納盒標註 `📦`；支援 `▸`/`▾` 折疊展開；未成組孤兒子卡片自動標記原所屬收納盒標籤。
