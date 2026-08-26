@@ -97,22 +97,108 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     },
   })
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return tasks
-    return tasks.filter((t) => {
-      const ref = t.ref || (t.number ? `MRG-${t.number}` : '')
-      const typeInfo = typesMap.get(t.type || 'TASK')
-      const statusInfo = statusesMap.get(t.statusKey || 'todo')
-      return (
-        t.title.toLowerCase().includes(q) ||
-        ref.toLowerCase().includes(q) ||
-        (t.assigneeName && t.assigneeName.toLowerCase().includes(q)) ||
-        (typeInfo?.name && typeInfo.name.toLowerCase().includes(q)) ||
-        (statusInfo?.name && statusInfo.name.toLowerCase().includes(q))
-      )
+  const [collapsedSet, setCollapsedSet] = useState<Set<string>>(new Set())
+
+  const toggleCollapse = (id: string) => {
+    setCollapsedSet((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
     })
-  }, [tasks, search, typesMap, statusesMap])
+  }
+
+  const orderedTasks = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const allMatching = q
+      ? tasks.filter((t) => {
+          const ref = t.ref || (t.number ? `MRG-${t.number}` : '')
+          const typeInfo = typesMap.get(t.type || 'TASK')
+          const statusInfo = statusesMap.get(t.statusKey || 'todo')
+          return (
+            t.title.toLowerCase().includes(q) ||
+            ref.toLowerCase().includes(q) ||
+            (t.assigneeName && t.assigneeName.toLowerCase().includes(q)) ||
+            (typeInfo?.name && typeInfo.name.toLowerCase().includes(q)) ||
+            (statusInfo?.name && statusInfo.name.toLowerCase().includes(q))
+          )
+        })
+      : tasks
+
+    // 建立在已刪除清單內的 ID 集合
+    const deletedIdSet = new Set(tasks.map((t) => t.id))
+    const isBox = (t: any) =>
+      t.type === 'EPIC' || (t.type as string) === 'BOX' || tasks.some((k) => k.parentId === t.id)
+
+    if (q) {
+      // 搜尋時直接以清單模式呈現搜尋結果
+      return allMatching.map((t) => ({
+        ...t,
+        depth: 0,
+        hasKids: false,
+        isBox: isBox(t),
+      }))
+    }
+
+    // 建立父子映射表 (僅限兩者皆在已刪除清單中)
+    const kidsMap = new Map<string, any[]>()
+    tasks.forEach((t) => {
+      if (t.parentId && deletedIdSet.has(t.parentId)) {
+        const list = kidsMap.get(t.parentId) || []
+        list.push(t)
+        kidsMap.set(t.parentId, list)
+      }
+    })
+
+    // 根節點：無 parentId 或 parentId 不在已刪除清單中者
+    const rootTasks = tasks.filter((t) => !t.parentId || !deletedIdSet.has(t.parentId))
+    // 排序：收納盒優先，再照編號排序
+    const boxes = rootTasks.filter((t) => isBox(t)).sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+    const nonBoxes = rootTasks.filter((t) => !isBox(t)).sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+    const sortedRoots = [...boxes, ...nonBoxes]
+
+    const result: Array<any & { depth: number; hasKids: boolean; isBox: boolean }> = []
+    const visited = new Set<string>()
+
+    const walk = (t: any, depth: number) => {
+      if (visited.has(t.id)) return
+      visited.add(t.id)
+
+      const kids = kidsMap.get(t.id) || []
+      const hasKids = kids.length > 0
+      result.push({
+        ...t,
+        depth,
+        hasKids,
+        isBox: isBox(t),
+      })
+
+      if (hasKids && collapsedSet.has(t.id)) return
+
+      // 子卡片照編號排序
+      kids.sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+      for (const k of kids) {
+        if (depth < 10) walk(k, depth + 1)
+      }
+    }
+
+    sortedRoots.forEach((t) => walk(t, 0))
+
+    // 容錯防漏
+    tasks.forEach((t) => {
+      if (!visited.has(t.id)) {
+        visited.add(t.id)
+        result.push({
+          ...t,
+          depth: 0,
+          hasKids: false,
+          isBox: isBox(t),
+        })
+      }
+    })
+
+    return result
+  }, [tasks, search, typesMap, statusesMap, collapsedSet])
 
   const handleRestoreClick = (t: any) => {
     const deletedKids = tasks.filter((d) => d.parentId === t.id)
@@ -135,12 +221,6 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     }
 
     setRestorePrompt({ type: 'simple', task: t })
-  }
-
-  const handlePermanentDelete = (taskId: string, title: string) => {
-    if (confirm(`⚠️ 警告：確定要永久刪除事件「${title}」嗎？此操作無法復原！`)) {
-      permanentDeleteMutation.mutate(taskId)
-    }
   }
 
   if (isLoading) {
@@ -184,7 +264,7 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
 
       {/* 列表主體 */}
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {filtered.length === 0 ? (
+        {orderedTasks.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center">
             <span className="text-3xl mb-2">🗑️</span>
             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
@@ -199,9 +279,7 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-semibold w-24">編號</th>
-                  <th className="px-4 py-3 font-semibold w-24">種類</th>
-                  <th className="px-4 py-3 font-semibold">事件標題</th>
+                  <th className="px-4 py-3 font-semibold">事件階層與名稱</th>
                   <th className="px-4 py-3 font-semibold w-28 hidden sm:table-cell">指派給</th>
                   <th className="px-4 py-3 font-semibold w-28 hidden md:table-cell">狀態</th>
                   <th className="px-4 py-3 font-semibold w-36 hidden sm:table-cell">原本進度</th>
@@ -209,36 +287,79 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {filtered.map((t) => {
+                {orderedTasks.map((t) => {
                   const ref = t.ref || (t.number ? `MRG-${t.number}` : '')
                   const typeInfo = typesMap.get(t.type || 'TASK') || { name: '任務單', color: '#3178c6' }
                   const statusInfo = statusesMap.get(t.statusKey || 'todo') || { name: t.statusKey || '待處理', category: 'TODO' }
                   const progress = Math.min(100, Math.max(0, t.progress ?? 0))
+                  const deletedParent = t.parentId ? tasks.find((d) => d.id === t.parentId) : null
+                  const activeParent = t.parentId ? activeTasks.find((a) => a.id === t.parentId) : null
 
                   return (
                     <tr
                       key={t.id}
-                      className="hover:bg-slate-50/75 dark:hover:bg-slate-800/40 transition-colors"
+                      className={cx(
+                        'hover:bg-slate-50/75 dark:hover:bg-slate-800/40 transition-colors',
+                        t.depth > 0 && 'bg-slate-50/40 dark:bg-slate-800/20'
+                      )}
                     >
-                      {/* 編號 */}
-                      <td className="px-4 py-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                        {ref || '-'}
-                      </td>
-
-                      {/* 種類 */}
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <TypeBadge name={typeInfo.name} color={typeInfo.color} />
-                      </td>
-
-                      {/* 事件標題與問題指示 */}
+                      {/* 事件階層與標題 */}
                       <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="line-clamp-1">{t.title}</span>
-                            {t.problem && <ProblemBadge problem={t.problem} />}
-                          </div>
+                        <div
+                          className="flex items-center gap-1.5 flex-wrap min-w-0"
+                          style={{ paddingLeft: t.depth * 22 }}
+                        >
+                          {/* 折疊 / 展開 箭頭按鈕 */}
+                          {t.hasKids ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleCollapse(t.id)
+                              }}
+                              className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200 rounded transition-colors select-none cursor-pointer"
+                              title={collapsedSet.has(t.id) ? '展開子任務' : '收折子任務'}
+                            >
+                              {collapsedSet.has(t.id) ? '▸' : '▾'}
+                            </button>
+                          ) : (
+                            <span className="w-5 shrink-0 text-center select-none text-slate-300 dark:text-slate-600 font-mono text-xs">
+                              {t.depth > 0 ? '└' : ''}
+                            </span>
+                          )}
+
+                          {/* 只有收納盒 (t.isBox) 顯示 📦 圖示 */}
+                          {t.isBox && (
+                            <span className="shrink-0 text-xs select-none">📦</span>
+                          )}
+
+                          {/* 種類徽章 */}
+                          {typeInfo && (
+                            <TypeBadge name={typeInfo.name} color={typeInfo.color} />
+                          )}
+
+                          {/* 編號 */}
+                          <span className="shrink-0 font-mono font-bold text-blue-600 dark:text-blue-400 text-xs">
+                            {ref || '-'}
+                          </span>
+
+                          {/* 事件標題 */}
+                          <span className={cx('line-clamp-1', t.isBox && 'font-bold text-slate-900 dark:text-slate-100')}>
+                            {t.title}
+                          </span>
+
+                          {/* 問題指示 */}
+                          {t.problem && <ProblemBadge problem={t.problem} />}
+
+                          {/* 若父任務未被刪除，顯示其原本所屬之外部收納盒提示 */}
+                          {t.depth === 0 && t.parentId && (deletedParent || activeParent) && (
+                            <span className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                              ↳ 原隸屬收納盒：{deletedParent ? `${deletedParent.ref || ''} ${deletedParent.title}` : `${activeParent?.ref || ''} ${activeParent?.title}`}
+                            </span>
+                          )}
+
                           {t.description && (
-                            <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
+                            <span className="w-full text-xs text-slate-400 dark:text-slate-500 line-clamp-1 pl-6">
                               {t.description}
                             </span>
                           )}

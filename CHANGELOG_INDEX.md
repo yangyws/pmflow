@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Dedicated Delete & Permanent Delete Modals Across UI (CR-204)
+### Latest Changes: Tree Hierarchy View for Deleted Tasks (CR-205)
+- **變更檔案**:
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **清單階層樹狀呈現 (`CR-205`)**：比照清單視圖實作 DFS 階層展開，子卡片縮排並繪製分支導引線；收納盒標註 `📦`；支援 `▸`/`▾` 折疊展開；未成組孤兒子卡片自動標記原所屬收納盒標籤。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-205` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-205`。
+
+### Previous Changes: Dedicated Delete & Permanent Delete Modals Across UI (CR-204)
 - **變更檔案**:
   - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **抽屜刪除提示彈窗 (`CR-204`)**：移除標題列行內確認，改為獨立 Modal 提示窗，清晰展示包含子任務連帶移至已刪除清單的警告與說明。
