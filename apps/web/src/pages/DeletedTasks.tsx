@@ -75,6 +75,21 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     return map
   }, [project?.statuses])
 
+  const getKidsTypeBreakdown = (kids: any[]) => {
+    const counts = new Map<string, number>()
+    for (const c of kids) {
+      const typeKey = c.type || 'TASK'
+      counts.set(typeKey, (counts.get(typeKey) || 0) + 1)
+    }
+    const parts: string[] = []
+    for (const [key, count] of counts.entries()) {
+      const typeInfo = typesMap.get(key)
+      const typeName = typeInfo?.name || (key === 'BUG' ? '問題單' : '任務單')
+      parts.push(`${count} 個${typeName}`)
+    }
+    return parts.join('、')
+  }
+
   const restoreMutation = useMutation({
     mutationFn: ({ taskId, mode }: { taskId: string; mode?: 'all' | 'self_only' | 'detach_parent' }) =>
       Api.restoreTask(taskId, { mode }),

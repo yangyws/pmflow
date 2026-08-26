@@ -187,6 +187,26 @@ export function TaskDrawer({
     onSuccess: () => { invalidate(); onClose() },
   })
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const childTypeSummary = useMemo(() => {
+    if (!data?.children || data.children.length === 0) return null
+    const counts = new Map<string, number>()
+    for (const c of data.children) {
+      const typeKey = c.type || 'TASK'
+      counts.set(typeKey, (counts.get(typeKey) || 0) + 1)
+    }
+    const parts: string[] = []
+    for (const [key, count] of counts.entries()) {
+      const typeName = typeOf(key) || (key === 'BUG' ? '問題單' : '任務單')
+      parts.push(`${count} 個${typeName}`)
+    }
+    return {
+      total: data.children.length,
+      breakdownText: parts.join('、'),
+      list: data.children,
+    }
+  }, [data?.children, types])
+
   const [solutionText, setSolutionText] = useState('')
 
   const resolveProblem = useMutation({
@@ -1063,9 +1083,22 @@ export function TaskDrawer({
                     </div>
                   </div>
 
-                  {(data?.children?.length ?? 0) > 0 ? (
-                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                      ⚠️ 此任務為收納盒，底下包含 <strong className="font-bold underline">{data!.children!.length}</strong> 個子任務，刪除時將<strong>一併連帶移至「已刪除事件」</strong>。
+                  {childTypeSummary ? (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 mb-5 text-xs text-amber-800 dark:text-amber-200 leading-relaxed space-y-2">
+                      <p>
+                        ⚠️ 此任務為收納盒，底下包含 <strong className="font-bold underline">{childTypeSummary.total}</strong> 個子項目（<strong className="text-amber-900 dark:text-amber-100">{childTypeSummary.breakdownText}</strong>），刪除時將<strong>一併連帶移至「已刪除事件」</strong>。
+                      </p>
+                      <div className="max-h-32 overflow-y-auto rounded-md bg-white/70 dark:bg-slate-900/70 p-2 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
+                        {childTypeSummary.list.map((c) => (
+                          <div key={c.id} className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                            {typeOf(c.type) && (
+                              <TypeBadge name={typeOf(c.type)} color={types.find(t => t.key === c.type)?.color ?? '#94a3b8'} />
+                            )}
+                            <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-bold">{c.ref}</span>
+                            <span className="truncate">{c.title}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
