@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Instant DeletedTasks Cache Invalidation & Zero-Latency Switch (CR-199)
+### Latest Changes: Deleted Tasks UI Enhancement & Deprecated Epic Strings Cleanup (CR-200)
+- **變更檔案**:
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **種類徽章與問題單指示 (`CR-200`)**：新增「種類」欄位並渲染 `<TypeBadge />`，標題旁附帶 `<ProblemBadge />`。
+    2. **狀態在地化呈現 (`CR-200`)**：對照專案狀態顯示中文名稱（待處理/進行中/已完成）與對應色彩背景。
+    3. **原本進度條視覺化 (`CR-200`)**：新增「原本進度」欄位，顯示百分比與可視化進度條。
+  - [`strings/nav.ts`](file:///D:/github/pmflow/apps/web/src/strings/nav.ts):
+    1. **側欄文案現代化 (`CR-200`)**：更新 `sidebar.emptyTitle` 與 `sidebar.emptyHint`，移除歷史「大項目」說明，改為標準任務與收納盒指引。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-200` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-200`。
+
+### Previous Changes: Instant DeletedTasks Cache Invalidation & Zero-Latency Switch (CR-199)
 - **變更檔案**:
   - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **刪除操作同步失效快取 (`CR-199`)**：在 `invalidate()` 中加入 `qc.invalidateQueries({ queryKey: ['deletedTasks'] })`，確保刪除/保存/關聯變更時即時刷新已刪除清單。

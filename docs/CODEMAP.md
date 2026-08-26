@@ -35,7 +35,7 @@
 | **專案側欄** | `apps/web/src/components/EpicSidebar.tsx` | 左側樹狀結構（大項目→任務→錯誤），可點擊 `＋` 建立合法子任務 |
 | **任務詳情抽屜** | `apps/web/src/components/TaskDrawer.tsx` | 右側任務詳情面板（修改內容、登錄對外詢問、卡住原因、刪除） |
 | **成員頁面板** | `apps/web/src/components/MembersPanel.tsx` | 專案成員列表、邀請成員、審核申請、檢視成員經手任務紀錄 |
-| **已刪除事件** | `apps/web/src/pages/DeletedTasks.tsx` | 已軟刪除任務清單、一鍵還原與永久刪除 (CR-198, CR-199) |
+| **已刪除事件** | `apps/web/src/pages/DeletedTasks.tsx` | 已軟刪除任務清單、一鍵還原與永久刪除 (CR-198, CR-199, CR-200) |
 | **路由與頁籤中樞** | `apps/web/src/App.tsx` | 前端路由主導、頂部頁籤順序（dnd-kit 拖曳排序與隱藏偏好） |
 
 ---
