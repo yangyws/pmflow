@@ -2162,10 +2162,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 </div>
                 <div className="space-y-1 pl-1 text-[11px]">
                   <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-blue-500">{T.flow.systemFlow.help.horizontal}</span>{T.flow.systemFlow.help.horizontalDesc}
-                  </p>
-                  <p className="flex items-start gap-1.5">
-                    <span className="shrink-0 font-semibold text-purple-500">{T.flow.systemFlow.help.vertical}</span>{T.flow.systemFlow.help.verticalDesc}
+                    <span className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400">{T.flow.systemFlow.help.freeConnection}</span>{T.flow.systemFlow.help.freeConnectionDesc}
                   </p>
                   {/* Ref: CR-140 */}
                   <p className="flex items-start gap-1.5">
