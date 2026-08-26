@@ -864,6 +864,9 @@ function OrthogonalEdge({
     obstacles
   )
 
+  // 接點距離過近且未手動拖折點時，隱藏中央折點圓點避免視覺擁擠
+  const isTooClose = !eData?.waypoint && Math.hypot(targetX - sourceX, targetY - sourceY) < 70
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isConnectable) return
     e.stopPropagation()
@@ -948,7 +951,7 @@ function OrthogonalEdge({
         />
       </g>
 
-      {isConnectable && (
+      {isConnectable && !isTooClose && (
         <EdgeLabelRenderer>
           <div
             className={cx(

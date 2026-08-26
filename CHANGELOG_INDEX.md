@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: System Flow & Graph View Fullscreen, Line Dragging & Layering Enhancements (CR-207)
+### Latest Changes: System Flow Edge Color Customization & Close Waypoint Handle Hiding (CR-208)
+- **變更檔案**:
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **流程圖連線自訂變色 (`CR-208`)**：點擊連線彈出設定視窗中新增 9 色調色盤（靛青藍、經典藍、翠玉綠、優雅紫、活力橘、熱情紅、深沉灰、晴空青、玫瑰粉），點選即時同步連線本體、箭頭標記與折點，並持久化至畫布文件。
+    2. **接點過近折點自動隱藏 (`CR-208`)**：當兩端接點距離過近（未手動拉折點且距離小於 70px 時），自動隱藏中央拖曳折點圓點，消除相鄰卡片間的視覺擁擠。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **關聯圖接點過近折點自動隱藏 (`CR-208`)**：當卡片接點距離過近（未手動拉折點且距離小於 70px 時），自動隱藏中央拖曳折點圓點，大幅提升相鄰卡片視覺清爽度。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-208` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-208`。
+
+### Previous Changes: System Flow & Graph View Fullscreen, Line Dragging & Layering Enhancements (CR-207)
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
     1. **全螢幕切換支援 (`CR-207`)**：頂部工具列與左下角 Controls 均配置全螢幕切換按鈕，採用標準對角擴展/縮小箭頭圖示，並支援鍵盤 Esc 同步。

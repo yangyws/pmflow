@@ -74,8 +74,21 @@ export interface FlowEdgeData extends Record<string, unknown> {
 // Ref: CR-146
 const COLOR_OPTIONS = T.flow.systemFlow.colorOptions
 
-function getEdgeStyleAndMarker(_sourceHandle?: string | null) {
-  const strokeColor = '#4f46e5'
+// 連線自訂顏色選項
+const EDGE_COLOR_OPTIONS = [
+  { name: '靛青藍', color: '#4f46e5' },
+  { name: '經典藍', color: '#3b82f6' },
+  { name: '翠玉綠', color: '#10b981' },
+  { name: '優雅紫', color: '#8b5cf6' },
+  { name: '活力橘', color: '#f97316' },
+  { name: '熱情紅', color: '#ef4444' },
+  { name: '深沉灰', color: '#64748b' },
+  { name: '晴空青', color: '#06b6d4' },
+  { name: '玫瑰粉', color: '#ec4899' },
+]
+
+function getEdgeStyleAndMarker(_sourceHandle?: string | null, customColor?: string) {
+  const strokeColor = customColor || '#4f46e5'
   return {
     animated: false,
     style: {
@@ -596,6 +609,10 @@ function FlowLabeledEdge({
     edgeData?.waypoint,
     obstacles
   )
+
+  // 接點距離過近且未手動拖折點時，隱藏中央折點圓點避免視覺擁擠
+  const isTooClose = !edgeData?.waypoint && Math.hypot(targetX - sourceX, targetY - sourceY) < 70
+
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const text = edgeData?.text || ''
@@ -665,7 +682,7 @@ function FlowLabeledEdge({
         />
       )}
 
-      {isConnectable && (
+      {isConnectable && !isTooClose && (
         <EdgeLabelRenderer>
           {/* 轉角控制把手：高對比顯色、懸浮放大、按住拖曳、雙擊還原 */}
           <div
@@ -1218,7 +1235,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
           edges: Array.isArray(p.edges)
             ? p.edges.map((e: Edge) => ({
                 ...e,
-                ...getEdgeStyleAndMarker(e.sourceHandle),
+                ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
               }))
             : [],
         }))
@@ -1240,7 +1257,7 @@ function loadInitialPages(projectId: string): FlowPage[] {
             edges: Array.isArray(parsedLegacy.edges)
               ? parsedLegacy.edges.map((e: Edge) => ({
                   ...e,
-                  ...getEdgeStyleAndMarker(e.sourceHandle),
+                  ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
                 }))
               : [],
           },
@@ -1404,7 +1421,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         edges: Array.isArray(p.edges)
           ? p.edges.map((e: Edge) => ({
               ...e,
-              ...getEdgeStyleAndMarker(e.sourceHandle),
+              ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
             }))
           : [],
       }))
@@ -1422,7 +1439,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       setEdges(
         targetPage.edges.map((e: Edge) => ({
           ...e,
-          ...getEdgeStyleAndMarker(e.sourceHandle),
+          ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
         }))
       )
     }
@@ -1491,7 +1508,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [editingNode, setEditingNode] = useState<{ id: string; label: string; desc: string; color: string; mode: FlowNodeType } | null>(null)
-  const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string; text: string } | null>(null)
+  const [confirmDeleteEdge, setConfirmDeleteEdge] = useState<{ edgeId: string; source: string; target: string; text: string; color?: string } | null>(null)
   const [showHelpTooltip, setShowHelpTooltip] = useState(false)
 
   // 頁面重新命名與刪除狀態
@@ -1640,7 +1657,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const nextNodes = orderParentNodesFirst(target.nodes)
     const nextEdges = target.edges.map((e: Edge) => ({
       ...e,
-      ...getEdgeStyleAndMarker(e.sourceHandle),
+      ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
     }))
 
     nodesRef.current = nextNodes
@@ -1745,7 +1762,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
       const nextNodes = orderParentNodesFirst(nextActive.nodes)
       const nextEdges = nextActive.edges.map((e: Edge) => ({
         ...e,
-        ...getEdgeStyleAndMarker(e.sourceHandle),
+        ...getEdgeStyleAndMarker(e.sourceHandle, (e.data as any)?.color || (e.style?.stroke as string)),
       }))
       nodesRef.current = nextNodes
       edgesRef.current = nextEdges
@@ -1902,11 +1919,12 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
     connectStartRef.current = null
 
-    const edgeStyleAndMarker = getEdgeStyleAndMarker(resolved.sourceHandle)
+    const edgeStyleAndMarker = getEdgeStyleAndMarker(resolved.sourceHandle, '#4f46e5')
     const newEdge: Edge = {
       ...resolved,
       id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       ...edgeStyleAndMarker,
+      data: { text: '', color: '#4f46e5' },
     }
     setEdges((eds) => addEdge(newEdge, eds))
   }, [effectiveEditable])
@@ -1991,44 +2009,61 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         const nextNodes = currentNodes.map((n) => (n.id === updatedDragged.id ? updatedDragged : n))
         return orderParentNodesFirst(nextNodes)
       }
-
       return currentNodes
     })
-  }, [])
+  }, [effectiveEditable])
 
+  // 點擊節點開啟編輯視窗
   const handleEditNode = useCallback((nodeId: string) => {
     if (!effectiveEditable) return
-    setNodes((currentNodes) => {
-      const target = currentNodes.find((n) => n.id === nodeId)
-      if (target) {
-        const data = target.data as FlowNodeData
-        setEditingNode({
-          id: nodeId,
-          label: data.label || '',
-          desc: data.desc || '',
-          color: data.color || '',
-          mode: (data.mode || (target.type as FlowNodeType) || 'step') as FlowNodeType,
-        })
-      }
-      return currentNodes
+    const node = nodes.find((n) => n.id === nodeId)
+    if (!node) return
+    setEditingNode({
+      id: node.id,
+      label: (node.data?.label as string) || (node.data?.title as string) || '',
+      desc: (node.data?.desc as string) || (node.data?.subtitle as string) || '',
+      color: (node.data?.color as string) || '#3b82f6',
+      mode: (node.type as FlowNodeType) || (node.data?.mode as FlowNodeType) || 'step',
     })
-  }, [effectiveEditable])
+  }, [nodes, effectiveEditable])
 
-  // Ref: CR-148 改成函式式更新讓這個 callback 永久穩定，下面的節點快取才不會發到過期的處理函式
+  // 刪除節點 (連帶刪除相連 edges，若是 box 連帶解散/刪除 child)
   const handleDeleteNode = useCallback((nodeId: string) => {
     if (!effectiveEditable) return
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId && n.parentId !== nodeId))
+    setNodes((nds) => {
+      const target = nds.find((n) => n.id === nodeId)
+      if (!target) return nds
+      if (target.type === 'box') {
+        return nds
+          .filter((n) => n.id !== nodeId)
+          .map((n) => {
+            if (n.parentId === nodeId) {
+              const copy = { ...n }
+              delete copy.parentId
+              copy.position = {
+                x: target.position.x + n.position.x,
+                y: target.position.y + n.position.y,
+              }
+              return copy
+            }
+            return n
+          })
+      }
+      return nds.filter((n) => n.id !== nodeId)
+    })
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
-    setSelectedNodeId((cur) => (cur === nodeId ? null : cur))
+    setSelectedNodeId(null)
   }, [effectiveEditable])
 
+  // 保存節點編輯
   const handleSaveEdit = () => {
-    if (!effectiveEditable || !editingNode) return
+    if (!editingNode) return
     setNodes((nds) =>
       nds.map((n) =>
         n.id === editingNode.id
           ? {
               ...n,
+              type: editingNode.mode,
               data: {
                 ...n.data,
                 label: editingNode.label,
@@ -2042,20 +2077,37 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEditingNode(null)
   }
 
-  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
+  const handleSaveEdgeProperties = useCallback((edgeId: string, text: string, color?: string) => {
     setEdges((eds) =>
       eds.map((e) => {
         if (e.id !== edgeId) return e
+        const nextColor = color || (e.data as any)?.color || (e.style?.stroke as string) || '#4f46e5'
         return {
           ...e,
+          style: {
+            ...(e.style || {}),
+            stroke: nextColor,
+          },
+          markerEnd: {
+            ...(typeof e.markerEnd === 'object' ? e.markerEnd : {}),
+            type: MarkerType.ArrowClosed,
+            color: nextColor,
+            width: 14,
+            height: 14,
+          },
           data: {
             ...(e.data || {}),
             text,
+            color: nextColor,
           },
         }
       })
     )
   }, [])
+
+  const handleSaveEdgeText = useCallback((edgeId: string, text: string) => {
+    handleSaveEdgeProperties(edgeId, text)
+  }, [handleSaveEdgeProperties])
 
   const handleWaypointChange = useCallback((edgeId: string, waypoint: { x: number; y: number } | null) => {
     setEdges((eds) =>
@@ -2253,7 +2305,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     const nextCache = new Map<string, { src: Edge; out: Edge }>()
 
     const mapped = edges.map((e) => {
-      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle)
+      const edgeColor = (e.data as any)?.color || (e.style?.stroke as string) || '#4f46e5'
+      const edgeStyleAndMarker = getEdgeStyleAndMarker(e.sourceHandle, edgeColor)
       const obstacles = e.data?.waypoint ? [] : getObstaclesFromNodes(nodes, e.source, e.target)
       const out: Edge = {
         ...e,
@@ -2262,6 +2315,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         animated: false,
         data: {
           ...(e.data || {}),
+          color: edgeColor,
           obstacles,
           isConnectable: effectiveEditable,
           onSaveText: effectiveEditable ? handleSaveEdgeText : undefined,
@@ -2272,8 +2326,13 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         },
         style: {
           ...edgeStyleAndMarker.style,
+          stroke: edgeColor,
           strokeWidth: 2,
           opacity: 1,
+        },
+        markerEnd: {
+          ...edgeStyleAndMarker.markerEnd,
+          color: edgeColor,
         },
       }
       nextCache.set(e.id, { src: e, out })
@@ -2531,6 +2590,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               source: edge.source,
               target: edge.target,
               text: ((edge.data as FlowEdgeData | undefined)?.text as string) || '',
+              color: ((edge.data as any)?.color as string) || (edge.style?.stroke as string) || '#4f46e5',
             })
           }}
           onMoveEnd={handleMoveEnd}
@@ -2822,9 +2882,32 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
               className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               placeholder={T.flow.systemFlow.edgeTextPlaceholder}
             />
-            <p className="mt-2 mb-4 text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="mt-1.5 mb-3 text-[11px] text-slate-500 dark:text-slate-400">
               {T.flow.systemFlow.edgeTextHelp}
             </p>
+
+            {/* 連線顏色選擇 */}
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              連線顏色
+            </label>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {EDGE_COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.color}
+                  type="button"
+                  onClick={() => setConfirmDeleteEdge({ ...confirmDeleteEdge, color: opt.color })}
+                  className={cx(
+                    'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition',
+                    confirmDeleteEdge.color === opt.color
+                      ? 'border-blue-500 bg-blue-50 text-slate-800 ring-2 ring-blue-500/40 dark:bg-blue-950/40 dark:text-slate-100'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60'
+                  )}
+                >
+                  <span className="h-3 w-3 shrink-0 rounded-full shadow-xs" style={{ backgroundColor: opt.color }} />
+                  <span className="truncate">{opt.name}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="flex justify-between gap-2">
               <button
@@ -2848,7 +2931,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    handleSaveEdgeText(confirmDeleteEdge.edgeId, confirmDeleteEdge.text)
+                    handleSaveEdgeProperties(confirmDeleteEdge.edgeId, confirmDeleteEdge.text, confirmDeleteEdge.color)
                     setConfirmDeleteEdge(null)
                   }}
                   className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
