@@ -18,12 +18,10 @@ export interface ObstacleRect {
 
 /**
  * 從畫布上的節點陣列中提取障礙物：
- * 1. 遞迴取得 sourceId 與 targetId 的所有祖先節點 ID (包含自身父收納盒與更上層收納盒)。
- * 2. 保留 sourceId 與 targetId 本體作為障礙物 (分別標記 isSource 與 isTarget)，確保連線在出發 stub 之外絕不切穿自身卡片本體。
- * 3. 排除所有 frame / annotationFrame（標示框，純視覺附加元件）。
- * 4. 排除所有 text / annotationText（純文字註記，純視覺附加元件）。
- * 5. 排除屬於 sourceId 或 targetId 之父容器/祖先容器的收納盒（當下收納盒），允許線在內部穿行或進出該盒。
- * 6. 其餘所有卡片（包含同盒內的其它卡片、畫布上所有卡片）與其它第三方收納盒皆作為不可穿透之 ObstacleRect。
+ * 1. 排除所有 frame / annotationFrame（標示框，純視覺附加元件）。
+ * 2. 排除所有 text / annotationText（純文字註記，純視覺附加元件）。
+ * 3. 排除所有 box / 模組收納盒 / 泳道框（允許連線自由穿透容器進出）。
+ * 4. 保留所有步驟卡片與任務卡片本體作為不可穿透之 ObstacleRect（標記 isSource 與 isTarget），確保連線自動繞道避開步驟實體。
  */
 export function getObstaclesFromNodes(
   nodes: Node[],
@@ -38,25 +36,6 @@ export function getObstaclesFromNodes(
       nodeMap.set(n.id, n)
     }
   }
-
-  // 1. 遞迴取得 sourceId 與 targetId 的所有祖先節點 ID
-  const getAncestors = (id?: string): Set<string> => {
-    const ancestors = new Set<string>()
-    if (!id) return ancestors
-    let cur = nodeMap.get(id)
-    const visited = new Set<string>()
-    while (cur?.parentId && !visited.has(cur.parentId)) {
-      ancestors.add(cur.parentId)
-      visited.add(cur.parentId)
-      cur = nodeMap.get(cur.parentId)
-    }
-    return ancestors
-  }
-
-  const exemptContainerIds = new Set([
-    ...getAncestors(sourceId),
-    ...getAncestors(targetId),
-  ])
 
   const obstacles: ObstacleRect[] = []
 
@@ -86,17 +65,15 @@ export function getObstaclesFromNodes(
     )
     if (isText) continue
 
-    // 判斷是否為收納盒 (Box)
+    // 判斷是否為收納盒 (Box / 容器 / 泳道框)
     const isBox = Boolean(
       nodeMode === 'box' ||
       nodeType === 'box' ||
       (n.style && typeof n.style.width === 'number' && n.style.width >= 340)
     )
 
-    // 若為起點或終點的父容器/祖先收納盒，允許穿行進出（不列為障礙物）
-    if (isBox && exemptContainerIds.has(n.id)) {
-      continue
-    }
+    // 收納盒/容器框允許連線穿透進出（不列為障礙物）
+    if (isBox) continue
 
     // 計算節點在畫布上的絕對座標（累加所有父層相對位移）
     let absX = n.position?.x ?? 0

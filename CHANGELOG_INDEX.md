@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: System Flow Edge Color Customization & Close Waypoint Handle Hiding (CR-208)
+### Latest Changes: Container Box Penetration & Step Node Obstacle Routing (CR-209)
+- **變更檔案**:
+  - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
+    1. **關聯線容器穿透與步驟避障 (`CR-209`)**：將模組收納盒／泳道框（Box / Container）自避障障礙物清單中排除，允許連線自由穿行與跨容器連接；持續嚴格保留步驟卡片（Step / Task）為避障實體，直角折線自動繞道避開步驟本體。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-209` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-209`。
+
+### Previous Changes: System Flow Edge Color Customization & Close Waypoint Handle Hiding (CR-208)
 - **變更檔案**:
   - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
     1. **流程圖連線自訂變色 (`CR-208`)**：點擊連線彈出設定視窗中新增 9 色調色盤（靛青藍、經典藍、翠玉綠、優雅紫、活力橘、熱情紅、深沉灰、晴空青、玫瑰粉），點選即時同步連線本體、箭頭標記與折點，並持久化至畫布文件。
