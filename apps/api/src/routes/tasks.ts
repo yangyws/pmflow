@@ -720,7 +720,15 @@ export default async function taskRoutes(app: FastifyInstance) {
     const user = await authenticate(req)
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
-    await sql`UPDATE task SET deleted_at = now() WHERE id = ${req.params.id}`
+
+    // 連帶軟刪除該任務與其所有子孫任務
+    const affected = await sql<{ id: string }[]>`
+      UPDATE task SET deleted_at = now()
+      WHERE id IN (
+        SELECT descendant_id FROM task_closure WHERE ancestor_id = ${req.params.id}
+      )
+      AND deleted_at IS NULL
+      RETURNING id`
 
     emitRealtimeEvent({
       type: 'task:changed',
@@ -728,7 +736,7 @@ export default async function taskRoutes(app: FastifyInstance) {
       workspaceId,
       actorId: user.id,
       actorName: user.displayName,
-      payload: { action: 'deleted', taskId: req.params.id },
+      payload: { action: 'deleted', taskId: req.params.id, affectedTaskIds: affected.map(r => r.id) },
     })
 
     return reply.code(204).send()
@@ -753,7 +761,15 @@ export default async function taskRoutes(app: FastifyInstance) {
     const user = await authenticate(req)
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
-    await sql`UPDATE task SET deleted_at = NULL WHERE id = ${req.params.id}`
+
+    // 連帶還原該任務與其所有子孫任務
+    const affected = await sql<{ id: string }[]>`
+      UPDATE task SET deleted_at = NULL
+      WHERE id IN (
+        SELECT descendant_id FROM task_closure WHERE ancestor_id = ${req.params.id}
+      )
+      AND deleted_at IS NOT NULL
+      RETURNING id`
 
     emitRealtimeEvent({
       type: 'task:changed',
@@ -761,7 +777,7 @@ export default async function taskRoutes(app: FastifyInstance) {
       workspaceId,
       actorId: user.id,
       actorName: user.displayName,
-      payload: { action: 'restored', taskId: req.params.id },
+      payload: { action: 'restored', taskId: req.params.id, affectedTaskIds: affected.map(r => r.id) },
     })
 
     return reply.code(200).send({ ok: true })
@@ -828,7 +844,13 @@ export default async function taskRoutes(app: FastifyInstance) {
     const user = await authenticate(req)
     const { role, projectId, workspaceId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanDeleteTask(req.params.id, user.id, role)
-    await sql`DELETE FROM task WHERE id = ${req.params.id}`
+
+    // 連帶永久刪除該任務與其所有子孫任務
+    await sql`
+      DELETE FROM task
+      WHERE id IN (
+        SELECT descendant_id FROM task_closure WHERE ancestor_id = ${req.params.id}
+      )`
 
     emitRealtimeEvent({
       type: 'task:changed',

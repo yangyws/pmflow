@@ -301,7 +301,7 @@ export function EpicSidebar({
 
     const isBox = (t: Task) => t.type !== 'BUG' && (containerBoxSet.has(t.id) || hasKidsSet.has(t.id))
 
-    const rawEpics = tasks.filter(t => !t.parentId)
+    const rawEpics = tasks.filter(t => !t.parentId || !ids.has(t.parentId))
 
     const compareRef = (a: Task, b: Task) => {
       const numA = a.number ?? 0
