@@ -507,7 +507,7 @@ export function buildOrthogonalPath(
   targetPosition: Position,
   waypoint?: Point | null,
   obstacles: ObstacleRect[] = [],
-  margin = 36
+  margin = 40
 ): { path: string; px: number; py: number } {
   const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
   const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
@@ -535,33 +535,75 @@ export function buildOrthogonalPath(
   const sStub: Point = { x: sx + sVec.dx * margin, y: sy + sVec.dy * margin }
   const tStub: Point = { x: tx + tVec.dx * margin, y: ty + tVec.dy * margin }
 
-  // 構建標準預設直角折線路徑（保證至少 margin 距離之出發與進入緩衝段，避免折角貼緊接點）
+  // 構建標準預設直角折線路徑（保證至少 margin 距離之出發與進入緩衝段，杜絕折角緊貼接點把手）
   let basePoints: Point[]
   if (srcHoriz && tgtHoriz) {
-    if ((sVec.dx > 0 && tVec.dx < 0 && sStub.x <= tStub.x) || (sVec.dx < 0 && tVec.dx > 0 && sStub.x >= tStub.x)) {
-      const midX = (sStub.x + tStub.x) / 2
-      basePoints = [s0, sStub, { x: midX, y: sStub.y }, { x: midX, y: tStub.y }, tStub, t0]
+    // 兩端皆為水平接點 (Left / Right)
+    if (Math.abs(sy - ty) < 2 && (tx - sx) * sVec.dx > 0 && (sx - tx) * tVec.dx > 0) {
+      // 水平完全共線直行
+      basePoints = [s0, t0]
+    } else if (sVec.dx > 0 && tVec.dx < 0) {
+      // Right -> Left (標準右向順流)
+      if (tx >= sx + margin * 2) {
+        const midX = (sx + tx) / 2
+        basePoints = [s0, { x: midX, y: sy }, { x: midX, y: ty }, t0]
+      } else {
+        const loopY = Math.abs(sy - ty) >= margin * 2 ? (sy + ty) / 2 : (sy <= ty ? sy - margin : sy + margin)
+        basePoints = [s0, sStub, { x: sStub.x, y: loopY }, { x: tStub.x, y: loopY }, tStub, t0]
+      }
+    } else if (sVec.dx < 0 && tVec.dx > 0) {
+      // Left -> Right (標準左向順流)
+      if (sx >= tx + margin * 2) {
+        const midX = (sx + tx) / 2
+        basePoints = [s0, { x: midX, y: sy }, { x: midX, y: ty }, t0]
+      } else {
+        const loopY = Math.abs(sy - ty) >= margin * 2 ? (sy + ty) / 2 : (sy <= ty ? sy - margin : sy + margin)
+        basePoints = [s0, sStub, { x: sStub.x, y: loopY }, { x: tStub.x, y: loopY }, tStub, t0]
+      }
     } else {
-      const loopY = Math.abs(sStub.y - tStub.y) >= margin * 2 ? (sStub.y + tStub.y) / 2 : (sy <= ty ? sy - margin : sy + margin)
-      basePoints = [s0, sStub, { x: sStub.x, y: loopY }, { x: tStub.x, y: loopY }, tStub, t0]
+      // 同向接點 (Right -> Right 或 Left -> Left)
+      const turnX = sVec.dx > 0 ? Math.max(sx, tx) + margin : Math.min(sx, tx) - margin
+      basePoints = [s0, { x: turnX, y: sy }, { x: turnX, y: ty }, t0]
     }
   } else if (!srcHoriz && !tgtHoriz) {
-    if ((sVec.dy > 0 && tVec.dy < 0 && sStub.y <= tStub.y) || (sVec.dy < 0 && tVec.dy > 0 && sStub.y >= tStub.y)) {
-      const midY = (sStub.y + tStub.y) / 2
-      basePoints = [s0, sStub, { x: sStub.x, y: midY }, { x: tStub.x, y: midY }, tStub, t0]
+    // 兩端皆為垂直接點 (Top / Bottom)
+    if (Math.abs(sx - tx) < 2 && (ty - sy) * sVec.dy > 0 && (sy - ty) * tVec.dy > 0) {
+      // 垂直完全共線直行
+      basePoints = [s0, t0]
+    } else if (sVec.dy > 0 && tVec.dy < 0) {
+      // Bottom -> Top (標準向下順流)
+      if (ty >= sy + margin * 2) {
+        const midY = (sy + ty) / 2
+        basePoints = [s0, { x: sx, y: midY }, { x: tx, y: midY }, t0]
+      } else {
+        const loopX = Math.abs(sx - tx) >= margin * 2 ? (sx + tx) / 2 : (sx <= tx ? sx - margin : sx + margin)
+        basePoints = [s0, sStub, { x: loopX, y: sStub.y }, { x: loopX, y: tStub.y }, tStub, t0]
+      }
+    } else if (sVec.dy < 0 && tVec.dy > 0) {
+      // Top -> Bottom (標準向上順流)
+      if (sy >= ty + margin * 2) {
+        const midY = (sy + ty) / 2
+        basePoints = [s0, { x: sx, y: midY }, { x: tx, y: midY }, t0]
+      } else {
+        const loopX = Math.abs(sx - tx) >= margin * 2 ? (sx + tx) / 2 : (sx <= tx ? sx - margin : sx + margin)
+        basePoints = [s0, sStub, { x: loopX, y: sStub.y }, { x: loopX, y: tStub.y }, tStub, t0]
+      }
     } else {
-      const loopX = Math.abs(sStub.x - tStub.x) >= margin * 2 ? (sStub.x + tStub.x) / 2 : (sx <= tx ? sx - margin : sx + margin)
-      basePoints = [s0, sStub, { x: loopX, y: sStub.y }, { x: loopX, y: tStub.y }, tStub, t0]
+      // 同向接點 (Bottom -> Bottom 或 Top -> Top)
+      const turnY = sVec.dy > 0 ? Math.max(sy, ty) + margin : Math.min(sy, ty) - margin
+      basePoints = [s0, { x: sx, y: turnY }, { x: tx, y: turnY }, t0]
     }
   } else if (srcHoriz && !tgtHoriz) {
-    if ((tStub.x - sx) * sVec.dx >= margin) {
-      basePoints = [s0, sStub, { x: tStub.x, y: sStub.y }, tStub, t0]
+    // 水平 -> 垂直 (如 Right -> Top/Bottom)
+    if ((tx - sx) * sVec.dx >= margin && (ty - sy) * (-tVec.dy) >= margin) {
+      basePoints = [s0, { x: tx, y: sy }, t0]
     } else {
       basePoints = [s0, sStub, { x: sStub.x, y: tStub.y }, tStub, t0]
     }
   } else {
-    if ((tStub.y - sy) * sVec.dy >= margin) {
-      basePoints = [s0, sStub, { x: sStub.x, y: tStub.y }, tStub, t0]
+    // 垂直 -> 水平 (如 Bottom -> Left/Right)
+    if ((ty - sy) * sVec.dy >= margin && (tx - sx) * (-tVec.dx) >= margin) {
+      basePoints = [s0, { x: sx, y: ty }, t0]
     } else {
       basePoints = [s0, sStub, { x: tStub.x, y: sStub.y }, tStub, t0]
     }
