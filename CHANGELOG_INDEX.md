@@ -25,7 +25,7 @@
 ### Latest Changes: Orthogonal Line Clearance & Corner Distance Optimization (CR-210)
 - **變更檔案**:
   - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
-    1. **正交折線接點緩衝間距擴展 (`CR-210`)**：將預設正交路徑緩衝間距（`margin`）由 20px 提升至 36px，並重構直角轉折計算邏輯，確保連線出發與進入接點皆保留足夠直行緩衝距離，杜絕 90 度折角貼緊接點造成的視覺擁擠。
+    1. **正交折線接點緩衝間距擴展 (`CR-210`)**：將預設正交路徑緩衝間距（`margin`）由 20px 提升至 40px，重構直角轉折計算邏輯，並修復 `simplifyPoints` 誤壓縮出發緩衝段的問題；同軸同向接點自動採用 100% 筆直直連，確保連線出發與進入接點皆保留足夠緩衝距離，徹底消除 90 度折角貼緊接點造成的視覺擁擠。
   - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-210` 條目與細節。
   - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-210`。
 
