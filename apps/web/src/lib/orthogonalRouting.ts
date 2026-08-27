@@ -507,7 +507,7 @@ export function buildOrthogonalPath(
   targetPosition: Position,
   waypoint?: Point | null,
   obstacles: ObstacleRect[] = [],
-  margin = 20
+  margin = 36
 ): { path: string; px: number; py: number } {
   const srcHoriz = sourcePosition === Position.Left || sourcePosition === Position.Right
   const tgtHoriz = targetPosition === Position.Left || targetPosition === Position.Right
@@ -535,28 +535,36 @@ export function buildOrthogonalPath(
   const sStub: Point = { x: sx + sVec.dx * margin, y: sy + sVec.dy * margin }
   const tStub: Point = { x: tx + tVec.dx * margin, y: ty + tVec.dy * margin }
 
-  // 構建標準預設直角折線路徑
+  // 構建標準預設直角折線路徑（保證至少 margin 距離之出發與進入緩衝段，避免折角貼緊接點）
   let basePoints: Point[]
   if (srcHoriz && tgtHoriz) {
-    const midX = (sStub.x + tStub.x) / 2
     if ((sVec.dx > 0 && tVec.dx < 0 && sStub.x <= tStub.x) || (sVec.dx < 0 && tVec.dx > 0 && sStub.x >= tStub.x)) {
-      basePoints = [s0, sStub, { x: midX, y: sStub.y }, { x: midX, y: tStub.y }, tStub, t0]
-    } else {
-      const midY = (sStub.y + tStub.y) / 2
-      basePoints = [s0, sStub, { x: sStub.x, y: midY }, { x: tStub.x, y: midY }, tStub, t0]
-    }
-  } else if (!srcHoriz && !tgtHoriz) {
-    const midY = (sStub.y + tStub.y) / 2
-    if ((sVec.dy > 0 && tVec.dy < 0 && sStub.y <= tStub.y) || (sVec.dy < 0 && tVec.dy > 0 && sStub.y >= tStub.y)) {
-      basePoints = [s0, sStub, { x: sStub.x, y: midY }, { x: tStub.x, y: midY }, tStub, t0]
-    } else {
       const midX = (sStub.x + tStub.x) / 2
       basePoints = [s0, sStub, { x: midX, y: sStub.y }, { x: midX, y: tStub.y }, tStub, t0]
+    } else {
+      const loopY = Math.abs(sStub.y - tStub.y) >= margin * 2 ? (sStub.y + tStub.y) / 2 : (sy <= ty ? sy - margin : sy + margin)
+      basePoints = [s0, sStub, { x: sStub.x, y: loopY }, { x: tStub.x, y: loopY }, tStub, t0]
+    }
+  } else if (!srcHoriz && !tgtHoriz) {
+    if ((sVec.dy > 0 && tVec.dy < 0 && sStub.y <= tStub.y) || (sVec.dy < 0 && tVec.dy > 0 && sStub.y >= tStub.y)) {
+      const midY = (sStub.y + tStub.y) / 2
+      basePoints = [s0, sStub, { x: sStub.x, y: midY }, { x: tStub.x, y: midY }, tStub, t0]
+    } else {
+      const loopX = Math.abs(sStub.x - tStub.x) >= margin * 2 ? (sStub.x + tStub.x) / 2 : (sx <= tx ? sx - margin : sx + margin)
+      basePoints = [s0, sStub, { x: loopX, y: sStub.y }, { x: loopX, y: tStub.y }, tStub, t0]
     }
   } else if (srcHoriz && !tgtHoriz) {
-    basePoints = [s0, sStub, { x: tStub.x, y: sStub.y }, tStub, t0]
+    if ((tStub.x - sx) * sVec.dx >= margin) {
+      basePoints = [s0, sStub, { x: tStub.x, y: sStub.y }, tStub, t0]
+    } else {
+      basePoints = [s0, sStub, { x: sStub.x, y: tStub.y }, tStub, t0]
+    }
   } else {
-    basePoints = [s0, sStub, { x: sStub.x, y: tStub.y }, tStub, t0]
+    if ((tStub.y - sy) * sVec.dy >= margin) {
+      basePoints = [s0, sStub, { x: sStub.x, y: tStub.y }, tStub, t0]
+    } else {
+      basePoints = [s0, sStub, { x: tStub.x, y: sStub.y }, tStub, t0]
+    }
   }
 
   basePoints = simplifyPoints(basePoints)

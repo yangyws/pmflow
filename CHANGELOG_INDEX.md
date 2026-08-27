@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Container Box Penetration & Step Node Obstacle Routing (CR-209)
+### Latest Changes: Orthogonal Line Clearance & Corner Distance Optimization (CR-210)
+- **變更檔案**:
+  - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
+    1. **正交折線接點緩衝間距擴展 (`CR-210`)**：將預設正交路徑緩衝間距（`margin`）由 20px 提升至 36px，並重構直角轉折計算邏輯，確保連線出發與進入接點皆保留足夠直行緩衝距離，杜絕 90 度折角貼緊接點造成的視覺擁擠。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-210` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-210`。
+
+### Previous Changes: Container Box Penetration & Step Node Obstacle Routing (CR-209)
 - **變更檔案**:
   - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
     1. **關聯線容器穿透與步驟避障 (`CR-209`)**：將模組收納盒／泳道框（Box / Container）自避障障礙物清單中排除，允許連線自由穿行與跨容器連接；持續嚴格保留步驟卡片（Step / Task）為避障實體，直角折線自動繞道避開步驟本體。
