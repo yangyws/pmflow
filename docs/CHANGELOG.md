@@ -271,14 +271,17 @@
 
 - **使用者需求**：現在關聯圖不同帳號在移動卡片時沒有同步，幫我先打 API 寫入 DB，確認寫入後用 websocket/SSE 通知別的使用者同步刷新關聯圖卡片位置。
 - **排查與修復實作**：
-  1. **前端拖曳落盤與資料庫即時寫入 (`TaskGraph.tsx`)**：
-     - 在 `onNodeDragStop` 的全部拖曳結束分支（一般拖曳、移入收納盒、移出收納盒）皆立即呼叫 `Api.saveCanvasNodes(projectId, 'task-graph', { nodes: ... })`，將卡片最新座標 `(x, y)` 確定寫入 PostgreSQL `project_canvas_node` 資料表。
-  2. **後端資料庫落盤確認與 SSE / WebSocket 廣播通知 (`canvas.ts`, `events.ts`, `useRealtimeSync.ts`)**：
+  1. **HTTP 方法修正為 PATCH 增量合併（修復 PUT 誤清空未動節點，`TaskGraph.tsx`, `api.ts`）**：
+     - 排查發現 `Api.saveCanvasNodes` 底層使用 `PUT` 方法（整份覆蓋，後端會執行 `DELETE FROM project_canvas_node WHERE node_id <> ALL(...)`），造成每次移動單張卡片時誤將 DB 中其他卡片的座標洗空。
+     - 全面改用 `Api.patchCanvasNodes`（`PATCH` 增量合併），在 `onNodeDragStop`、收納盒移入/移出、模式切換及尺寸調整時僅合併更新該節點，保留全畫布其他卡片座標。
+  2. **伺服器同步鎖定防回彈機制 (`TaskGraph.tsx`)**：
+     - 引入 `isApplyingServerSyncRef` 標記；當在線客戶端接收到其他使用者的最新座標推播並套用至本機狀態時，暫時阻斷 `useEffect([dragged, ...])` 觸發的自動保存，杜絕接收端將舊本機快取再次覆蓋回伺服器造成循環衝突。
+  3. **後端資料庫落盤確認與 SSE / WebSocket 廣播通知 (`canvas.ts`, `events.ts`, `useRealtimeSync.ts`)**：
      - 後端 `canvas.ts` 在事務寫入 `project_canvas_node` 確認成功後，即時觸發 `emitRealtimeEvent({ type: 'canvas:changed', projectId, actorId, payload: { action: 'patch_nodes', viewKey: 'task-graph' } })`。
      - 在 `useRealtimeSync.ts` 補齊 `invalidate(['canvasNodes'])`、`invalidate(['canvasNodes', ev.projectId])`、`invalidate(['canvasPermissions'])`，使其他在線使用者的客戶端能第一時間接收廣播並失效快取。
-  3. **多帳號即時座標套用與防迴圈重寫機制 (`TaskGraph.tsx`)**：
+  4. **多帳號即時座標套用與版本判定 (`TaskGraph.tsx`)**：
      - 移除舊版僅在初次載入執行的 `hasInitializedNodesServerRef` 鎖定，改以 `lastSavedNodesJsonRef` 與 `lastAppliedNodesUpdatedAtRef` 進行版本比對與防迴圈判定。
-     - 當其他使用者更新卡片座標時，在線使用者端自動接收最新 `canvasNodesRes`，即時同步更新 `dragged`、`resized`、`toggledModes` 與 `nodes`，使畫布上的卡片位置流暢同步移動，且不會反向覆蓋伺服器資料。
+     - 當其他使用者更新卡片座標時，在線使用者端自動接收最新 `canvasNodesRes`，即時同步更新 `dragged`、`resized`、`toggledModes` 與 `nodes`，使畫布上的卡片位置流暢同步移動。
 
 ### <a id="cr-212"></a>CR-212 (2026-08-28) — 關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）
 

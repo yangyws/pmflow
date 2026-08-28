@@ -1869,7 +1869,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         }
 
         if (projectId) {
-          Api.saveCanvasNodes(projectId, 'task-graph', {
+          Api.patchCanvasNodes(projectId, 'task-graph', {
             nodes: { [nodeId]: { mode: nextMode } },
           }).catch(() => {})
         }
@@ -1963,6 +1963,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const backendNodesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedNodesJsonRef = useRef<string>('')
   const lastAppliedNodesUpdatedAtRef = useRef<string | null>(null)
+  const isApplyingServerSyncRef = useRef<boolean>(false)
 
   // 載入後端共享註記、折點與文字 (task-graph-extra) 並即時同步 (Ref: CR-213)
   useEffect(() => {
@@ -2025,6 +2026,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     lastAppliedNodesUpdatedAtRef.current = updatedAt
     lastSavedNodesJsonRef.current = incomingJson
+    isApplyingServerSyncRef.current = true
 
     const serverDragged: Record<string, { x: number; y: number }> = {}
     const serverResized: Record<string, { width: number; height: number }> = {}
@@ -2119,6 +2121,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         return hasChanges ? orderParentNodesFirst(next) : prevNodes
       })
     }
+
+    setTimeout(() => {
+      isApplyingServerSyncRef.current = false
+    }, 100)
   }, [canvasNodesRes, projectId])
 
   const saveExtraToBackend = useCallback(
@@ -2150,7 +2156,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       currentResized: Record<string, { width: number; height: number }>,
       currentModes: Record<string, NodeMode>
     ) => {
-      if (!projectId) return
+      if (!projectId || isApplyingServerSyncRef.current) return
 
       const allNodeIds = new Set([
         ...Object.keys(currentDragged),
@@ -2184,7 +2190,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         backendNodesSaveTimerRef.current = null
         try {
           lastSavedNodesJsonRef.current = json
-          await Api.saveCanvasNodes(projectId, 'task-graph', { nodes: patchPayload })
+          await Api.patchCanvasNodes(projectId, 'task-graph', { nodes: patchPayload })
         } catch (err) {
           console.error('Failed to save task-graph canvas nodes to backend:', err)
         }
@@ -2534,7 +2540,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }
         }
         if (Object.keys(patchPayload).length > 0) {
-          Api.saveCanvasNodes(projectId, 'task-graph', { nodes: patchPayload }).catch(() => {})
+          Api.patchCanvasNodes(projectId, 'task-graph', { nodes: patchPayload }).catch(() => {})
         }
       }
     }
@@ -2618,7 +2624,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   // 每次拖曳移位自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   useEffect(() => {
-    if (!projectId || !isLoadedRef.current) return
+    if (!projectId || !isLoadedRef.current || isApplyingServerSyncRef.current) return
     queueCanvasWrite('dragged', () => {
       try {
         if (Object.keys(dragged).length > 0) {
@@ -2634,7 +2640,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   // 每次調整大小自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   // Ref: CR-151
   useEffect(() => {
-    if (!projectId || !isLoadedRef.current) return
+    if (!projectId || !isLoadedRef.current || isApplyingServerSyncRef.current) return
     queueCanvasWrite('resized', () => {
       try {
         if (Object.keys(resized).length > 0) {
@@ -2649,7 +2655,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   // 每次切換模式自動寫入 localStorage 與後端保存 (僅在載入完成後生效)
   useEffect(() => {
-    if (!projectId || !isLoadedRef.current) return
+    if (!projectId || !isLoadedRef.current || isApplyingServerSyncRef.current) return
     queueCanvasWrite('toggledModes', () => {
       try {
         if (Object.keys(toggledModes).length > 0) {
@@ -3204,7 +3210,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                 const enforcedH = Math.max(rawH, minH)
                 nextResized[(dc as any).id] = { width: enforcedW, height: enforcedH }
                 if (projectId) {
-                  Api.saveCanvasNodes(projectId, 'task-graph', {
+                  Api.patchCanvasNodes(projectId, 'task-graph', {
                     nodes: { [(dc as any).id]: { width: enforcedW, height: enforcedH } },
                   }).catch(() => {})
                 }
@@ -3567,7 +3573,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }))
 
           if (projectId) {
-            Api.saveCanvasNodes(projectId, 'task-graph', {
+            Api.patchCanvasNodes(projectId, 'task-graph', {
               nodes: { [node.id]: { x: Math.round(cardAbsPos.x), y: Math.round(cardAbsPos.y) } },
             }).catch(() => {})
 
@@ -3664,7 +3670,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }))
 
           if (projectId) {
-            Api.saveCanvasNodes(projectId, 'task-graph', {
+            Api.patchCanvasNodes(projectId, 'task-graph', {
               nodes: {
                 [node.id]: { x: Math.round(targetSlotPos.x), y: Math.round(targetSlotPos.y) },
                 [targetBox!.id]: { x: Math.round(targetBox!.position.x), y: Math.round(targetBox!.position.y) },
@@ -3757,7 +3763,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           [node.id]: { x: node.position.x, y: node.position.y },
         }))
         if (projectId) {
-          Api.saveCanvasNodes(projectId, 'task-graph', {
+          Api.patchCanvasNodes(projectId, 'task-graph', {
             nodes: { [node.id]: { x: Math.round(node.position.x), y: Math.round(node.position.y) } },
           }).catch(() => {})
         }

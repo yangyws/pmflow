@@ -25,8 +25,8 @@
 ### Latest Changes: Relation Graph Multi-User Card Move Real-time Sync (CR-213)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
-    1. **拖曳即時 DB 寫入與座標更新 (`CR-213`)**：在 `onNodeDragStop` 的全部分支（一般移動、移入/移出收納盒）皆立即呼叫 `Api.saveCanvasNodes(projectId, 'task-graph', { nodes: ... })` 寫入 DB。
-    2. **即時座標同步與防迴圈重寫機制 (`CR-213`)**：移除舊版僅初次載入執行的初始化鎖，改以 `lastSavedNodesJsonRef` 與 `lastAppliedNodesUpdatedAtRef` 進行版本比對；其他使用者移動卡片時，在線端自動接收最新 `canvasNodesRes` 並即時更新 `dragged`、`resized`、`toggledModes` 與 `nodes`，流暢移動且不產生重複儲存。
+    1. **拖曳即時 DB 增量寫入與座標更新 (`CR-213`)**：在 `onNodeDragStop` 的全部分支、收納盒模式切換與尺寸調整皆改用 `Api.patchCanvasNodes`（PATCH 增量合併），修復原 PUT 整份覆蓋導致其他未移動卡片座標被洗空的問題。
+    2. **即時座標同步與防回彈重寫機制 (`CR-213`)**：引入 `isApplyingServerSyncRef` 阻斷接收端自動反向覆蓋；移除舊版初次載入鎖，改以版本比對即時更新在線端 `dragged`、`resized`、`toggledModes` 與 `nodes`，流暢移動且不產生重複儲存。
   - [`useRealtimeSync.ts`](file:///D:/github/pmflow/apps/web/src/lib/useRealtimeSync.ts):
     1. **即時廣播失效快取補齊 (`CR-213`)**：在 `canvas:changed` 事件中補齊 `canvasNodes` 與 `canvasPermissions` 查詢快取失效（`invalidateQueries`），確保所有在線客戶端即時拉取最新節點座標。
   - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-213` 條目與細節。
