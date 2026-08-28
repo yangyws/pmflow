@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Orthogonal Line Clearance & Corner Distance Optimization (CR-210)
+### Latest Changes: URL Search Params Navigation Sync & Refresh Preservation (CR-211)
+- **變更檔案**:
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **網址導覽狀態同步與 F5 留存 (`CR-211`)**：在 `App.tsx` 實作 `parseUrlState` 與 `updateUrlState`，將使用者的導覽狀態（`projectId`、`view`、`openTask`、`epicId`、`account`）無感即時同步至網址 Search Params（`?project=...&view=...&task=...&epic=...&account=...`）；F5 重新整理時精確還原當前畫面與專案，支援瀏覽器前進/後退（`popstate`）與切換專案清空網址。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-211` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-211`。
+
+### Previous Changes: Orthogonal Line Clearance & Corner Distance Optimization (CR-210)
 - **變更檔案**:
   - [`orthogonalRouting.ts`](file:///D:/github/pmflow/apps/web/src/lib/orthogonalRouting.ts):
     1. **正交折線接點緩衝間距擴展 (`CR-210`)**：將預設正交路徑緩衝間距（`margin`）由 20px 提升至 40px，重構直角轉折計算邏輯，並修復 `simplifyPoints` 誤壓縮出發緩衝段的問題；同軸同向接點自動採用 100% 筆直直連，確保連線出發與進入接點皆保留足夠緩衝距離，徹底消除 90 度折角貼緊接點造成的視覺擁擠。

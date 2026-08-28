@@ -88,14 +88,74 @@ const NOT_FILTERED_BY_EPIC: View[] = [
   'inquiry', 'members', 'memberAdmin', 'settings', 'dashboard', 'playground',
 ]
 
+const VALID_VIEWS = new Set<View>([
+  'list', 'board', 'calendar', 'gantt', 'simpleGraph', 'systemFlow', 'playground', 'dashboard',
+  'inquiry', 'members', 'deletedTasks', 'memberAdmin', 'settings',
+])
+
+function parseUrlState(): {
+  projectId: string | null
+  view: View
+  openTask: string | null
+  account: AccountView
+  epicId: string | null
+} {
+  if (typeof window === 'undefined') {
+    return { projectId: null, view: 'list', openTask: null, account: null, epicId: null }
+  }
+  const params = new URLSearchParams(window.location.search)
+  const proj = params.get('project') || null
+  let v = params.get('view') as View | null
+  if (v === ('graph' as any)) v = 'simpleGraph'
+  const finalView = v && VALID_VIEWS.has(v) ? v : 'list'
+  const task = params.get('task') || null
+  const accRaw = params.get('account')
+  const account: AccountView = accRaw === 'profile' || accRaw === 'admin' ? accRaw : null
+  const epic = params.get('epic') || null
+  return { projectId: proj, view: finalView, openTask: task, account, epicId: epic }
+}
+
+function updateUrlState(state: {
+  projectId: string | null
+  view: View
+  openTask: string | null
+  account: AccountView
+  epicId: string | null
+}) {
+  if (typeof window === 'undefined') return
+  const params = new URLSearchParams()
+  if (state.account) {
+    params.set('account', state.account)
+  }
+  if (state.projectId) {
+    params.set('project', state.projectId)
+    if (state.view && state.view !== 'list') {
+      params.set('view', state.view)
+    }
+    if (state.openTask) {
+      params.set('task', state.openTask)
+    }
+    if (state.epicId) {
+      params.set('epic', state.epicId)
+    }
+  }
+  const search = params.toString()
+  const newUrl = search ? `${window.location.pathname}?${search}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  if (newUrl !== currentUrl) {
+    window.history.replaceState(null, '', newUrl)
+  }
+}
+
 export default function App() {
   const { user, workspaces, ready, logout } = useAuth()
   useRealtimeSync()
   // projectId 為 null＝還沒選專案，顯示選擇頁。
-  // 專案切換刻意只發生在這一層，側欄不再放專案清單。
-  const [projectId, setProjectId] = useState<string | null>(null)
-  const [view, setView] = useState<View>('list')
-  const [openTask, setOpenTask] = useState<string | null>(null)
+  // 專案、視圖與選中任務狀態同步至網址 Query String，確保 F5 重新整理時留在當前畫面與專案。
+  const [projectId, setProjectId] = useState<string | null>(() => parseUrlState().projectId)
+  const [view, setView] = useState<View>(() => parseUrlState().view)
+  const [openTask, setOpenTask] = useState<string | null>(() => parseUrlState().openTask)
+  const [epicId, setEpicId] = useState<string | null>(() => parseUrlState().epicId)
   /**
    * 從通知點進來的那張任務，要閃紅框指出來是哪一張。
    *
@@ -107,7 +167,7 @@ export default function App() {
    * 動畫三下就停，之後留著一圈靜止的紅框（見 index.css 的 `.pmflow-flash`）。
    */
   const [flashTask, setFlashTask] = useState<string | null>(null)
-  const [account, setAccount] = useState<AccountView>(null)
+  const [account, setAccount] = useState<AccountView>(() => parseUrlState().account)
   const [showAiSkillModal, setShowAiSkillModal] = useState(false)
 
   /**
@@ -123,13 +183,47 @@ export default function App() {
     setProjectId(null)
     setView('list')
     setOpenTask(null)
+    setEpicId(null)
     setAccount(null)
   }
 
-  const { data: projectsData } = useQuery({
+  // 同步導覽狀態至網址 Query String (F5 重新整理或複製網址時保留當前狀態)
+  useEffect(() => {
+    if (!user) return
+    updateUrlState({ projectId, view, openTask, account, epicId })
+  }, [user, projectId, view, openTask, account, epicId])
+
+  // 支援瀏覽器上一頁 / 下一頁 (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const current = parseUrlState()
+      setProjectId(current.projectId)
+      setView(current.view)
+      setOpenTask(current.openTask)
+      setEpicId(current.epicId)
+      setAccount(current.account)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  const { data: projectsData, isSuccess: isProjectsLoaded } = useQuery({
     queryKey: ['projects'], queryFn: Api.projects, enabled: !!user,
   })
   const projects = projectsData?.projects ?? []
+
+  // 專案清單載入後，若網址指定的專案不在清單中，自動退回專案選擇頁
+  useEffect(() => {
+    if (isProjectsLoaded && projectId) {
+      const exists = projects.some(p => p.id === projectId)
+      if (!exists) {
+        setProjectId(null)
+        setView('list')
+        setOpenTask(null)
+        setEpicId(null)
+      }
+    }
+  }, [isProjectsLoaded, projects, projectId])
 
   if (!ready) return <Spinner label={T.nav.starting} />
   if (!user) return <Login />
@@ -145,6 +239,7 @@ export default function App() {
     if (!n.projectId) return
     setProjectId(n.projectId)
     setOpenTask(n.taskId)
+    setEpicId(null)
     /*
      * 閃一下紅框指出「就是這一張」。一次點下去畫面上換掉太多東西
      * （可能換專案、換頁籤、再開抽屜），眼睛不知道該看哪裡。
@@ -185,7 +280,13 @@ export default function App() {
       onSettings={projectId && canManageProject
         ? () => { setAccount(null); setView('settings'); setOpenTask(null) }
         : undefined}
-      onSwitchProject={projectId ? () => setProjectId(null) : undefined}
+      onSwitchProject={projectId ? () => {
+        setProjectId(null)
+        setView('list')
+        setOpenTask(null)
+        setEpicId(null)
+        setAccount(null)
+      } : undefined}
       onAiSkill={() => setShowAiSkillModal(true)}
       pendingJoins={pendingJoins}
     />
@@ -230,7 +331,13 @@ export default function App() {
         <ProjectPicker
           projects={projects}
           workspaceId={workspaceId}
-          onPick={id => { setProjectId(id); setView('list') }}
+          onPick={id => {
+            setProjectId(id)
+            setView('list')
+            setOpenTask(null)
+            setEpicId(null)
+            setAccount(null)
+          }}
           bell={bell}
           menu={userMenu}
         />
@@ -252,9 +359,16 @@ export default function App() {
         canManageProject={canManageProject}
         view={view} setView={setView}
         openTask={openTask} setOpenTask={setOpenTask}
+        epicId={epicId} setEpicId={setEpicId}
         flashTask={flashTask}
         onFlashSeen={() => setFlashTask(null)}
-        onSwitchProject={() => { setProjectId(null); setView('list'); setOpenTask(null) }}
+        onSwitchProject={() => {
+          setProjectId(null)
+          setView('list')
+          setOpenTask(null)
+          setEpicId(null)
+          setAccount(null)
+        }}
         bell={bell}
         menu={userMenu}
       />
@@ -498,6 +612,7 @@ function TabPrefs({ hidden, setHidden, ordered, onReorder, onResetOrder, view, s
  */
 function ProjectWorkspace({
   projectId, workspaceId, canManageProject = false, view: requestedView, setView, openTask, setOpenTask,
+  epicId, setEpicId,
   flashTask, onFlashSeen, onSwitchProject, bell, menu,
 }: {
   projectId: string
@@ -507,6 +622,8 @@ function ProjectWorkspace({
   setView: (v: View) => void
   openTask: string | null
   setOpenTask: (id: string | null) => void
+  epicId: string | null
+  setEpicId: (id: string | null) => void
   /** 剛從通知點進來的那張任務，要閃紅框指出來。null＝不閃 */
   flashTask: string | null
   /** 他在那張任務上動了一下，或關掉了 —— 紅框可以收走了 */
@@ -517,12 +634,10 @@ function ProjectWorkspace({
   /** 右上角的頭像選單。同樣由 App 建立 —— 點下去是換畫面，那是 App 的事 */
   menu: ReactNode
 }) {
-  /** 側欄選中的大項目；null＝不篩選 */
-  const [epicId, setEpicId] = useState<string | null>(null)
   /** 側欄點擊選擇的事件，供右側視圖連動與高亮 */
-  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(() => epicId)
   /** 側欄點擊觸發的聚焦目標（附帶時間戳以確保只在點擊瞬間平移視角一次，null id 表示顯示全部） */
-  const [menuFocusTarget, setMenuFocusTarget] = useState<{ id: string | null; ts: number } | null>(null)
+  const [menuFocusTarget, setMenuFocusTarget] = useState<{ id: string | null; ts: number } | null>(() => epicId ? { id: epicId, ts: Date.now() } : null)
 
   /**
    * 藏起來的頁籤。**每個人自己的偏好，存這台瀏覽器**（見 AGENTS.md）——
@@ -601,6 +716,16 @@ function ProjectWorkspace({
     queryKey: ['tasks', projectId], queryFn: () => Api.tasks(projectId),
   })
   const tasks = tasksData?.tasks ?? []
+
+  // 任務清單載入後，若網址指定的大項目不存在，自動清除篩選
+  useEffect(() => {
+    if (tasksData?.tasks && epicId) {
+      const exists = tasks.some(t => t.id === epicId)
+      if (!exists) {
+        setEpicId(null)
+      }
+    }
+  }, [tasksData, tasks, epicId, setEpicId])
 
   // 選了大項目 → 主視圖只顯示它和它底下的小項目（含更深的層）
   const visible = useMemo(() => {
