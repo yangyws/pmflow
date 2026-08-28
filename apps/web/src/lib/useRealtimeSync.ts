@@ -124,11 +124,15 @@ export function useRealtimeSync() {
             invalidate(['canvas'])
             invalidate(['canvasDoc'])
             invalidate(['canvas-doc'])
+            invalidate(['canvasNodes'])
+            invalidate(['canvasPermissions'])
             invalidate(['graph'])
             if (ev.projectId) {
               invalidate(['canvas', ev.projectId])
               invalidate(['canvasDoc', ev.projectId])
               invalidate(['canvas-doc', ev.projectId])
+              invalidate(['canvasNodes', ev.projectId])
+              invalidate(['canvasPermissions', ev.projectId])
               invalidate(['graph', ev.projectId])
             }
             break

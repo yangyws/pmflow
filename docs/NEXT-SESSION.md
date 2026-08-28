@@ -1,12 +1,16 @@
 # 下次從這裡繼續
 
-2026-08-28 收工。**進度到 `CR-212`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
+2026-08-28 收工。**進度到 `CR-213`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
 本地 Commit 已完成（**未 auto-push 至 main**，推送要他自己來）。
 
 ## 畫面驗證：使用者已在 2026-08-28 確認全部正常
 
-這一批（`CR-131`～`CR-212`）開發期間包含：
-1. **關聯線點擊刪除提示彈窗響應修復 (CR-212)**：
+這一批（`CR-131`～`CR-213`）開發期間包含：
+1. **關聯圖多帳號移動卡片即時同步 (CR-213)**：
+   - 在 `onNodeDragStop` 的全部分支（一般移動、移入/移出收納盒）皆立即呼叫 `Api.saveCanvasNodes(projectId, 'task-graph', { nodes: ... })` 確定寫入 DB。
+   - 後端確認落盤後發送 `canvas:changed` 即時事件，在 `useRealtimeSync.ts` 補齊 `canvasNodes` 查詢快取失效。
+   - 移除舊版初次載入限制，以版本比對即時同步更新在線端 `dragged`、`resized`、`toggledModes` 與 `nodes`，流暢同步卡片座標且防迴圈重寫。
+2. **關聯線點擊刪除提示彈窗響應修復 (CR-212)**：
    - 在 `index.css` 補齊 `.pointer-events-stroke { pointer-events: stroke !important; }`，並在 `OrthogonalEdge` 與 `FlowLabeledEdge` 上的 36px 寬幅透明 `<path>` 及實體線直接加上 `style={{ pointerEvents: 'stroke' }}` 與直接掛載 `onClick` 事件，確保各瀏覽器穿透點擊皆能 100% 響應。
    - 引入 `onEdgeClickRef` / `handleEdgeClickRef` 解決快取邊緣物件的 stale closure 問題。
    - 修復 `consumeEdgeDragGuard()` 誤重複上鎖，改用 `pointerStartRef` 嚴格在位移超過 3px 時才標記拖曳，單純點擊穩定喚起連線刪除/編輯彈窗。

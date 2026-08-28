@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Edge Click Delete Modal Response Fix (CR-212)
+### Latest Changes: Relation Graph Multi-User Card Move Real-time Sync (CR-213)
+- **變更檔案**:
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **拖曳即時 DB 寫入與座標更新 (`CR-213`)**：在 `onNodeDragStop` 的全部分支（一般移動、移入/移出收納盒）皆立即呼叫 `Api.saveCanvasNodes(projectId, 'task-graph', { nodes: ... })` 寫入 DB。
+    2. **即時座標同步與防迴圈重寫機制 (`CR-213`)**：移除舊版僅初次載入執行的初始化鎖，改以 `lastSavedNodesJsonRef` 與 `lastAppliedNodesUpdatedAtRef` 進行版本比對；其他使用者移動卡片時，在線端自動接收最新 `canvasNodesRes` 並即時更新 `dragged`、`resized`、`toggledModes` 與 `nodes`，流暢移動且不產生重複儲存。
+  - [`useRealtimeSync.ts`](file:///D:/github/pmflow/apps/web/src/lib/useRealtimeSync.ts):
+    1. **即時廣播失效快取補齊 (`CR-213`)**：在 `canvas:changed` 事件中補齊 `canvasNodes` 與 `canvasPermissions` 查詢快取失效（`invalidateQueries`），確保所有在線客戶端即時拉取最新節點座標。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-213` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-213`。
+
+### Previous Changes: Edge Click Delete Modal Response Fix (CR-212)
 - **變更檔案**:
   - [`index.css`](file:///D:/github/pmflow/apps/web/src/index.css):
     1. **連線點擊熱區 CSS 屬性補齊 (`CR-212`)**：補齊 `.pointer-events-stroke { pointer-events: stroke !important; }`，確保所有連線透明熱區與實體線在各瀏覽器皆可穿透接收指針點擊事件。

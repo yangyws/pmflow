@@ -1956,50 +1956,75 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     { id: string; kind: 'text' | 'frame'; label: string; color: string } | null
   >(null)
 
-  const hasInitializedExtraServerRef = useRef<string | null>(null)
-  const hasInitializedNodesServerRef = useRef<string | null>(null)
+  const backendExtraSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedExtraJsonRef = useRef<string>('')
+  const lastAppliedExtraUpdatedAtRef = useRef<string | null>(null)
 
-  // 載入後端共享註記、折點與文字 (task-graph-extra)
+  const backendNodesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedNodesJsonRef = useRef<string>('')
+  const lastAppliedNodesUpdatedAtRef = useRef<string | null>(null)
+
+  // 載入後端共享註記、折點與文字 (task-graph-extra) 並即時同步 (Ref: CR-213)
   useEffect(() => {
-    if (!extraDocRes?.data || hasInitializedExtraServerRef.current === projectId || !projectId) return
-    hasInitializedExtraServerRef.current = projectId
+    if (!extraDocRes?.data || !projectId) return
     const extraData = extraDocRes.data as {
       annotations?: CanvasAnnotations
       waypoints?: WaypointMap
       edgeTexts?: EdgeTextMap
       edgeColors?: EdgeColorMap
     }
-    if (extraData && typeof extraData === 'object') {
-      if (extraData.annotations && (Array.isArray(extraData.annotations.texts) || Array.isArray(extraData.annotations.frames))) {
-        const cleanAnn: CanvasAnnotations = {
-          texts: Array.isArray(extraData.annotations.texts) ? extraData.annotations.texts : [],
-          frames: Array.isArray(extraData.annotations.frames) ? extraData.annotations.frames : [],
-        }
-        setAnnotations(cleanAnn)
-        saveCanvasAnnotations(projectId, cleanAnn)
+    if (!extraData || typeof extraData !== 'object') return
+
+    const updatedAt = extraDocRes.updatedAt ?? null
+    const incomingJson = JSON.stringify(extraData)
+    if (updatedAt && updatedAt === lastAppliedExtraUpdatedAtRef.current) return
+    if (incomingJson === lastSavedExtraJsonRef.current) {
+      lastAppliedExtraUpdatedAtRef.current = updatedAt
+      return
+    }
+
+    lastAppliedExtraUpdatedAtRef.current = updatedAt
+    lastSavedExtraJsonRef.current = incomingJson
+
+    if (extraData.annotations && (Array.isArray(extraData.annotations.texts) || Array.isArray(extraData.annotations.frames))) {
+      const cleanAnn: CanvasAnnotations = {
+        texts: Array.isArray(extraData.annotations.texts) ? extraData.annotations.texts : [],
+        frames: Array.isArray(extraData.annotations.frames) ? extraData.annotations.frames : [],
       }
-      if (extraData.waypoints && typeof extraData.waypoints === 'object') {
-        setWaypoints(extraData.waypoints)
-        saveWaypoints(projectId, extraData.waypoints)
-      }
-      if (extraData.edgeTexts && typeof extraData.edgeTexts === 'object') {
-        setEdgeTexts(extraData.edgeTexts)
-        saveEdgeTexts(projectId, extraData.edgeTexts)
-      }
-      if (extraData.edgeColors && typeof extraData.edgeColors === 'object') {
-        setEdgeColors(extraData.edgeColors)
-        saveEdgeColors(projectId, extraData.edgeColors)
-      }
+      setAnnotations(cleanAnn)
+      saveCanvasAnnotations(projectId, cleanAnn)
+    }
+    if (extraData.waypoints && typeof extraData.waypoints === 'object') {
+      setWaypoints(extraData.waypoints)
+      saveWaypoints(projectId, extraData.waypoints)
+    }
+    if (extraData.edgeTexts && typeof extraData.edgeTexts === 'object') {
+      setEdgeTexts(extraData.edgeTexts)
+      saveEdgeTexts(projectId, extraData.edgeTexts)
+    }
+    if (extraData.edgeColors && typeof extraData.edgeColors === 'object') {
+      setEdgeColors(extraData.edgeColors)
+      saveEdgeColors(projectId, extraData.edgeColors)
     }
   }, [extraDocRes, projectId])
 
-  // 載入後端共享節點排版與收納狀態 (canvas/task-graph)
+  // 載入後端共享節點排版與收納狀態 (canvas/task-graph) 並即時同步 (Ref: CR-213)
   useEffect(() => {
-    if (!canvasNodesRes?.nodes || hasInitializedNodesServerRef.current === projectId || !projectId) return
+    if (!canvasNodesRes?.nodes || !projectId) return
     const rawNodes = canvasNodesRes.nodes
     const nodeEntries = Object.entries(rawNodes)
     if (nodeEntries.length === 0) return
-    hasInitializedNodesServerRef.current = projectId
+
+    const updatedAt = canvasNodesRes.updatedAt ?? null
+    const incomingJson = JSON.stringify(rawNodes)
+    if (updatedAt && updatedAt === lastAppliedNodesUpdatedAtRef.current) return
+    if (incomingJson === lastSavedNodesJsonRef.current) {
+      lastAppliedNodesUpdatedAtRef.current = updatedAt
+      return
+    }
+
+    lastAppliedNodesUpdatedAtRef.current = updatedAt
+    lastSavedNodesJsonRef.current = incomingJson
 
     const serverDragged: Record<string, { x: number; y: number }> = {}
     const serverResized: Record<string, { width: number; height: number }> = {}
@@ -2046,10 +2071,55 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         return merged
       })
     }
-  }, [canvasNodesRes, projectId])
 
-  const backendExtraSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastSavedExtraJsonRef = useRef<string>('')
+    // 若使用者當前未在拖曳中，即時同步更新畫布節點位置與樣式
+    if (!interactingRef.current && !isDraggingRef.current) {
+      setNodes((prevNodes) => {
+        let hasChanges = false
+        const next = prevNodes.map((n) => {
+          const sPos = serverDragged[n.id]
+          const sSize = serverResized[n.id]
+          const sMode = serverModes[n.id]
+          if (!sPos && !sSize && !sMode) return n
+
+          let nodeChanged = false
+          let nextPos = n.position
+          if (sPos && (sPos.x !== n.position.x || sPos.y !== n.position.y)) {
+            nextPos = sPos
+            nodeChanged = true
+          }
+          let nextStyle = n.style
+          let nextWidth = n.width
+          let nextHeight = n.height
+          if (sSize && (sSize.width !== n.width || sSize.height !== n.height)) {
+            nextWidth = sSize.width
+            nextHeight = sSize.height
+            nextStyle = { ...(n.style || {}), width: sSize.width, height: sSize.height }
+            nodeChanged = true
+          }
+          let nextData = n.data
+          if (sMode && (n.data as SimpleGraphNodeData)?.mode !== sMode) {
+            nextData = { ...(n.data || {}), mode: sMode }
+            nodeChanged = true
+          }
+
+          if (nodeChanged) {
+            hasChanges = true
+            return {
+              ...n,
+              position: nextPos,
+              width: nextWidth,
+              height: nextHeight,
+              style: nextStyle,
+              data: nextData,
+            }
+          }
+          return n
+        })
+        return hasChanges ? orderParentNodesFirst(next) : prevNodes
+      })
+    }
+  }, [canvasNodesRes, projectId])
 
   const saveExtraToBackend = useCallback(
     (nextAnn: CanvasAnnotations, nextWp: WaypointMap, nextTexts: EdgeTextMap, nextColors: EdgeColorMap) => {
@@ -2073,9 +2143,6 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     },
     [projectId]
   )
-
-  const backendNodesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastSavedNodesJsonRef = useRef<string>('')
 
   const saveNodesToBackend = useCallback(
     (
@@ -3500,6 +3567,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }))
 
           if (projectId) {
+            Api.saveCanvasNodes(projectId, 'task-graph', {
+              nodes: { [node.id]: { x: Math.round(cardAbsPos.x), y: Math.round(cardAbsPos.y) } },
+            }).catch(() => {})
+
             queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
               if (!oldData || !Array.isArray(oldData.tasks)) return oldData
               return {
@@ -3593,6 +3664,13 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           }))
 
           if (projectId) {
+            Api.saveCanvasNodes(projectId, 'task-graph', {
+              nodes: {
+                [node.id]: { x: Math.round(targetSlotPos.x), y: Math.round(targetSlotPos.y) },
+                [targetBox!.id]: { x: Math.round(targetBox!.position.x), y: Math.round(targetBox!.position.y) },
+              },
+            }).catch(() => {})
+
             queryClient.setQueryData(['tasks', projectId], (oldData: { tasks: Task[] } | undefined) => {
               if (!oldData || !Array.isArray(oldData.tasks)) return oldData
               return {

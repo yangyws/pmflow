@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-213` | 2026-08-28 | [關聯圖多帳號移動卡片即時同步：拖曳落盤寫入 DB、SSE / WebSocket 廣播通知其他使用者即時同步卡片座標與位置](#cr-213) | `TaskGraph.tsx`, `useRealtimeSync.ts` | 已驗證 |
 | `CR-212` | 2026-08-28 | [關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）](#cr-212) | `TaskGraph.tsx`, `SystemFlow.tsx`, `index.css` | 已驗證 |
 | `CR-211` | 2026-08-28 | [網址導覽狀態同步與 F5 原頁重新整理支援（URL Search Params 雙向同步、保留專案/頁籤/任務/篩選/帳號視圖、消除 F5 誤回首頁）](#cr-211) | `App.tsx` | 已驗證 |
 | `CR-210` | 2026-08-27 | [正交折線接點緩衝間距擴展與折角貼近優化（提升至 40px、直連同軸直通、修復化簡壓縮）](#cr-210) | `orthogonalRouting.ts` | 已驗證 |
@@ -265,6 +266,19 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-213"></a>CR-213 (2026-08-28) — 關聯圖多帳號移動卡片即時同步：拖曳落盤寫入 DB、SSE / WebSocket 廣播通知其他使用者即時同步卡片座標與位置
+
+- **使用者需求**：現在關聯圖不同帳號在移動卡片時沒有同步，幫我先打 API 寫入 DB，確認寫入後用 websocket/SSE 通知別的使用者同步刷新關聯圖卡片位置。
+- **排查與修復實作**：
+  1. **前端拖曳落盤與資料庫即時寫入 (`TaskGraph.tsx`)**：
+     - 在 `onNodeDragStop` 的全部拖曳結束分支（一般拖曳、移入收納盒、移出收納盒）皆立即呼叫 `Api.saveCanvasNodes(projectId, 'task-graph', { nodes: ... })`，將卡片最新座標 `(x, y)` 確定寫入 PostgreSQL `project_canvas_node` 資料表。
+  2. **後端資料庫落盤確認與 SSE / WebSocket 廣播通知 (`canvas.ts`, `events.ts`, `useRealtimeSync.ts`)**：
+     - 後端 `canvas.ts` 在事務寫入 `project_canvas_node` 確認成功後，即時觸發 `emitRealtimeEvent({ type: 'canvas:changed', projectId, actorId, payload: { action: 'patch_nodes', viewKey: 'task-graph' } })`。
+     - 在 `useRealtimeSync.ts` 補齊 `invalidate(['canvasNodes'])`、`invalidate(['canvasNodes', ev.projectId])`、`invalidate(['canvasPermissions'])`，使其他在線使用者的客戶端能第一時間接收廣播並失效快取。
+  3. **多帳號即時座標套用與防迴圈重寫機制 (`TaskGraph.tsx`)**：
+     - 移除舊版僅在初次載入執行的 `hasInitializedNodesServerRef` 鎖定，改以 `lastSavedNodesJsonRef` 與 `lastAppliedNodesUpdatedAtRef` 進行版本比對與防迴圈判定。
+     - 當其他使用者更新卡片座標時，在線使用者端自動接收最新 `canvasNodesRes`，即時同步更新 `dragged`、`resized`、`toggledModes` 與 `nodes`，使畫布上的卡片位置流暢同步移動，且不會反向覆蓋伺服器資料。
 
 ### <a id="cr-212"></a>CR-212 (2026-08-28) — 關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）
 
