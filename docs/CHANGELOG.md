@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-212` | 2026-08-28 | [關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）](#cr-212) | `TaskGraph.tsx`, `SystemFlow.tsx`, `index.css` | 已驗證 |
 | `CR-211` | 2026-08-28 | [網址導覽狀態同步與 F5 原頁重新整理支援（URL Search Params 雙向同步、保留專案/頁籤/任務/篩選/帳號視圖、消除 F5 誤回首頁）](#cr-211) | `App.tsx` | 已驗證 |
 | `CR-210` | 2026-08-27 | [正交折線接點緩衝間距擴展與折角貼近優化（提升至 40px、直連同軸直通、修復化簡壓縮）](#cr-210) | `orthogonalRouting.ts` | 已驗證 |
 | `CR-209` | 2026-08-26 | [流程圖關聯線容器穿透與步驟避障：排除 Box 障礙物允許跨容器自由穿行，嚴格保留 Step 步驟避障](#cr-209) | `orthogonalRouting.ts` | 已驗證 |
@@ -264,6 +265,17 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-212"></a>CR-212 (2026-08-28) — 關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）
+
+- **使用者需求**：現在變成關連線 點了 沒跳出刪除提示框。
+- **排查與修復實作**：
+  1. **全線點擊熱區 CSS 與 SVG pointer-events 穿透修復 (`index.css`, `TaskGraph.tsx`, `SystemFlow.tsx`)**：
+     - 在 `index.css` 補齊 `.pointer-events-stroke { pointer-events: stroke !important; }` 樣式規則，並在 `OrthogonalEdge` 與 `FlowLabeledEdge` 上的 36px 寬幅透明 `<path>` 及實體連線 `<path>` 直接設置 `style={{ pointerEvents: 'stroke' }}` 與直接掛載 `onClick` 事件，杜絕透明熱區被父層 `.react-flow__edges` 的 `pointer-events: none` 阻擋穿透。
+  2. **事件處理函式最新參照綁定 (`TaskGraph.tsx`, `SystemFlow.tsx`)**：
+     - 引入 `onEdgeClickRef` 與 `handleEdgeClickRef`，確保在 `useMemo` 快取連線實例時，點擊事件永遠呼叫最新渲染週期的函式閉包，修復節點清單未完全載入時造成的卡片 Ref 找不到或 stale closure 異常。
+  3. **系統流程圖拖曳守衛誤判解除 (`SystemFlow.tsx`)**：
+     - 修復 `consumeEdgeDragGuard()` 誤將 guard 重複上鎖的 Bug；改用 `pointerStartRef` 嚴格在滑鼠位移超過 3px 時才標記為拖曳，單純點擊不觸發拖曳守衛，確保點擊連線 100% 穩定喚起刪除/編輯彈窗。
 
 ### <a id="cr-211"></a>CR-211 (2026-08-28) — 網址導覽狀態同步與 F5 原頁重新整理支援（URL Search Params 雙向同步、保留專案/頁籤/任務/篩選/帳號視圖、消除 F5 誤回首頁、時區 Asia/Taipei 校正）
 

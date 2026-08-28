@@ -1,12 +1,16 @@
 # 下次從這裡繼續
 
-2026-08-28 收工。**進度到 `CR-211`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
+2026-08-28 收工。**進度到 `CR-212`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
 本地 Commit 已完成（**未 auto-push 至 main**，推送要他自己來）。
 
 ## 畫面驗證：使用者已在 2026-08-28 確認全部正常
 
-這一批（`CR-131`～`CR-211`）開發期間包含：
-1. **網址導覽狀態同步與 F5 原頁重新整理支援 (CR-211)**：
+這一批（`CR-131`～`CR-212`）開發期間包含：
+1. **關聯線點擊刪除提示彈窗響應修復 (CR-212)**：
+   - 在 `index.css` 補齊 `.pointer-events-stroke { pointer-events: stroke !important; }`，並在 `OrthogonalEdge` 與 `FlowLabeledEdge` 上的 36px 寬幅透明 `<path>` 及實體線直接加上 `style={{ pointerEvents: 'stroke' }}` 與直接掛載 `onClick` 事件，確保各瀏覽器穿透點擊皆能 100% 響應。
+   - 引入 `onEdgeClickRef` / `handleEdgeClickRef` 解決快取邊緣物件的 stale closure 問題。
+   - 修復 `consumeEdgeDragGuard()` 誤重複上鎖，改用 `pointerStartRef` 嚴格在位移超過 3px 時才標記拖曳，單純點擊穩定喚起連線刪除/編輯彈窗。
+2. **網址導覽狀態同步與 F5 原頁重新整理支援 (CR-211)**：
    - 實作 `parseUrlState` 與 `updateUrlState`，將使用者導覽狀態（`projectId`、`view`、`openTask`、`epicId`、`account`）無感即時雙向同步至 URL Search Params。
    - 修復 `auth/refresh` 初次身分載入時誤觸發「換人登入」清空 state 的問題，瀏覽器 F5 重新整理時精確留在當前專案、視圖頁籤、開啟任務抽屜或側欄篩選大項目，杜絕誤退專案選擇首頁；完整支援瀏覽器前進/後退（`popstate`）與切換專案清空網址。
    - 使用 `Intl.DateTimeFormat` 指定 `Asia/Taipei`（UTC+8）時區生成建置時間，修復 Docker Alpine 容器 build 時 UTC 時間偏差 8 小時問題；更新版本標籤為 `v0.1.0-CR211`。

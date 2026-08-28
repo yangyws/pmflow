@@ -916,6 +916,7 @@ function OrthogonalEdge({
           "react-flow__edge group/edge",
           isConnectable ? "cursor-pointer pointer-events-stroke" : "pointer-events-none"
         )}
+        style={{ pointerEvents: isConnectable ? 'stroke' : 'none' }}
         onClick={(e) => {
           if (!isConnectable) return
           e.stopPropagation()
@@ -929,7 +930,14 @@ function OrthogonalEdge({
           fill="none"
           stroke="transparent"
           strokeWidth={36}
-          className="peer/hit cursor-pointer pointer-events-stroke"
+          style={{ pointerEvents: isConnectable ? 'stroke' : 'none' }}
+          className="react-flow__edge-interaction peer/hit cursor-pointer pointer-events-stroke"
+          onClick={(e) => {
+            if (!isConnectable) return
+            e.stopPropagation()
+            if (hasMovedRef.current || consumeWaypointClickGuard()) return
+            eData?.onEdgeClick?.()
+          }}
         />
         {/* 實體關聯線：懸停時純 CSS 即時加粗為 4px 並帶亮藍柔和發光，0ms 延遲、零 React 重繪、零跳動 */}
         <path
@@ -939,6 +947,7 @@ function OrthogonalEdge({
           markerEnd={markerEnd}
           style={{
             ...style,
+            pointerEvents: isConnectable ? 'stroke' : 'none',
             stroke: selected ? '#3b82f6' : (style?.stroke ?? '#ef4444'),
             strokeWidth: selected ? 4 : (style?.strokeWidth ?? 2.5),
             filter: selected ? 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.6))' : undefined,
@@ -948,6 +957,12 @@ function OrthogonalEdge({
             "peer-hover/hit:!stroke-[#3b82f6] peer-hover/hit:!stroke-[4px] peer-hover/hit:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]",
             "hover:!stroke-[#3b82f6] hover:!stroke-[4px] hover:[filter:drop-shadow(0_0_5px_rgba(59,130,246,0.6))]"
           )}
+          onClick={(e) => {
+            if (!isConnectable) return
+            e.stopPropagation()
+            if (hasMovedRef.current || consumeWaypointClickGuard()) return
+            eData?.onEdgeClick?.()
+          }}
         />
       </g>
 
@@ -3175,9 +3190,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       if (consumeWaypointClickGuard()) return // Ref: CR-141
       const sourceNode = nodes.find((n) => n.id === edge.source)
       const targetNode = nodes.find((n) => n.id === edge.target)
+      const sourceTask = tasks?.find((t) => t.id === edge.source)
+      const targetTask = tasks?.find((t) => t.id === edge.target)
 
-      const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-      const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
+      const sourceRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || sourceTask?.ref || T.flow.relationGraph.card
+      const targetRef = (targetNode?.data as SimpleGraphNodeData)?.refText || targetTask?.ref || T.flow.relationGraph.card
       const isLeftRight = !edge.sourceHandle || edge.sourceHandle.includes('left') || edge.sourceHandle.includes('right')
       const defaultColor = isLeftRight ? '#ef4444' : '#8b5cf6'
 
@@ -3190,8 +3207,11 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         color: edgeColors[edge.id] ?? defaultColor,
       })
     },
-    [effectiveEditable, nodes, edgeTexts, edgeColors]
+    [effectiveEditable, nodes, tasks, edgeTexts, edgeColors]
   )
+
+  const onEdgeClickRef = useRef(onEdgeClick)
+  onEdgeClickRef.current = onEdgeClick
 
   const isValidConnection = useCallback(
     (connection: Edge | Connection) => {
@@ -4002,7 +4022,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           onSaveText: effectiveEditable ? handleSaveEdgeText : undefined,
           onWaypointDragStart: effectiveEditable ? beginInteraction : undefined,
           onWaypointDragEnd: effectiveEditable ? endInteraction : undefined,
-          onEdgeClick: effectiveEditable ? () => onEdgeClick(null, e) : undefined,
+          onEdgeClick: effectiveEditable ? () => onEdgeClickRef.current?.(null, e) : undefined,
         },
         animated: false,
         style: {

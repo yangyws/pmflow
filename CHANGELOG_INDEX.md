@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: URL Search Params Navigation Sync & Refresh Preservation (CR-211)
+### Latest Changes: Edge Click Delete Modal Response Fix (CR-212)
+- **變更檔案**:
+  - [`index.css`](file:///D:/github/pmflow/apps/web/src/index.css):
+    1. **連線點擊熱區 CSS 屬性補齊 (`CR-212`)**：補齊 `.pointer-events-stroke { pointer-events: stroke !important; }`，確保所有連線透明熱區與實體線在各瀏覽器皆可穿透接收指針點擊事件。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx), [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **全線點擊事件與最新閉包綁定 (`CR-212`)**：在 `OrthogonalEdge` 與 `FlowLabeledEdge` 的透明熱區 `<path>` 與實體 `<path>` 直接設置 `style={{ pointerEvents: 'stroke' }}` 並直接掛載 `onClick` 事件；引入 `onEdgeClickRef` / `handleEdgeClickRef` 解決快取邊緣物件的 stale closure 問題。
+    2. **系統流程圖拖曳守衛解鎖 (`CR-212`)**：修復 `consumeEdgeDragGuard()` 誤重複上鎖問題，改用 `pointerStartRef` 嚴格在位移超過 3px 時才標記拖曳，單純點擊穩定彈出連線刪除/編輯視窗。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-212` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-212`。
+
+### Previous Changes: URL Search Params Navigation Sync & Refresh Preservation (CR-211)
 - **變更檔案**:
   - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
     1. **網址導覽狀態同步與 F5 留存 (`CR-211`)**：在 `App.tsx` 實作 `parseUrlState` 與 `updateUrlState`，將使用者的導覽狀態（`projectId`、`view`、`openTask`、`epicId`、`account`）無感即時同步至網址 Search Params（`?project=...&view=...&task=...&epic=...&account=...`）；修復 `auth/refresh` 初次身分載入誤清空狀態問題，F5 重新整理時精確還原當前畫面與專案，支援瀏覽器前進/後退（`popstate`）與切換專案清空網址。

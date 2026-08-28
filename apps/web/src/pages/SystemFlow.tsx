@@ -69,6 +69,7 @@ export interface FlowEdgeData extends Record<string, unknown> {
   // Ref: CR-148
   onWaypointDragStart?: () => void
   onWaypointDragEnd?: () => void
+  onEdgeClick?: () => void
 }
 
 // Ref: CR-146
@@ -123,7 +124,11 @@ function armEdgeDragGuard() {
 
 function consumeEdgeDragGuard(): boolean {
   if (!edgeDragGuard.active) return false
-  armEdgeDragGuard()
+  edgeDragGuard.active = false
+  if (edgeDragGuard.timer) {
+    clearTimeout(edgeDragGuard.timer)
+    edgeDragGuard.timer = null
+  }
   return true
 }
 
@@ -594,6 +599,8 @@ function FlowLabeledEdge({
   const edgeData = data as FlowEdgeData | undefined
   const { screenToFlowPosition } = useReactFlow()
   const draggingRef = useRef(false)
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
+  const hasMovedRef = useRef(false)
 
   // 障礙物資訊由父層 styledEdges 統一預算並帶入，避免在 Edge 內部呼叫 getNodes() 引發無窮重新渲染迴圈
   const obstacles = edgeData?.waypoint ? [] : (edgeData?.obstacles ?? [])
@@ -624,30 +631,37 @@ function FlowLabeledEdge({
 
   const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     e.stopPropagation()
-    e.preventDefault()
     draggingRef.current = true
-    armEdgeDragGuard()
-    // Ref: CR-148
-    edgeData?.onWaypointDragStart?.()
-    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
+    hasMovedRef.current = false
+    pointerStartRef.current = { x: e.clientX, y: e.clientY }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   const onHandlePointerMove = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     if (!draggingRef.current) return
     e.stopPropagation()
-    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
+    if (
+      pointerStartRef.current &&
+      Math.hypot(e.clientX - pointerStartRef.current.x, e.clientY - pointerStartRef.current.y) > 3
+    ) {
+      if (!hasMovedRef.current) {
+        hasMovedRef.current = true
+        armEdgeDragGuard()
+        edgeData?.onWaypointDragStart?.()
+      }
+      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      edgeData?.onWaypointChange?.(id, { x: Math.round(p.x), y: Math.round(p.y) })
+    }
   }
 
   const onHandlePointerUp = (e: ReactPointerEvent<HTMLDivElement | SVGPathElement>) => {
     if (!draggingRef.current) return
     draggingRef.current = false
     e.stopPropagation()
-    armEdgeDragGuard()
-    // Ref: CR-148
-    edgeData?.onWaypointDragEnd?.()
+    if (hasMovedRef.current) {
+      armEdgeDragGuard()
+      edgeData?.onWaypointDragEnd?.()
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -661,18 +675,25 @@ function FlowLabeledEdge({
     <>
       <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} interactionWidth={0} />
 
-      {/* 寬幅連線拖曳感應熱區：滑鼠懸浮或按住任意線條區段皆可直接拖曳拉動折線 */}
+      {/* 寬幅連線拖曳感應熱區：滑鼠懸浮或按住任意線條區段皆可直接拖曳拉動折線，點擊彈出編輯/刪除 */}
       {isConnectable && (
         <path
           d={path}
           fill="none"
           stroke="transparent"
-          strokeWidth={24}
-          className="cursor-grab active:cursor-grabbing hover:stroke-blue-400/20 transition-colors pointer-events-stroke"
+          strokeWidth={36}
+          style={{ pointerEvents: 'stroke' }}
+          className="react-flow__edge-interaction cursor-pointer pointer-events-stroke"
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}
           onPointerUp={onHandlePointerUp}
           onPointerCancel={onHandlePointerUp}
+          onClick={(e) => {
+            if (!isConnectable) return
+            e.stopPropagation()
+            if (hasMovedRef.current || consumeEdgeDragGuard()) return
+            edgeData?.onEdgeClick?.()
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation()
             e.preventDefault()
@@ -702,7 +723,11 @@ function FlowLabeledEdge({
             onPointerMove={onHandlePointerMove}
             onPointerUp={onHandlePointerUp}
             onPointerCancel={onHandlePointerUp}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (hasMovedRef.current || consumeEdgeDragGuard()) return
+              edgeData?.onEdgeClick?.()
+            }}
             onDoubleClick={(e) => {
               e.stopPropagation()
               e.preventDefault()
@@ -1543,6 +1568,9 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const interactingRef = useRef(false)
   const pendingSaveRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; out: Node }>())
+  const edgeViewCacheRef = useRef(new Map<string, { src: Edge; out: Edge }>())
+  const edgeHandlersRef = useRef<unknown[]>([])
 
   // 立即將目前進行中／尚未落盤的分頁畫布變更刷新至 pages 與 store (避免換頁時被非同步定時器寫錯頁)
   const flushCurrentPageChanges = useCallback(() => {
@@ -2207,8 +2235,6 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setNodes((nds) => orderParentNodesFirst([newNode, ...nds]))
   }
 
-  const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; out: Node }>())
-
   const nodesWithHandlers = useMemo(() => {
     const prevCache = nodeViewCacheRef.current
     const nextCache = new Map<string, { src: Node; selected: boolean; out: Node }>()
@@ -2285,8 +2311,20 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     return orderParentNodesFirst(mapped)
   }, [nodes, selectedNodeId, effectiveEditable, handleEditNode, handleDeleteNode])
 
-  const edgeViewCacheRef = useRef(new Map<string, { src: Edge; out: Edge }>())
-  const edgeHandlersRef = useRef<unknown[]>([])
+  const handleEdgeClick = useCallback((_e: React.MouseEvent | null, edge: Edge) => {
+    if (!effectiveEditable) return
+    if (consumeEdgeDragGuard()) return
+    setConfirmDeleteEdge({
+      edgeId: edge.id,
+      source: edge.source,
+      target: edge.target,
+      text: ((edge.data as FlowEdgeData | undefined)?.text as string) || '',
+      color: ((edge.data as any)?.color as string) || (edge.style?.stroke as string) || '#4f46e5',
+    })
+  }, [effectiveEditable])
+
+  const handleEdgeClickRef = useRef(handleEdgeClick)
+  handleEdgeClickRef.current = handleEdgeClick
 
   const styledEdges = useMemo(() => {
     const handlers: unknown[] = [
@@ -2323,6 +2361,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           onWaypointReset: effectiveEditable ? handleWaypointReset : undefined,
           onWaypointDragStart: effectiveEditable ? beginInteraction : undefined,
           onWaypointDragEnd: effectiveEditable ? endInteraction : undefined,
+          onEdgeClick: effectiveEditable ? () => handleEdgeClickRef.current?.(null, e) : undefined,
         },
         style: {
           ...edgeStyleAndMarker.style,
@@ -2581,18 +2620,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
             if (consumeEdgeDragGuard()) return
             setSelectedNodeId(null)
           }}
-          onEdgeClick={(_e, edge) => {
-            if (!effectiveEditable) return
-            // Ref: CR-140 這次互動是拖折點就不要開編輯視窗
-            if (consumeEdgeDragGuard()) return
-            setConfirmDeleteEdge({
-              edgeId: edge.id,
-              source: edge.source,
-              target: edge.target,
-              text: ((edge.data as FlowEdgeData | undefined)?.text as string) || '',
-              color: ((edge.data as any)?.color as string) || (edge.style?.stroke as string) || '#4f46e5',
-            })
-          }}
+          onEdgeClick={handleEdgeClick}
           onMoveEnd={handleMoveEnd}
           connectionMode={ConnectionMode.Loose}
           // Ref: CR-140 拉線當下的預覽線也要直角
