@@ -25,7 +25,9 @@
 ### Latest Changes: URL Search Params Navigation Sync & Refresh Preservation (CR-211)
 - **變更檔案**:
   - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
-    1. **網址導覽狀態同步與 F5 留存 (`CR-211`)**：在 `App.tsx` 實作 `parseUrlState` 與 `updateUrlState`，將使用者的導覽狀態（`projectId`、`view`、`openTask`、`epicId`、`account`）無感即時同步至網址 Search Params（`?project=...&view=...&task=...&epic=...&account=...`）；F5 重新整理時精確還原當前畫面與專案，支援瀏覽器前進/後退（`popstate`）與切換專案清空網址。
+    1. **網址導覽狀態同步與 F5 留存 (`CR-211`)**：在 `App.tsx` 實作 `parseUrlState` 與 `updateUrlState`，將使用者的導覽狀態（`projectId`、`view`、`openTask`、`epicId`、`account`）無感即時同步至網址 Search Params（`?project=...&view=...&task=...&epic=...&account=...`）；修復 `auth/refresh` 初次身分載入誤清空狀態問題，F5 重新整理時精確還原當前畫面與專案，支援瀏覽器前進/後退（`popstate`）與切換專案清空網址。
+  - [`vite.config.ts`](file:///D:/github/pmflow/apps/web/vite.config.ts), [`version.ts`](file:///D:/github/pmflow/apps/web/src/version.ts):
+    1. **版本號與建置時區校正 (`CR-211`)**：使用 `Intl.DateTimeFormat` 採用 `Asia/Taipei`（UTC+8）格式化建置時間，徹底解決 Docker Alpine 容器內 build 預設 UTC 時區導致時間偏差 8 小時問題；更新版本標籤為 `v0.1.0-CR211`。
   - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-211` 條目與細節。
   - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-211`。
 

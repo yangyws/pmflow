@@ -171,27 +171,40 @@ export default function App() {
   const [showAiSkillModal, setShowAiSkillModal] = useState(false)
 
   /**
-   * 換人登入就回到選擇頁。
-   *
-   * 快取由 AuthProvider 清掉了，但「現在開著哪個專案」是這裡的 state，
-   * 不歸零的話新登入的人會停在前一個人的專案上，然後對著一堆 403 發呆。
-   * 這是 React 文件講的「render 期間依變化調整 state」，比 effect 少一次繪製。
+   * 記錄已完成身分驗證的使用者 ID。
+   * 僅在「真正切換至不同使用者帳號」時，才重設專案與視圖狀態，
+   * 避免初次載入 (auth/refresh) 時誤將 URL 帶入的專案與頁籤清除。
    */
-  const [seenUserId, setSeenUserId] = useState<string | null>(user?.id ?? null)
-  if ((user?.id ?? null) !== seenUserId) {
-    setSeenUserId(user?.id ?? null)
-    setProjectId(null)
-    setView('list')
-    setOpenTask(null)
-    setEpicId(null)
-    setAccount(null)
-  }
+  const [activeUserId, setActiveUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!ready) return
+    if (user?.id) {
+      if (activeUserId && activeUserId !== user.id) {
+        // 真正切換至不同使用者帳號
+        setProjectId(null)
+        setView('list')
+        setOpenTask(null)
+        setEpicId(null)
+        setAccount(null)
+      }
+      setActiveUserId(user.id)
+    } else {
+      // 登出
+      setActiveUserId(null)
+      setProjectId(null)
+      setView('list')
+      setOpenTask(null)
+      setEpicId(null)
+      setAccount(null)
+    }
+  }, [ready, user?.id, activeUserId])
 
   // 同步導覽狀態至網址 Query String (F5 重新整理或複製網址時保留當前狀態)
   useEffect(() => {
-    if (!user) return
+    if (!ready || !user) return
     updateUrlState({ projectId, view, openTask, account, epicId })
-  }, [user, projectId, view, openTask, account, epicId])
+  }, [ready, user, projectId, view, openTask, account, epicId])
 
   // 支援瀏覽器上一頁 / 下一頁 (popstate)
   useEffect(() => {
@@ -214,7 +227,7 @@ export default function App() {
 
   // 專案清單載入後，若網址指定的專案不在清單中，自動退回專案選擇頁
   useEffect(() => {
-    if (isProjectsLoaded && projectId) {
+    if (ready && isProjectsLoaded && projectId) {
       const exists = projects.some(p => p.id === projectId)
       if (!exists) {
         setProjectId(null)
@@ -223,7 +236,7 @@ export default function App() {
         setEpicId(null)
       }
     }
-  }, [isProjectsLoaded, projects, projectId])
+  }, [ready, isProjectsLoaded, projects, projectId])
 
   if (!ready) return <Spinner label={T.nav.starting} />
   if (!user) return <Login />
