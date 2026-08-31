@@ -281,6 +281,7 @@ export function EpicSidebar({
     inquiriesAwaitingIn,
     blockedIn,
     dividerAfterTaskIdSet,
+    hasMineSet,
     today,
   } = useMemo(() => {
     const isMine = (t: Task) => !!user?.id && t.assigneeId === user.id
@@ -322,9 +323,39 @@ export function EpicSidebar({
     const { linkedTasks, unlinkedTasks } = divideAndSortLinked(nonBoxEpics, edges, tasks)
 
     const rawSortedEpics = [...boxesGroup, ...linkedTasks, ...unlinkedTasks]
-    // 任務負責人是自己時置頂於 menu 最上方
-    const myEpics = rawSortedEpics.filter(t => isMine(t))
-    const otherEpics = rawSortedEpics.filter(t => !isMine(t))
+
+    // 計算自身或子孫任務指派給自己的集合 (子任務為自己，父任務也要紅框並置頂)
+    const hasMineSet = new Set<string>()
+    const checkHasMine = (taskId: string, seen = new Set<string>()): boolean => {
+      if (hasMineSet.has(taskId)) return true
+      if (seen.has(taskId)) return false
+      seen.add(taskId)
+      const self = tasks.find(t => t.id === taskId)
+      if (self && isMine(self)) {
+        hasMineSet.add(taskId)
+        return true
+      }
+      const children = rawKids.get(taskId) ?? []
+      let found = false
+      for (const k of children) {
+        if (checkHasMine(k.id, seen)) {
+          found = true
+        }
+      }
+      if (found) {
+        hasMineSet.add(taskId)
+        return true
+      }
+      return false
+    }
+
+    for (const t of tasks) {
+      checkHasMine(t.id)
+    }
+
+    // 自身或子任務負責人為自己時置頂於 menu 最上方
+    const myEpics = rawSortedEpics.filter(t => hasMineSet.has(t.id))
+    const otherEpics = rawSortedEpics.filter(t => !hasMineSet.has(t.id))
     const epics = [...myEpics, ...otherEpics]
 
     // 4. 插入分隔線位置：自己負責的任務群組下方、每個收納盒區塊下方、連線卡片區塊下方皆繪製分隔線
@@ -346,8 +377,8 @@ export function EpicSidebar({
     for (const [pId, list] of rawKids.entries()) {
       const { linkedTasks: kLinked, unlinkedTasks: kUnlinked } = divideAndSortLinked(list, edges, tasks)
       const kAll = [...kLinked, ...kUnlinked]
-      const kMine = kAll.filter(k => isMine(k))
-      const kOther = kAll.filter(k => !isMine(k))
+      const kMine = kAll.filter(k => hasMineSet.has(k.id))
+      const kOther = kAll.filter(k => !hasMineSet.has(k.id))
       kids.set(pId, [...kMine, ...kOther])
     }
     const today = new Date().toISOString().slice(0, 10)
@@ -458,6 +489,7 @@ export function EpicSidebar({
       inquiriesAwaitingIn,
       blockedIn,
       dividerAfterTaskIdSet,
+      hasMineSet,
       today,
     }
   }, [tasks, graphData, containerBoxTick, blockedByMap, user?.id])
@@ -732,6 +764,7 @@ export function EpicSidebar({
               selectedTaskId={selectedTaskId}
               relatedTaskIds={relatedTaskIds}
               dividerAfterTaskIdSet={dividerAfterTaskIdSet}
+              hasMineSet={hasMineSet}
               onSelectEpic={onSelectEpic}
               onOpenTask={onOpenTask}
               onOpenEditTask={onOpenEditTask}
@@ -824,7 +857,7 @@ export function EpicSidebar({
 function TreeNode({
   task, depth, projectId, childrenOf, stat, statMap, blockedByMap, bugsUnder,
   taskOverdueIn, inquiryOverdueIn, inquiriesAwaitingIn, blockedIn, today, types,
-  expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, onSelectEpic, onOpenTask, onOpenEditTask,
+  expanded, toggle, expand, selectedEpicId, selectedTaskId, relatedTaskIds, dividerAfterTaskIdSet, hasMineSet, onSelectEpic, onOpenTask, onOpenEditTask,
 }: {
   task: Task
   depth: number
@@ -849,6 +882,7 @@ function TreeNode({
   selectedTaskId: string | null
   relatedTaskIds?: Set<string> | null
   dividerAfterTaskIdSet?: Set<string>
+  hasMineSet?: Set<string>
   onSelectEpic: (id: string) => void
   onOpenTask: (id: string) => void
   onOpenEditTask?: (id: string) => void
@@ -856,6 +890,7 @@ function TreeNode({
   const qc = useQueryClient()
   const { user } = useAuth()
   const isMine = !!user?.id && task.assigneeId === user.id
+  const hasMineInSubtree = isMine || (hasMineSet ? hasMineSet.has(task.id) : false)
   const [addingChild, setAddingChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
   const kids = childrenOf.get(task.id) ?? []
@@ -931,7 +966,7 @@ function TreeNode({
     <div className={isRoot ? 'mb-0.5' : undefined} data-sidebar-task-id={task.id}>
       <div className={cx(
         'group/row flex items-center rounded-md transition-all duration-150',
-        isMine && 'border-2 border-red-500 ring-1 ring-red-500/60 shadow-xs',
+        hasMineInSubtree && 'border-2 border-red-500 ring-1 ring-red-500/60 shadow-xs',
         active
           ? 'bg-blue-100/90 dark:bg-blue-900/70 ring-1 ring-blue-500/50 opacity-100 font-semibold shadow-xs'
           : isRelated
@@ -984,6 +1019,11 @@ function TreeNode({
               {isMine && (
                 <span className="shrink-0 rounded bg-red-100 px-1 py-0.2 text-[10px] font-bold text-red-700 dark:bg-red-950 dark:text-red-300 ring-1 ring-red-500/30 select-none">
                   我的
+                </span>
+              )}
+              {!isMine && hasMineInSubtree && (
+                <span className="shrink-0 rounded bg-red-50 px-1 py-0.2 text-[10px] font-bold text-red-600 dark:bg-red-950/60 dark:text-red-300 ring-1 ring-red-500/20 select-none">
+                  含我的
                 </span>
               )}
 
@@ -1151,6 +1191,7 @@ function TreeNode({
           selectedTaskId={selectedTaskId}
           relatedTaskIds={relatedTaskIds}
           dividerAfterTaskIdSet={dividerAfterTaskIdSet}
+          hasMineSet={hasMineSet}
           onSelectEpic={onSelectEpic}
           onOpenTask={onOpenTask}
           onOpenEditTask={onOpenEditTask}

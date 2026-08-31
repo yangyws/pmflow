@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Sidebar Menu Self-Assigned Tasks Top-Priority Sorting & Red Border Highlight (CR-216)
+### Latest Changes: Parent Tasks Inheriting Red Border from Self-Assigned Child Tasks (CR-217)
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **子孫任務指派連鎖紅框與置頂繼承 (`CR-217`)**：以 DFS 遞迴建立 `hasMineSet` 集合；當任何子任務或孫任務為目前登入者負責時，其所有上層父任務、大項目及收納盒同步觸發 `border-2 border-red-500` 紅框高亮，附加「含我的」標籤，並自動置頂於選單最上方。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-217` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-217`。
+
+### Previous Changes: Sidebar Menu Self-Assigned Tasks Top-Priority Sorting & Red Border Highlight (CR-216)
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
     1. **任務負責人為自己之選單置頂排序 (`CR-216`)**：在 `EpicSidebar` 頂層選單 (`epics`) 與各父層子任務清單 (`kids`) 中，以 `isMine` 判定當前登入者指派之任務，自動置頂於該層選單最上方，並在與其他任務間繪製分隔線。
