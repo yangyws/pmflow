@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Cross-Project Data Isolation & Project Scope Verification (CR-214)
+### Latest Changes: Super Admin vs Project Owner Permission Scope Enforcement (CR-215)
+- **變更檔案**:
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts):
+    1. **工作區管理者專案權限旁路移除 (`CR-215`)**：在 `requireProjectRole` 與 `requireProjectManager` 中移除工作區 `OWNER`/`ADMIN` 之全專案自動授權；嚴格限定只有全域超級管理者（`isSuperAdmin`）、專案建立者（擁有者）或具備 `MANAGER` 角色者可管理專案。
+  - [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts):
+    1. **專案清單可見性嚴格收斂 (`CR-215`)**：`GET /projects` 清除工作區角色萬用過濾；僅全域超級管理者可跨專案查看全站專案，專案建立者（擁有者）與一般成員僅能看見自己有權限參與或建立的專案。
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts), [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts), [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **前端超級管理者標記與管理權限精準對齊 (`CR-215`)**：在 `/auth/me`、`/auth/login`、`/auth/refresh` 回傳 `isSuperAdmin` 標記，前端 `canManageProject` 與專案參數/成員管理介面完全對齊後端權限模型。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-215` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-215`。
+
+### Previous Changes: Cross-Project Data Isolation & Project Scope Verification (CR-214)
 - **變更檔案**:
   - [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
     1. **請假紀錄專案成員隔離 (`CR-214`)**：行事曆上的請假標籤（`leaves`）全面改依當前專案成員（`projectMemberIds`）與任務指派者進行嚴格篩選，杜絕同工作區其他專案成員之請假跨專案顯示。

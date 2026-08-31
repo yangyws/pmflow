@@ -71,7 +71,7 @@ function qs(params: Record<string, string | number | undefined>): string {
 }
 
 // ── 型別 ────────────────────────────────────────────────
-export interface User { id: string; email: string; displayName: string }
+export interface User { id: string; email: string; displayName: string; isSuperAdmin?: boolean }
 export interface Workspace { id: string; name: string; slug: string; role: string }
 
 export interface Project {

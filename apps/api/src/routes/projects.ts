@@ -79,9 +79,8 @@ export default async function projectRoutes(app: FastifyInstance) {
                  AND (${isSuper} = true OR p.created_by = ${user.id} OR pm.role = 'MANAGER'))::int AS "pendingJoinRequestCount"
       FROM project p
       LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${user.id}
-      LEFT JOIN workspace_member wm ON wm.workspace_id = p.workspace_id AND wm.user_id = ${user.id}
       WHERE p.archived_at IS NULL
-        AND (${isSuper} = true OR wm.role IN ('OWNER', 'ADMIN') OR p.created_by = ${user.id} OR pm.user_id IS NOT NULL)
+        AND (${isSuper} = true OR p.created_by = ${user.id} OR pm.user_id IS NOT NULL)
       ORDER BY p.rank, p.created_at`
     return { projects: rows }
   })

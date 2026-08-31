@@ -98,6 +98,7 @@ export default async function authRoutes(app: FastifyInstance) {
     if (row.status !== 'ACTIVE') throw forbidden('帳號尚未啟用或已被停用')
 
     const user = { id: row.id, email: row.email, displayName: row.display_name }
+    const isSuper = await isSuperAdmin(user)
     const accessToken = await signAccessToken(user)
     const { raw, hash } = newRefreshToken()
     await sql`
@@ -105,7 +106,7 @@ export default async function authRoutes(app: FastifyInstance) {
       VALUES (${user.id}, uuidv7(), ${hash}, now() + ${env.refreshTtlSec + ' seconds'}::interval)`
 
     setRefreshCookie(reply, raw)
-    return { accessToken, user }
+    return { accessToken, user: { ...user, isSuperAdmin: isSuper }, isSuperAdmin: isSuper }
   })
 
   app.post('/auth/refresh', async (req, reply) => {
@@ -142,8 +143,9 @@ export default async function authRoutes(app: FastifyInstance) {
     })
 
     const user = { id: u.id, email: u.email, displayName: u.display_name }
+    const isSuper = await isSuperAdmin(user)
     setRefreshCookie(reply, next.raw)
-    return { accessToken: await signAccessToken(user), user }
+    return { accessToken: await signAccessToken(user), user: { ...user, isSuperAdmin: isSuper }, isSuperAdmin: isSuper }
   })
 
   app.post('/auth/logout', async (req, reply) => {
@@ -168,11 +170,10 @@ export default async function authRoutes(app: FastifyInstance) {
       ORDER BY w.created_at`
 
     const workspaces = rawWorkspaces.map(w => {
-      // 只有全域超級管理者或真正的工作區 OWNER/ADMIN 享有系統級最高角色
       const role = isSuper ? 'OWNER' : w.role
       return { id: w.id, name: w.name, slug: w.slug, role }
     })
-    return { user, workspaces }
+    return { user: { ...user, isSuperAdmin: isSuper }, workspaces, isSuperAdmin: isSuper }
   })
 
   // ── 身份切換 / 測試代理 (Impersonation) ───────────────────

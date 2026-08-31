@@ -218,8 +218,8 @@ export async function isSuperAdmin(userOrId: AuthUser | string | null | undefine
 export async function requireProjectRole(
   userId: string, projectId: string, min: ProjectRole
 ): Promise<{ role: ProjectRole; workspaceId: string }> {
-  const rows = await sql<{ role: ProjectRole | null; workspace_id: string; ws_role: string | null; created_by: string | null }[]>`
-    SELECT pm.role, p.workspace_id, wm.role AS ws_role, p.created_by
+  const rows = await sql<{ role: ProjectRole | null; workspace_id: string; created_by: string | null }[]>`
+    SELECT pm.role, p.workspace_id, p.created_by
     FROM project p
     LEFT JOIN project_member pm ON pm.project_id = p.id
       AND (
@@ -234,14 +234,12 @@ export async function requireProjectRole(
             AND CURRENT_DATE BETWEEN l.start_date AND l.end_date
         )
       )
-    LEFT JOIN workspace_member wm
-      ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
-  // 超級管理者、工作區管理者、或該專案的建立者（擁有者）在專案裡具備最高管理者 (MANAGER) 權限
+  // 只有超級管理者或該專案的建立者（專案擁有者）在專案裡具備最高管理者 (MANAGER) 權限
   const isSuper = await isSuperAdmin(userId)
   const candidates = rows.map(r => r.role).filter((r): r is ProjectRole => !!r)
-  if (isSuper || rows.some(r => r.ws_role === 'OWNER' || r.ws_role === 'ADMIN' || r.created_by === userId)) {
+  if (isSuper || rows.some(r => r.created_by === userId)) {
     candidates.push('MANAGER')
   }
   if (!candidates.length) throw forbidden('你不是這個專案的成員')
@@ -301,20 +299,18 @@ export async function requireProjectManager(
   userId: string, projectId: string
 ): Promise<{ workspaceId: string; createdBy: string | null }> {
   const rows = await sql<{
-    workspace_id: string; created_by: string | null; role: ProjectRole | null; ws_role: string | null
+    workspace_id: string; created_by: string | null; role: ProjectRole | null
   }[]>`
-    SELECT p.workspace_id, p.created_by, pm.role, wm.role AS ws_role
+    SELECT p.workspace_id, p.created_by, pm.role
     FROM project p
     LEFT JOIN project_member pm ON pm.project_id = p.id AND pm.user_id = ${userId}
-    LEFT JOIN workspace_member wm ON wm.workspace_id = p.workspace_id AND wm.user_id = ${userId}
     WHERE p.id = ${projectId}`
   if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
   const isSuper = await isSuperAdmin(userId)
   const isCreator = rows[0].created_by === userId
-  const isOwner = rows[0].ws_role === 'OWNER' || rows[0].ws_role === 'ADMIN'
   const isManager = rows[0].role === 'MANAGER'
-  if (!isSuper && !isCreator && !isOwner && !isManager) {
-    throw forbidden('只有專案建立者或管理者以上可以更改與保存系統參數')
+  if (!isSuper && !isCreator && !isManager) {
+    throw forbidden('只有超級管理者、專案建立者或專案管理者可以管理成員與系統參數')
   }
   return { workspaceId: rows[0].workspace_id, createdBy: rows[0].created_by }
 }
