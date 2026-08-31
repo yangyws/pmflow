@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Relation Graph Multi-User Card Move Real-time Sync (CR-213)
+### Latest Changes: Cross-Project Data Isolation & Project Scope Verification (CR-214)
+- **變更檔案**:
+  - [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
+    1. **請假紀錄專案成員隔離 (`CR-214`)**：行事曆上的請假標籤（`leaves`）全面改依當前專案成員（`projectMemberIds`）與任務指派者進行嚴格篩選，杜絕同工作區其他專案成員之請假跨專案顯示。
+    2. **請假表單專案範圍限縮 (`CR-214`)**：`LeaveDialog` 接收 `projectId`，代理人與代登記成員清單全面限定於該專案成員範圍。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-214` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-214`。
+
+### Previous Changes: Relation Graph Multi-User Card Move Real-time Sync (CR-213)
 - **變更檔案**:
   - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **拖曳即時 DB 增量寫入與座標更新 (`CR-213`)**：在 `onNodeDragStop` 的全部分支、收納盒模式切換與尺寸調整皆改用 `Api.patchCanvasNodes`（PATCH 增量合併），修復原 PUT 整份覆蓋導致其他未移動卡片座標被洗空的問題。

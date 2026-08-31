@@ -184,8 +184,25 @@ export default function CalendarView({
     queryFn: () => Api.leaves(workspaceId, leaveRange),
     enabled: !!workspaceId,
   })
-  // useMemo 是為了讓下面攤平片段的 useMemo 有個穩定的依賴，不然每次繪製都重算
-  const leaves = useMemo(() => leaveData?.leaves ?? [], [leaveData])
+
+  const { data: memberData } = useQuery({
+    queryKey: ['members', projectId],
+    queryFn: () => Api.members(projectId),
+    enabled: !!projectId,
+  })
+  const projectMemberIds = useMemo(() => {
+    const ids = new Set((memberData?.members ?? []).map(m => m.id))
+    for (const t of tasks ?? []) {
+      if (t.assigneeId) ids.add(t.assigneeId)
+    }
+    return ids
+  }, [memberData, tasks])
+
+  // 請假僅顯示當前專案成員與任務指派者之請假紀錄，避免跨專案洩漏
+  const leaves = useMemo(
+    () => (leaveData?.leaves ?? []).filter(l => projectMemberIds.has(l.userId)),
+    [leaveData, projectMemberIds]
+  )
   /** 工作區管理者才能幫別人登記、改別人的假 */
   const canManageLeaves = leaveData?.canManage ?? false
 
@@ -701,6 +718,7 @@ export default function CalendarView({
         <LeaveDialog
           form={leaveForm}
           workspaceId={workspaceId}
+          projectId={projectId}
           canManage={canManageLeaves}
           meId={me?.id ?? ''}
           error={leaveError}
@@ -1017,11 +1035,12 @@ function LeaveBar({ seg, leave, onEdit }: {
  * 中間不轉成 Date 再轉回來，那是整份程式碼裡最容易位移一天的地方。
  */
 function LeaveDialog({
-  form, workspaceId, canManage, meId, error, busy,
+  form, workspaceId, projectId, canManage, meId, error, busy,
   onChange, onError, onClose, onSave, onDelete,
 }: {
   form: LeaveForm
   workspaceId: string
+  projectId: string
   canManage: boolean
   meId: string
   error: string | null
@@ -1035,21 +1054,20 @@ function LeaveDialog({
   const editing = form.id !== null
 
   /**
-   * 同工作區的人。兩件事都要用它：幫別人登記（管理者才有）、挑代理人（誰都有），
-   * 所以**不再只在管理者新增時才要**。這條端點只要求「是這個工作區的成員」
-   * （見 api/src/routes/members.ts 的 /workspace-users），不會因此多給誰權限。
+   * 專案成員。登記與挑代理人皆限定在當前專案內成員，不可跨專案選取。
    */
-  const { data: userData } = useQuery({
-    queryKey: ['workspace-users', workspaceId],
-    queryFn: () => Api.workspaceUsers(workspaceId),
-    enabled: !!workspaceId,
+  const { data: memberData } = useQuery({
+    queryKey: ['members', projectId],
+    queryFn: () => Api.members(projectId),
+    enabled: !!projectId,
   })
-  const others = (userData?.users ?? []).filter(u => u.id !== meId)
+  const projectUsers = memberData?.members ?? []
+  const others = projectUsers.filter(u => u.id !== meId)
 
   /** 這筆假是誰的。新增時沒選人就是填自己的 */
   const subjectId = editing ? form.userId : (form.userId || meId)
   /** 代理人不能是請假的人自己 —— 不合法的選項直接不畫出來，後端也擋 */
-  const deputyChoices = (userData?.users ?? []).filter(u => u.id !== subjectId)
+  const deputyChoices = projectUsers.filter(u => u.id !== subjectId)
   const chosenDeputy = deputyChoices.find(u => u.id === form.deputyId)
 
   const ok = !!form.startDate && !!form.endDate && form.startDate <= form.endDate
