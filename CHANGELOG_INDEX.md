@@ -22,7 +22,15 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Super Admin vs Project Owner Permission Scope Enforcement (CR-215)
+### Latest Changes: Sidebar Menu Self-Assigned Tasks Top-Priority Sorting & Red Border Highlight (CR-216)
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **任務負責人為自己之選單置頂排序 (`CR-216`)**：在 `EpicSidebar` 頂層選單 (`epics`) 與各父層子任務清單 (`kids`) 中，以 `isMine` 判定當前登入者指派之任務，自動置頂於該層選單最上方，並在與其他任務間繪製分隔線。
+    2. **紅框高亮與專屬標籤顯示 (`CR-216`)**：在 `TreeNode` 列上為負責人為自身的任務加上 `border-2 border-red-500 ring-1 ring-red-500/60` 醒目紅框，並在種類標籤旁附加「我的」徽章，達成直覺且醒目的個人任務辨識。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-216` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-216`。
+
+### Previous Changes: Super Admin vs Project Owner Permission Scope Enforcement (CR-215)
 - **變更檔案**:
   - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts):
     1. **工作區管理者專案權限旁路移除 (`CR-215`)**：在 `requireProjectRole` 與 `requireProjectManager` 中移除工作區 `OWNER`/`ADMIN` 之全專案自動授權；嚴格限定只有全域超級管理者（`isSuperAdmin`）、專案建立者（擁有者）或具備 `MANAGER` 角色者可管理專案。

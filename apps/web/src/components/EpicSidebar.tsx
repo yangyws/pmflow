@@ -4,6 +4,7 @@ import { Api, type Project, type ProjectParam, type Task } from '../lib/api'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings'
 import { useUnreadNotifications } from '../lib/useUnreadNotifications'
+import { useAuth } from '../lib/auth'
 import { Button, Input, Select, ColorOption, readableColor, cx, TypeBadge } from './ui'
 import { useTheme } from '../lib/theme'
 
@@ -194,6 +195,7 @@ export function EpicSidebar({
   const qc = useQueryClient()
   const { resolved } = useTheme()
   const dark = resolved === 'dark'
+  const { user } = useAuth()
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
 
@@ -281,6 +283,7 @@ export function EpicSidebar({
     dividerAfterTaskIdSet,
     today,
   } = useMemo(() => {
+    const isMine = (t: Task) => !!user?.id && t.assigneeId === user.id
     const edges = graphData?.edges ?? []
     const ids = new Set(tasks.map(t => t.id))
     const containerBoxSet = (() => {
@@ -318,10 +321,17 @@ export function EpicSidebar({
     const nonBoxEpics = rawEpics.filter(t => !isBox(t))
     const { linkedTasks, unlinkedTasks } = divideAndSortLinked(nonBoxEpics, edges, tasks)
 
-    const epics = [...boxesGroup, ...linkedTasks, ...unlinkedTasks]
+    const rawSortedEpics = [...boxesGroup, ...linkedTasks, ...unlinkedTasks]
+    // 任務負責人是自己時置頂於 menu 最上方
+    const myEpics = rawSortedEpics.filter(t => isMine(t))
+    const otherEpics = rawSortedEpics.filter(t => !isMine(t))
+    const epics = [...myEpics, ...otherEpics]
 
-    // 4. 插入分隔線位置：每個收納盒區塊下方皆繪製一條分隔線！連線卡片區塊下方也繪製一條分隔線！
+    // 4. 插入分隔線位置：自己負責的任務群組下方、每個收納盒區塊下方、連線卡片區塊下方皆繪製分隔線
     const dividerAfterTaskIdSet = new Set<string>()
+    if (myEpics.length > 0 && otherEpics.length > 0) {
+      dividerAfterTaskIdSet.add(myEpics[myEpics.length - 1].id)
+    }
     for (const box of boxesGroup) {
       dividerAfterTaskIdSet.add(box.id)
     }
@@ -335,7 +345,10 @@ export function EpicSidebar({
     const kids = new Map<string, Task[]>()
     for (const [pId, list] of rawKids.entries()) {
       const { linkedTasks: kLinked, unlinkedTasks: kUnlinked } = divideAndSortLinked(list, edges, tasks)
-      kids.set(pId, [...kLinked, ...kUnlinked])
+      const kAll = [...kLinked, ...kUnlinked]
+      const kMine = kAll.filter(k => isMine(k))
+      const kOther = kAll.filter(k => !isMine(k))
+      kids.set(pId, [...kMine, ...kOther])
     }
     const today = new Date().toISOString().slice(0, 10)
 
@@ -447,7 +460,7 @@ export function EpicSidebar({
       dividerAfterTaskIdSet,
       today,
     }
-  }, [tasks, graphData, containerBoxTick, blockedByMap])
+  }, [tasks, graphData, containerBoxTick, blockedByMap, user?.id])
 
   const relatedTaskIds = useMemo(() => {
     const activeId = selectedTaskId || selectedEpicId
@@ -841,6 +854,8 @@ function TreeNode({
   onOpenEditTask?: (id: string) => void
 }) {
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const isMine = !!user?.id && task.assigneeId === user.id
   const [addingChild, setAddingChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
   const kids = childrenOf.get(task.id) ?? []
@@ -916,6 +931,7 @@ function TreeNode({
     <div className={isRoot ? 'mb-0.5' : undefined} data-sidebar-task-id={task.id}>
       <div className={cx(
         'group/row flex items-center rounded-md transition-all duration-150',
+        isMine && 'border-2 border-red-500 ring-1 ring-red-500/60 shadow-xs',
         active
           ? 'bg-blue-100/90 dark:bg-blue-900/70 ring-1 ring-blue-500/50 opacity-100 font-semibold shadow-xs'
           : isRelated
@@ -965,6 +981,11 @@ function TreeNode({
                 {task.ref || (task.number ? `MRG-${task.number}` : '')}
               </span>
               <TypeBadge name={kindName} color={kindColor} />
+              {isMine && (
+                <span className="shrink-0 rounded bg-red-100 px-1 py-0.2 text-[10px] font-bold text-red-700 dark:bg-red-950 dark:text-red-300 ring-1 ring-red-500/30 select-none">
+                  我的
+                </span>
+              )}
 
               {/* 完成打勾：進度 100% 才能打勾 */}
               {task.type !== 'BUG' && isTaskDone && (
