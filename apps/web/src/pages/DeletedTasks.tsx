@@ -175,6 +175,14 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
     const result: Array<any & { depth: number; hasKids: boolean; isBox: boolean }> = []
     const visited = new Set<string>()
 
+    const markDescendants = (parentId: string) => {
+      const directKids = kidsMap.get(parentId) || []
+      for (const k of directKids) {
+        visited.add(k.id)
+        markDescendants(k.id)
+      }
+    }
+
     const walk = (t: any, depth: number) => {
       if (visited.has(t.id)) return
       visited.add(t.id)
@@ -188,7 +196,10 @@ export default function DeletedTasks({ projectId }: { projectId: string }) {
         isBox: isBox(t),
       })
 
-      if (hasKids && collapsedSet.has(t.id)) return
+      if (hasKids && collapsedSet.has(t.id)) {
+        markDescendants(t.id)
+        return
+      }
 
       // 子卡片照編號排序
       kids.sort((a, b) => (a.number ?? 0) - (b.number ?? 0))

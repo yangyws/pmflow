@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Parent Tasks Inheriting Red Border from Self-Assigned Child Tasks (CR-217)
+### Latest Changes: Tree View Collapsed Storage Box Child Tasks Leaking Fix (CR-218)
+- **變更檔案**:
+  - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **清單視圖收納盒收折子項目隔離修復 (`CR-218`)**：在 `walk` 遞迴函式中，當節點為收折狀態（`collapsedSet.has(t.id)`）時，新增 `markDescendants` 遞迴將所有子孫任務 ID 標記為已處理（`processed`），徹底解決收折時子任務被防漏兜底邏輯誤當成頂層獨立卡片輸出至盒外底部問題。
+  - [`DeletedTasks.tsx`](file:///D:/github/pmflow/apps/web/src/pages/DeletedTasks.tsx):
+    1. **已刪除事件樹狀清單收折防漏修復 (`CR-218`)**：在 `walk` 遞迴函式中同步加入 `markDescendants` 標記已拜訪（`visited`），避免收折時已刪除的盒內子任務掉出收納盒外。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-218` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-218`。
+
+### Previous Changes: Parent Tasks Inheriting Red Border from Self-Assigned Child Tasks (CR-217)
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
     1. **子孫任務指派連鎖紅框與置頂繼承 (`CR-217`)**：以 DFS 遞迴建立 `hasMineSet` 集合；當任何子任務或孫任務為目前登入者負責時，其所有上層父任務、大項目及收納盒同步觸發 `border-2 border-red-500` 紅框高亮，附加「含我的」標籤，並自動置頂於選單最上方。

@@ -224,6 +224,14 @@ export default function ListView({
     const out: Array<Task & { depth: number; hasKids: boolean; isBox: boolean }> = []
     const processed = new Set<string>()
 
+    const markDescendants = (parentId: string) => {
+      const directKids = byParentMap.get(parentId) ?? []
+      for (const k of directKids) {
+        processed.add(k.id)
+        markDescendants(k.id)
+      }
+    }
+
     const walk = (t: Task, depth: number) => {
       if (processed.has(t.id)) return
       processed.add(t.id)
@@ -231,7 +239,10 @@ export default function ListView({
       const kids = byParentMap.get(t.id) ?? []
       const hasKids = kids.length > 0
       out.push({ ...t, depth, hasKids, isBox: isBox(t) })
-      if (hasKids && collapsedSet.has(t.id)) return
+      if (hasKids && collapsedSet.has(t.id)) {
+        markDescendants(t.id)
+        return
+      }
       for (const k of kids) {
         if (depth < 10) walk(k, depth + 1)
       }
