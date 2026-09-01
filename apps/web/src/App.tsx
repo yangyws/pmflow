@@ -777,6 +777,31 @@ function ProjectWorkspace({
 
   const handleTaskSelect = (id: string) => {
     setFocusedTaskId(id)
+    // 若目前有選定的大項目篩選 (epicId)，檢查目標任務是否在目前大項目底下；若不在，自動切換至其所屬的大項目
+    if (epicId && tasks.length) {
+      let cur = tasks.find(t => t.id === id)
+      let inCurrentEpic = false
+      const seen = new Set<string>()
+      while (cur && !seen.has(cur.id)) {
+        seen.add(cur.id)
+        if (cur.id === epicId) {
+          inCurrentEpic = true
+          break
+        }
+        cur = cur.parentId ? tasks.find(t => t.id === cur!.parentId) : undefined
+      }
+      if (!inCurrentEpic) {
+        let root = tasks.find(t => t.id === id)
+        const rootSeen = new Set<string>()
+        while (root?.parentId && !rootSeen.has(root.id)) {
+          rootSeen.add(root.id)
+          const p = tasks.find(t => t.id === root!.parentId)
+          if (p) root = p
+          else break
+        }
+        if (root) setEpicId(root.id)
+      }
+    }
     if (isMobile) {
       // 手機版：點擊任意任務開啟任務詳情（清單檢視下可編輯，其他檢視下唯讀）
       setOpenTask(id)

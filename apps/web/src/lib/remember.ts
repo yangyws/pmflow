@@ -25,16 +25,19 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-export function useRemembered<T>(key: string, fallback: T): [T, (v: T) => void] {
+export function useRemembered<T>(key: string, fallback: T): [T, (v: T | ((prev: T) => T)) => void] {
   const [value, setValue] = useState<T>(() => read(key, fallback))
 
-  const set = useCallback((v: T) => {
-    setValue(v)
-    try {
-      localStorage.setItem(PREFIX + key, JSON.stringify(v))
-    } catch {
-      // 存不進去就只有這次有效，不值得為它中斷操作
-    }
+  const set = useCallback((v: T | ((prev: T) => T)) => {
+    setValue(prev => {
+      const nextVal = typeof v === 'function' ? (v as (p: T) => T)(prev) : v
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(nextVal))
+      } catch {
+        // 存不進去就只有這次有效，不值得為它中斷操作
+      }
+      return nextVal
+    })
   }, [key])
 
   return [value, set]

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, type ProjectParam, type Task, type TaskStatus } from '../lib/api'
 import { Button, InquiryBadge, ProblemBadge, TypeBadge, Empty, Input, Select, ColorOption, readableColor, cx } from '../components/ui'
@@ -168,11 +168,55 @@ export default function ListView({
   const collapsedSet = useMemo(() => new Set(collapsedTaskIds), [collapsedTaskIds])
 
   const toggleCollapse = (id: string) => {
-    setCollapsedTaskIds(collapsedTaskIds.includes(id)
-      ? collapsedTaskIds.filter(k => k !== id)
-      : [...collapsedTaskIds, id]
+    const willCollapse = !collapsedTaskIds.includes(id)
+    setCollapsedTaskIds(willCollapse
+      ? [...collapsedTaskIds, id]
+      : collapsedTaskIds.filter(k => k !== id)
     )
+    window.dispatchEvent(new CustomEvent('pmflow_sidebar_expand_task', {
+      detail: { taskId: id, expand: !willCollapse }
+    }))
   }
+
+  // 監聽來自 Menu 側欄的展開 / 收折事件以保持即時同步
+  useEffect(() => {
+    const handleExpand = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (!detail?.taskId) return
+      if (detail.expand) {
+        setCollapsedTaskIds(prev => prev.filter(id => id !== detail.taskId))
+      } else {
+        setCollapsedTaskIds(prev => (prev.includes(detail.taskId) ? prev : [...prev, detail.taskId]))
+      }
+    }
+    window.addEventListener('pmflow_expand_task', handleExpand)
+    return () => window.removeEventListener('pmflow_expand_task', handleExpand)
+  }, [setCollapsedTaskIds])
+
+  // 當 focusedTaskId 變更時，自動展開其所有祖先收納盒/父任務以確保在清單中完整呈現
+  useEffect(() => {
+    if (!focusedTaskId || !tasks.length) return
+    const parentsToExpand: string[] = []
+    let cur = tasks.find(t => t.id === focusedTaskId)
+    const seen = new Set<string>()
+    while (cur?.parentId && !seen.has(cur.id)) {
+      seen.add(cur.id)
+      parentsToExpand.push(cur.parentId)
+      cur = tasks.find(t => t.id === cur!.parentId)
+    }
+    if (parentsToExpand.length > 0) {
+      setCollapsedTaskIds(prev => {
+        const pSet = new Set(parentsToExpand)
+        const next = prev.filter(id => !pSet.has(id))
+        return next.length !== prev.length ? next : prev
+      })
+      parentsToExpand.forEach(pId => {
+        window.dispatchEvent(new CustomEvent('pmflow_sidebar_expand_task', {
+          detail: { taskId: pId, expand: true }
+        }))
+      })
+    }
+  }, [focusedTaskId, tasks, setCollapsedTaskIds])
 
   // 依 3 階層選單規則排序：1. 收納盒/大項目 (置頂) -> 2. 拓撲關聯卡片 -> 3. 獨立卡片
   const ordered = useMemo(() => {

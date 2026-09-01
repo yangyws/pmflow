@@ -605,10 +605,33 @@ export function EpicSidebar({
     return () => clearTimeout(timer)
   }, [selectedTaskId, tasks])
 
+  // 監聽來自清單視圖的展開 / 收折事件以保持選單同步
+  useEffect(() => {
+    const handleSidebarExpand = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (!detail?.taskId) return
+      setExpanded(prev => {
+        const next = new Set(prev)
+        if (detail.expand) {
+          next.add(detail.taskId)
+        } else {
+          next.delete(detail.taskId)
+        }
+        return next
+      })
+    }
+    window.addEventListener('pmflow_sidebar_expand_task', handleSidebarExpand)
+    return () => window.removeEventListener('pmflow_sidebar_expand_task', handleSidebarExpand)
+  }, [])
+
   function toggle(id: string) {
     setExpanded(prev => {
+      const willExpand = !prev.has(id)
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      willExpand ? next.add(id) : next.delete(id)
+      window.dispatchEvent(new CustomEvent('pmflow_expand_task', {
+        detail: { taskId: id, expand: willExpand }
+      }))
       return next
     })
   }
@@ -620,7 +643,13 @@ export function EpicSidebar({
    * 建立完什麼都沒有變，看的人不知道剛剛那張跑去哪了。
    */
   function expand(id: string) {
-    setExpanded(prev => (prev.has(id) ? prev : new Set(prev).add(id)))
+    setExpanded(prev => {
+      if (prev.has(id)) return prev
+      window.dispatchEvent(new CustomEvent('pmflow_expand_task', {
+        detail: { taskId: id, expand: true }
+      }))
+      return new Set(prev).add(id)
+    })
   }
 
   function setCollapse(v: boolean) {

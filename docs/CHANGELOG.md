@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-219` | 2026-09-01 | [左側選單與清單視圖收納盒展開/收折雙向即時同步、點選子任務自動展開祖先收納盒與聚焦捲動](#cr-219) | `EpicSidebar.tsx`, `List.tsx`, `App.tsx` | 已驗證 |
 | `CR-218` | 2026-09-01 | [清單視圖與已刪除事件樹狀清單收納盒收折子項目防漏修復（修復收折時子卡片誤掉出盒外頂層展示 Bug）](#cr-218) | `List.tsx`, `DeletedTasks.tsx` | 已驗證 |
 | `CR-213` | 2026-08-28 | [關聯圖多帳號移動卡片即時同步：拖曳落盤寫入 DB、SSE / WebSocket 廣播通知其他使用者即時同步卡片座標與位置](#cr-213) | `TaskGraph.tsx`, `useRealtimeSync.ts` | 已驗證 |
 | `CR-212` | 2026-08-28 | [關聯線點擊刪除提示彈窗響應修復（修復 transparent 路徑 pointer-events 阻擋、拖曳守衛誤鎖與快取 stale closure）](#cr-212) | `TaskGraph.tsx`, `SystemFlow.tsx`, `index.css` | 已驗證 |
@@ -267,6 +268,17 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-219"></a>CR-219 (2026-09-01) — 左側選單與清單視圖收納盒展開/收折雙向即時同步、點選子任務自動展開祖先收納盒與聚焦捲動
+
+- **使用者需求**：menu 打開子任務 清單沒有跟著打開（選單展開箭頭與清單同步、點選子任務自動展開所屬收納盒）。
+- **排查與實作**：
+  1. **選單與清單展開/收折雙向即時同步 (`EpicSidebar.tsx`, `List.tsx`)**：
+     - 在 `EpicSidebar.tsx` 的 `toggle` 與 `expand` 函式中發送 `pmflow_expand_task` 事件；`List.tsx` 監聽該事件即時從 `collapsedTaskIds` 移除/加入對應 ID，達成左側 Menu 點擊 `▸` 展開收納盒時，右側清單對應收納盒零延遲同步展開。
+     - 在 `List.tsx` 的 `toggleCollapse` 函式中發送 `pmflow_sidebar_expand_task` 事件；`EpicSidebar.tsx` 監聽該事件同步更新 `expanded` 集合，達成雙向展開狀態即時聯動。
+  2. **點選子任務自動展開祖先收納盒與聚焦捲動 (`List.tsx`, `App.tsx`)**：
+     - 在 `List.tsx` 監聽 `focusedTaskId` 變更，以 `while (cur?.parentId)` 向上遞迴收集所有祖先收納盒/父任務 ID，即時自 `collapsedTaskIds` 排除強制展開，並透過 ref 回調平滑捲動（`scrollIntoView`）至目標子任務列。
+     - 在 `App.tsx` 的 `handleTaskSelect` 中新增大項目篩選範圍自動校正：若目標子任務不在當前篩選之 `epicId` 內，自動切換至其所屬根節點，確保子任務在主視圖 `visible` 清單中完好呈現。
 
 ### <a id="cr-218"></a>CR-218 (2026-09-01) — 清單視圖與已刪除事件樹狀清單收納盒收折子項目防漏修復
 

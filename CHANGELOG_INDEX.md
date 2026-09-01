@@ -22,7 +22,21 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Tree View Collapsed Storage Box Child Tasks Leaking Fix (CR-218)
+### Latest Changes: Sidebar Menu & List View Sub-Task Expansion & Focus Sync (CR-219)
+- **變更檔案**:
+  - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **選單展開/收折即時廣播與同步 (`CR-219`)**：在 `toggle` 與 `expand` 中派發 `pmflow_expand_task` 事件，並監聽 `pmflow_sidebar_expand_task`，確保左側 Menu 點擊 `▸` 展開時清單視圖同步展開。
+  - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **清單展開/收折雙向同步 (`CR-219`)**：監聽 `pmflow_expand_task` 事件即時更新 `collapsedTaskIds`，並於 `toggleCollapse` 派發 `pmflow_sidebar_expand_task`。
+    2. **點選子任務自動展開祖先收納盒 (`CR-219`)**：監聽 `focusedTaskId`，當選擇子任務時向上遞迴展開所有祖先收納盒，確保目標子任務完好呈現在清單視野中並平滑捲動聚焦。
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **大項目篩選自動導覽校正 (`CR-219`)**：在 `handleTaskSelect` 中檢查選定任務所屬範圍，當前若處於其他大項目篩選時自動切換至目標任務所屬大項目，確保子任務在主視圖（`visible`）中可見。
+  - [`remember.ts`](file:///D:/github/pmflow/apps/web/src/lib/remember.ts):
+    1. **狀態更新器函式型參數支援 (`CR-219`)**：升級 `useRemembered` 支援 `v: T | ((prev: T) => T)` 函式型更新，確保陣列狀態增減操作不產生 closure 閉包過期問題。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-219` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-219`。
+
+### Previous Changes: Tree View Collapsed Storage Box Child Tasks Leaking Fix (CR-218)
 - **變更檔案**:
   - [`List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
     1. **清單視圖收納盒收折子項目隔離修復 (`CR-218`)**：在 `walk` 遞迴函式中，當節點為收折狀態（`collapsedSet.has(t.id)`）時，新增 `markDescendants` 遞迴將所有子孫任務 ID 標記為已處理（`processed`），徹底解決收折時子任務被防漏兜底邏輯誤當成頂層獨立卡片輸出至盒外底部問題。
