@@ -32,10 +32,8 @@
     1. **已封存專案存取阻擋**：在 `requireProjectRole` 檢查中加入 `AND p.archived_at IS NULL`，防止已刪除專案被一般操作存取。
   - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
     1. **前端 API 定義與型別宣告**：新增 `DeletedProject` 介面，並實作 `Api.deleteProject`、`Api.deletedProjects` 與 `Api.restoreProject` 方法。
-  - [`ProjectPicker.tsx`](file:///D:/github/pmflow/apps/web/src/pages/ProjectPicker.tsx):
-    1. **首頁卡片刪除專案按鈕與二次確認防誤刪彈窗**：針對專案建立者或超級管理者提供 🗑️ 刪除按鈕，點擊後彈出清楚說明（軟刪除封存、僅超級管理者可還原）的確認彈窗。
   - [`ProjectSettings.tsx`](file:///D:/github/pmflow/apps/web/src/components/ProjectSettings.tsx):
-    1. **專案設定頁底部危險區域 (Danger Zone)**：針對專案建立者或超級管理者提供「危險區域：刪除專案」區塊與二次確認彈窗。
+    1. **專案設定頁底部危險區域 (Danger Zone)**：針對專案建立者或超級管理者提供「危險區域：刪除專案」區塊與二次確認彈窗，首頁不放刪除按鈕以防誤觸。
   - [`AdminPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AdminPanel.tsx):
     1. **系統管理員「已刪除專案管理」分頁**：超級管理者可於管理面板切換至「🗑️ 已刪除專案」分頁，檢視所有已刪除專案並執行一鍵「↺ 恢復專案」。
   - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-220` 條目與細節。
