@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Api, ApiError, type AdminUser, type WorkspaceRole } from '../lib/api'
+import { Api, ApiError, type AdminUser, type WorkspaceRole, type DeletedProject } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Button, Field, Input, Select, Spinner, cx } from './ui'
 import { T } from '../strings'
@@ -40,40 +40,56 @@ const errText = (e: unknown) =>
 export default function AdminPanel(
   { workspaceId, myRole }: { workspaceId: string; myRole: WorkspaceRole }
 ) {
-  const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users')
+  const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState<'users' | 'admins' | 'deletedProjects'>('users')
+  const isSuperOrOwner = myRole === 'OWNER' || !!user?.isSuperAdmin
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
-      {myRole === 'OWNER' && (
-        <div className="border-b border-slate-200 bg-white px-6 pt-3 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex max-w-4xl gap-2">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={cx(
-                'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-                activeTab === 'users'
-                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              )}>
-              👥 成員帳號管理（停用/註銷/密碼）
-            </button>
+      <div className="border-b border-slate-200 bg-white px-6 pt-3 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mx-auto flex max-w-4xl gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={cx(
+              'border-b-2 px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
+              activeTab === 'users'
+                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            )}>
+            👥 成員帳號管理（停用/註銷/密碼）
+          </button>
+          {myRole === 'OWNER' && (
             <button
               onClick={() => setActiveTab('admins')}
               className={cx(
-                'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                'border-b-2 px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
                 activeTab === 'admins'
                   ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                   : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               )}>
               🛡️ 指派管理者（Owner 專屬權限）
             </button>
-          </div>
+          )}
+          {isSuperOrOwner && (
+            <button
+              onClick={() => setActiveTab('deletedProjects')}
+              className={cx(
+                'border-b-2 px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
+                activeTab === 'deletedProjects'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              )}>
+              🗑️ 已刪除專案（還原管理）
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
         {activeTab === 'admins' && myRole === 'OWNER' ? (
           <OwnerPanel workspaceId={workspaceId} />
+        ) : activeTab === 'deletedProjects' ? (
+          <DeletedProjectsPanel />
         ) : (
           <UserAdminPanel workspaceId={workspaceId} />
         )}
@@ -502,6 +518,158 @@ function OwnerPanel({ workspaceId }: { workspaceId: string }) {
         </div>
 
         <p className="mt-3 text-xs text-slate-400 dark:text-slate-400">{O.footHint}</p>
+      </div>
+    </div>
+  )
+}
+
+function DeletedProjectsPanel() {
+  const qc = useQueryClient()
+  const [err, setErr] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [restoringProject, setRestoringProject] = useState<DeletedProject | null>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['deletedProjects'],
+    queryFn: () => Api.deletedProjects(),
+  })
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['deletedProjects'] })
+    qc.invalidateQueries({ queryKey: ['projects'] })
+  }
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => Api.restoreProject(id),
+    onSuccess: (res) => {
+      setRestoringProject(null)
+      setErr(null)
+      setMsg(`專案「${res.name}」已成功恢復！`)
+      refresh()
+    },
+    onError: (e: unknown) => {
+      setErr(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : '恢復專案失敗')
+    },
+  })
+
+  if (isLoading) return <Spinner label="載入已刪除專案清單中..." />
+
+  const projects = data?.projects ?? []
+
+  return (
+    <div className="h-full overflow-auto bg-slate-50 dark:bg-slate-950">
+      <div className="mx-auto max-w-4xl px-6 py-8">
+        <div className="mb-6 flex items-center gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">已刪除專案管理</h1>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              此處列出全站所有已標記刪除的專案。超級管理者可隨時將其一鍵還原回使用狀態。
+            </p>
+          </div>
+        </div>
+
+        {msg && (
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800">
+            <span>✓ {msg}</span>
+            <button onClick={() => setMsg(null)} className="text-emerald-500 hover:text-emerald-700 cursor-pointer">✕</button>
+          </div>
+        )}
+
+        {err && (
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-800">
+            <span>⚠️ {err}</span>
+            <button onClick={() => setErr(null)} className="text-red-500 hover:text-red-700 cursor-pointer">✕</button>
+          </div>
+        )}
+
+        {projects.length === 0 ? (
+          <div className="rounded-xl bg-white p-12 text-center ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="text-3xl mb-2 select-none">🎉</div>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">目前沒有已刪除的專案</div>
+            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">所有被刪除的專案都會完整封存於此處以供還原。</div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 rounded-xl bg-white shadow-xs ring-1 ring-slate-200 dark:divide-slate-800 dark:bg-slate-900 dark:ring-slate-800">
+            {projects.map(p => (
+              <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: p.color }} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        {p.key}
+                      </span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                        {p.name}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-400">
+                      <span>建立者：{p.creatorName ?? '未知'} ({p.creatorEmail ?? '-'})</span>
+                      <span>•</span>
+                      <span>任務數：{p.taskCount ?? 0}</span>
+                      <span>•</span>
+                      <span className="text-red-500/90 dark:text-red-400">
+                        刪除時間：{new Date(p.archivedAt).toLocaleString('zh-TW', { hour12: false })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="primary"
+                    className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium cursor-pointer shadow-xs"
+                    onClick={() => setRestoringProject(p)}
+                  >
+                    ↺ 恢復專案
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 恢復專案確認彈窗 */}
+        {restoringProject && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-lg select-none">
+                  ↺
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">恢復專案確認</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">將專案解除刪除並重新對成員開放</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                確定要恢復專案「<strong className="text-slate-900 dark:text-slate-100 font-semibold">{restoringProject.name}</strong>」（代碼：<span className="font-mono font-bold text-blue-600 dark:text-blue-400">{restoringProject.key}</span>）嗎？
+                <div className="mt-2 text-slate-500 dark:text-slate-400 space-y-1">
+                  <div>• 恢復後專案將立刻重新出現在成員的專案清單與導航中。</div>
+                  <div>• 專案內所有既有任務、排版與成員權限均維持原樣。</div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2.5">
+                <Button
+                  variant="ghost"
+                  onClick={() => setRestoringProject(null)}
+                  disabled={restoreMutation.isPending}
+                >
+                  取消
+                </Button>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
+                  disabled={restoreMutation.isPending}
+                  onClick={() => restoreMutation.mutate(restoringProject.id)}
+                >
+                  {restoreMutation.isPending ? '正在恢復...' : '確認恢復專案'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

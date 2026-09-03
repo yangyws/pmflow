@@ -272,4 +272,81 @@ export default async function projectRoutes(app: FastifyInstance) {
 
     return reply.send({ ok: true, newOwnerId, newOwnerName: targetUser.display_name })
   })
+
+  // ── 軟刪除（封存）專案：僅專案建立者（擁有者）或全域超級管理者可刪除 ──
+  app.delete<{ Params: { id: string } }>('/projects/:id', async (req, reply) => {
+    const user = await authenticate(req)
+    const [p] = await sql<{ id: string; workspace_id: string; created_by: string | null; name: string }[]>`
+      SELECT id, workspace_id, created_by, name FROM project WHERE id = ${req.params.id} AND archived_at IS NULL`
+    if (!p) throw notFound('找不到專案或該專案已被刪除')
+
+    const isSuper = await isSuperAdmin(user)
+    if (!isSuper && p.created_by !== user.id) {
+      throw forbidden('只有專案擁有者（建立者）或超級管理者可以刪除專案')
+    }
+
+    await sql`
+      UPDATE project SET archived_at = now()
+      WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId: p.workspace_id,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'archived', projectId: req.params.id, projectName: p.name },
+    })
+
+    return reply.send({ ok: true, id: req.params.id, name: p.name })
+  })
+
+  // ── 查詢已刪除（封存）專案清單：僅全域超級管理者可查閱 ──
+  app.get('/projects/deleted', async req => {
+    const user = await authenticate(req)
+    const isSuper = await isSuperAdmin(user)
+    if (!isSuper) {
+      throw forbidden('只有超級管理者可以查閱已刪除專案清單')
+    }
+
+    const rows = await sql`
+      SELECT p.id, p.workspace_id AS "workspaceId", p.key, p.name, p.description,
+             p.color, p.status, p.start_date AS "startDate", p.end_date AS "endDate",
+             p.archived_at AS "archivedAt", p.created_at AS "createdAt",
+             u.display_name AS "creatorName", u.email AS "creatorEmail",
+             (SELECT count(*) FROM task t WHERE t.project_id = p.id AND t.deleted_at IS NULL)::int AS "taskCount"
+      FROM project p
+      LEFT JOIN app_user u ON u.id = p.created_by
+      WHERE p.archived_at IS NOT NULL
+      ORDER BY p.archived_at DESC`
+    return { projects: rows }
+  })
+
+  // ── 恢復已刪除專案：僅全域超級管理者可還原 ──
+  app.post<{ Params: { id: string } }>('/projects/:id/restore', async (req, reply) => {
+    const user = await authenticate(req)
+    const isSuper = await isSuperAdmin(user)
+    if (!isSuper) {
+      throw forbidden('只有超級管理者可以還原已刪除專案')
+    }
+
+    const [p] = await sql<{ id: string; workspace_id: string; created_by: string | null; name: string }[]>`
+      SELECT id, workspace_id, created_by, name FROM project WHERE id = ${req.params.id} AND archived_at IS NOT NULL`
+    if (!p) throw notFound('找不到已刪除的專案')
+
+    await sql`
+      UPDATE project SET archived_at = NULL
+      WHERE id = ${req.params.id}`
+
+    emitRealtimeEvent({
+      type: 'project:changed',
+      projectId: req.params.id,
+      workspaceId: p.workspace_id,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'restored', projectId: req.params.id, projectName: p.name },
+    })
+
+    return reply.send({ ok: true, id: req.params.id, name: p.name })
+  })
 }

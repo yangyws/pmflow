@@ -22,7 +22,26 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Sidebar Menu & List View Sub-Task Expansion & Focus Sync (CR-219)
+### Latest Changes: Project Soft Deletion & Super Admin Restoration Management (CR-220)
+- **變更檔案**:
+  - [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts):
+    1. **軟刪除（封存）專案 API (`DELETE /projects/:id`)**：僅限**專案建立者（擁有者）**或**全域超級管理者**可執行軟刪除，將 `archived_at` 寫入當前時間，對所有成員隱藏該專案並完整保留專案所有任務與圖表資料。
+    2. **已刪除專案清單 API (`GET /projects/deleted`)**：僅限**全域超級管理者**可查詢所有已標記刪除的專案及其建立者與任務數。
+    3. **專案還原 API (`POST /projects/:id/restore`)**：僅限**全域超級管理者**可將已刪除專案恢復（`archived_at = NULL`）。
+  - [`auth.ts`](file:///D:/github/pmflow/apps/api/src/lib/auth.ts):
+    1. **已封存專案存取阻擋**：在 `requireProjectRole` 檢查中加入 `AND p.archived_at IS NULL`，防止已刪除專案被一般操作存取。
+  - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **前端 API 定義與型別宣告**：新增 `DeletedProject` 介面，並實作 `Api.deleteProject`、`Api.deletedProjects` 與 `Api.restoreProject` 方法。
+  - [`ProjectPicker.tsx`](file:///D:/github/pmflow/apps/web/src/pages/ProjectPicker.tsx):
+    1. **首頁卡片刪除專案按鈕與二次確認防誤刪彈窗**：針對專案建立者或超級管理者提供 🗑️ 刪除按鈕，點擊後彈出清楚說明（軟刪除封存、僅超級管理者可還原）的確認彈窗。
+  - [`ProjectSettings.tsx`](file:///D:/github/pmflow/apps/web/src/components/ProjectSettings.tsx):
+    1. **專案設定頁底部危險區域 (Danger Zone)**：針對專案建立者或超級管理者提供「危險區域：刪除專案」區塊與二次確認彈窗。
+  - [`AdminPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AdminPanel.tsx):
+    1. **系統管理員「已刪除專案管理」分頁**：超級管理者可於管理面板切換至「🗑️ 已刪除專案」分頁，檢視所有已刪除專案並執行一鍵「↺ 恢復專案」。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-220` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-220`。
+
+### Previous Changes: Sidebar Menu & List View Sub-Task Expansion & Focus Sync (CR-219)
 - **變更檔案**:
   - [`EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
     1. **選單展開/收折即時廣播與同步 (`CR-219`)**：在 `toggle` 與 `expand` 中派發 `pmflow_expand_task` 事件，並監聽 `pmflow_sidebar_expand_task`，確保左側 Menu 點擊 `▸` 展開時清單視圖同步展開。

@@ -11,6 +11,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type ParamKind, type ProjectParam } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { Button, ColorOption, Empty, Field, Input, Select, Spinner, cx } from './ui'
 import { useTheme } from '../lib/theme'
 import { useRemembered } from '../lib/remember'
@@ -57,7 +58,13 @@ const CATEGORIES = ['TODO', 'ACTIVE', 'DONE'] as const
 
 export default function ProjectSettings({ projectId }: { projectId: string }) {
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [err, setErr] = useState<string | null>(null)
+
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId),
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['projectParams', projectId],
@@ -65,6 +72,7 @@ export default function ProjectSettings({ projectId }: { projectId: string }) {
   })
 
   const canManage = !!data?.canManage
+  const canDelete = !!project?.isCreator || !!user?.isSuperAdmin
   const params = data?.params ?? []
 
   /**
@@ -190,6 +198,15 @@ export default function ProjectSettings({ projectId }: { projectId: string }) {
 
         {/* 自訂頁籤顯示名稱設定區塊 */}
         <TabNamesSection />
+
+        {/* 危險區域：刪除專案（僅專案建立者或超級管理者可見） */}
+        {canDelete && (
+          <DangerZoneSection
+            projectId={projectId}
+            projectName={project?.name ?? ''}
+            projectKey={project?.key ?? ''}
+          />
+        )}
 
       </div>
     </div>
@@ -838,5 +855,103 @@ function IconButton({
       )}>
       {children}
     </button>
+  )
+}
+
+function DangerZoneSection({
+  projectId,
+  projectName,
+  projectKey,
+}: {
+  projectId: string
+  projectName: string
+  projectKey: string
+}) {
+  const qc = useQueryClient()
+  const [confirming, setConfirming] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => Api.deleteProject(projectId),
+    onSuccess: () => {
+      setConfirming(false)
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['deletedProjects'] })
+      window.location.href = '/'
+    },
+    onError: (e: unknown) => {
+      setErr(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : '刪除專案失敗')
+    },
+  })
+
+  return (
+    <section className="mt-8 mb-12 border-t border-red-200 pt-8 dark:border-red-900/40">
+      <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/60 dark:bg-red-950/20">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-red-700 dark:text-red-400 flex items-center gap-1.5">
+              <span>⚠️</span> 危險區域：刪除專案
+            </h2>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              將此專案標記刪除並對所有成員隱藏。專案所有任務與圖表資料將完整封存，日後僅全域超級管理者可在系統管理面板中還原此專案。
+            </p>
+          </div>
+          <Button
+            className="bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-3 py-2 shrink-0 cursor-pointer shadow-xs"
+            onClick={() => setConfirming(true)}
+          >
+            🗑️ 刪除此專案
+          </Button>
+        </div>
+      </div>
+
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/80 text-lg select-none">
+                🗑️
+              </span>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">刪除專案確認</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">將專案標記刪除並對所有成員隱藏</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+              您即將刪除專案「<strong className="text-slate-900 dark:text-slate-100 font-semibold">{projectName}</strong>」（代碼：<span className="font-mono font-bold text-blue-600 dark:text-blue-400">{projectKey}</span>）。
+              <div className="mt-2 text-slate-500 dark:text-slate-400 space-y-1">
+                <div>• 專案內所有任務、圖表與成員關聯將完整封存保留。</div>
+                <div>• 刪除後該專案將自所有成員視野中隱藏。</div>
+                <div className="text-amber-600 dark:text-amber-400 font-medium">• 日後僅全域超級管理者可在系統管理面板中執行還原。</div>
+              </div>
+            </div>
+
+            {err && (
+              <div className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                {err}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2.5">
+              <Button
+                variant="ghost"
+                onClick={() => { setConfirming(false); setErr(null) }}
+                disabled={deleteProjectMutation.isPending}
+              >
+                取消
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white font-medium shadow-xs"
+                disabled={deleteProjectMutation.isPending}
+                onClick={() => deleteProjectMutation.mutate()}
+              >
+                {deleteProjectMutation.isPending ? '正在刪除...' : '確認刪除專案'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

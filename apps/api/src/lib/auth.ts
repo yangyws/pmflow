@@ -234,8 +234,8 @@ export async function requireProjectRole(
             AND CURRENT_DATE BETWEEN l.start_date AND l.end_date
         )
       )
-    WHERE p.id = ${projectId}`
-  if (!rows.length) throw forbidden('找不到專案，或你沒有權限')
+    WHERE p.id = ${projectId} AND p.archived_at IS NULL`
+  if (!rows.length) throw forbidden('找不到專案，或該專案已被刪除')
   // 只有超級管理者或該專案的建立者（專案擁有者）在專案裡具備最高管理者 (MANAGER) 權限
   const isSuper = await isSuperAdmin(userId)
   const candidates = rows.map(r => r.role).filter((r): r is ProjectRole => !!r)

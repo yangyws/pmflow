@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Api, ApiError, type Project } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { T } from '../strings'
 import { Button, Input, cx } from '../components/ui'
 import { FULL_VERSION_LABEL } from '../version'
@@ -23,10 +24,27 @@ export default function ProjectPicker({
   menu?: ReactNode
 }) {
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [adding, setAdding] = useState(false)
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
+  const [deleteErr, setDeleteErr] = useState<string | null>(null)
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: (id: string) => Api.deleteProject(id),
+    onSuccess: () => {
+      setDeletingProject(null)
+      setDeleteErr(null)
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['joinableProjects'] })
+      qc.invalidateQueries({ queryKey: ['deletedProjects'] })
+    },
+    onError: (e: unknown) => {
+      setDeleteErr(e instanceof ApiError ? [e.title, e.detail].filter(Boolean).join('：') : '刪除專案失敗')
+    },
+  })
 
   const create = useMutation({
     mutationFn: () => Api.createProject({ workspaceId, key: key.toUpperCase(), name }),
@@ -143,7 +161,10 @@ export default function ProjectPicker({
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {projects.map(p => (
+          {projects.map(p => {
+            const canDelete = !!p.isCreator || !!user?.isSuperAdmin
+            const canManage = !!p.isCreator || !!user?.isSuperAdmin
+            return (
             /* 外面這層只是給公開切換一個定位的參考點，它本身不能點 —— 見下面的註解 */
             <div key={p.id} className="relative">
             <button
@@ -154,8 +175,8 @@ export default function ProjectPicker({
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900',
                 'dark:bg-slate-900 dark:ring-slate-700 dark:hover:ring-slate-500',
                 'dark:focus-visible:ring-slate-300',
-                // 底下要空出一列放公開切換，不然會壓到逾期、申請那些標記
-                p.isCreator && 'pb-12'
+                // 底下要空出一列放公開切換與刪除按鈕，不然會壓到逾期、申請那些標記
+                canManage && 'pb-12'
               )}
             >
               <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: p.color }} />
@@ -190,41 +211,60 @@ export default function ProjectPicker({
             </button>
 
             {/*
-              公開與否只有建立者能改。
+              公開與否（建立者可改）與刪除專案按鈕（建立者或超級管理者可執行）。
               刻意畫在卡片按鈕「外面」再用絕對定位疊回卡片內 ——
               button 包 button 是不合法的 HTML，瀏覽器會把它拆掉；
               事件也一併保險：點切換不該連帶把人帶進專案。
             */}
-            {p.isCreator && (
-              <div className="absolute inset-x-4 bottom-3 flex items-center gap-2">
-                <Button
-                  className="shrink-0 px-2 py-1 text-xs"
-                  aria-pressed={!!p.isPublic}
-                  title={T.project.visibility.tooltip(!!p.isPublic)}
-                  aria-label={T.project.visibility.ariaLabel(!!p.isPublic, p.name)}
-                  disabled={setPublic.isPending && setPublic.variables?.id === p.id}
-                  onClick={e => {
-                    e.stopPropagation()
-                    setVisibilityErr(null)
-                    setPublic.mutate({ id: p.id, isPublic: !p.isPublic })
-                  }}
-                >
-                  <span aria-hidden>{p.isPublic ? '🌐' : '🔒'}</span>
-                  {T.project.visibility.label(!!p.isPublic)}
-                </Button>
-                {visibilityErr?.id === p.id ? (
-                  <span className="min-w-0 truncate text-[11px] text-red-600 dark:text-red-400">
-                    {visibilityErr.message}
-                  </span>
-                ) : (
-                  <span className="min-w-0 truncate text-[11px] text-slate-400 dark:text-slate-400">
-                    {T.project.visibility.hint(!!p.isPublic)}
-                  </span>
+            {canManage && (
+              <div className="absolute inset-x-4 bottom-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {p.isCreator && (
+                    <Button
+                      className="shrink-0 px-2 py-1 text-xs"
+                      aria-pressed={!!p.isPublic}
+                      title={T.project.visibility.tooltip(!!p.isPublic)}
+                      aria-label={T.project.visibility.ariaLabel(!!p.isPublic, p.name)}
+                      disabled={setPublic.isPending && setPublic.variables?.id === p.id}
+                      onClick={e => {
+                        e.stopPropagation()
+                        setVisibilityErr(null)
+                        setPublic.mutate({ id: p.id, isPublic: !p.isPublic })
+                      }}
+                    >
+                      <span aria-hidden>{p.isPublic ? '🌐' : '🔒'}</span>
+                      {T.project.visibility.label(!!p.isPublic)}
+                    </Button>
+                  )}
+                  {visibilityErr?.id === p.id ? (
+                    <span className="min-w-0 truncate text-[11px] text-red-600 dark:text-red-400">
+                      {visibilityErr.message}
+                    </span>
+                  ) : p.isCreator ? (
+                    <span className="min-w-0 truncate text-[11px] text-slate-400 dark:text-slate-400">
+                      {T.project.visibility.hint(!!p.isPublic)}
+                    </span>
+                  ) : null}
+                </div>
+
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    className="shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 ml-auto cursor-pointer"
+                    title="刪除此專案"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setDeleteErr(null)
+                      setDeletingProject(p)
+                    }}
+                  >
+                    🗑️ 刪除
+                  </Button>
                 )}
               </div>
             )}
             </div>
-          ))}
+          )})}
 
           {adding ? (
             <div className="space-y-2 rounded-xl bg-white p-4 ring-1 ring-slate-300
@@ -353,6 +393,55 @@ export default function ProjectPicker({
           {FULL_VERSION_LABEL}
         </div>
       </div>
+
+      {/* 刪除專案確認彈窗 */}
+      {deletingProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/80 text-lg select-none">
+                🗑️
+              </span>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">刪除專案確認</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">將專案標記刪除並對所有成員隱藏</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+              您即將刪除專案「<strong className="text-slate-900 dark:text-slate-100 font-semibold">{deletingProject.name}</strong>」（代碼：<span className="font-mono font-bold text-blue-600 dark:text-blue-400">{deletingProject.key}</span>）。
+              <div className="mt-2 text-slate-500 dark:text-slate-400 space-y-1">
+                <div>• 專案內所有任務、圖表與成員關聯將完整封存保留。</div>
+                <div>• 刪除後該專案將自所有成員視野中隱藏。</div>
+                <div className="text-amber-600 dark:text-amber-400 font-medium">• 日後僅全域超級管理者可在系統管理中恢復此專案。</div>
+              </div>
+            </div>
+
+            {deleteErr && (
+              <div className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                {deleteErr}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2.5">
+              <Button
+                variant="ghost"
+                onClick={() => { setDeletingProject(null); setDeleteErr(null) }}
+                disabled={deleteProjectMutation.isPending}
+              >
+                取消
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white font-medium shadow-xs"
+                disabled={deleteProjectMutation.isPending}
+                onClick={() => deleteProjectMutation.mutate(deletingProject.id)}
+              >
+                {deleteProjectMutation.isPending ? '正在刪除...' : '確認刪除專案'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -84,6 +84,23 @@ export interface Project {
   isPublic?: boolean
 }
 
+export interface DeletedProject {
+  id: string
+  workspaceId: string
+  key: string
+  name: string
+  description?: string | null
+  color: string
+  status: string
+  startDate?: string | null
+  endDate?: string | null
+  archivedAt: string
+  createdAt: string
+  creatorName?: string | null
+  creatorEmail?: string | null
+  taskCount?: number
+}
+
 // Ref: CR-145
 export type ProjectRole = 'MANAGER' | 'EDITOR' | 'VIEWER'
 
@@ -531,6 +548,12 @@ export const Api = {
      */
     key?: string
   }) => api<Project>(`/projects/${id}`, { method: 'PATCH', json }),
+  deleteProject: (id: string) =>
+    api<{ ok: boolean; id: string; name: string }>(`/projects/${id}`, { method: 'DELETE' }),
+  deletedProjects: () =>
+    api<{ projects: DeletedProject[] }>('/projects/deleted'),
+  restoreProject: (id: string) =>
+    api<{ ok: boolean; id: string; name: string }>(`/projects/${id}/restore`, { method: 'POST' }),
 
   // ── 成員與加入申請。放人進來只有建立者做得到 ──
   /**
