@@ -65,6 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setWorkspaces([])
         resetCache()
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search)
+          if (!params.has('loginError')) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+          }
+        }
       },
       refreshUser: async () => {
         const me = await Api.me()

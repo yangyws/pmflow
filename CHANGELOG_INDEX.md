@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mark Google OAuth Login as Temporarily Disabled with Notice (CR-222)
+### Latest Changes: Clear URL Query Parameters on User Logout (CR-223)
+- **變更檔案**:
+  - [`auth.tsx`](file:///D:/github/pmflow/apps/web/src/lib/auth.tsx):
+    1. **登出清除 URL Search 參數 (`CR-223`)**：在 `logout` 函式執行時主動以 `replaceState` 清除網址列之 Query String（保留 `loginError` 例外），防止登出退回登入頁後網址仍殘留 `/?project=...`。
+  - [`App.tsx`](file:///D:/github/pmflow/apps/web/src/App.tsx):
+    1. **身分變更登出同步重設 URL (`CR-223`)**：在 `user` 變為 null 時同步調用 `replaceState` 淨空網址列參數。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-223` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-223`。
+
+### Previous Changes: Mark Google OAuth Login as Temporarily Disabled with Notice (CR-222)
 - **變更檔案**:
   - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx):
     1. **Google 登入按鈕停用與暫時無效標籤 (`CR-222`)**：將 Google 第三方登入按鈕設為停用樣式（`disabled`）並附加「暫時無效」徽章，按鈕下方增加醒目警語提示使用者改用 Email 與密碼登入。

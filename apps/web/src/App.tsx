@@ -197,6 +197,12 @@ export default function App() {
       setOpenTask(null)
       setEpicId(null)
       setAccount(null)
+      if (typeof window !== 'undefined' && window.location.search) {
+        const params = new URLSearchParams(window.location.search)
+        if (!params.has('loginError')) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+        }
+      }
     }
   }, [ready, user?.id, activeUserId])
 

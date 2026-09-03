@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-223` | 2026-09-03 | [使用者登出自動清除 URL 專案與視圖 Query 參數修復](#cr-223) | `auth.tsx`, `App.tsx` | 已驗證 |
 | `CR-222` | 2026-09-03 | [Google 第三方登入暫時無效標註與提示警語支援](#cr-222) | `Login.tsx`, `AccountPanel.tsx` | 已驗證 |
 | `CR-221` | 2026-09-03 | [專案設定頁支援專案公開性（公開 / 私人）切換與即時快取同步](#cr-221) | `ProjectSettings.tsx` | 已驗證 |
 | `CR-220` | 2026-09-03 | [專案軟刪除（標記刪除）與超級管理者專案還原管理功能](#cr-220) | `projects.ts`, `auth.ts`, `api.ts`, `ProjectSettings.tsx`, `AdminPanel.tsx` | 已驗證 |
@@ -271,6 +272,13 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-223"></a>CR-223 (2026-09-03) — 使用者登出自動清除 URL 專案與視圖 Query 參數修復
+
+- **使用者需求**：登出後 URL 還帶著 `/?project=01a00d4b-009b-73de-ab6c-1f2dab124dea`。
+- **排查與實作**：
+  1. **登出狀態同步清除 URL 查詢字串 (`auth.tsx`, `App.tsx`)**：
+     - 在 `auth.tsx` 的 `logout` 函式以及 `App.tsx` 監聽登出（`user` 轉為 null）的處置邏輯中，加入 `window.history.replaceState` 清空 URL Search Query String（保留 `loginError` 例外提示），確保登出後網址立即乾淨還原為 `/`，不再殘留上一位使用者之專案、任務或視圖參數。
 
 ### <a id="cr-222"></a>CR-222 (2026-09-03) — Google 第三方登入暫時無效標註與提示警語支援
 
