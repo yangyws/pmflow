@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Project Visibility Setting Toggle Support in Project Settings (CR-221)
+### Latest Changes: Mark Google OAuth Login as Temporarily Disabled with Notice (CR-222)
+- **變更檔案**:
+  - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx):
+    1. **Google 登入按鈕停用與暫時無效標籤 (`CR-222`)**：將 Google 第三方登入按鈕設為停用樣式（`disabled`）並附加「暫時無效」徽章，按鈕下方增加醒目警語提示使用者改用 Email 與密碼登入。
+  - [`AccountPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AccountPanel.tsx):
+    1. **帳號綁定 Google 按鈕停用與標註 (`CR-222`)**：於帳號設定的「登入方式」清單中將 Google 綁定按鈕設為停用並標註「（暫時無效）」。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-222` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-222`。
+
+### Previous Changes: Project Visibility Setting Toggle Support in Project Settings (CR-221)
 - **變更檔案**:
   - [`ProjectSettings.tsx`](file:///D:/github/pmflow/apps/web/src/components/ProjectSettings.tsx):
     1. **專案公開性設定區塊 (`ProjectVisibilitySection`)**：在專案設定頁新增「專案公開性設定」區塊，管理者與建立者可隨時一鍵於「🌐 公開專案」與「🔒 私人（非公開）專案」間切換，並即時同步後端與工作區搜尋快取。

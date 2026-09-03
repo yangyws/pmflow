@@ -104,42 +104,51 @@ export default function Login() {
         </Button>
 
         {/*
-          用 Google／Apple 的帳號登入。整頁跳轉出去，回來時後端已經發好
-          refresh cookie，前端一開頁就會拿它去換 access token —— 跟密碼登入
-          走的是同一段程式，所以這裡不需要處理任何權杖。
-          用 <a> 不用 <button>：它就是「離開這一頁去別的網站」，
-          中鍵開新分頁、看得到目的地網址這些行為都該照瀏覽器原本的來。
+          用 Google／Apple 的帳號登入。
+          目前 Google 登入標記為暫時無效。
         */}
-        {external.length > 0 && (
-          <>
-            <div className="my-5 flex items-center gap-3">
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-              <span className="text-xs text-slate-400 dark:text-slate-400">
-                {T.nav.login.externalDivider}
-              </span>
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-            </div>
+        <div className="my-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+          <span className="text-xs text-slate-400 dark:text-slate-400">
+            {T.nav.login.externalDivider}
+          </span>
+          <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+        </div>
 
-            <div className="space-y-2">
-              {external.map(p => (
-                <a key={p.id} href={Api.oauthStartUrl(p.id)}
-                   className="flex w-full items-center justify-center gap-2 rounded-md border
-                              border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700
-                              transition-colors hover:bg-slate-50
-                              focus:outline-none focus:ring-2 focus:ring-blue-500/40
-                              dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200
-                              dark:hover:bg-slate-700">
-                  <ProviderIcon provider={p.id} />
-                  {T.nav.login.withProvider(p.label)}
-                </a>
-              ))}
-            </div>
+        <div className="space-y-2">
+          {/* Google 登入（暫時無效） */}
+          <button
+            type="button"
+            disabled
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-75 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500 select-none"
+            title="Google 登入功能目前暫時無效，請使用 Email 與密碼登入"
+          >
+            <ProviderIcon provider="GOOGLE" />
+            <span>用 Google 帳號登入</span>
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+              暫時無效
+            </span>
+          </button>
 
-            <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-400">
-              {T.nav.login.externalHint}
-            </p>
-          </>
-        )}
+          {/* 其他已設定之有效第三方登入 */}
+          {external.filter(p => p.id !== 'GOOGLE').map(p => (
+            <a key={p.id} href={Api.oauthStartUrl(p.id)}
+               className="flex w-full items-center justify-center gap-2 rounded-md border
+                          border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700
+                          transition-colors hover:bg-slate-50
+                          focus:outline-none focus:ring-2 focus:ring-blue-500/40
+                          dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200
+                          dark:hover:bg-slate-700">
+              <ProviderIcon provider={p.id} />
+              {T.nav.login.withProvider(p.label)}
+            </a>
+          ))}
+        </div>
+
+        <p className="mt-2 text-[11px] leading-relaxed text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1">
+          <span>⚠️</span>
+          <span>Google 登入功能目前暫時無效，請使用上方 Email 與密碼登入。</span>
+        </p>
 
         <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null) }}
                 className="mt-4 w-full text-center text-sm text-blue-600 hover:underline dark:text-blue-400">

@@ -394,12 +394,27 @@ function IdentitySection() {
           {/* 還沒綁的那幾家。站台沒設定的不會出現在 available 裡 */}
           {data.available.length > 0 ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {data.available.map(p => (
-                <Button key={p} disabled={pending !== null} onClick={() => startLink(p)}>
-                  <ProviderIcon provider={p} />
-                  {T.account.identity.bind(T.account.identity.label[p])}
-                </Button>
-              ))}
+              {data.available.map(p => {
+                if (p === 'GOOGLE') {
+                  return (
+                    <Button
+                      key={p}
+                      disabled
+                      className="opacity-60 cursor-not-allowed text-xs"
+                      title="Google 帳號綁定功能目前暫時無效"
+                    >
+                      <ProviderIcon provider={p} />
+                      {T.account.identity.bind(T.account.identity.label[p])}（暫時無效）
+                    </Button>
+                  )
+                }
+                return (
+                  <Button key={p} disabled={pending !== null} onClick={() => startLink(p)}>
+                    <ProviderIcon provider={p} />
+                    {T.account.identity.bind(T.account.identity.label[p])}
+                  </Button>
+                )
+              })}
               {pending && (
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {T.account.identity.binding}
