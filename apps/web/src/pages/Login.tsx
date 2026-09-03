@@ -155,13 +155,6 @@ export default function Login() {
           {mode === 'login' ? T.nav.login.toRegister : T.nav.login.toLogin}
         </button>
 
-        {mode === 'login' && (
-          <p className="mt-5 rounded-md bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500
-                        dark:bg-slate-800 dark:text-slate-400">
-            {T.nav.login.demoHint}
-          </p>
-        )}
-
         <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500 select-none">
           {FULL_VERSION_LABEL}
         </div>

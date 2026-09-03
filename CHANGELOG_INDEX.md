@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Clear URL Query Parameters on User Logout (CR-223)
+### Latest Changes: Remove Demo Account Hint from Login Page (CR-224)
+- **變更檔案**:
+  - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx):
+    1. **移除示範帳號登入提示 (`CR-224`)**：移除登入頁面底部的「示範帳號已經幫你填好了...」說明段落，使登入介面更為簡潔乾淨。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-224` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-224`。
+
+### Previous Changes: Clear URL Query Parameters on User Logout (CR-223)
 - **變更檔案**:
   - [`auth.tsx`](file:///D:/github/pmflow/apps/web/src/lib/auth.tsx):
     1. **登出清除 URL Search 參數 (`CR-223`)**：在 `logout` 函式執行時主動以 `replaceState` 清除網址列之 Query String（保留 `loginError` 例外），防止登出退回登入頁後網址仍殘留 `/?project=...`。
