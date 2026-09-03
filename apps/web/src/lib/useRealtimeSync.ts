@@ -39,11 +39,9 @@ export function useRealtimeSync() {
   useEffect(() => {
     if (!user) return
 
-    const token = getAccessToken()
-    if (!token) return
-
-    const url = `/api/v1/events?token=${encodeURIComponent(token)}`
-    const es = new EventSource(url, { withCredentials: true })
+    let active = true
+    let es: EventSource | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
     const processBatch = () => {
       const events = [...pendingEventsRef.current]
@@ -63,7 +61,7 @@ export function useRealtimeSync() {
       }
 
       for (const ev of events) {
-        // 發布全域 DOM 事件供特殊元件監聽
+        // 發布全域 DOM 事件供特殊元件即時響應
         try {
           window.dispatchEvent(new CustomEvent('pmflow_realtime_event', { detail: ev }))
         } catch {}
@@ -103,6 +101,7 @@ export function useRealtimeSync() {
             invalidate(['burndown'])
             invalidate(['workload'])
             invalidate(['deletedTasks'])
+            invalidate(['canvasNodes'])
             if (ev.projectId) {
               invalidate(['tasks', ev.projectId])
               invalidate(['graph', ev.projectId])
@@ -110,6 +109,7 @@ export function useRealtimeSync() {
               invalidate(['burndown', ev.projectId])
               invalidate(['workload', ev.projectId])
               invalidate(['deletedTasks', ev.projectId])
+              invalidate(['canvasNodes', ev.projectId])
               invalidate(['project', ev.projectId])
             }
             if (ev.payload?.taskId && typeof ev.payload.taskId === 'string') {
@@ -127,6 +127,7 @@ export function useRealtimeSync() {
             invalidate(['canvasNodes'])
             invalidate(['canvasPermissions'])
             invalidate(['graph'])
+            invalidate(['tasks'])
             if (ev.projectId) {
               invalidate(['canvas', ev.projectId])
               invalidate(['canvasDoc', ev.projectId])
@@ -134,6 +135,7 @@ export function useRealtimeSync() {
               invalidate(['canvasNodes', ev.projectId])
               invalidate(['canvasPermissions', ev.projectId])
               invalidate(['graph', ev.projectId])
+              invalidate(['tasks', ev.projectId])
             }
             break
           }
@@ -160,7 +162,7 @@ export function useRealtimeSync() {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
       }
-      debounceTimerRef.current = setTimeout(processBatch, 150)
+      debounceTimerRef.current = setTimeout(processBatch, 80)
     }
 
     const eventTypes = [
@@ -172,33 +174,64 @@ export function useRealtimeSync() {
       'member:changed',
     ] as const
 
-    const handlers: Array<{ type: string; fn: (e: MessageEvent) => void }> = []
+    function connect() {
+      if (!active) return
 
-    for (const type of eventTypes) {
-      const fn = (e: MessageEvent) => {
-        try {
-          const payload = JSON.parse(e.data) as RealtimeEventPayload
-          scheduleProcess(payload)
-        } catch {
-          // ignore parsing error
+      const token = getAccessToken()
+      if (!token) {
+        reconnectTimer = setTimeout(connect, 3000)
+        return
+      }
+
+      if (es) {
+        try { es.close() } catch {}
+        es = null
+      }
+
+      const url = `/api/v1/events?token=${encodeURIComponent(token)}`
+      const source = new EventSource(url, { withCredentials: true })
+      es = source
+
+      for (const type of eventTypes) {
+        source.addEventListener(type, (e: MessageEvent) => {
+          try {
+            const payload = JSON.parse(e.data) as RealtimeEventPayload
+            scheduleProcess(payload)
+          } catch {
+            // ignore parsing error
+          }
+        })
+      }
+
+      source.onerror = () => {
+        if (!active) return
+        try { source.close() } catch {}
+        if (es === source) es = null
+        if (!reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null
+            connect()
+          }, 3000)
         }
       }
-      es.addEventListener(type, fn)
-      handlers.push({ type, fn })
     }
 
-    es.onerror = () => {
-      // EventSource 會自動嘗試重新連線
-    }
+    connect()
 
     return () => {
+      active = false
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
       }
-      for (const { type, fn } of handlers) {
-        es.removeEventListener(type, fn)
+      if (es) {
+        try { es.close() } catch {}
+        es = null
       }
-      es.close()
     }
   }, [user, qc])
 }

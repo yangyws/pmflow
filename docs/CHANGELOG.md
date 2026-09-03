@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-225` | 2026-09-03 | [關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復](#cr-225) | `Caddyfile`, `useRealtimeSync.ts`, `TaskGraph.tsx` | 已驗證 |
 | `CR-224` | 2026-09-03 | [移除登入頁面示範帳號引導說明文字](#cr-224) | `Login.tsx` | 已驗證 |
 | `CR-223` | 2026-09-03 | [使用者登出自動清除 URL 專案與視圖 Query 參數修復](#cr-223) | `auth.tsx`, `App.tsx` | 已驗證 |
 | `CR-222` | 2026-09-03 | [Google 第三方登入暫時無效標註與提示警語支援](#cr-222) | `Login.tsx`, `AccountPanel.tsx` | 已驗證 |
@@ -273,6 +274,18 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-225"></a>CR-225 (2026-09-03) — 關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復
+
+- **使用者需求**：不同使用者 在移動 關聯圖時 其他人沒有實時變更的樣子 檢查一下。
+- **排查原因**：
+  1. **前端 Caddy 反向代理緩衝 SSE 串流**：前端容器 Caddy 的 `reverse_proxy` 未宣告 `flush_interval -1`，導致 SSE 伺服器推播事件可能被反向代理緩衝而未即時推送到客戶端。
+  2. **SSE 連線重試與 Token 過期處理**：原生 `EventSource` 在連線中斷或逾期後會以舊網址重試導致 401 永久失效，未主動換取最新 Token 重新連線。
+  3. **關聯圖排版快取與狀態同步**：`TaskGraph.tsx` 接收到伺服器節點座標時，依賴 `canvasNodesRes.updatedAt` 判斷，若無變動字串比對或快取時差可能未即時觸發 `setNodes` 與同步內部 Refs。
+- **實作與修復**：
+  1. **Caddyfile 反向代理即時串流 (`Caddyfile`)**：在 `/api/*` 之 `reverse_proxy` 加入 `flush_interval -1`，杜絕 SSE 封包緩衝延遲。
+  2. **SSE 自動重連與雙向快取失效 (`useRealtimeSync.ts`)**：在 `onerror` 實作自動取得最新 Token 重新建立 SSE 連線機制，並在 `task:changed` / `canvas:changed` 時雙向作廢 `canvasNodes` 與 `tasks` 快取。
+  3. **關聯圖廣播事件監聽與即時渲染 (`TaskGraph.tsx`)**：加入 `pmflow_realtime_event` 監聽器，伺服器排版更新時同步更新 `draggedRef`、`resizedRef`、`toggledModesRef` 並更新畫布節點位置與尺寸，防止回彈。
 
 ### <a id="cr-224"></a>CR-224 (2026-09-03) — 移除登入頁面示範帳號引導說明文字
 

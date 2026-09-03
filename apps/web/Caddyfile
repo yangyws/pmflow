@@ -16,6 +16,7 @@
 	handle /api/* {
 		reverse_proxy {$PMFLOW_API_UPSTREAM:api:8080} {
 			header_up X-Real-IP {remote_host}
+			flush_interval -1
 			transport http {
 				read_timeout  300s
 				write_timeout 300s

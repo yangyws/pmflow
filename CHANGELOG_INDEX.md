@@ -22,7 +22,18 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Remove Demo Account Hint from Login Page (CR-224)
+### Latest Changes: Real-time Multi-User Canvas Sync and Unbuffered SSE Streaming Fix (CR-225)
+- **變更檔案**:
+  - [`Caddyfile`](file:///D:/github/pmflow/apps/web/Caddyfile):
+    1. **反向代理關閉緩衝 (`CR-225`)**：在 `/api/*` 之 `reverse_proxy` 區塊加入 `flush_interval -1`，確保 SSE 即時推播事件零延遲立即刷入瀏覽器。
+  - [`useRealtimeSync.ts`](file:///D:/github/pmflow/apps/web/src/lib/useRealtimeSync.ts):
+    1. **SSE 自動重連與全方位快取作廢 (`CR-225`)**：加入斷線/逾期自動以最新 Token 重新連線機制；在 `task:changed` 與 `canvas:changed` 時雙向作廢 `canvasNodes` 與 `tasks` 快取。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **即時廣播事件監聽與座標參照同步 (`CR-225`)**：加入 `pmflow_realtime_event` 監聽器，伺服器排版更新時同步更新 `draggedRef`、`resizedRef`、`toggledModesRef` 並更新畫布節點位置與尺寸，防止回彈。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-225` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-225`。
+
+### Previous Changes: Remove Demo Account Hint from Login Page (CR-224)
 - **變更檔案**:
   - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx):
     1. **移除示範帳號登入提示 (`CR-224`)**：移除登入頁面底部的「示範帳號已經幫你填好了...」說明段落，使登入介面更為簡潔乾淨。

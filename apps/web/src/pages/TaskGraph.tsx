@@ -1962,8 +1962,29 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const backendNodesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedNodesJsonRef = useRef<string>('')
-  const lastAppliedNodesUpdatedAtRef = useRef<string | null>(null)
+  const lastAppliedNodesJsonRef = useRef<string>('')
   const isApplyingServerSyncRef = useRef<boolean>(false)
+
+  // 監聽即時廣播事件：當其他使用者更新畫布或任務時立即刷新快取 (Ref: CR-213, CR-225)
+  useEffect(() => {
+    const handleRealtimeEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<any>
+      const ev = customEvent.detail
+      if (!ev) return
+
+      if (ev.projectId && ev.projectId === projectId) {
+        if (ev.type === 'canvas:changed' || ev.type === 'task:changed') {
+          queryClient.invalidateQueries({ queryKey: ['canvasNodes', projectId, 'task-graph'] })
+          queryClient.invalidateQueries({ queryKey: ['canvasDoc', projectId, 'task-graph-extra'] })
+          queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+          queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+        }
+      }
+    }
+
+    window.addEventListener('pmflow_realtime_event', handleRealtimeEvent)
+    return () => window.removeEventListener('pmflow_realtime_event', handleRealtimeEvent)
+  }, [projectId, queryClient])
 
   // 載入後端共享註記、折點與文字 (task-graph-extra) 並即時同步 (Ref: CR-213)
   useEffect(() => {
@@ -1976,15 +1997,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
     if (!extraData || typeof extraData !== 'object') return
 
-    const updatedAt = extraDocRes.updatedAt ?? null
     const incomingJson = JSON.stringify(extraData)
-    if (updatedAt && updatedAt === lastAppliedExtraUpdatedAtRef.current) return
-    if (incomingJson === lastSavedExtraJsonRef.current) {
-      lastAppliedExtraUpdatedAtRef.current = updatedAt
-      return
-    }
-
-    lastAppliedExtraUpdatedAtRef.current = updatedAt
+    if (incomingJson === lastSavedExtraJsonRef.current) return
     lastSavedExtraJsonRef.current = incomingJson
 
     if (extraData.annotations && (Array.isArray(extraData.annotations.texts) || Array.isArray(extraData.annotations.frames))) {
@@ -2009,23 +2023,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
   }, [extraDocRes, projectId])
 
-  // 載入後端共享節點排版與收納狀態 (canvas/task-graph) 並即時同步 (Ref: CR-213)
+  // 載入後端共享節點排版與收納狀態 (canvas/task-graph) 並即時同步 (Ref: CR-213, CR-225)
   useEffect(() => {
     if (!canvasNodesRes?.nodes || !projectId) return
     const rawNodes = canvasNodesRes.nodes
     const nodeEntries = Object.entries(rawNodes)
     if (nodeEntries.length === 0) return
 
-    const updatedAt = canvasNodesRes.updatedAt ?? null
     const incomingJson = JSON.stringify(rawNodes)
-    if (updatedAt && updatedAt === lastAppliedNodesUpdatedAtRef.current) return
-    if (incomingJson === lastSavedNodesJsonRef.current) {
-      lastAppliedNodesUpdatedAtRef.current = updatedAt
-      return
-    }
+    if (incomingJson === lastAppliedNodesJsonRef.current) return
 
-    lastAppliedNodesUpdatedAtRef.current = updatedAt
-    lastSavedNodesJsonRef.current = incomingJson
+    lastAppliedNodesJsonRef.current = incomingJson
     isApplyingServerSyncRef.current = true
 
     const serverDragged: Record<string, { x: number; y: number }> = {}
@@ -2045,6 +2053,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
 
     if (Object.keys(serverDragged).length > 0) {
+      draggedRef.current = { ...draggedRef.current, ...serverDragged }
       setDragged((prev) => {
         const merged = { ...prev, ...serverDragged }
         try {
@@ -2055,6 +2064,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
 
     if (Object.keys(serverResized).length > 0) {
+      resizedRef.current = { ...resizedRef.current, ...serverResized }
       setResized((prev) => {
         const merged = { ...prev, ...serverResized }
         try {
@@ -2065,6 +2075,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     }
 
     if (Object.keys(serverModes).length > 0) {
+      toggledModesRef.current = { ...toggledModesRef.current, ...serverModes }
       setToggledModes((prev) => {
         const merged = { ...prev, ...serverModes }
         try {
@@ -2124,7 +2135,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     setTimeout(() => {
       isApplyingServerSyncRef.current = false
-    }, 100)
+    }, 400)
   }, [canvasNodesRes, projectId])
 
   const saveExtraToBackend = useCallback(
