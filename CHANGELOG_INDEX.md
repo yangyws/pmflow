@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Project Soft Deletion & Super Admin Restoration Management (CR-220)
+### Latest Changes: Project Visibility Setting Toggle Support in Project Settings (CR-221)
+- **變更檔案**:
+  - [`ProjectSettings.tsx`](file:///D:/github/pmflow/apps/web/src/components/ProjectSettings.tsx):
+    1. **專案公開性設定區塊 (`ProjectVisibilitySection`)**：在專案設定頁新增「專案公開性設定」區塊，管理者與建立者可隨時一鍵於「🌐 公開專案」與「🔒 私人（非公開）專案」間切換，並即時同步後端與工作區搜尋快取。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-221` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-221`。
+
+### Previous Changes: Project Soft Deletion & Super Admin Restoration Management (CR-220)
 - **變更檔案**:
   - [`projects.ts`](file:///D:/github/pmflow/apps/api/src/routes/projects.ts):
     1. **軟刪除（封存）專案 API (`DELETE /projects/:id`)**：僅限**專案建立者（擁有者）**或**全域超級管理者**可執行軟刪除，將 `archived_at` 寫入當前時間，對所有成員隱藏該專案並完整保留專案所有任務與圖表資料。

@@ -179,6 +179,9 @@ export default function ProjectSettings({ projectId }: { projectId: string }) {
             而且只有能管這個專案的人動得了 */}
         {canManage && <ProjectKeySection projectId={projectId} />}
 
+        {/* 專案公開性設定 */}
+        {canManage && <ProjectVisibilitySection projectId={projectId} />}
+
         {SECTIONS.map(sec => (
           <Section
             key={sec.kind}
@@ -399,6 +402,90 @@ function ProjectKeySection({ projectId }: { projectId: string }) {
         {err && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{err}</p>}
         {done && !changed && (
           <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">{K.saved}</p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * 專案公開性設定：公開（🌐）或私人（🔒）。
+ *
+ * 公開專案會出現在工作區其他成員的「加入其他專案」搜尋清單中；
+ * 非公開（私人）專案則不會被搜尋到，只有被管理者主動邀請或加入的成員才可見。
+ */
+function ProjectVisibilitySection({ projectId }: { projectId: string }) {
+  const qc = useQueryClient()
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => Api.project(projectId),
+  })
+
+  const [err, setErr] = useState<string | null>(null)
+  const isPublic = !!project?.isPublic
+
+  const setPublic = useMutation({
+    mutationFn: (nextPublic: boolean) =>
+      Api.patchProject(projectId, { isPublic: nextPublic }),
+    onSuccess: () => {
+      setErr(null)
+      qc.invalidateQueries({ queryKey: ['project', projectId] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['joinableProjects'] })
+    },
+    onError: (e: unknown) => {
+      setErr(
+        e instanceof ApiError
+          ? [e.title, e.detail].filter(Boolean).join('：')
+          : T.project.visibility.failed
+      )
+    },
+  })
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">專案公開性設定</h2>
+      <p className="mb-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+        決定專案是否可被同工作區的其他成員搜尋並申請加入。
+      </p>
+
+      <div className="rounded-xl bg-white px-4 py-3.5 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg dark:bg-slate-800 select-none">
+              {isPublic ? '🌐' : '🔒'}
+            </span>
+            <div>
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                目前狀態：{isPublic ? '🌐 公開專案' : '🔒 私人（非公開）專案'}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {isPublic
+                  ? '工作區內的其他成員可在專案首頁搜尋此專案並申請加入。'
+                  : '專案對外隱藏，僅專案成員與管理者可看見並進入此專案。'}
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant={isPublic ? 'ghost' : 'primary'}
+            className={cx(
+              'text-xs px-3 py-1.5 shrink-0 cursor-pointer font-medium',
+              isPublic
+                ? 'border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+            )}
+            disabled={setPublic.isPending}
+            onClick={() => setPublic.mutate(!isPublic)}
+          >
+            {setPublic.isPending ? '儲存中...' : isPublic ? '切換為非公開 (私人)' : '切換為公開專案'}
+          </Button>
+        </div>
+
+        {err && (
+          <div className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-600 dark:bg-red-950/50 dark:text-red-400">
+            {err}
+          </div>
         )}
       </div>
     </section>
