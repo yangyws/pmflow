@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-227` | 2026-09-04 | [附件圖片縮圖預覽認證傳遞與防破圖修復](#cr-227) | `api.ts`, `TaskAttachments.tsx` | 已驗證 |
 | `CR-226` | 2026-09-04 | [任務單上傳文件與問題單上傳截圖/圖片附件功能支援](#cr-226) | `0029_task_attachments.sql`, `attachment.ts`, `tasks.ts`, `TaskAttachments.tsx`, `TaskDrawer.tsx` | 已驗證 |
 | `CR-225` | 2026-09-03 | [關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復](#cr-225) | `Caddyfile`, `useRealtimeSync.ts`, `TaskGraph.tsx` | 已驗證 |
 | `CR-224` | 2026-09-03 | [移除登入頁面示範帳號引導說明文字](#cr-224) | `Login.tsx` | 已驗證 |
@@ -275,6 +276,15 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-227"></a>CR-227 (2026-09-04) — 附件圖片縮圖預覽認證傳遞與防破圖修復
+
+- **使用者需求**：好像無法縮圖預覽 檢查一 下。
+- **排查原因**：
+  1. 瀏覽器在載入原生 `<img>` 標籤時，不會自動帶上 JavaScript 記憶體中的 `Authorization: Bearer <token>` 標頭，導致後端附件端點回傳 401 Unauthorized。
+- **實作與修復**：
+  1. **附件網址附帶 Token 參數 (`api.ts`)**：在 `taskAttachmentUrl` 自動附加當前登入使用者的 `?token=...` Query 參數，後端 `authenticate` 原生支援 query token，使 `<img>` 與 `<a>` 能順利通過鑑權載入。
+  2. **縮圖載入與 Fallback 優化 (`TaskAttachments.tsx`)**：實作 `ImageThumbnail` 元件，加入載入中骨架屏、載入失敗 Fallback 圖示以及點擊放大鏡效果。
 
 ### <a id="cr-226"></a>CR-226 (2026-09-04) — 任務單上傳文件與問題單上傳截圖/圖片附件功能支援
 

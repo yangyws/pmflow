@@ -730,8 +730,10 @@ export const Api = {
     api<TaskAttachment>(`/tasks/${taskId}/attachments`, { method: 'POST', json }),
   deleteTaskAttachment: (taskId: string, attachmentId: string) =>
     api<void>(`/tasks/${taskId}/attachments/${attachmentId}`, { method: 'DELETE' }),
-  taskAttachmentUrl: (taskId: string, attachmentId: string) =>
-    `${BASE}/tasks/${taskId}/attachments/${attachmentId}`,
+  taskAttachmentUrl: (taskId: string, attachmentId: string) => {
+    const token = getAccessToken()
+    return `${BASE}/tasks/${taskId}/attachments/${attachmentId}${token ? `?token=${encodeURIComponent(token)}` : ''}`
+  },
   /**
    * 轉派。跟 `patchTask({ assigneeId })` 分開是為了那句交接說明 ——
    * 換人做的時候，「換成誰」是欄位，「為什麼換、做到哪裡了」是話，

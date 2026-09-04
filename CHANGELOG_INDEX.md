@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Task File Upload and Bug Image Upload Features (CR-226)
+### Latest Changes: Attachment Image Thumbnail Preview Authentication and Fallback Fix (CR-227)
+- **變更檔案**:
+  - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **附件網址附帶 Token (`CR-227`)**：在 `taskAttachmentUrl` 中自動附帶當前使用者的 `?token=...` 查詢參數，確保瀏覽器原生 `<img>` 與 `<a>` 標籤請求附件時通過後端認證，修復 401 縮圖破圖。
+  - [`TaskAttachments.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskAttachments.tsx):
+    1. **縮圖元件載入狀態與防破圖 (`CR-227`)**：實作 `ImageThumbnail` 元件，提供載入中脈衝動畫、載入失敗 Fallback 圖示以及 Hover 放大鏡提示。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-227` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-227`。
+
+### Previous Changes: Task File Upload and Bug Image Upload Features (CR-226)
 - **變更檔案**:
   - [`0029_task_attachments.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0029_task_attachments.sql):
     1. **附件資料表 Migration (`CR-226`)**：建立 `task_attachment` 資料表，記錄任務單文件與問題單圖片檔案名稱、儲存路徑、MIME、大小與上傳者。

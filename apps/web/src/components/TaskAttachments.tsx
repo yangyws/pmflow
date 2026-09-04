@@ -2,7 +2,7 @@ import { useState, useRef, type ChangeEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Api, type TaskAttachment } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { Button } from './ui'
+import { Button, cx } from './ui'
 import { T } from '../strings'
 
 function formatBytes(bytes: number): string {
@@ -21,6 +21,56 @@ function getFileIcon(filename: string, mimeType: string): string {
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
   if (['txt', 'md', 'json', 'log'].includes(ext)) return '📄'
   return '📎'
+}
+
+function ImageThumbnail({
+  url,
+  filename,
+  onClick,
+}: {
+  url: string
+  filename: string
+  onClick: () => void
+}) {
+  const [error, setError] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  return (
+    <div
+      className="relative aspect-4/3 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer overflow-hidden group/thumb"
+      onClick={onClick}
+      title="點擊放大預覽"
+    >
+      {!loaded && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 animate-pulse text-[11px] text-slate-400">
+          載入中…
+        </div>
+      )}
+      {error ? (
+        <div className="flex flex-col items-center justify-center p-2 text-center text-slate-400 dark:text-slate-500">
+          <span className="text-2xl">🖼️</span>
+          <span className="text-[10px] mt-1">無法載入預覽</span>
+        </div>
+      ) : (
+        <img
+          src={url}
+          alt={filename}
+          onLoad={() => setLoaded(true)}
+          onError={() => setError(true)}
+          className={cx(
+            'w-full h-full object-cover transition-transform duration-200 group-hover/thumb:scale-105',
+            !loaded && 'opacity-0'
+          )}
+          loading="lazy"
+        />
+      )}
+      <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+        <span className="opacity-0 group-hover/thumb:opacity-100 bg-black/60 text-white rounded-full p-1.5 text-xs transition-opacity shadow-sm">
+          🔍
+        </span>
+      </div>
+    </div>
+  )
 }
 
 interface TaskAttachmentsProps {
@@ -163,17 +213,11 @@ export function TaskAttachments({
                 className="group relative flex flex-col rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 overflow-hidden shadow-xs hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
               >
                 {/* 縮圖預覽 */}
-                <div
-                  className="aspect-4/3 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer overflow-hidden"
+                <ImageThumbnail
+                  url={url}
+                  filename={att.filename}
                   onClick={() => setPreviewImage({ url, name: att.filename })}
-                >
-                  <img
-                    src={url}
-                    alt={att.filename}
-                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </div>
+                />
 
                 {/* 檔名與資訊 */}
                 <div className="p-2 flex-1 flex flex-col justify-between">
@@ -194,7 +238,7 @@ export function TaskAttachments({
                   <button
                     type="button"
                     onClick={() => setDeleteConfirmId(att.id)}
-                    className="absolute top-1.5 right-1.5 rounded-full bg-black/60 hover:bg-red-600 text-white p-1 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    className="absolute top-1.5 right-1.5 rounded-full bg-black/60 hover:bg-red-600 text-white p-1 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
                     title="刪除圖片"
                   >
                     🗑️
