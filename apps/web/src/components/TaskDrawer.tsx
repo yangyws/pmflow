@@ -9,6 +9,7 @@ import { useUnreadNotifications } from '../lib/useUnreadNotifications'
 import { useTheme } from '../lib/theme'
 import { T } from '../strings'
 import { DEFAULT_TYPE_COLORS } from './EpicSidebar'
+import { TaskAttachments } from './TaskAttachments'
 
 /**
  * 任務詳情。
@@ -861,6 +862,14 @@ export function TaskDrawer({
                   </div>
                 )}
               </div>
+
+              {/* ── 附件檔案：任務單顯示文件附件；問題單顯示截圖與圖片 ── */}
+              <TaskAttachments
+                taskId={taskId}
+                isBug={form.type === 'BUG' || data.type === 'BUG'}
+                attachments={data.attachments}
+                canEdit={canEdit}
+              />
 
               {/* ── 遭遇問題與解決歷程（問題事件本身不顯示問題區） ── */}
               {form.type !== 'BUG' && data.type !== 'BUG' && (

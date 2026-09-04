@@ -371,12 +371,26 @@ export interface ProblemHistoryItem {
   createdAt: string
 }
 
+export interface TaskAttachment {
+  id: string
+  taskId: string
+  userId: string | null
+  userName: string | null
+  filename: string
+  storedName: string
+  mimeType: string
+  fileSize: number
+  kind: 'file' | 'image'
+  createdAt: string
+}
+
 export interface TaskDetail extends Task {
   links: TaskLink[]
   children: Array<{ id: string; ref: string; title: string; statusKey: string; progress: number; type?: string; problem?: string | null }>
   inquiries: Inquiry[]
   activities: Activity[]
   problemHistory?: ProblemHistoryItem[]
+  attachments?: TaskAttachment[]
   /**
    * 後端算好的「這個人動不動得了這張任務」。Ref: CR-130
    *
@@ -712,6 +726,12 @@ export const Api = {
     api<{ ok: boolean; affectedTaskIds?: string[] }>(`/tasks/${id}/restore`, { method: 'POST', json }),
   permanentDeleteTask: (id: string) =>
     api(`/tasks/${id}/permanent`, { method: 'DELETE' }),
+  uploadTaskAttachment: (taskId: string, json: { filename: string; dataUrl: string; kind?: 'file' | 'image' }) =>
+    api<TaskAttachment>(`/tasks/${taskId}/attachments`, { method: 'POST', json }),
+  deleteTaskAttachment: (taskId: string, attachmentId: string) =>
+    api<void>(`/tasks/${taskId}/attachments/${attachmentId}`, { method: 'DELETE' }),
+  taskAttachmentUrl: (taskId: string, attachmentId: string) =>
+    `${BASE}/tasks/${taskId}/attachments/${attachmentId}`,
   /**
    * 轉派。跟 `patchTask({ assigneeId })` 分開是為了那句交接說明 ——
    * 換人做的時候，「換成誰」是欄位，「為什麼換、做到哪裡了」是話，

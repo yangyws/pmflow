@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { sql, type Db } from '../lib/db.js'
 import {
@@ -12,6 +13,7 @@ import { emitRealtimeEvent } from '../lib/events.js'
 import { badRequest, forbidden, notFound } from '../lib/errors.js'
 import { assertParamKey } from './parameters.js'
 import { assertNoOpenInquiries } from '../lib/inquiry.js'
+import { saveTaskAttachmentFile, readTaskAttachmentFile, removeTaskAttachmentFile } from '../lib/attachment.js'
 
 /**
  * 誰能改任務本身：**開這張任務的人、專案的建立者、專案管理者**，其他人不行。
@@ -326,6 +328,19 @@ export default async function taskRoutes(app: FastifyInstance) {
       WHERE h.task_id = ${req.params.id}
       ORDER BY h.created_at DESC`
 
+    const attachments = await sql<{
+      id: string; taskId: string; userId: string | null; userName: string | null;
+      filename: string; storedName: string; mimeType: string; fileSize: number;
+      kind: 'file' | 'image'; createdAt: string
+    }[]>`
+      SELECT a.id, a.task_id AS "taskId", a.user_id AS "userId", u.display_name AS "userName",
+             a.filename, a.stored_name AS "storedName", a.mime_type AS "mimeType",
+             a.file_size AS "fileSize", a.kind, a.created_at AS "createdAt"
+      FROM task_attachment a
+      LEFT JOIN app_user u ON u.id = a.user_id
+      WHERE a.task_id = ${req.params.id}
+      ORDER BY a.created_at ASC`
+
     /*
      * Ref: CR-130 —— 「按不動的按鈕不要畫出來」只有後端算得準：
      * 代理人是誰、這張是不是他開的、有沒有被完成鎖定，前端手上沒有這些資料，
@@ -338,7 +353,7 @@ export default async function taskRoutes(app: FastifyInstance) {
       && await may(() => assertCanEditTask(req.params.id, user.id, role))
     const canDelete = await may(() => assertCanDeleteTask(req.params.id, user.id, role))
 
-    return { ...task, links, children, inquiries, activities, problemHistory, canEdit, canDelete }
+    return { ...task, links, children, inquiries, activities, problemHistory, attachments, canEdit, canDelete }
   })
 
   // ── 更新任務 ─────────────────────────────────────────
@@ -905,6 +920,136 @@ export default async function taskRoutes(app: FastifyInstance) {
 
     return reply.code(204).send()
   })
+
+  // ── 任務附件上傳 ─────────────────────────────────────
+  const uploadAttachmentBody = z.object({
+    filename: z.string().min(1, '請提供檔案名稱').max(300),
+    dataUrl: z.string().min(1, '請提供檔案內容 (Data URL)'),
+    kind: z.enum(['file', 'image']).optional(),
+  })
+
+  app.post<{ Params: { id: string } }>('/tasks/:id/attachments', async (req, reply) => {
+    const user = await authenticate(req)
+    const { workspaceId, projectId } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+    const [task] = await sql<{ type: string }[]>`SELECT type FROM task WHERE id = ${req.params.id}`
+    if (!task) throw notFound('找不到任務')
+
+    const b = uploadAttachmentBody.parse(req.body)
+    const targetKind: 'file' | 'image' = b.kind ?? (task.type === 'BUG' ? 'image' : 'file')
+
+    const attachmentId = randomUUID()
+    const { storedName, mimeType, fileSize } = await saveTaskAttachmentFile(
+      req.params.id,
+      attachmentId,
+      b.filename,
+      b.dataUrl,
+      targetKind
+    )
+
+    const [created] = await sql<{
+      id: string; taskId: string; userId: string | null; userName: string | null;
+      filename: string; storedName: string; mimeType: string; fileSize: number;
+      kind: 'file' | 'image'; createdAt: string
+    }[]>`
+      INSERT INTO task_attachment (id, task_id, user_id, filename, stored_name, mime_type, file_size, kind)
+      VALUES (${attachmentId}, ${req.params.id}, ${user.id}, ${b.filename}, ${storedName}, ${mimeType}, ${fileSize}, ${targetKind})
+      RETURNING id, task_id AS "taskId", user_id AS "userId", ${user.displayName} AS "userName",
+                filename, stored_name AS "storedName", mime_type AS "mimeType",
+                file_size AS "fileSize", kind, created_at AS "createdAt"`
+
+    await sql`
+      INSERT INTO activity (workspace_id, task_id, kind, actor_id, actor_name, body)
+      VALUES (${workspaceId}, ${req.params.id}, 'FIELD_CHANGE', ${user.id}, ${user.displayName},
+              ${sql.json({
+                attachmentAdded: true,
+                filename: b.filename,
+                kind: targetKind,
+                fileSize,
+              } as unknown as Record<string, never>)})`
+
+    emitRealtimeEvent({
+      type: 'task:changed',
+      projectId,
+      workspaceId,
+      actorId: user.id,
+      actorName: user.displayName,
+      payload: { action: 'attachment_added', taskId: req.params.id, attachmentId: created.id },
+    })
+
+    return reply.code(201).send(created)
+  })
+
+  // ── 任務附件下載 / 預覽 ────────────────────────────────
+  app.get<{ Params: { id: string; attachmentId: string } }>(
+    '/tasks/:id/attachments/:attachmentId',
+    async (req, reply) => {
+      const user = await authenticate(req)
+      await requireTaskAccess(user.id, req.params.id, 'VIEWER')
+
+      const [row] = await sql<{
+        id: string; filename: string; storedName: string; mimeType: string
+      }[]>`
+        SELECT id, filename, stored_name AS "storedName", mime_type AS "mimeType"
+        FROM task_attachment
+        WHERE id = ${req.params.attachmentId} AND task_id = ${req.params.id}`
+      if (!row) throw notFound('找不到附件')
+
+      const file = await readTaskAttachmentFile(req.params.id, row.storedName)
+      if (!file) throw notFound('附件檔案不存在或已損毀')
+
+      const isInline = row.mimeType.startsWith('image/') || row.mimeType === 'application/pdf'
+      const dispositionType = isInline ? 'inline' : 'attachment'
+      const encodedFilename = encodeURIComponent(row.filename)
+
+      return reply
+        .header('Content-Type', row.mimeType)
+        .header('Content-Disposition', `${dispositionType}; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`)
+        .header('Cache-Control', 'public, max-age=86400, immutable')
+        .send(file.body)
+    }
+  )
+
+  // ── 刪除任務附件 ─────────────────────────────────────
+  app.delete<{ Params: { id: string; attachmentId: string } }>(
+    '/tasks/:id/attachments/:attachmentId',
+    async (req, reply) => {
+      const user = await authenticate(req)
+      const { workspaceId, projectId, role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
+      const [row] = await sql<{
+        id: string; userId: string | null; storedName: string; filename: string; kind: string
+      }[]>`
+        SELECT id, user_id AS "userId", stored_name AS "storedName", filename, kind
+        FROM task_attachment
+        WHERE id = ${req.params.attachmentId} AND task_id = ${req.params.id}`
+      if (!row) throw notFound('找不到附件')
+
+      const canDelete = role === 'MANAGER' || row.userId === user.id
+      if (!canDelete) throw forbidden('只有上傳者或專案管理者可以刪除附件')
+
+      await sql`DELETE FROM task_attachment WHERE id = ${req.params.attachmentId}`
+      await removeTaskAttachmentFile(req.params.id, row.storedName)
+
+      await sql`
+        INSERT INTO activity (workspace_id, task_id, kind, actor_id, actor_name, body)
+        VALUES (${workspaceId}, ${req.params.id}, 'FIELD_CHANGE', ${user.id}, ${user.displayName},
+                ${sql.json({
+                  attachmentDeleted: true,
+                  filename: row.filename,
+                  kind: row.kind,
+                } as unknown as Record<string, never>)})`
+
+      emitRealtimeEvent({
+        type: 'task:changed',
+        projectId,
+        workspaceId,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { action: 'attachment_deleted', taskId: req.params.id, attachmentId: req.params.attachmentId },
+      })
+
+      return reply.code(204).send()
+    }
+  )
 
   // Ref: CR-142
 }

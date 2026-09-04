@@ -22,7 +22,26 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Real-time Multi-User Canvas Sync and Unbuffered SSE Streaming Fix (CR-225)
+### Latest Changes: Task File Upload and Bug Image Upload Features (CR-226)
+- **變更檔案**:
+  - [`0029_task_attachments.sql`](file:///D:/github/pmflow/apps/api/src/migrations/0029_task_attachments.sql):
+    1. **附件資料表 Migration (`CR-226`)**：建立 `task_attachment` 資料表，記錄任務單文件與問題單圖片檔案名稱、儲存路徑、MIME、大小與上傳者。
+  - [`attachment.ts`](file:///D:/github/pmflow/apps/api/src/lib/attachment.ts):
+    1. **附件儲存與校驗模組 (`CR-226`)**：實作任務附件在 `/data/attachments/tasks/` 之檔案寫入、檔案類型 sniff 校驗與讀取刪除。
+  - [`tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **任務附件 API (`CR-226`)**：實作 `POST /tasks/:id/attachments`、`GET /tasks/:id/attachments/:attachmentId`、`DELETE /tasks/:id/attachments/:attachmentId`，並在 `GET /tasks/:id` 包含附件清單。
+  - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **前端型別與客戶端函式 (`CR-226`)**：宣告 `TaskAttachment` 介面，新增 `uploadTaskAttachment`、`deleteTaskAttachment`、`taskAttachmentUrl`。
+  - [`TaskAttachments.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskAttachments.tsx):
+    1. **附件抽屜 UI 元件 (`CR-226`)**：任務單提供文件檔案卡片清單與下載；問題單提供圖片縮圖牆、燈箱放大預覽與刪除。
+  - [`TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **整合附件區塊 (`CR-226`)**：在任務抽屜內容區下方嵌入 `TaskAttachments`。
+  - [`strings/task.ts`](file:///D:/github/pmflow/apps/web/src/strings/task.ts):
+    1. **新增附件相關字串 (`CR-226`)**。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-226` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-226`。
+
+### Previous Changes: Real-time Multi-User Canvas Sync and Unbuffered SSE Streaming Fix (CR-225)
 - **變更檔案**:
   - [`Caddyfile`](file:///D:/github/pmflow/apps/web/Caddyfile):
     1. **反向代理關閉緩衝 (`CR-225`)**：在 `/api/*` 之 `reverse_proxy` 區塊加入 `flush_interval -1`，確保 SSE 即時推播事件零延遲立即刷入瀏覽器。

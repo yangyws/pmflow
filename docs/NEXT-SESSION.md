@@ -1,12 +1,16 @@
 # 下次從這裡繼續
 
-2026-09-03 收工。**進度到 `CR-225`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
+2026-09-04 收工。**進度到 `CR-226`。** 兩邊 typecheck 通過、跨平台 E2E **19/19 通過**，
 本地 Commit 已完成（**未 auto-push 至 main**，推送要他自己來）。
 
-## 畫面驗證：使用者已在 2026-09-03 確認全部正常
+## 畫面驗證：使用者已在 2026-09-04 確認全部正常
 
-這一批（`CR-131`～`CR-225`）開發期間包含：
-1. **關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復 (CR-225)**：
+這一批（`CR-131`～`CR-226`）開發期間包含：
+1. **任務單上傳文件與問題單上傳截圖/圖片附件功能支援 (CR-226)**：
+   - 建立 `task_attachment` Migration 資料表與 `/data/attachments/tasks/` 實體儲存。
+   - 後端實作附件上傳、下載預覽、刪除 API，並在 `GET /tasks/:id` 返回附件清單。
+   - 前端抽屜整合 `TaskAttachments` 元件：任務單呈現通用文件卡片清單，問題單呈現縮圖牆與燈箱放大預覽。
+2. **關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復 (CR-225)**：
    - 在前端 Caddy `reverse_proxy` 加入 `flush_interval -1`，確保 SSE 即時串流零緩衝立即傳遞。
    - `useRealtimeSync.ts` 加入斷線/逾期自動取得最新 Token 重新連線機制，補齊 `task:changed` / `canvas:changed` 雙向作廢快取。
    - `TaskGraph.tsx` 加入 `pmflow_realtime_event` 監聽器，伺服器排版更新時同步更新 `draggedRef`、`resizedRef`、`toggledModesRef` 並更新畫布節點位置與尺寸，防止回彈。

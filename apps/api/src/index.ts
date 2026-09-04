@@ -28,7 +28,7 @@ const app = Fastify({
   logger: env.isProd
     ? { level: 'info' }
     : { level: 'info', transport: undefined },
-  bodyLimit: 5 * 1024 * 1024,
+  bodyLimit: 30 * 1024 * 1024,
 })
 
 await app.register(cors, {

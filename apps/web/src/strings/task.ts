@@ -96,6 +96,18 @@ export const task = {
     activityTitle: '活動紀錄',
     /** 沒有操作者的紀錄是系統自己寫的（例如排程推算） */
     systemActor: '系統',
+    attachments: '附件檔案',
+    fileAttachments: '文件附件',
+    imageAttachments: '截圖與圖片',
+    uploadFile: '上傳文件',
+    uploadImage: '上傳圖片',
+    uploading: '上傳中…',
+    noFiles: '目前尚無上傳文件。',
+    noImages: '目前尚無截圖或圖片。',
+    confirmDeleteAttachment: '確定要刪除此附件嗎？',
+    fileTooLarge: (maxMb: number) => `檔案大小超過 ${maxMb} MB 限制`,
+    download: '下載',
+    preview: '預覽',
   },
 
   /** 任務之間的關聯：前後流程相依 */

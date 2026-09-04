@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-226` | 2026-09-04 | [任務單上傳文件與問題單上傳截圖/圖片附件功能支援](#cr-226) | `0029_task_attachments.sql`, `attachment.ts`, `tasks.ts`, `TaskAttachments.tsx`, `TaskDrawer.tsx` | 已驗證 |
 | `CR-225` | 2026-09-03 | [關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復](#cr-225) | `Caddyfile`, `useRealtimeSync.ts`, `TaskGraph.tsx` | 已驗證 |
 | `CR-224` | 2026-09-03 | [移除登入頁面示範帳號引導說明文字](#cr-224) | `Login.tsx` | 已驗證 |
 | `CR-223` | 2026-09-03 | [使用者登出自動清除 URL 專案與視圖 Query 參數修復](#cr-223) | `auth.tsx`, `App.tsx` | 已驗證 |
@@ -274,6 +275,25 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-226"></a>CR-226 (2026-09-04) — 任務單上傳文件與問題單上傳截圖/圖片附件功能支援
+
+- **使用者需求**：我想將 任務單增加上傳文件功能  問題單增加上傳圖片功能。
+- **實作與設計**：
+  1. **附件資料庫 Migration (`0029_task_attachments.sql`)**：
+     - 建立 `task_attachment` 資料表，記錄 `task_id`、`user_id`、`filename`、`stored_name`、`mime_type`、`file_size`、`kind`（`file` / `image`）、`created_at`。
+  2. **實體儲存與類型防護 (`lib/attachment.ts`)**：
+     - 實體檔案儲存於 `/data/attachments/tasks/{taskId}/{storedName}`。
+     - 問題單限制圖片格式（PNG、JPG、WebP、GIF、SVG，嚴格 magic header 檢查），限制單檔 10MB。
+     - 任務單支援各類通用文件（PDF、DOCX、XLSX、TXT、ZIP 等），限制單檔 25MB。
+  3. **後端 API 路由 (`routes/tasks.ts`)**：
+     - `POST /tasks/:id/attachments`：上傳附件檔案並記錄至 activity 與發送 `task:changed` 即時廣播。
+     - `GET /tasks/:id/attachments/:attachmentId`：下載或線上預覽附件檔案。
+     - `DELETE /tasks/:id/attachments/:attachmentId`：刪除附件資料表記錄與實體檔案。
+     - `GET /tasks/:id`：回傳關聯的 `attachments` 清單。
+  4. **前端抽屜整合與 UI 元件 (`TaskAttachments.tsx`, `TaskDrawer.tsx`, `api.ts`, `strings/task.ts`)**：
+     - 任務單（非 BUG）以文件檔案卡片形式展示，呈現檔案類型圖示、檔名、大小、上傳者與時間，支援下載與刪除。
+     - 問題單（BUG）以縮圖網格展示，點擊縮圖開啟圖片燈箱（Lightbox）放大預覽與下載原圖。
 
 ### <a id="cr-225"></a>CR-225 (2026-09-03) — 關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復
 
