@@ -22,7 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Restore Profile Settings & Google Account Re-binding UI (CR-229)
+### Latest Changes: Calendar Cell Event Popover Hover Buffer & Scrollbar Interaction (CR-230)
+- **變更檔案**:
+  - [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
+    1. **懸浮視窗移入滾動與延遲關閉緩衝 (`CR-230`)**：在 `DayCell` 加入 300ms 關閉延遲緩衝計時器（`closeTimerRef`），當滑鼠由日格移入懸浮視窗時自動清除計時器保持展開；並將浮動視窗 `pointer-events-none` 調整為 `pointer-events-auto`，確保使用者能平滑將滑鼠移入視窗並操作上下滾動卷軸查看多筆事件清單。
+
+### Previous Changes: Restore Profile Settings & Google Account Re-binding UI (CR-229)
 - **變更檔案**:
   - [`strings/account.ts`](file:///D:/github/pmflow/apps/web/src/strings/account.ts) & [`strings/nav.ts`](file:///D:/github/pmflow/apps/web/src/strings/nav.ts):
     1. **選單與標題文字優化 (`CR-229`)**：將原本「帳號設定」標題與選單項目改為「個人資料與帳號設定」，並新增 `rebind`（重新綁定）多語系字串。

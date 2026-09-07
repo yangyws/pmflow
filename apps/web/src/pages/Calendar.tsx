@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
@@ -753,6 +753,18 @@ function DayCell({
   const n = parseYmd(day).getDate()
   const cellRef = useRef<HTMLDivElement>(null)
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; placement: 'top' | 'bottom' } | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => clearCloseTimer()
+  }, [])
 
   // 該日期的所有事件種類與詳情
   const dayEvents = useMemo(() => {
@@ -772,6 +784,7 @@ function DayCell({
   const totalEventCount = dayEvents.tasks.length + dayEvents.inquiries.length + dayEvents.leaves.length
 
   const handleMouseEnter = () => {
+    clearCloseTimer()
     if (!cellRef.current || totalEventCount === 0) return
     const rect = cellRef.current.getBoundingClientRect()
     const isNearTop = rect.top < 240
@@ -781,7 +794,11 @@ function DayCell({
   }
 
   const handleMouseLeave = () => {
-    setTooltipPos(null)
+    clearCloseTimer()
+    // 稍微延遲 300ms 關閉，讓滑鼠可以平滑移入懸浮視窗滾動卷軸
+    closeTimerRef.current = window.setTimeout(() => {
+      setTooltipPos(null)
+    }, 300)
   }
 
   return (
@@ -834,7 +851,7 @@ function DayCell({
         )}
       </div>
 
-      {/* 方案 C：Portal 懸浮視窗，固定於 document.body 避免任何父容器裁切 */}
+      {/* 方案 C：Portal 懸浮視窗，固定於 document.body 避免任何父容器裁切，支援滑鼠移入滾動 */}
       {tooltipPos && totalEventCount > 0 && createPortal(
         <div
           style={{
@@ -843,7 +860,9 @@ function DayCell({
             left: tooltipPos.left,
             transform: tooltipPos.placement === 'top' ? 'translateY(-100%)' : undefined,
           }}
-          className="z-[9999] w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-2xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-none ring-1 ring-slate-700"
+          onMouseEnter={clearCloseTimer}
+          onMouseLeave={handleMouseLeave}
+          className="z-[9999] w-64 rounded-lg bg-slate-900/95 p-2.5 text-xs text-white shadow-2xl backdrop-blur-xs dark:bg-slate-800/95 pointer-events-auto ring-1 ring-slate-700"
         >
           <div className="font-semibold text-slate-300 border-b border-slate-700/80 pb-1.5 mb-1.5 flex justify-between items-center text-[11px] gap-2">
             <span className="shrink-0 whitespace-nowrap font-medium text-slate-200">📅 {day}</span>
