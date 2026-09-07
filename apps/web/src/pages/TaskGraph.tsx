@@ -321,7 +321,10 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
         <div
           className={cx(
             'relative w-full rounded-lg border bg-slate-50/40 dark:bg-slate-900/50 shadow-sm hover:shadow-md transition-colors duration-150 flex flex-col justify-between overflow-hidden opacity-100',
-            data.isCollapsed ? 'min-h-[90px] pointer-events-auto cursor-grab active:cursor-grabbing' : 'h-full min-w-[320px] min-h-[240px] pointer-events-none',
+            data.movingUserName && 'ring-2 ring-indigo-400/80',
+            data.isCollapsed
+              ? cx('min-h-[90px] pointer-events-auto', data.movingUserName ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing')
+              : 'h-full min-w-[320px] min-h-[240px] pointer-events-none',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-300 dark:border-slate-700'
@@ -469,7 +472,8 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       ) : (
         <div
           className={cx(
-            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-colors duration-150 dark:bg-slate-900 select-none cursor-grab active:cursor-grabbing pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
+            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-colors duration-150 dark:bg-slate-900 select-none pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
+            data.movingUserName ? 'ring-2 ring-indigo-400/80 cursor-not-allowed opacity-90' : 'cursor-grab active:cursor-grabbing',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
               : 'border-slate-200 dark:border-slate-800'
@@ -2496,7 +2500,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         width: f.width,
         height: f.height,
         measured: { width: f.width, height: f.height },
-        draggable: effectiveEditable,
+        draggable: effectiveEditable && !movingUserName,
         selectable: false,
         connectable: false,
         deletable: false,
@@ -2513,7 +2517,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         position: { x: t.x, y: t.y },
         // Ref: CR-153
         measured: annotationMeasuredRef.current.get(t.id),
-        draggable: effectiveEditable,
+        draggable: effectiveEditable && !movingUserName,
         selectable: false,
         connectable: false,
         deletable: false,
@@ -3499,6 +3503,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
     if (!effectiveEditable) return
+    // 若該節點正在被其他使用者移動中，鎖定禁止拖曳
+    if (movingUsersMap[node.id]) return
     if (projectId) {
       Api.broadcastCanvasMoving(projectId, 'task-graph', {
         nodeId: node.id,
@@ -3510,10 +3516,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     if (isAnnotationId(node.id)) return // Ref: CR-144
     isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
-  }, [effectiveEditable, projectId])
+  }, [effectiveEditable, projectId, movingUsersMap])
 
   const onNodeDrag = useCallback((_: unknown, node: Node) => {
     if (!effectiveEditable || !projectId) return
+    // 若該節點正在被其他使用者移動中，鎖定禁止拖曳
+    if (movingUsersMap[node.id]) return
     const now = Date.now()
     if (now - lastDragBroadcastRef.current > 300) {
       lastDragBroadcastRef.current = now
@@ -3524,7 +3532,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         y: node.position.y,
       }).catch(() => {})
     }
-  }, [effectiveEditable, projectId])
+  }, [effectiveEditable, projectId, movingUsersMap])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
@@ -4104,7 +4112,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const built: Node = {
         ...node,
         hidden: isHidden,
-        draggable: effectiveEditable && !isHidden,
+        draggable: effectiveEditable && !isHidden && !movingUserName,
         selectable: !isHidden,
         connectable: effectiveEditable,
         width: isBox && isCollapsed ? Math.max(320, (node.style?.width as number) ?? 320) : node.width,

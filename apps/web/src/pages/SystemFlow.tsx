@@ -291,7 +291,8 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
       <MovingUserBadge userName={nodeData.movingUserName} />
       <div
         className={cx(
-          'relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border bg-indigo-50/30 dark:bg-indigo-950/20 backdrop-blur-xs shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between cursor-grab active:cursor-grabbing overflow-hidden',
+          'relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border bg-indigo-50/30 dark:bg-indigo-950/20 backdrop-blur-xs shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between overflow-hidden',
+          nodeData.movingUserName ? 'ring-2 ring-indigo-400/80 cursor-not-allowed opacity-90' : 'cursor-grab active:cursor-grabbing',
           nodeData.isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-xl' : 'border-indigo-300 dark:border-indigo-800'
         )}
       >
@@ -384,7 +385,8 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
       <MovingUserBadge userName={nodeData.movingUserName} />
       <div
         className={cx(
-          'w-full h-full min-w-[240px] max-w-[380px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
+          'w-full h-full min-w-[240px] max-w-[380px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none overflow-hidden',
+          nodeData.movingUserName ? 'ring-2 ring-indigo-400/80 cursor-not-allowed opacity-90' : 'cursor-grab active:cursor-grabbing',
           nodeData.isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-xl' : 'border-slate-200 dark:border-slate-800'
         )}
       >
@@ -2025,16 +2027,20 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const onNodeDragStart = useCallback((_event: unknown, draggedNode: Node) => {
     if (!effectiveEditable || !projectId || projectId === 'default') return
+    // 若該節點正在被其他使用者移動中，鎖定禁止拖曳
+    if (movingUsersMap[draggedNode.id]) return
     Api.broadcastCanvasMoving(projectId, 'system-flow', {
       nodeId: draggedNode.id,
       status: 'moving',
       x: draggedNode.position.x,
       y: draggedNode.position.y,
     }).catch(() => {})
-  }, [effectiveEditable, projectId])
+  }, [effectiveEditable, projectId, movingUsersMap])
 
   const onNodeDrag = useCallback((_event: unknown, draggedNode: Node) => {
     if (!effectiveEditable || !projectId || projectId === 'default') return
+    // 若該節點正在被其他使用者移動中，鎖定禁止拖曳
+    if (movingUsersMap[draggedNode.id]) return
     const now = Date.now()
     if (now - lastDragBroadcastRef.current > 300) {
       lastDragBroadcastRef.current = now
@@ -2045,7 +2051,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         y: draggedNode.position.y,
       }).catch(() => {})
     }
-  }, [effectiveEditable, projectId])
+  }, [effectiveEditable, projectId, movingUsersMap])
 
   // 拖曳結束判斷：拖入容器收納 / 拖出容器為獨立節點
   const onNodeDragStop = useCallback((_event: unknown, draggedNode: Node) => {
@@ -2385,7 +2391,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         width: nodeMode !== 'text' ? nodeW : node.width,
         height: nodeMode !== 'text' ? nodeH : node.height,
         measured: dimObj,
-        draggable: effectiveEditable,
+        draggable: effectiveEditable && !movingUserName,
         selectable: isFrame ? false : true,
         connectable: effectiveEditable,
         selected: isFrame ? false : node.selected,

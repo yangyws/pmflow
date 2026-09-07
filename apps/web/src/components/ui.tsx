@@ -289,7 +289,7 @@ export function TypeBadge({
 
 /**
  * 畫布節點即時移動狀態標籤 (Ref: CR-228)
- * 當其他使用者正在拖曳卡片或收納盒時，在節點上方顯示浮動標籤提示。
+ * 當其他使用者正在拖曳卡片或收納盒時，在節點上方顯示浮動標籤提示，並鎖定避免他人同時拖曳。
  */
 export function MovingUserBadge({
   userName,
@@ -307,11 +307,11 @@ export function MovingUserBadge({
         className
       )}
     >
-      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
       <span className="flex items-center gap-1">
-        <span>👤</span>
+        <span>🔒</span>
         <span className="font-semibold">{userName}</span>
-        <span className="text-indigo-200 dark:text-indigo-100">移動中…</span>
+        <span className="text-indigo-200 dark:text-indigo-100">移動中 (鎖定)</span>
       </span>
     </div>
   )
