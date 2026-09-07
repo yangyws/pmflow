@@ -35,7 +35,7 @@ export const account = {
 
   /** 右上角頭像選單 */
   menu: {
-    account: '帳號設定',
+    account: '個人資料與帳號設定',
     admin: '系統管理',
     logout: '登出',
     appearance: '外觀',
@@ -45,7 +45,7 @@ export const account = {
   },
 
   /** 帳號設定頁 */
-  title: '帳號設定',
+  title: '個人資料與帳號設定',
   loading: '載入帳號資料…',
 
   avatar: {
@@ -60,7 +60,7 @@ export const account = {
   },
 
   profile: {
-    title: '基本資料',
+    title: '基本資料（顯示名稱與 Email）',
     displayName: '顯示名稱',
     email: 'email（也是登入帳號）',
     hint: '改了 email 之後就要用新的 email 登入。站上沒有寄驗證信的機制，改完立刻生效。',
@@ -91,13 +91,13 @@ export const account = {
      */
     label: { GOOGLE: 'Google', APPLE: 'Apple', FACEBOOK: 'Facebook' } as Record<OauthProviderId, string>,
 
-    title: '登入方式',
+    title: '登入方式與第三方帳號綁定',
     hint: '除了 email 與密碼，也可以綁定 Google、Apple 或 Facebook 的帳號，'
         + '之後用哪一種進來都是同一個 PMFlow 帳號。',
     loading: '載入登入方式…',
     /** 站台沒有設定任何一家時，整區只留這句話 —— 不要留一片空白 */
-    unavailable: '這個站沒有開放用第三方（Google、Apple 或 Facebook）帳號登入。'
-               + '要開放的話，請站台管理者參考 README 的設定步驟。',
+    unavailable: '這個站尚未啟用第三方（Google、Apple 或 Facebook）帳號登入或綁定。'
+               + '若需啟用，請站台管理者在後端環境變數中設定 PMFLOW_GOOGLE_CLIENT_ID 與 PMFLOW_GOOGLE_CLIENT_SECRET。',
 
     password: 'email 與密碼',
     passwordOn: '已設定',
@@ -106,6 +106,7 @@ export const account = {
                    + '就多一條回得來的路。',
 
     bind: (name: string) => `綁定 ${name}`,
+    rebind: (name: string) => `重新綁定 ${name}`,
     binding: '請在新開的視窗完成授權…',
     boundAt: (at: string) => `綁定於 ${at}`,
     lastLoginAt: (at: string) => `最後一次用它登入 ${at}`,

@@ -97,12 +97,21 @@ export function UserMenu({
           className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl bg-white py-1
                      shadow-lg ring-1 ring-slate-200
                      dark:bg-slate-800 dark:ring-slate-700">
-          <div className="flex items-center gap-2.5 px-3 py-2">
+          <div
+            className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            onClick={go(onAccount)}
+            title="查看與修改個人資料"
+          >
             <Avatar userId={me?.id ?? null} name={userName}
                     hasAvatar={!!me?.avatarFile} version={me?.avatarFile} size="md" />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                {userName}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                  {userName}
+                </span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal shrink-0">
+                  設定 →
+                </span>
               </div>
               {me?.email && (
                 <div className="truncate text-xs text-slate-400 dark:text-slate-400">{me.email}</div>
@@ -145,7 +154,11 @@ export function UserMenu({
             </>
           )}
 
-          <MenuItem onClick={go(onAccount)}>{T.account.menu.account}</MenuItem>
+          <MenuItem onClick={go(onAccount)}>
+            <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+              <span>👤</span> {T.account.menu.account}
+            </span>
+          </MenuItem>
           {onAiSkill && (
             <MenuItem onClick={go(onAiSkill)}>
               <span className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400">

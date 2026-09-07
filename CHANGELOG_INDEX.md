@@ -22,7 +22,19 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Real-time Moving Presence Badge in Graph and Flowchart (CR-228)
+### Latest Changes: Restore Profile Settings & Google Account Re-binding UI (CR-229)
+- **變更檔案**:
+  - [`strings/account.ts`](file:///D:/github/pmflow/apps/web/src/strings/account.ts) & [`strings/nav.ts`](file:///D:/github/pmflow/apps/web/src/strings/nav.ts):
+    1. **選單與標題文字優化 (`CR-229`)**：將原本「帳號設定」標題與選單項目改為「個人資料與帳號設定」，並新增 `rebind`（重新綁定）多語系字串。
+  - [`UserMenu.tsx`](file:///D:/github/pmflow/apps/web/src/components/UserMenu.tsx):
+    1. **個人資料直達卡片與選單圖標 (`CR-229`)**：右上角頭像選單頂部使用者資訊卡片支援點擊直達「個人資料與帳號設定」，選單項目新增 `👤` 圖示與清楚文案。
+  - [`AccountPanel.tsx`](file:///D:/github/pmflow/apps/web/src/components/AccountPanel.tsx):
+    1. **解除 Google 綁定暫時無效限制 (`CR-229`)**：移除 Google 綁定按鈕的 disabled 限制與「暫時無效」標籤，恢復完整的 Google OAuth 綁定授權彈窗。
+    2. **重新綁定與解綁流程 (`CR-229`)**：針對已綁定 Google 帳號提供「重新綁定」與「解除綁定」操作，未綁定時提供一鍵「綁定 Google 帳號」功能。
+  - [`Login.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Login.tsx):
+    1. **登入頁 OAuth 登入按鈕恢復 (`CR-229`)**：移除寫死的 Google 暫時無效按鈕，改由伺服器動態提供有效第三方登入列表。
+
+### Previous Changes: Real-time Moving Presence Badge in Graph and Flowchart (CR-228)
 - **變更檔案**:
   - [`events.ts`](file:///D:/github/pmflow/apps/api/src/lib/events.ts):
     1. **事件型別擴充 (`CR-228`)**：在 `RealtimeEventType` 中新增 `'canvas:moving'`。

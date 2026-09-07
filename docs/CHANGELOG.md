@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-229` | 2026-09-07 | [個人資料與帳號設定選單直達及 Google 帳號綁定/重新綁定功能恢復](#cr-229) | `strings/account.ts`, `strings/nav.ts`, `UserMenu.tsx`, `AccountPanel.tsx`, `Login.tsx` | 已驗證 |
 | `CR-228` | 2026-09-07 | [任務關聯圖與系統流程圖拖曳節點即時廣播與浮動移動標籤支援](#cr-228) | `events.ts`, `canvas.ts`, `ui.tsx`, `api.ts`, `useRealtimeSync.ts`, `TaskGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
 | `CR-227` | 2026-09-04 | [附件圖片縮圖預覽認證傳遞與防破圖修復](#cr-227) | `api.ts`, `TaskAttachments.tsx` | 已驗證 |
 | `CR-226` | 2026-09-04 | [任務單上傳文件與問題單上傳截圖/圖片附件功能支援](#cr-226) | `0029_task_attachments.sql`, `attachment.ts`, `tasks.ts`, `TaskAttachments.tsx`, `TaskDrawer.tsx` | 已驗證 |
@@ -277,6 +278,18 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-229"></a>CR-229 (2026-09-07) — 個人資料與帳號設定選單直達及 Google 帳號綁定/重新綁定功能恢復
+
+- **使用者需求**：我的個人資料 怎麼不見了 我不是要可以設定跟 在個人設定裡面重新跟google綁定的畫面。
+- **實作與設計**：
+  1. **選單優化與直達卡片 (`UserMenu.tsx`, `strings/account.ts`, `strings/nav.ts`)**：
+     - 將「帳號設定」文案明確更名為「個人資料與帳號設定」，並在選單項目新增 `👤` 圖標。
+     - 右上角使用者頭像選單頂部的個人資訊卡片（頭像、姓名、Email）支援直接點擊跳轉進入「個人資料與帳號設定」面板。
+  2. **Google OAuth 綁定功能恢復 (`AccountPanel.tsx`, `Login.tsx`)**：
+     - 移除之前標記的 Google 綁定 disabled 與「（暫時無效）」限制，恢復完整的 Google 第三方帳號 OAuth 綁定與授權彈窗流程。
+     - 針對已綁定之 Google 帳號，提供「重新綁定」與「解除綁定」操作，未綁定時提供一鍵「綁定 Google 帳號」按鈕。
+     - 登入頁面恢復依伺服器設定動態顯示 Google 等第三方 OAuth 登入按鈕。
 
 ### <a id="cr-228"></a>CR-228 (2026-09-07) — 任務關聯圖與系統流程圖拖曳節點即時廣播與浮動移動標籤支援
 

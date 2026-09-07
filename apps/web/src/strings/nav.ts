@@ -4,7 +4,7 @@ export const nav = {
   starting: '啟動中…',
 
   /** 蓋在最上面那一層（帳號設定／系統管理）的頁籤 */
-  accountSettings: '帳號設定',
+  accountSettings: '個人資料與帳號設定',
   systemAdmin: '系統管理',
 
   /** 麵包屑與返回。箭頭留在畫面上，這裡只放字 */

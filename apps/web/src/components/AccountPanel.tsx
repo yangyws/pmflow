@@ -365,6 +365,7 @@ function IdentitySection() {
             {data.identities.map(item => (
               <IdentityRow key={item.id} item={item} canUnlink={data.canUnlink}
                            busy={unlink.isPending}
+                           onRelink={() => startLink(item.provider)}
                            onUnlink={() => {
                              const name = T.account.identity.label[item.provider]
                              setConfirmActionModal({
@@ -394,27 +395,17 @@ function IdentitySection() {
           {/* 還沒綁的那幾家。站台沒設定的不會出現在 available 裡 */}
           {data.available.length > 0 ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {data.available.map(p => {
-                if (p === 'GOOGLE') {
-                  return (
-                    <Button
-                      key={p}
-                      disabled
-                      className="opacity-60 cursor-not-allowed text-xs"
-                      title="Google 帳號綁定功能目前暫時無效"
-                    >
-                      <ProviderIcon provider={p} />
-                      {T.account.identity.bind(T.account.identity.label[p])}（暫時無效）
-                    </Button>
-                  )
-                }
-                return (
-                  <Button key={p} disabled={pending !== null} onClick={() => startLink(p)}>
-                    <ProviderIcon provider={p} />
-                    {T.account.identity.bind(T.account.identity.label[p])}
-                  </Button>
-                )
-              })}
+              {data.available.map(p => (
+                <Button
+                  key={p}
+                  disabled={pending !== null}
+                  onClick={() => startLink(p)}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <ProviderIcon provider={p} />
+                  {T.account.identity.bind(T.account.identity.label[p])}
+                </Button>
+              ))}
               {pending && (
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {T.account.identity.binding}
@@ -466,8 +457,8 @@ function IdentitySection() {
   )
 }
 
-function IdentityRow({ item, canUnlink, busy, onUnlink }: {
-  item: OauthIdentity; canUnlink: boolean; busy: boolean; onUnlink: () => void
+function IdentityRow({ item, canUnlink, busy, onUnlink, onRelink }: {
+  item: OauthIdentity; canUnlink: boolean; busy: boolean; onUnlink: () => void; onRelink?: () => void
 }) {
   const name = T.account.identity.label[item.provider]
   return (
@@ -475,9 +466,9 @@ function IdentityRow({ item, canUnlink, busy, onUnlink }: {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
           <ProviderIcon provider={item.provider} />
-          <span className="truncate">{name}</span>
+          <span className="truncate font-medium">{name}</span>
           {item.email && (
-            <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+            <span className="truncate text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
               {item.email}
             </span>
           )}
@@ -491,20 +482,27 @@ function IdentityRow({ item, canUnlink, busy, onUnlink }: {
         </div>
       </div>
 
-      {/*
-        解除鈕只在「還有別條路進得來」時才畫，而且不畫的時候要寫出原因 ——
-        規則本身擋在後端（見 api/src/routes/oauth.ts），這裡只是不要把
-        按下去一定被拒絕的按鈕擺出來。
-      */}
-      {canUnlink ? (
-        <Button variant="danger" disabled={busy} onClick={onUnlink}>
-          {T.account.identity.unbind}
-        </Button>
-      ) : (
-        <span className="max-w-xs text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-          {T.account.identity.lastMethod}
-        </span>
-      )}
+      <div className="flex items-center gap-2">
+        {onRelink && (
+          <Button variant="default" disabled={busy} onClick={onRelink} className="text-xs">
+            {T.account.identity.rebind(name)}
+          </Button>
+        )}
+        {/*
+          解除鈕只在「還有別條路進得來」時才畫，而且不畫的時候要寫出原因 ——
+          規則本身擋在後端（見 api/src/routes/oauth.ts），這裡只是不要把
+          按下去一定被拒絕的按鈕擺出來。
+        */}
+        {canUnlink ? (
+          <Button variant="danger" disabled={busy} onClick={onUnlink} className="text-xs">
+            {T.account.identity.unbind}
+          </Button>
+        ) : (
+          <span className="max-w-xs text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {T.account.identity.lastMethod}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
