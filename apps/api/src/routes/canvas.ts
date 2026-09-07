@@ -325,6 +325,33 @@ export default async function canvasRoutes(app: FastifyInstance) {
       return reply.code(204).send()
     })
 
+  /**
+   * 即時協作：廣播某個節點正在被誰拖曳移動或放開 (Ref: CR-228)
+   */
+  app.post<{ Params: { id: string; viewKey: string } }>(
+    '/projects/:id/canvas/:viewKey/moving', async (req, reply) => {
+      const user = await authenticate(req)
+      const viewKey = KEY.parse(req.params.viewKey)
+      await requireProjectRole(user.id, req.params.id, 'VIEWER')
+      const b = z.object({
+        nodeId: z.string().min(1),
+        status: z.enum(['moving', 'stopped']),
+        x: z.number().optional(),
+        y: z.number().optional(),
+      }).parse(req.body)
+
+      emitRealtimeEvent({
+        type: 'canvas:moving',
+        projectId: req.params.id,
+        actorId: user.id,
+        actorName: user.displayName,
+        payload: { viewKey, nodeId: b.nodeId, status: b.status, x: b.x, y: b.y },
+      })
+
+      return reply.code(200).send({ ok: true })
+    }
+  )
+
   // ── 一個 view 一份 jsonb（系統流程圖、語法演練片段）──────
 
   app.get<{ Params: { id: string; docKey: string } }>(

@@ -8,6 +8,7 @@
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
 |---|---|---|---|---|
+| `CR-228` | 2026-09-07 | [任務關聯圖與系統流程圖拖曳節點即時廣播與浮動移動標籤支援](#cr-228) | `events.ts`, `canvas.ts`, `ui.tsx`, `api.ts`, `useRealtimeSync.ts`, `TaskGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
 | `CR-227` | 2026-09-04 | [附件圖片縮圖預覽認證傳遞與防破圖修復](#cr-227) | `api.ts`, `TaskAttachments.tsx` | 已驗證 |
 | `CR-226` | 2026-09-04 | [任務單上傳文件與問題單上傳截圖/圖片附件功能支援](#cr-226) | `0029_task_attachments.sql`, `attachment.ts`, `tasks.ts`, `TaskAttachments.tsx`, `TaskDrawer.tsx` | 已驗證 |
 | `CR-225` | 2026-09-03 | [關聯圖跨使用者移動卡片即時同步排查與反向代理無緩衝串流修復](#cr-225) | `Caddyfile`, `useRealtimeSync.ts`, `TaskGraph.tsx` | 已驗證 |
@@ -276,6 +277,23 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-228"></a>CR-228 (2026-09-07) — 任務關聯圖與系統流程圖拖曳節點即時廣播與浮動移動標籤支援
+
+- **使用者需求**：關聯圖 跟流程圖 可以增加一個 誰在移動框的的標籤框。
+- **實作與設計**：
+  1. **後端節點拖曳廣播端點 (`apps/api/src/routes/canvas.ts`, `events.ts`)**：
+     - 新增 `POST /projects/:id/canvas/:viewKey/moving` 端點，接收 `{ nodeId, status: 'moving' | 'stopped', x, y }`。
+     - 透過 SSE 廣播 `canvas:moving` 事件至所有專案連線使用者。
+  2. **前端 API 與 SSE 串流 (`apps/web/src/lib/api.ts`, `useRealtimeSync.ts`)**：
+     - 新增 `Api.broadcastCanvasMoving(projectId, viewKey, payload)`。
+     - `useRealtimeSync` 訂閱 `canvas:moving` SSE 事件並派發 `pmflow_realtime_event`。
+  3. **浮動標籤元件 (`apps/web/src/components/ui.tsx`)**：
+     - 新增 `MovingUserBadge` 元件，以脈衝綠點與深藍/靛青色膠囊外框呈現 `👤 {userName} 移動中…`。
+  4. **任務關聯圖與系統流程圖整合 (`TaskGraph.tsx`, `SystemFlow.tsx`)**：
+     - 在 `onNodeDragStart`、`onNodeDrag`（300ms 防抖節流）與 `onNodeDragStop` 自動廣播移動狀態。
+     - 監聽 `canvas:moving` 即時更新 `movingUsersMap`，並設置 3 秒逾期自動清理計時器。
+     - 在所有節點視圖（卡片、收納盒、標示框、文字註記）上方即時浮現 `MovingUserBadge`。
 
 ### <a id="cr-227"></a>CR-227 (2026-09-04) — 附件圖片縮圖預覽認證傳遞與防破圖修復
 

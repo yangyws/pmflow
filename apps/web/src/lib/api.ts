@@ -833,4 +833,6 @@ export const Api = {
     ),
   patchLinkHandles: (linkId: string, json: { sourceHandle?: string | null; targetHandle?: string | null }) =>
     api<{ id: string; sourceHandle: string | null; targetHandle: string | null }>(`/links/${linkId}/handles`, { method: 'PATCH', json }),
+  broadcastCanvasMoving: (projectId: string, viewKey: string, json: { nodeId: string; status: 'moving' | 'stopped'; x?: number; y?: number }) =>
+    api<{ ok: boolean }>(`/projects/${projectId}/canvas/${viewKey}/moving`, { method: 'POST', json }),
 }

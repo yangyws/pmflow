@@ -32,12 +32,14 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { Api, type Task } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { DEFAULT_TYPE_COLORS } from '../components/EpicSidebar'
-import { cx, ProblemBadge, TypeBadge } from '../components/ui'
+import { cx, ProblemBadge, TypeBadge, MovingUserBadge } from '../components/ui'
 import { CanvasPermissionModal } from '../components/CanvasPermissionModal'
 import { rollup } from '../lib/rollup'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
+import type { RealtimeEventPayload } from '../lib/useRealtimeSync'
 
 // 依據出發接點（左右出發為紅色實線、上下出發為紫色虛線，或自訂顏色）與標頭箭頭方向產生邊樣式
 function getEdgeStyleAndMarker(sourceHandle?: string | null, customColor?: string) {
@@ -190,6 +192,7 @@ export type TaskGraphNodeData = {
   minHeight?: number
   onToggleMode?: (id: string) => void
   onOpenTask?: (id: string) => void
+  movingUserName?: string | null
 }
 
 export type CustomTaskNode = Node<TaskGraphNodeData, 'simpleNode'>
@@ -313,6 +316,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       }}
       className={cx('relative select-none', isBox ? (data.isCollapsed ? 'w-full pointer-events-auto' : 'w-full h-full pointer-events-none') : 'w-full pointer-events-auto')}
     >
+      <MovingUserBadge userName={data.movingUserName} />
       {isBox ? (
         <div
           className={cx(
@@ -1125,6 +1129,7 @@ function migrateLegacyEdgeKeys<T>(map: Record<string, T>, allEdges: Edge[]): Rec
 type SimpleAnnotationNodeData = {
   label: string
   color: string
+  movingUserName?: string | null
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
 }
@@ -1134,6 +1139,7 @@ function SimpleTextNode({ id, data }: NodeProps) {
   const d = data as unknown as SimpleAnnotationNodeData
   return (
     <div className="group relative cursor-grab select-none active:cursor-grabbing">
+      <MovingUserBadge userName={d.movingUserName} />
       <div
         className={cx(
           'max-w-[420px] whitespace-pre-wrap break-words rounded px-1.5 py-1 text-sm font-semibold leading-relaxed',
@@ -1181,6 +1187,7 @@ function SimpleFrameNode({ id, data }: NodeProps) {
   const color = d.color || '#8b5cf6'
   return (
     <div className="group relative h-full w-full pointer-events-none select-none">
+      <MovingUserBadge userName={d.movingUserName} />
       {/* 框身背景 (pointer-events-none，點擊可穿透選取線與畫布) */}
       <div
         className="h-full w-full rounded-2xl border-2 border-dashed pointer-events-none"
@@ -1273,7 +1280,30 @@ type LogItem = {
 
 function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocusTarget, onSelectTask, canManage = false }: TaskGraphProps) {
   const { fitView, setCenter, getViewport, zoomIn, zoomOut } = useReactFlow()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
+  const [movingUsersMap, setMovingUsersMap] = useState<Record<string, { actorId: string; actorName: string; updatedAt: number }>>({})
+
+  // 自動清理超過 3 秒未更新的移動中標籤 (避免使用者異常斷線導致標籤殘留)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setMovingUsersMap((prev) => {
+        let changed = false
+        const next: Record<string, { actorId: string; actorName: string; updatedAt: number }> = {}
+        for (const [k, v] of Object.entries(prev)) {
+          if (now - v.updatedAt < 3000) {
+            next[k] = v
+          } else {
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [])
+
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => Api.project(projectId!),
@@ -1965,10 +1995,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const lastAppliedNodesJsonRef = useRef<string>('')
   const isApplyingServerSyncRef = useRef<boolean>(false)
 
-  // 監聽即時廣播事件：當其他使用者更新畫布或任務時立即刷新快取 (Ref: CR-213, CR-225)
+  // 監聽即時廣播事件：當其他使用者更新畫布或任務時立即刷新快取，並處理移動中標籤 (Ref: CR-213, CR-225, CR-228)
   useEffect(() => {
     const handleRealtimeEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<any>
+      const customEvent = e as CustomEvent<RealtimeEventPayload>
       const ev = customEvent.detail
       if (!ev) return
 
@@ -1978,13 +2008,34 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           queryClient.invalidateQueries({ queryKey: ['canvasDoc', projectId, 'task-graph-extra'] })
           queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
           queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
+        } else if (ev.type === 'canvas:moving') {
+          const payload = ev.payload as { viewKey?: string; nodeId?: string; status?: 'moving' | 'stopped' } | undefined
+          if (payload && (payload.viewKey === 'graph' || payload.viewKey === 'task-graph') && payload.nodeId) {
+            if (ev.actorId && user?.id && ev.actorId === user.id) return
+            if (payload.status === 'moving') {
+              setMovingUsersMap((prev) => ({
+                ...prev,
+                [payload.nodeId!]: {
+                  actorId: ev.actorId || '',
+                  actorName: ev.actorName || '使用者',
+                  updatedAt: Date.now(),
+                },
+              }))
+            } else if (payload.status === 'stopped') {
+              setMovingUsersMap((prev) => {
+                const next = { ...prev }
+                delete next[payload.nodeId!]
+                return next
+              })
+            }
+          }
         }
       }
     }
 
     window.addEventListener('pmflow_realtime_event', handleRealtimeEvent)
     return () => window.removeEventListener('pmflow_realtime_event', handleRealtimeEvent)
-  }, [projectId, queryClient])
+  }, [projectId, queryClient, user?.id])
 
   // 載入後端共享註記、折點與文字 (task-graph-extra) 並即時同步 (Ref: CR-213)
   useEffect(() => {
@@ -2435,8 +2486,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       return node
     }
 
-    const frameNodes: Node[] = annotations.frames.map((f) =>
-      reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}|${effectiveEditable}`, () => ({
+    const frameNodes: Node[] = annotations.frames.map((f) => {
+      const movingUserName = movingUsersMap[f.id]?.actorName || null
+      return reuseOrBuild(f.id, `${f.x}|${f.y}|${f.width}|${f.height}|${f.label}|${f.color}|${effectiveEditable}|${movingUserName || ''}`, () => ({
         id: f.id,
         type: 'annotationFrame',
         position: { x: f.x, y: f.y },
@@ -2450,11 +2502,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         deletable: false,
         // Ref: CR-152 墊到所有卡片(1~30)與關聯線之下，框身可拖但搶不走它們的點擊
         zIndex: -1,
-        data: { label: f.label, color: f.color, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
+        data: { label: f.label, color: f.color, movingUserName, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
       }))
-    )
-    const textNodes: Node[] = annotations.texts.map((t) =>
-      reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}|${effectiveEditable}`, () => ({
+    })
+    const textNodes: Node[] = annotations.texts.map((t) => {
+      const movingUserName = movingUsersMap[t.id]?.actorName || null
+      return reuseOrBuild(t.id, `${t.x}|${t.y}|${t.text}|${t.color}|${effectiveEditable}|${movingUserName || ''}`, () => ({
         id: t.id,
         type: 'annotationText',
         position: { x: t.x, y: t.y },
@@ -2465,12 +2518,12 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         connectable: false,
         deletable: false,
         zIndex: 25,
-        data: { label: t.text, color: t.color, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
+        data: { label: t.text, color: t.color, movingUserName, onEdit: effectiveEditable ? handleEditAnnotation : undefined, onDelete: effectiveEditable ? handleDeleteAnnotation : undefined },
       }))
-    )
+    })
     annotationNodeCacheRef.current = nextCache
     return [...frameNodes, ...textNodes]
-  }, [annotations, effectiveEditable, handleEditAnnotation, handleDeleteAnnotation])
+  }, [annotations, effectiveEditable, handleEditAnnotation, handleDeleteAnnotation, movingUsersMap])
 
   /** 使用者手動調整大小的框。按專案 projectId 持久化於 localStorage (對齊 Graph.tsx) */
   const [resized, setResized] = useState<Record<string, { width: number; height: number }>>(() => {
@@ -3442,16 +3495,48 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     [effectiveEditable, nodes, edges, projectId, queryClient]
   )
 
+  const lastDragBroadcastRef = useRef<number>(0)
+
   const onNodeDragStart = useCallback((_: unknown, node: Node) => {
     if (!effectiveEditable) return
+    if (projectId) {
+      Api.broadcastCanvasMoving(projectId, 'task-graph', {
+        nodeId: node.id,
+        status: 'moving',
+        x: node.position.x,
+        y: node.position.y,
+      }).catch(() => {})
+    }
     if (isAnnotationId(node.id)) return // Ref: CR-144
     isDraggingRef.current = true
     dragStartPosMap.current[node.id] = { ...node.position }
-  }, [effectiveEditable])
+  }, [effectiveEditable, projectId])
+
+  const onNodeDrag = useCallback((_: unknown, node: Node) => {
+    if (!effectiveEditable || !projectId) return
+    const now = Date.now()
+    if (now - lastDragBroadcastRef.current > 300) {
+      lastDragBroadcastRef.current = now
+      Api.broadcastCanvasMoving(projectId, 'task-graph', {
+        nodeId: node.id,
+        status: 'moving',
+        x: node.position.x,
+        y: node.position.y,
+      }).catch(() => {})
+    }
+  }, [effectiveEditable, projectId])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: Node) => {
       if (!effectiveEditable) return
+      if (projectId) {
+        Api.broadcastCanvasMoving(projectId, 'task-graph', {
+          nodeId: node.id,
+          status: 'stopped',
+          x: node.position.x,
+          y: node.position.y,
+        }).catch(() => {})
+      }
       // Ref: CR-144 標示框/文字純視覺，絕不進入收納盒歸屬判定，也不打任何任務 API
       if (isAnnotationId(node.id)) return
       setTimeout(() => {
@@ -3966,6 +4051,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     const derived = nodes.map((node) => {
       const isSelected = activeSelectedId === node.id
       const isRelated = relatedSet ? relatedSet.has(node.id) : true
+      const movingUserName = movingUsersMap[node.id]?.actorName || null
       const nodeBlockedBy = blockedByMap.get(node.id)
       const currentMode = toggledModes[node.id] ?? (node.data as SimpleGraphNodeData)?.mode ?? 'card'
       const isBox = currentMode === 'box'
@@ -4007,7 +4093,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const isCollapsed = !!collapsedNodes[node.id]
       const isHidden = hiddenNodeIds.has(node.id)
 
-      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${currentMode}|${isCollapsed}|${isHidden}`
+      const key = `${isSelected}|${isRelated}|${!!relatedSet}|${nodeBlockedBy?.join(',') ?? ''}|${blockedCount}|${problemCount}|${liveChildCount}|${liveOverdueCount}|${liveInquiryOverdueCount}|${liveInquiryAwaitingCount}|${isParallel}|${parallelPeers?.join(',') ?? ''}|${currentMode}|${isCollapsed}|${isHidden}|${movingUserName ?? ''}`
 
       const hit = prevCache.get(node.id)
       if (hit && hit.src === node && hit.key === key) {
@@ -4045,6 +4131,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           isSelected,
           isRelated,
           hasSelectionActive: !!relatedSet,
+          movingUserName,
           blockedBy: nodeBlockedBy,
           blockedCount,
           problemCount,
@@ -4067,7 +4154,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
 
     derivedNodeCacheRef.current = nextCache
     return orderParentNodesFirst(derived)
-  }, [nodes, activeSelectedId, effectiveEditable, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today])
+  }, [nodes, activeSelectedId, effectiveEditable, relatedSet, blockedByMap, parallelMap, handleToggleMode, handleToggleCollapse, toggledModes, collapsedNodes, hiddenNodeIds, tasks, project?.statuses, today, movingUsersMap])
 
   // Ref: CR-144 標示框墊最底、任務節點居中、文字註記疊最上；三者不混進 nodes 狀態
   const renderedNodes = useMemo(() => {
@@ -4255,6 +4342,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             }}
             onPaneClick={onPaneClick}
             onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
             onMoveEnd={handleMoveEnd}
             nodesDraggable={effectiveEditable}

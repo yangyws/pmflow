@@ -32,10 +32,11 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { Api } from '../lib/api'
-import { cx } from '../components/ui'
+import { cx, MovingUserBadge } from '../components/ui'
 import { CanvasPermissionModal } from '../components/CanvasPermissionModal'
 import { T } from '../strings' // Ref: CR-146
 import { getObstaclesFromNodes, buildOrthogonalPath, type ObstacleRect } from '../lib/orthogonalRouting'
+import type { RealtimeEventPayload } from '../lib/useRealtimeSync'
 
 export interface SystemFlowProps {
   projectId?: string
@@ -56,6 +57,7 @@ export interface FlowNodeData extends Record<string, unknown> {
   isSelected?: boolean
   onEdit?: (nodeId: string) => void
   onDelete?: (nodeId: string) => void
+  movingUserName?: string | null
 }
 
 // Ref: CR-140
@@ -286,6 +288,7 @@ function FlowBoxNode({ id, data, isConnectable }: NodeProps) {
   const icon = (nodeData.icon || '📦') as string
   return (
     <div className="relative w-full h-full group">
+      <MovingUserBadge userName={nodeData.movingUserName} />
       <div
         className={cx(
           'relative w-full h-full min-w-[320px] min-h-[220px] rounded-xl border bg-indigo-50/30 dark:bg-indigo-950/20 backdrop-blur-xs shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between cursor-grab active:cursor-grabbing overflow-hidden',
@@ -378,6 +381,7 @@ function FlowStepNode({ id, data, isConnectable }: NodeProps) {
 
   return (
     <div className="relative group w-full h-full">
+      <MovingUserBadge userName={nodeData.movingUserName} />
       <div
         className={cx(
           'w-full h-full min-w-[240px] max-w-[380px] rounded-xl border bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg transition-all duration-150 select-none cursor-grab active:cursor-grabbing overflow-hidden',
@@ -449,6 +453,7 @@ function FlowTextNode({ id, data, isConnectable }: NodeProps) {
   const color = nodeData.color || '#4f46e5'
   return (
     <div className="group relative cursor-grab active:cursor-grabbing select-none">
+      <MovingUserBadge userName={nodeData.movingUserName} />
       <div
         className={cx(
           'max-w-[420px] whitespace-pre-wrap break-words rounded px-1.5 py-1 text-sm font-semibold leading-relaxed',
@@ -505,6 +510,7 @@ function FlowFrameNode({ id, data, isConnectable }: NodeProps) {
   const color = nodeData.color || '#8b5cf6'
   return (
     <div className="relative h-full w-full group pointer-events-none select-none">
+      <MovingUserBadge userName={nodeData.movingUserName} />
       {/* 框身背景 (pointer-events-none，點擊可穿透選取線與畫布) */}
       <div
         className={cx(
@@ -1363,6 +1369,64 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const [pages, setPages] = useState<FlowPage[]>(() => loadInitialPages(projectId))
 
+  const [movingUsersMap, setMovingUsersMap] = useState<Record<string, { actorId: string; actorName: string; updatedAt: number }>>({})
+
+  // 自動清理超過 3 秒未更新的移動中標籤 (避免使用者異常斷線導致標籤殘留)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setMovingUsersMap((prev) => {
+        let changed = false
+        const next: Record<string, { actorId: string; actorName: string; updatedAt: number }> = {}
+        for (const [k, v] of Object.entries(prev)) {
+          if (now - v.updatedAt < 3000) {
+            next[k] = v
+          } else {
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [])
+
+  // 監聽即時 SSE 移動推播 (Ref: CR-228)
+  useEffect(() => {
+    if (!projectId || projectId === 'default') return
+    const handleRealtimeEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<RealtimeEventPayload>
+      const ev = customEvent.detail
+      if (!ev) return
+      if (ev.projectId && ev.projectId === projectId) {
+        if (ev.type === 'canvas:moving') {
+          const payload = ev.payload as { viewKey?: string; nodeId?: string; status?: 'moving' | 'stopped' } | undefined
+          if (payload && (payload.viewKey === 'system-flow' || payload.viewKey === 'flow') && payload.nodeId) {
+            if (ev.actorId && user?.id && ev.actorId === user.id) return
+            if (payload.status === 'moving') {
+              setMovingUsersMap((prev) => ({
+                ...prev,
+                [payload.nodeId!]: {
+                  actorId: ev.actorId || '',
+                  actorName: ev.actorName || '使用者',
+                  updatedAt: Date.now(),
+                },
+              }))
+            } else if (payload.status === 'stopped') {
+              setMovingUsersMap((prev) => {
+                const next = { ...prev }
+                delete next[payload.nodeId!]
+                return next
+              })
+            }
+          }
+        }
+      }
+    }
+    window.addEventListener('pmflow_realtime_event', handleRealtimeEvent)
+    return () => window.removeEventListener('pmflow_realtime_event', handleRealtimeEvent)
+  }, [projectId, user?.id])
+
   const [activePageId, setActivePageId] = useState<string>(() => {
     const initPages = loadInitialPages(projectId)
     return initPages[0]?.id || 'page-1'
@@ -1568,7 +1632,7 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
   const interactingRef = useRef(false)
   const pendingSaveRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; out: Node }>())
+  const nodeViewCacheRef = useRef(new Map<string, { src: Node; selected: boolean; movingUserName: string | null; out: Node }>())
   const edgeViewCacheRef = useRef(new Map<string, { src: Edge; out: Edge }>())
   const edgeHandlersRef = useRef<unknown[]>([])
 
@@ -1957,9 +2021,46 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
     setEdges((eds) => addEdge(newEdge, eds))
   }, [effectiveEditable])
 
+  const lastDragBroadcastRef = useRef<number>(0)
+
+  const onNodeDragStart = useCallback((_event: unknown, draggedNode: Node) => {
+    if (!effectiveEditable || !projectId || projectId === 'default') return
+    Api.broadcastCanvasMoving(projectId, 'system-flow', {
+      nodeId: draggedNode.id,
+      status: 'moving',
+      x: draggedNode.position.x,
+      y: draggedNode.position.y,
+    }).catch(() => {})
+  }, [effectiveEditable, projectId])
+
+  const onNodeDrag = useCallback((_event: unknown, draggedNode: Node) => {
+    if (!effectiveEditable || !projectId || projectId === 'default') return
+    const now = Date.now()
+    if (now - lastDragBroadcastRef.current > 300) {
+      lastDragBroadcastRef.current = now
+      Api.broadcastCanvasMoving(projectId, 'system-flow', {
+        nodeId: draggedNode.id,
+        status: 'moving',
+        x: draggedNode.position.x,
+        y: draggedNode.position.y,
+      }).catch(() => {})
+    }
+  }, [effectiveEditable, projectId])
+
   // 拖曳結束判斷：拖入容器收納 / 拖出容器為獨立節點
   const onNodeDragStop = useCallback((_event: unknown, draggedNode: Node) => {
-    if (!effectiveEditable || draggedNode.type !== 'step') return
+    if (!effectiveEditable) return
+
+    if (projectId && projectId !== 'default') {
+      Api.broadcastCanvasMoving(projectId, 'system-flow', {
+        nodeId: draggedNode.id,
+        status: 'stopped',
+        x: draggedNode.position.x,
+        y: draggedNode.position.y,
+      }).catch(() => {})
+    }
+
+    if (draggedNode.type !== 'step') return
 
     setNodes((currentNodes) => {
       const nodeMap = new Map(currentNodes.map((n) => [n.id, n]))
@@ -2237,12 +2338,13 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
 
   const nodesWithHandlers = useMemo(() => {
     const prevCache = nodeViewCacheRef.current
-    const nextCache = new Map<string, { src: Node; selected: boolean; out: Node }>()
+    const nextCache = new Map<string, { src: Node; selected: boolean; movingUserName: string | null; out: Node }>()
 
     const mapped = nodes.map((node) => {
       const selected = node.id === selectedNodeId
+      const movingUserName = movingUsersMap[node.id]?.actorName || null
       const hit = prevCache.get(node.id)
-      if (hit && hit.src === node && hit.selected === selected) {
+      if (hit && hit.src === node && hit.selected === selected && (hit as any).movingUserName === movingUserName) {
         nextCache.set(node.id, hit)
         return hit.out
       }
@@ -2300,16 +2402,17 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
         data: {
           ...node.data,
           isSelected: selected,
+          movingUserName,
           onEdit: effectiveEditable ? handleEditNode : undefined,
           onDelete: effectiveEditable ? handleDeleteNode : undefined,
         },
       }
-      nextCache.set(node.id, { src: node, selected, out })
+      nextCache.set(node.id, { src: node, selected, movingUserName, out })
       return out
     })
     nodeViewCacheRef.current = nextCache
     return orderParentNodesFirst(mapped)
-  }, [nodes, selectedNodeId, effectiveEditable, handleEditNode, handleDeleteNode])
+  }, [nodes, selectedNodeId, effectiveEditable, handleEditNode, handleDeleteNode, movingUsersMap])
 
   const handleEdgeClick = useCallback((_e: React.MouseEvent | null, edge: Edge) => {
     if (!effectiveEditable) return
@@ -2613,6 +2716,8 @@ function SystemFlowInner({ projectId = 'default' }: SystemFlowProps) {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onConnectStart={onConnectStart}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
           onPaneClick={() => {

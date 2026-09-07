@@ -13,6 +13,7 @@ export type RealtimeEventType =
   | 'project:changed'
   | 'task:changed'
   | 'canvas:changed'
+  | 'canvas:moving'
   | 'inquiry:changed'
   | 'member:changed'
 

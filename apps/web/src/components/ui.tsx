@@ -286,3 +286,34 @@ export function TypeBadge({
     </span>
   )
 }
+
+/**
+ * 畫布節點即時移動狀態標籤 (Ref: CR-228)
+ * 當其他使用者正在拖曳卡片或收納盒時，在節點上方顯示浮動標籤提示。
+ */
+export function MovingUserBadge({
+  userName,
+  className,
+}: {
+  userName?: string | null
+  className?: string
+}) {
+  if (!userName) return null
+  return (
+    <div
+      className={cx(
+        'absolute -top-7 left-2 z-50 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 shadow-md border pointer-events-none select-none whitespace-nowrap text-[11px] font-medium transition-all duration-200',
+        'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/20 dark:bg-indigo-500 dark:border-indigo-400',
+        className
+      )}
+    >
+      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span className="flex items-center gap-1">
+        <span>👤</span>
+        <span className="font-semibold">{userName}</span>
+        <span className="text-indigo-200 dark:text-indigo-100">移動中…</span>
+      </span>
+    </div>
+  )
+}
+

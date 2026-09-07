@@ -22,7 +22,26 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Attachment Image Thumbnail Preview Authentication and Fallback Fix (CR-227)
+### Latest Changes: Real-time Moving Presence Badge in Graph and Flowchart (CR-228)
+- **變更檔案**:
+  - [`events.ts`](file:///D:/github/pmflow/apps/api/src/lib/events.ts):
+    1. **事件型別擴充 (`CR-228`)**：在 `RealtimeEventType` 中新增 `'canvas:moving'`。
+  - [`canvas.ts`](file:///D:/github/pmflow/apps/api/src/routes/canvas.ts):
+    1. **節點移動廣播端點 (`CR-228`)**：新增 `POST /projects/:id/canvas/:viewKey/moving`，驗證專案檢視者權限並透過 SSE 廣播節點移動與停止狀態。
+  - [`ui.tsx`](file:///D:/github/pmflow/apps/web/src/components/ui.tsx):
+    1. **浮動移動標籤元件 (`CR-228`)**：實作 `MovingUserBadge` 元件，提供脈衝指示燈與 `👤 {userName} 移動中…` 膠囊標籤。
+  - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **前端廣播函式 (`CR-228`)**：新增 `Api.broadcastCanvasMoving(projectId, viewKey, json)`。
+  - [`useRealtimeSync.ts`](file:///D:/github/pmflow/apps/web/src/lib/useRealtimeSync.ts):
+    1. **SSE 訂閱事件型別擴充 (`CR-228`)**：在 `RealtimeEventPayload['type']` 與 `eventTypes` 加入 `'canvas:moving'`。
+  - [`TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **任務關聯圖拖曳廣播與浮動標籤 (`CR-228`)**：在節點拖曳開始、拖曳中（300ms 節流）與拖曳結束時自動廣播，並在卡片、收納盒、標示框與文字上方即時渲染移動中標籤。
+  - [`SystemFlow.tsx`](file:///D:/github/pmflow/apps/web/src/pages/SystemFlow.tsx):
+    1. **系統流程圖拖曳廣播與浮動標籤 (`CR-228`)**：在步驟、模組盒、文字與標示框拖曳時自動廣播，並即時渲染移動中標籤。
+  - [`docs/CHANGELOG.md`](file:///D:/github/pmflow/docs/CHANGELOG.md): 記錄 `CR-228` 條目與細節。
+  - [`docs/NEXT-SESSION.md`](file:///D:/github/pmflow/docs/NEXT-SESSION.md): 更新進度至 `CR-228`。
+
+### Previous Changes: Attachment Image Thumbnail Preview Authentication and Fallback Fix (CR-227)
 - **變更檔案**:
   - [`api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
     1. **附件網址附帶 Token (`CR-227`)**：在 `taskAttachmentUrl` 中自動附帶當前使用者的 `?token=...` 查詢參數，確保瀏覽器原生 `<img>` 與 `<a>` 標籤請求附件時通過後端認證，修復 401 縮圖破圖。

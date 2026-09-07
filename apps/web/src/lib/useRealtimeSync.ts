@@ -20,7 +20,7 @@ import { getAccessToken } from './api'
 
 export interface RealtimeEventPayload {
   id?: string
-  type: 'notification:new' | 'project:changed' | 'task:changed' | 'canvas:changed' | 'inquiry:changed' | 'member:changed'
+  type: 'notification:new' | 'project:changed' | 'task:changed' | 'canvas:changed' | 'canvas:moving' | 'inquiry:changed' | 'member:changed'
   workspaceId?: string | null
   projectId?: string | null
   userId?: string | null
@@ -170,6 +170,7 @@ export function useRealtimeSync() {
       'project:changed',
       'task:changed',
       'canvas:changed',
+      'canvas:moving',
       'inquiry:changed',
       'member:changed',
     ] as const
