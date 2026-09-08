@@ -214,6 +214,16 @@ export default async function taskRoutes(app: FastifyInstance) {
     if (body.priority) await assertParamKey(sql, req.params.id, 'priority', body.priority)
     if (body.statusKey) await assertParamKey(sql, req.params.id, 'status', body.statusKey)
 
+    // 問題單（BUG）要求必須同時具備標題與內容/描述
+    if (body.type === 'BUG') {
+      if (!body.title?.trim()) {
+        throw badRequest('開立問題單時必須填寫問題標題')
+      }
+      if (!body.description?.trim()) {
+        throw badRequest('開立問題單時必須填寫問題內容/描述')
+      }
+    }
+
     const created = await sql.begin(async tx => {
       const [{ next_number }] = await tx<{ next_number: number }[]>`
         UPDATE project SET next_number = next_number + 1

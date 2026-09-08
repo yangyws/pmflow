@@ -1461,13 +1461,30 @@ function ProblemSection({
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const hasProblem = problemValue.trim().length > 0 || (childProblems && childProblems.length > 0)
   const resolvedList = (problemHistory ?? []).filter(h => h.resolvedAt)
 
   const handleCreate = () => {
-    if (!newTitle.trim()) return
-    onCreateProblemCard(newTitle.trim(), newContent.trim())
+    const trimmedTitle = newTitle.trim()
+    const trimmedContent = newContent.trim()
+
+    if (!trimmedTitle && !trimmedContent) {
+      setValidationError('請填寫問題標題與遭遇問題內容/描述')
+      return
+    }
+    if (!trimmedTitle) {
+      setValidationError('請填寫問題標題')
+      return
+    }
+    if (!trimmedContent) {
+      setValidationError('請填寫遭遇問題內容/描述')
+      return
+    }
+
+    setValidationError(null)
+    onCreateProblemCard(trimmedTitle, trimmedContent)
     setNewTitle('')
     setNewContent('')
   }
@@ -1517,7 +1534,10 @@ function ProblemSection({
           </label>
           <Input
             value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
+            onChange={e => {
+              setNewTitle(e.target.value)
+              if (validationError) setValidationError(null)
+            }}
             placeholder="請輸入問題標題（建立後此事件自動轉為收納盒，並將問題卡片收納其中）…"
             className="w-full text-xs sm:text-sm"
           />
@@ -1525,11 +1545,14 @@ function ProblemSection({
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            遭遇問題內容 / 描述
+            遭遇問題內容 / 描述 <span className="text-rose-500">*</span>
           </label>
           <textarea
             value={newContent}
-            onChange={e => setNewContent(e.target.value)}
+            onChange={e => {
+              setNewContent(e.target.value)
+              if (validationError) setValidationError(null)
+            }}
             rows={2}
             placeholder="描述遭遇問題的詳細狀況、影響範圍或排查線索…"
             className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
@@ -1538,12 +1561,19 @@ function ProblemSection({
           />
         </div>
 
+        {validationError && (
+          <div className="rounded-md bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>{validationError}</span>
+          </div>
+        )}
+
         <div className="flex justify-end pt-1">
           <Button
             variant="primary"
-            disabled={!newTitle.trim() || isCreatingCard}
+            disabled={isCreatingCard}
             onClick={handleCreate}
-            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs py-1.5 px-2.5"
+            className="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-xs py-1.5 px-2.5 cursor-pointer"
           >
             <span>📦</span> 開立問題卡片並收納
           </Button>

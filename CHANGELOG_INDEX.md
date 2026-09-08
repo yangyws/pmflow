@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Bug Task Status Limited to Unresolved/Resolved with Reset Capability (CR-240)
+### Latest Changes: Mandatory Title & Content Validation for Problem Cards (CR-241)
+- **變更檔案**:
+  - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **問題單建立校驗 (`CR-241`)**：建立問題單（`type: 'BUG'`）時，後端強制檢查標題（`title`）與內容描述（`description`），兩者缺一即拋出明確錯誤提示（如「開立問題單時必須填寫問題標題」或「開立問題單時必須填寫問題內容/描述」）。
+  - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **前端必填檢查與提示徽章 (`CR-241`)**：在「目前遇到的問題」開立問題卡片區塊中，標題與遭遇問題內容皆加上必填紅星標記（`*`）；點擊「開立問題卡片並收納」時，若缺標題、缺內容或兩者皆缺，即時跳出醒目警示「請填寫問題標題與遭遇問題內容/描述」、「請填寫問題標題」或「請填寫遭遇問題內容/描述」，避免無效提交。
+
+### Previous Changes: Bug Task Status Limited to Unresolved/Resolved with Reset Capability (CR-240)
 - **變更檔案**:
   - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
     1. **問題單雙狀態與進度自動聯動 (`CR-240`)**：問題單（`type: BUG`）狀態簡化為「未解決」與「已解決」兩態。當關閉（已解決）時自動校正為進度 100% 與 DONE 分類（需原建立者或管理者權限）；當重置為未解決時自動校正為進度 0% 與非 DONE 分類狀態。
