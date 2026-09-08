@@ -22,7 +22,17 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Bug Task Workflow & Creator Verification Closure (CR-237)
+### Latest Changes: Graph Connection Validations & Informative Error Messages (CR-238)
+- **變更檔案**:
+  - [`apps/web/src/pages/TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **連線放開回呼解鎖 (`CR-238`)**：修正 `isValidConnection` 阻擋拖曳放開導致 `onConnect` 無法觸發的靜默失敗問題，使所有接線動作均能進入 `onConnect` 執行業務校驗並跳出提示彈窗。
+    2. **細緻化錯誤提示 (`CR-238`)**：在 `onConnect` 中加入左右/上下接點不符、父子收納盒層級關係、不同收納盒跨盒連線（盒連盒、盒內連盒、盒內連外卡等不同情境）以及同卡重複連線防呆提示；並將後端循環依賴與階層錯誤以 `title：detail` 完整呈現（如：`會造成循環依賴：MRG-1 → MRG-2 → MRG-1`）。
+  - [`apps/web/src/strings/flow.ts`](file:///D:/github/pmflow/apps/web/src/strings/flow.ts):
+    1. **新增多維度連線限制提示語系 (`CR-238`)**：定義 `alertHandleMismatch`、`alertParentChild`、`alertCrossBoxCardToBox`、`alertCrossBoxTwoBoxes` 等明確指名卡片/收納盒編號與情境的錯誤訊息。
+  - [`apps/api/src/routes/links.ts`](file:///D:/github/pmflow/apps/api/src/routes/links.ts):
+    1. **後端關聯錯誤細節增強 (`CR-238`)**：跨收納盒與父子階層建立依賴時，錯誤訊息內文加入兩端卡片之任務編號代號（`【MRG-X】`），提升 API 回應精確度。
+
+### Previous Changes: Bug Task Workflow & Creator Verification Closure (CR-237)
 - **變更檔案**:
   - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
     1. **問題單完成權限防護 (`CR-237`)**：針對 `type: BUG` 之任務，僅有原建立者 (`created_by`)、專案管理者 (`MANAGER`) 或原建立者之代理人有權將進度改為 100% 或將狀態切換為 `DONE` 分類，否則拒絕並拋出權限錯誤。

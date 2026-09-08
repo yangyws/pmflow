@@ -213,6 +213,19 @@ export const flow = {
     unboxConfirm: '確定轉換',
     alertTitle: '關聯建立受限',
     alertOk: '我知道了',
+    alertHandleMismatch: '左右方向接點（排程相依關係）不可與上下方向接點（模組關聯）互相連接！',
+    alertParentChild: (boxRef: string, cardRef: string) =>
+      `收納盒【${boxRef}】與內部卡片【${cardRef}】為階層包含關係，不可建立相依關聯線！`,
+    alertCrossBoxCardToBox: (srcBoxRef: string, srcRef: string, tgtRef: string) =>
+      `收納盒【${srcBoxRef}】內部的卡片【${srcRef}】無法直接連至另一個收納盒【${tgtRef}】！請直接使用【${srcBoxRef}】本體進行連線。`,
+    alertCrossBoxBoxToCard: (srcRef: string, tgtBoxRef: string, tgtRef: string) =>
+      `收納盒【${srcRef}】無法直接連至【${tgtBoxRef}】內部的卡片【${tgtRef}】！請直接與收納盒【${tgtBoxRef}】本體進行連線。`,
+    alertCrossBoxTwoBoxes: (srcRef: string, srcBoxRef: string, tgtRef: string, tgtBoxRef: string) =>
+      `卡片【${srcRef}】（位於 ${srcBoxRef}）與【${tgtRef}】（位於 ${tgtBoxRef}）分屬不同收納盒，無法直接跨盒建立關聯！請改為在收納盒之間連線。`,
+    alertCrossBoxCardToOutside: (srcBoxRef: string, srcRef: string, tgtRef: string) =>
+      `收納盒【${srcBoxRef}】內部的卡片【${srcRef}】無法直接與外部卡片【${tgtRef}】建立關聯！請將關聯連線接至收納盒【${srcBoxRef}】本體。`,
+    alertCrossBoxOutsideToCard: (srcRef: string, tgtBoxRef: string, tgtRef: string) =>
+      `外部卡片【${srcRef}】無法直接連至收納盒【${tgtBoxRef}】內部的卡片【${tgtRef}】！請將關聯連線接至收納盒【${tgtBoxRef}】本體。`,
     alertCrossBox: (source: string, target: string) =>
       `收納盒內部的卡片 (${source} / ${target}) 無法與外部直接建立關聯。請將關聯連線接至收納盒本體！`,
     alertDuplicate: (source: string, target: string) =>

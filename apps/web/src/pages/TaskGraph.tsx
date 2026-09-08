@@ -3396,20 +3396,9 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
   const isValidConnection = useCallback(
     (connection: Edge | Connection) => {
       if (!connection.source || !connection.target || connection.source === connection.target) return false
-
-      // 嚴格阻擋跨收納盒連線 (Ref: CR-180)
-      const srcNode = nodes.find((n) => n.id === connection.source)
-      const tgtNode = nodes.find((n) => n.id === connection.target)
-      if (
-        (srcNode?.parentId && srcNode.parentId !== tgtNode?.parentId) ||
-        (tgtNode?.parentId && tgtNode.parentId !== srcNode?.parentId)
-      ) {
-        return false
-      }
-
       return true
     },
-    [nodes]
+    []
   )
 
   const onConnectStart = useCallback(
@@ -3453,7 +3442,10 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const tIsHoriz = !tHandle || tHandle.includes('left') || tHandle.includes('right')
 
       // 任務關聯圖：左右接點只能連左右接點，上下接點只能連上下接點
-      if (sIsHoriz !== tIsHoriz) return
+      if (sIsHoriz !== tIsHoriz) {
+        setAlertMsg(T.flow.relationGraph.alertHandleMismatch)
+        return
+      }
 
       const sourceNode = nodes.find((n) => n.id === connection.source)
       const targetNode = nodes.find((n) => n.id === connection.target)
@@ -3461,27 +3453,70 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
       const sourceParent = sourceNode?.parentId
       const targetParent = targetNode?.parentId
 
-      // Ref: CR-131
+      const srcData = sourceNode?.data as SimpleGraphNodeData | undefined
+      const tgtData = targetNode?.data as SimpleGraphNodeData | undefined
+      const srcRef = srcData?.refText || T.flow.relationGraph.card
+      const tgtRef = tgtData?.refText || T.flow.relationGraph.card
+
+      // 1. 父子階層檢查（收納盒與其內部子卡片）
+      if (sourceParent === targetNode?.id || targetParent === sourceNode?.id) {
+        const isSrcBox = sourceNode?.id === targetParent
+        const boxNode = isSrcBox ? sourceNode : targetNode
+        const cardNode = isSrcBox ? targetNode : sourceNode
+        const boxRef = (boxNode?.data as SimpleGraphNodeData)?.refText || '收納盒'
+        const cardRef = (cardNode?.data as SimpleGraphNodeData)?.refText || '卡片'
+        setAlertMsg(T.flow.relationGraph.alertParentChild(boxRef, cardRef))
+        return
+      }
+
+      // 2. 跨收納盒檢查 (Ref: CR-131, CR-180, CR-238)
       if (
         (sourceParent && sourceParent !== targetParent) ||
         (targetParent && targetParent !== sourceParent)
       ) {
-        const srcRef = (sourceNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-        const tgtRef = (targetNode?.data as SimpleGraphNodeData)?.refText || T.flow.relationGraph.card
-        setAlertMsg(T.flow.relationGraph.alertCrossBox(srcRef, tgtRef))
+        if (sourceParent && targetParent) {
+          // 兩端各自在不同的收納盒內
+          const srcBox = nodes.find((n) => n.id === sourceParent)
+          const tgtBox = nodes.find((n) => n.id === targetParent)
+          const srcBoxRef = (srcBox?.data as SimpleGraphNodeData)?.refText || '收納盒'
+          const tgtBoxRef = (tgtBox?.data as SimpleGraphNodeData)?.refText || '收納盒'
+          setAlertMsg(T.flow.relationGraph.alertCrossBoxTwoBoxes(srcRef, srcBoxRef, tgtRef, tgtBoxRef))
+        } else if (sourceParent) {
+          // 起點在收納盒內，終點在外部（外部卡片或外部收納盒）
+          const srcBox = nodes.find((n) => n.id === sourceParent)
+          const srcBoxRef = (srcBox?.data as SimpleGraphNodeData)?.refText || '收納盒'
+          if (tgtData?.mode === 'box') {
+            setAlertMsg(T.flow.relationGraph.alertCrossBoxCardToBox(srcBoxRef, srcRef, tgtRef))
+          } else {
+            setAlertMsg(T.flow.relationGraph.alertCrossBoxCardToOutside(srcBoxRef, srcRef, tgtRef))
+          }
+        } else {
+          // 起點在外部（外部卡片或外部收納盒），終點在收納盒內
+          const tgtBox = nodes.find((n) => n.id === targetParent)
+          const tgtBoxRef = (tgtBox?.data as SimpleGraphNodeData)?.refText || '收納盒'
+          if (srcData?.mode === 'box') {
+            setAlertMsg(T.flow.relationGraph.alertCrossBoxBoxToCard(srcRef, tgtBoxRef, tgtRef))
+          } else {
+            setAlertMsg(T.flow.relationGraph.alertCrossBoxOutsideToCard(srcRef, tgtBoxRef, tgtRef))
+          }
+        }
         return
       }
 
       const sId = String(connection.source)
       const tId = String(connection.target)
 
+      // 3. 重複連線檢查：兩卡片或收納盒之間若已存在關聯線，不可重複建立
       const existingEdge = edges.find(
         (e) =>
-          String(e.source) === sId && String(e.target) === tId &&
-          e.sourceHandle === sHandle && e.targetHandle === tHandle
+          (String(e.source) === sId && String(e.target) === tId) ||
+          (String(e.source) === tId && String(e.target) === sId)
       )
 
-      if (existingEdge) return
+      if (existingEdge) {
+        setAlertMsg(T.flow.relationGraph.alertDuplicate(srcRef, tgtRef))
+        return
+      }
 
       const tempId = `xy-edge__${sId}${sHandle ?? ''}-${tId}${tHandle ?? ''}`
       const { style, markerEnd } = getEdgeStyleAndMarker(sHandle)
@@ -3529,7 +3564,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                   !(e.source === connection.source && e.target === connection.target && e.id.startsWith('xy-edge__'))
               )
             )
-            const msg = err?.detail || err?.title || err?.message || '建立關聯失敗'
+            const msg = [err?.title, err?.detail].filter(Boolean).join('：') || err?.message || '建立關聯失敗'
             setAlertMsg(msg)
             queryClient.invalidateQueries({ queryKey: ['graph', projectId] })
           })

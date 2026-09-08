@@ -45,11 +45,24 @@ export default async function linkRoutes(app: FastifyInstance) {
       [sHandle, tHandle] = [tHandle, sHandle]
     }
 
+    // 查詢兩端任務資訊（代號與父層），供收納盒隔離與階層防呆提供明確提示
+    const [srcTask] = await sql<{ ref: string; parent_id: string | null }[]>`
+      SELECT p.key || '-' || t.number AS ref, t.parent_id
+      FROM task t JOIN project p ON p.id = t.project_id
+      WHERE t.id = ${sourceId}`
+    const [tgtTask] = await sql<{ ref: string; parent_id: string | null }[]>`
+      SELECT p.key || '-' || t.number AS ref, t.parent_id
+      FROM task t JOIN project p ON p.id = t.project_id
+      WHERE t.id = ${targetId}`
+    const srcRef = srcTask?.ref || sourceId
+    const tgtRef = tgtTask?.ref || targetId
+
     // 收納盒隔離規則：收納盒內的卡片不能連到收納盒外（兩端任務必須同在同一個收納盒內，或皆在頂層畫布）
-    const [srcParent] = await sql<{ parent_id: string | null }[]>`SELECT parent_id FROM task WHERE id = ${sourceId}`
-    const [tgtParent] = await sql<{ parent_id: string | null }[]>`SELECT parent_id FROM task WHERE id = ${targetId}`
-    if ((srcParent?.parent_id ?? null) !== (tgtParent?.parent_id ?? null)) {
-      throw conflict('收納盒內的任務不能連到收納盒外', '兩端任務必須位於同一收納盒內或皆在畫布外層')
+    if ((srcTask?.parent_id ?? null) !== (tgtTask?.parent_id ?? null)) {
+      throw conflict(
+        '收納盒內的任務不能連到收納盒外',
+        `【${srcRef}】與【${tgtRef}】分屬不同收納盒（或一內一外），兩端任務必須位於同一收納盒內或皆在畫布外層`
+      )
     }
 
     const link = await sql.begin(async tx => {
@@ -62,7 +75,12 @@ export default async function linkRoutes(app: FastifyInstance) {
           SELECT 1 AS one FROM task_closure
           WHERE (ancestor_id = ${sourceId} AND descendant_id = ${targetId})
              OR (ancestor_id = ${targetId} AND descendant_id = ${sourceId})`
-        if (anc) throw conflict('父子任務之間不能建立排程依賴', '父任務的日期已由子任務彙總')
+        if (anc) {
+          throw conflict(
+            '父子任務之間不能建立排程依賴',
+            `【${srcRef}】與【${tgtRef}】為父子階層關係，父任務的日期已由子任務彙總`
+          )
+        }
 
         await assertNoCycle(tx, sourceId, targetId)
       }
