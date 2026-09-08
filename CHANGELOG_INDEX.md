@@ -22,7 +22,13 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Gantt Start Date Column Label & Width Alignment (CR-234)
+### Latest Changes: Gantt Month Collapse Persistence & Auto-expand Guard (CR-235)
+- **變更檔案**:
+  - [`apps/web/src/pages/Gantt.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Gantt.tsx):
+    1. **月份收折狀態持久化 (`CR-235`)**：改用 `useRemembered` 將 `collapsedMonths` 存入 `localStorage`，切換頁籤或重新整理後完整保留使用者的收折/展開偏好。
+    2. **進入甘特圖防誤展開保護 (`CR-235`)**：加入 `lastFocusedIdRef` 守護，避免初次載入時既有的焦點任務立即覆蓋使用者的全部收折狀態，僅在使用者後續主動切換卡片時才自動展開該月份。
+
+### Previous Changes: Gantt Start Date Column Label & Width Alignment (CR-234)
 - **變更檔案**:
   - [`apps/web/src/strings/chart.ts`](file:///D:/github/pmflow/apps/web/src/strings/chart.ts):
     1. **欄位名稱同步 (`CR-234`)**：將甘特圖欄位文字 `col.start` 由「開始」改為「開始日期」，與右上角「顯示欄位」按鈕完全同步。

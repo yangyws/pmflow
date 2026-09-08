@@ -94,7 +94,7 @@ export default function GanttView({
   useEffect(() => { onOpenRef.current = onOpen }, [onOpen])
 
   const [hiddenCols, setHiddenCols] = useRemembered<string[]>(`gantt.hiddenCols.${projectId}`, [])
-  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({})
+  const [collapsedMonths, setCollapsedMonths] = useRemembered<Record<string, boolean>>(`gantt.collapsedMonths.${projectId}`, {})
 
   const toggleCol = (colKey: string) => {
     const next = hiddenCols.includes(colKey)
@@ -231,9 +231,14 @@ export default function GanttView({
     }
   }, [nonBugTasks, rolled])
 
-  // 當外部 focusedTaskId 變更時，自動展開所在月份
+  // 當外部 focusedTaskId 變更時，自動展開所在月份（僅在使用者主動切換卡片時觸發，不覆蓋剛進入頁面時的全部收折偏好）
+  const lastFocusedIdRef = useRef<string | null | undefined>(focusedTaskId)
   useEffect(() => {
-    if (!focusedTaskId) return
+    if (!focusedTaskId || lastFocusedIdRef.current === focusedTaskId) {
+      lastFocusedIdRef.current = focusedTaskId
+      return
+    }
+    lastFocusedIdRef.current = focusedTaskId
     for (const mg of monthGroups) {
       if (mg.tasks.some(t => t.id === focusedTaskId)) {
         setCollapsedMonths(prev => ({ ...prev, [mg.monthKey]: false }))
