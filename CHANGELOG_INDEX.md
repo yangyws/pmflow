@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Gantt View Option B Month Sections Default Collapsed (CR-233)
+### Latest Changes: Gantt Start Date Column Label & Width Alignment (CR-234)
+- **變更檔案**:
+  - [`apps/web/src/strings/chart.ts`](file:///D:/github/pmflow/apps/web/src/strings/chart.ts):
+    1. **欄位名稱同步 (`CR-234`)**：將甘特圖欄位文字 `col.start` 由「開始」改為「開始日期」，與右上角「顯示欄位」按鈕完全同步。
+  - [`apps/web/src/pages/Gantt.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Gantt.tsx):
+    1. **欄位寬度加大 (`CR-234`)**：將 `start_date` 欄位寬度由 `88px` 調增為 `110px`（最小寬度由 `70px` 調至 `90px`），確保四位數年份完整顯示不被截斷。
+
+### Previous Changes: Gantt View Option B Month Sections Default Collapsed (CR-233)
 - **變更檔案**:
   - [`apps/web/src/pages/Gantt.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Gantt.tsx):
     1. **甘特圖月份區間預設摺疊 (`CR-233`)**：將垂直滾動甘特圖（選項 B）月份區間預設收合判定改為 `collapsedMonths[mg.monthKey] !== false`，預設狀態下所有月份均呈收折狀態；同步調整 `toggleMonthCollapse`、`expandAllMonths` 與 `collapseAllMonths`，保持快捷標籤點擊時自動展開指定月份。

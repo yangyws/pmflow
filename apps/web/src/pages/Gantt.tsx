@@ -518,7 +518,7 @@ function MonthGanttSection({
         return `<span style="color: ${color}; font-weight: 600;">${t.text}</span>`
       },
     },
-    ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 88, min_width: 70, resize: true }] : []),
+    ...(!hidden.includes('start_date') ? [{ name: 'start_date', label: G.col.start, align: 'center' as const, width: 110, min_width: 90, resize: true }] : []),
     ...(!hidden.includes('duration') ? [{ name: 'duration', label: G.col.duration, align: 'center' as const, width: 44, min_width: 40, resize: true }] : []),
   ]
 

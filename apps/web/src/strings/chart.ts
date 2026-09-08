@@ -69,7 +69,7 @@ export const chart = {
   gantt: {
     col: {
       task: '任務',
-      start: '開始',
+      start: '開始日期',
       duration: '天',
       inquiry: '詢問',
     },
