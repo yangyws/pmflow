@@ -613,7 +613,7 @@ export function TaskDrawer({
                     <ReadOnlyValue>{typeOf(form.type) || form.type}</ReadOnlyValue>
                   )}
                 </Field>
-                <Field label={T.task.drawer.fieldStatus}>
+                <Field label={form.type === 'BUG' ? T.task.drawer.fieldBugStatus : T.task.drawer.fieldStatus}>
                   {canEdit ? (
                     form.type === 'BUG' ? (
                       (() => {

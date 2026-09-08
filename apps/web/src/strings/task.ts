@@ -72,6 +72,7 @@ export const task = {
     inquiryWaitingTip: (n: number) => `${n} 件對外詢問還在等回覆`,
     inquiryOverdueTip: (n: number) => `${n} 件對外詢問過了期望回覆日還沒回`,
     fieldStatus: '狀態',
+    fieldBugStatus: '處理狀態',
     /**
      * 還有對外詢問沒回的時候，「算是做完了」那幾個狀態不畫出來。
      * 少了選項一定要講原因 —— 無故消失比按了被拒絕更難懂。
