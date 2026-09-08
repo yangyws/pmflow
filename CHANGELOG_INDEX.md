@@ -22,7 +22,12 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Dynamic Refresh Token Cookie Secure Flag for HTTP/HTTPS F5 Retention (CR-232)
+### Latest Changes: Gantt View Option B Month Sections Default Collapsed (CR-233)
+- **變更檔案**:
+  - [`apps/web/src/pages/Gantt.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Gantt.tsx):
+    1. **甘特圖月份區間預設摺疊 (`CR-233`)**：將垂直滾動甘特圖（選項 B）月份區間預設收合判定改為 `collapsedMonths[mg.monthKey] !== false`，預設狀態下所有月份均呈收折狀態；同步調整 `toggleMonthCollapse`、`expandAllMonths` 與 `collapseAllMonths`，保持快捷標籤點擊時自動展開指定月份。
+
+### Previous Changes: Dynamic Refresh Token Cookie Secure Flag for HTTP/HTTPS F5 Retention (CR-232)
 - **變更檔案**:
   - [`apps/api/src/index.ts`](file:///D:/github/pmflow/apps/api/src/index.ts):
     1. **開啟 Fastify trustProxy (`CR-232`)**：啟用 `trustProxy: true`，使 Fastify 能正確讀取反向代理傳送之 `x-forwarded-proto` 與用戶端實際通訊協定。

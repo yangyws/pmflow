@@ -245,10 +245,17 @@ export default function GanttView({
   }, [focusedTaskId, monthGroups])
 
   const toggleMonthCollapse = (monthKey: string) => {
-    setCollapsedMonths(prev => ({ ...prev, [monthKey]: !prev[monthKey] }))
+    setCollapsedMonths(prev => {
+      const current = prev[monthKey] !== false // 預設摺疊 (true)
+      return { ...prev, [monthKey]: !current }
+    })
   }
 
-  const expandAllMonths = () => setCollapsedMonths({})
+  const expandAllMonths = () => {
+    const next: Record<string, boolean> = {}
+    monthGroups.forEach(mg => { next[mg.monthKey] = false })
+    setCollapsedMonths(next)
+  }
   const collapseAllMonths = () => {
     const next: Record<string, boolean> = {}
     monthGroups.forEach(mg => { next[mg.monthKey] = true })
@@ -410,7 +417,7 @@ export default function GanttView({
       {/* ── 月份分區垂直滾動清單（選項 B） ── */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {monthGroups.map(mg => {
-          const isCollapsed = !!collapsedMonths[mg.monthKey]
+          const isCollapsed = collapsedMonths[mg.monthKey] !== false
           return (
             <MonthGanttSection
               key={mg.monthKey}
