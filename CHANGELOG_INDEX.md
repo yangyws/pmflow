@@ -22,7 +22,20 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Gantt Month Collapse Persistence & Auto-expand Guard (CR-235)
+### Latest Changes: Bug Task Workflow & Creator Verification Closure (CR-237)
+- **變更檔案**:
+  - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **問題單完成權限防護 (`CR-237`)**：針對 `type: BUG` 之任務，僅有原建立者 (`created_by`)、專案管理者 (`MANAGER`) 或原建立者之代理人有權將進度改為 100% 或將狀態切換為 `DONE` 分類，否則拒絕並拋出權限錯誤。
+  - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **問題單流轉與驗收操作 (`CR-237`)**：移除填寫解決內容自動 100% 關閉之邏輯；新增「轉回原建立者驗證」按鈕（將負責人設回建立者儲存）與「確認解決並關閉 (100%)」按鈕（僅原建立者與管理者可見與執行）。
+
+### Previous Changes: Graph Edge Layering Hierarchy & Menu Box Isolation (CR-236)
+- **變更檔案**:
+  - [`apps/web/src/pages/TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **選單點選收納盒隔離顯示 (`CR-236`)**：當由左側 Menu 點擊收納盒時，自動隱藏收納盒以外的所有其他卡片與連線，僅專注顯示該收納盒及其內部卡片，並提供「✕ 顯示全部」按鈕。
+    2. **關聯線層級嚴格置頂 (`CR-236`)**：調整動態節點 `zIndex` 階層（卡片基礎 5、子卡片 6、收納盒 0、關聯 10、選取 12），全數低於邊線容器之 `zIndex: 15`，確保關聯線始終覆蓋於卡片與收納盒之上。
+
+### Previous Changes: Gantt Month Collapse Persistence & Auto-expand Guard (CR-235)
 - **變更檔案**:
   - [`apps/web/src/pages/Gantt.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Gantt.tsx):
     1. **月份收折狀態持久化 (`CR-235`)**：改用 `useRemembered` 將 `collapsedMonths` 存入 `localStorage`，切換頁籤或重新整理後完整保留使用者的收折/展開偏好。

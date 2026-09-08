@@ -380,14 +380,32 @@ export default async function taskRoutes(app: FastifyInstance) {
       const [before] = await tx<{
         title: string; description: string | null; problem: string | null; type: string; status_key: string; priority: string;
         assignee_id: string | null; parent_id: string | null; start_date: string | null; due_date: string | null;
-        estimate_hours: number | null; schedule_mode: string; progress: number
+        estimate_hours: number | null; schedule_mode: string; progress: number; created_by: string | null
       }[]>`
         SELECT title, description, problem, type, status_key, priority,
                assignee_id, parent_id, start_date::text, due_date::text,
-               estimate_hours, schedule_mode, progress
+               estimate_hours, schedule_mode, progress, created_by
         FROM task WHERE id = ${req.params.id}`
 
       const problem = cleanProblem(b.problem)
+
+      if (before.type === 'BUG') {
+        let isClosing = b.progress !== undefined && b.progress >= 100;
+        if (!isClosing && b.statusKey) {
+          const [st] = await tx<{ category: string }[]>`SELECT category FROM task_status WHERE project_id = ${projectId} AND key = ${b.statusKey}`;
+          if (st?.category === 'DONE') {
+            isClosing = true;
+          }
+        }
+        if (isClosing) {
+          if (role !== 'MANAGER' && user.id !== before.created_by) {
+            const principals = await currentDeputyPrincipals(user.id);
+            if (!before.created_by || !principals.includes(before.created_by)) {
+              throw forbidden('問題單要能夠轉回原始建立者，由原建立者才能關閉 (進度 100% 或狀態設為完成)')
+            }
+          }
+        }
+      }
 
       // 若該任務受上游未完成依賴阻塞 (卡住)，進度禁止為 100%，最高只能為 99%
       if (b.progress !== undefined && b.progress >= 100) {

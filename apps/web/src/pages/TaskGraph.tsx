@@ -1437,14 +1437,29 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     lastFocusedTsRef.current = menuFocusTarget.ts
 
     if (!menuFocusTarget.id) {
-      // 點擊「全部任務」：清除節點選取狀態，並重設鏡頭平滑顯示全圖
+      // 點擊「全部任務」：清除節點選取狀態與收納盒隔離過濾，並重設鏡頭平滑顯示全圖
       setSelectedNodeId(null)
+      setIsolatedBoxId(null)
       fitView({ duration: 500, padding: 0.2 })
       return
     }
 
-    setSelectedNodeId(menuFocusTarget.id)
-    centerOnNode(menuFocusTarget.id, 600)
+    const targetNode = nodes.find((n) => n.id === menuFocusTarget.id)
+    const isBox = (targetNode?.data as SimpleGraphNodeData)?.mode === 'box'
+
+    if (isBox) {
+      // 若從 Menu 點擊的是收納盒，隔離顯示該收納盒及其內部所有卡片，隱藏其他無關卡片
+      setIsolatedBoxId(menuFocusTarget.id)
+      setSelectedNodeId(menuFocusTarget.id)
+      setTimeout(() => {
+        centerOnNode(menuFocusTarget.id!, 600)
+      }, 50)
+    } else {
+      // 若點擊的是非收納盒的卡片，清除收納盒隔離狀態以利查看上下文
+      setIsolatedBoxId(null)
+      setSelectedNodeId(menuFocusTarget.id)
+      centerOnNode(menuFocusTarget.id, 600)
+    }
   }, [menuFocusTarget, nodes, fitView, centerOnNode])
 
   // 當切換頁籤回來或外部 focusedTaskId 變更時，自動平滑聚焦至目標任務卡片
@@ -1624,9 +1639,14 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
     [onSelectTask]
   )
 
+  const [isolatedBoxId, setIsolatedBoxId] = useState<string | null>(null)
+  const isolatedBoxIdRef = useRef<string | null>(null)
+  isolatedBoxIdRef.current = isolatedBoxId
+
   const onPaneClick = useCallback(() => {
     if (isDraggingRef.current) return
     setSelectedNodeId(null)
+    setIsolatedBoxId(null)
     onSelectTask?.('')
   }, [onSelectTask])
   const [alertMsg, setAlertMsg] = useState<string | null>(null)
@@ -1695,8 +1715,27 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
         addChildrenOf(pId)
       }
     })
+
+    // Menu 選擇收納盒：隔離僅保留該收納盒及其內部卡片，隱藏收納盒之外的其他所有節點
+    if (isolatedBoxId) {
+      const allowedIds = new Set<string>([isolatedBoxId])
+      const collectDescendants = (pId: string) => {
+        nodes.filter((n) => n.parentId === pId).forEach((child) => {
+          allowedIds.add(child.id)
+          collectDescendants(child.id)
+        })
+      }
+      collectDescendants(isolatedBoxId)
+
+      nodes.forEach((n) => {
+        if (!allowedIds.has(n.id)) {
+          hidden.add(n.id)
+        }
+      })
+    }
+
     return hidden
-  }, [nodes, collapsedNodes])
+  }, [nodes, collapsedNodes, isolatedBoxId])
 
   const dragStartPosMap = useRef<Record<string, { x: number; y: number }>>({})
   const hasFittedRef = useRef(false)
@@ -4123,15 +4162,17 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           height: isBox && isCollapsed ? undefined : node.style?.height,
           minHeight: 90,
         },
-        zIndex: isSelected
-          ? 50
-          : isRelated
-            ? 35
-            : isBox
-              ? 2
-              : node.parentId
-                ? 25
-                : 20,
+        zIndex: node.type?.startsWith('annotation')
+          ? node.zIndex
+          : isSelected
+            ? 12
+            : isRelated
+              ? 10
+              : isBox
+                ? 0
+                : node.parentId
+                  ? 6
+                  : 5,
         extent: NODE_EXTENT,
         data: {
           ...node.data,
@@ -4273,6 +4314,23 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 select-none font-medium shrink-0">
               🔒 {T.flow.shared.readOnly}
             </span>
+          )}
+
+          {isolatedBoxId && (
+            <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0">
+              <span>📦 僅顯示收納盒</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsolatedBoxId(null)
+                  fitView({ duration: 400, padding: 0.2 })
+                }}
+                className="ml-1 text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 cursor-pointer font-bold"
+                title="顯示全部卡片"
+              >
+                ✕ 顯示全部
+              </button>
+            </div>
           )}
         </div>
 

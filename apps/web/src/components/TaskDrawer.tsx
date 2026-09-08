@@ -334,7 +334,7 @@ export function TaskDrawer({
    */
   type Draft = Partial<Pick<TaskDetail,
     'title' | 'description' | 'problem' | 'type' | 'statusKey' | 'priority' | 'progress'
-    | 'startDate' | 'dueDate' | 'scheduleMode'>>
+    | 'startDate' | 'dueDate' | 'scheduleMode' | 'assigneeId'>>
   const [draft, setDraft] = useState<Draft>({})
   const edit = (v: Draft) => setDraft(d => ({ ...d, ...v }))
   /** 畫面上顯示的值：伺服器的資料疊上還沒保存的修改 */
@@ -830,28 +830,35 @@ export function TaskDrawer({
                         <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
                           解決內容
                         </h3>
-                        <span className="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                          （填寫即視為 100% 完成解決）
-                        </span>
                       </div>
                     </div>
                     {canEdit ? (
-                      <textarea
-                        value={form.problem ?? ''}
-                        onChange={e => {
-                          const val = e.target.value
-                          const hasContent = val.trim().length > 0
-                          edit({
-                            problem: val || null,
-                            progress: hasContent ? 100 : 0,
-                          })
-                        }}
-                        rows={3}
-                        placeholder="填寫問題的解決方式、排解步驟或因應措施（填寫即視為100%解決）…"
-                        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
-                                   placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
-                                   focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
-                      />
+                      <div className="flex flex-col gap-2">
+                        <textarea
+                          value={form.problem ?? ''}
+                          onChange={e => {
+                            const val = e.target.value
+                            edit({ problem: val || null })
+                          }}
+                          rows={3}
+                          placeholder="填寫問題的解決方式、排解步驟或因應措施…"
+                          className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
+                                     placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
+                                     focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="default" className="text-xs" 
+                                  onClick={() => save.mutate({ ...(draft as Record<string, unknown>), assigneeId: data.createdById })}>
+                            轉回原建立者驗證
+                          </Button>
+                          {(isManager || isTaskCreator) && (
+                            <Button variant="primary" className="text-xs" 
+                                    onClick={() => save.mutate({ ...(draft as Record<string, unknown>), progress: 100 })}>
+                              確認解決並關閉 (100%)
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <div className="rounded-md border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 p-2.5 sm:p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                         {form.problem?.trim() ? form.problem : (
