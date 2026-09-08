@@ -818,41 +818,82 @@ export default function ListView({
                 </td>
                 {/* 點在下拉上不要順便把任務打開 */}
                 <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ background: st?.color ?? '#cbd5e1' }} />
-                    {canEditTask(t) ? (
-                      <select
-                        value={t.statusKey}
-                        disabled={setStatus.isPending}
-                        onChange={e => setStatus.mutate({ id: t.id, statusKey: e.target.value })}
-                        className="-ml-0.5 cursor-pointer rounded border border-transparent bg-transparent
-                                   py-0.5 pl-1 pr-5 text-xs text-slate-600
-                                   hover:border-slate-300 hover:bg-white
-                                   focus:border-blue-500 focus:bg-white focus:outline-none
-                                   dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900
-                                   dark:focus:bg-slate-900">
-                        {/* 還有對外詢問沒回就不給選「做完」那幾個（規矩見 AGENTS.md）。
-                            灰掉而不是抽掉 —— 整個不見的話，看的人不知道那些狀態
-                            跑哪去了。目前這一個一定選得到，否則下拉會顯示成別的狀態，
-                            一存檔就把它靜悄悄改掉 */}
-                        {statuses.map(s => (
-                          <ColorOption key={s.key} value={s.key} color={s.color} dark={dark}
-                                       disabled={hasOpenInquiry(t) && s.category === 'DONE'
-                                                 && s.key !== t.statusKey}>
-                            {s.name}
-                          </ColorOption>
-                        ))}
-                      </select>
-                    ) : (
-                      /* 改不動就不要畫成下拉。游標停著才說明原因，
-                         每一列都印一句「沒有權限」會把整張表變成告示欄 */
-                      <span className="py-0.5 text-xs text-slate-600 dark:text-slate-300"
-                            title={T.task.permission.cannotChangeStatus}>
-                        {st?.name ?? T.common.none}
+                  {t.type === 'BUG' ? (() => {
+                    const doneStatus = statuses.find(s => s.category === 'DONE') ?? statuses[statuses.length - 1]
+                    const todoStatus = statuses.find(s => s.category !== 'DONE') ?? statuses[0]
+                    const canChangeBug = canEditTask(t) && (role === 'MANAGER' || t.createdById === user?.id)
+                    return (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ background: isResolvedBug ? '#10b981' : '#ef4444' }} />
+                        {canChangeBug ? (
+                          <select
+                            value={isResolvedBug ? (doneStatus?.key ?? 'DONE') : (todoStatus?.key ?? 'TODO')}
+                            disabled={setStatus.isPending}
+                            onChange={e => {
+                              const val = e.target.value
+                              setStatus.mutate({
+                                id: t.id,
+                                statusKey: val === doneStatus?.key ? doneStatus.key : todoStatus.key
+                              })
+                            }}
+                            className="-ml-0.5 cursor-pointer rounded border border-transparent bg-transparent
+                                       py-0.5 pl-1 pr-5 text-xs text-slate-600 font-medium
+                                       hover:border-slate-300 hover:bg-white
+                                       focus:border-blue-500 focus:bg-white focus:outline-none
+                                       dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900
+                                       dark:focus:bg-slate-900">
+                            <ColorOption value={todoStatus.key} color="#ef4444" dark={dark}>
+                              未解決
+                            </ColorOption>
+                            <ColorOption value={doneStatus.key} color="#10b981" dark={dark}>
+                              已解決
+                            </ColorOption>
+                          </select>
+                        ) : (
+                          <span className={cx("py-0.5 text-xs font-medium", isResolvedBug ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                            {isResolvedBug ? '已解決' : '未解決'}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
+                    )
+                  })() : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ background: st?.color ?? '#cbd5e1' }} />
+                      {canEditTask(t) ? (
+                        <select
+                          value={t.statusKey}
+                          disabled={setStatus.isPending}
+                          onChange={e => setStatus.mutate({ id: t.id, statusKey: e.target.value })}
+                          className="-ml-0.5 cursor-pointer rounded border border-transparent bg-transparent
+                                     py-0.5 pl-1 pr-5 text-xs text-slate-600
+                                     hover:border-slate-300 hover:bg-white
+                                     focus:border-blue-500 focus:bg-white focus:outline-none
+                                     dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900
+                                     dark:focus:bg-slate-900">
+                          {/* 還有對外詢問沒回就不給選「做完」那幾個（規矩見 AGENTS.md）。
+                              灰掉而不是抽掉 —— 整個不見的話，看的人不知道那些狀態
+                              跑哪去了。目前這一個一定選得到，否則下拉會顯示成別的狀態，
+                              一存檔就把它靜悄悄改掉 */}
+                          {statuses.map(s => (
+                            <ColorOption key={s.key} value={s.key} color={s.color} dark={dark}
+                                         disabled={hasOpenInquiry(t) && s.category === 'DONE'
+                                                   && s.key !== t.statusKey}>
+                              {s.name}
+                            </ColorOption>
+                          ))}
+                        </select>
+                      ) : (
+                        /* 改不動就不要畫成下拉。游標停著才說明原因，
+                           每一列都印一句「沒有權限」會把整張表變成告示欄 */
+                        <span className="py-0.5 text-xs text-slate-600 dark:text-slate-300"
+                              title={T.task.permission.cannotChangeStatus}>
+                          {st?.name ?? T.common.none}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2"><InquiryBadge state={t.inquiryState} /></td>
                 <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{fmt(startDate)}</td>

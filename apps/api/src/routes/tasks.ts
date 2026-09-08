@@ -404,6 +404,30 @@ export default async function taskRoutes(app: FastifyInstance) {
               throw forbidden('問題單要能夠轉回原始建立者，由原建立者才能關閉 (進度 100% 或狀態設為完成)')
             }
           }
+          if (b.progress === undefined) b.progress = 100;
+          if (!b.statusKey) {
+            const [doneSt] = await tx<{ key: string }[]>`SELECT key FROM task_status WHERE project_id = ${projectId} AND category = 'DONE' ORDER BY rank LIMIT 1`;
+            if (doneSt) b.statusKey = doneSt.key;
+          }
+        } else {
+          // 若重置回未解決
+          let isReopening = false;
+          if (b.progress !== undefined && b.progress < 100 && (before.progress ?? 0) >= 100) {
+            isReopening = true;
+          }
+          if (b.statusKey) {
+            const [st] = await tx<{ category: string }[]>`SELECT category FROM task_status WHERE project_id = ${projectId} AND key = ${b.statusKey}`;
+            if (st?.category !== 'DONE' && ((before.progress ?? 0) >= 100 || before.status_key === 'DONE')) {
+              isReopening = true;
+            }
+          }
+          if (isReopening) {
+            if (b.progress === undefined) b.progress = 0;
+            if (!b.statusKey) {
+              const [todoSt] = await tx<{ key: string }[]>`SELECT key FROM task_status WHERE project_id = ${projectId} AND category != 'DONE' ORDER BY rank LIMIT 1`;
+              if (todoSt) b.statusKey = todoSt.key;
+            }
+          }
         }
       }
 

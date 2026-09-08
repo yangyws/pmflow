@@ -615,26 +615,63 @@ export function TaskDrawer({
                 </Field>
                 <Field label={T.task.drawer.fieldStatus}>
                   {canEdit ? (
-                    /*
-                     * 還有對外詢問沒回的時候，「算是做完了」那幾個狀態不畫出來
-                     * （規矩見 AGENTS.md；後端也擋，這裡只是不要畫出按了會被拒絕的選項）。
-                     * 目前這一個永遠留著 —— 既有資料可能本來就違反，
-                     * 拿掉的話下拉會顯示成別的狀態，然後一存檔就靜悄悄改掉它。
-                     */
-                    <Select value={form.statusKey}
-                            onChange={e => edit({ statusKey: e.target.value })}
-                            className="w-full">
-                      {statuses.map(s => (
-                        <ColorOption key={s.key} value={s.key} color={s.color} dark={dark}
-                                     disabled={openInquiries > 0 && s.category === 'DONE'
-                                               && s.key !== data.statusKey}>
-                          {s.name}
-                        </ColorOption>
-                      ))}
-                    </Select>
+                    form.type === 'BUG' ? (
+                      (() => {
+                        const doneStatus = statuses.find(s => s.category === 'DONE') ?? statuses[statuses.length - 1]
+                        const todoStatus = statuses.find(s => s.category !== 'DONE') ?? statuses[0]
+                        const isResolved = isDoneStatus || (form.progress ?? 0) >= 100
+                        return (
+                          <Select
+                            value={isResolved ? (doneStatus?.key ?? 'DONE') : (todoStatus?.key ?? 'TODO')}
+                            onChange={e => {
+                              const val = e.target.value
+                              if (val === doneStatus?.key) {
+                                edit({ statusKey: doneStatus.key, progress: 100 })
+                              } else {
+                                edit({ statusKey: todoStatus.key, progress: 0 })
+                              }
+                            }}
+                            className="w-full"
+                          >
+                            <ColorOption value={todoStatus.key} color="#ef4444" dark={dark}>
+                              未解決
+                            </ColorOption>
+                            <ColorOption
+                              value={doneStatus.key}
+                              color="#10b981"
+                              dark={dark}
+                              disabled={!isManager && !isTaskCreator}
+                              title={(!isManager && !isTaskCreator) ? '僅原建立者或管理者可關閉並標示為已解決' : undefined}
+                            >
+                              已解決
+                            </ColorOption>
+                          </Select>
+                        )
+                      })()
+                    ) : (
+                      /*
+                       * 還有對外詢問沒回的時候，「算是做完了」那幾個狀態不畫出來
+                       * （規矩見 AGENTS.md；後端也擋，這裡只是不要畫出按了會被拒絕的選項）。
+                       * 目前這一個永遠留著 —— 既有資料可能本來就違反，
+                       * 拿掉的話下拉會顯示成別的狀態，然後一存檔就靜悄悄改掉它。
+                       */
+                      <Select value={form.statusKey}
+                              onChange={e => edit({ statusKey: e.target.value })}
+                              className="w-full">
+                        {statuses.map(s => (
+                          <ColorOption key={s.key} value={s.key} color={s.color} dark={dark}
+                                       disabled={openInquiries > 0 && s.category === 'DONE'
+                                                 && s.key !== data.statusKey}>
+                            {s.name}
+                          </ColorOption>
+                        ))}
+                      </Select>
+                    )
                   ) : (
                     <ReadOnlyValue>
-                      {statuses.find(s => s.key === form.statusKey)?.name ?? T.common.none}
+                      {form.type === 'BUG'
+                        ? (isDoneStatus || (form.progress ?? 0) >= 100 ? '已解決' : '未解決')
+                        : (statuses.find(s => s.key === form.statusKey)?.name ?? T.common.none)}
                     </ReadOnlyValue>
                   )}
                 </Field>
@@ -856,10 +893,37 @@ export function TaskDrawer({
                             轉回原建立者驗證
                           </Button>
                           {(isManager || isTaskCreator) && (
-                            <Button variant="primary" className="text-xs" 
-                                    onClick={() => save.mutate({ ...(draft as Record<string, unknown>), progress: 100 })}>
-                              確認解決並關閉 (100%)
-                            </Button>
+                            (data.statusKey === 'DONE' || (data.progress ?? 0) >= 100) ? (
+                              <Button
+                                variant="default"
+                                className="text-xs text-amber-700 dark:text-amber-300 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
+                                onClick={() => {
+                                  const todoStatus = statuses.find(s => s.category !== 'DONE') ?? statuses[0]
+                                  save.mutate({
+                                    ...(draft as Record<string, unknown>),
+                                    progress: 0,
+                                    statusKey: todoStatus?.key
+                                  })
+                                }}
+                              >
+                                ↺ 重置回未解決
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="primary"
+                                className="text-xs cursor-pointer" 
+                                onClick={() => {
+                                  const doneStatus = statuses.find(s => s.category === 'DONE') ?? statuses[statuses.length - 1]
+                                  save.mutate({
+                                    ...(draft as Record<string, unknown>),
+                                    progress: 100,
+                                    statusKey: doneStatus?.key
+                                  })
+                                }}
+                              >
+                                確認解決並關閉 (100%)
+                              </Button>
+                            )
                           )}
                         </div>
                       </div>

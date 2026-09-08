@@ -22,7 +22,16 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Resolved Bug Ticket Green Styling Across Views (CR-239)
+### Latest Changes: Bug Task Status Limited to Unresolved/Resolved with Reset Capability (CR-240)
+- **變更檔案**:
+  - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **問題單雙狀態與進度自動聯動 (`CR-240`)**：問題單（`type: BUG`）狀態簡化為「未解決」與「已解決」兩態。當關閉（已解決）時自動校正為進度 100% 與 DONE 分類（需原建立者或管理者權限）；當重置為未解決時自動校正為進度 0% 與非 DONE 分類狀態。
+  - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **詳情抽屜狀態選單限制與重置按鈕 (`CR-240`)**：問題單狀態下拉選單僅呈現「未解決」（紅色標籤）與「已解決」（綠色標籤），非原建立者/管理者無法直接選「已解決」；已解決問題單新增「↺ 重置回未解決」按鈕，允許原建立者與管理者一鍵重啟問題單。
+  - [`apps/web/src/pages/List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **清單狀態下拉選單同步限制 (`CR-240`)**：清單中問題單狀態下拉選單限制僅提供「未解決」與「已解決」選項，切換「未解決」時同步將進度更新為 0%。
+
+### Previous Changes: Resolved Bug Ticket Green Styling Across Views (CR-239)
 - **變更檔案**:
   - [`apps/web/src/pages/TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **已解決問題單綠色樣式 (`CR-239`)**：當問題單進度達 100% / 完成時，關聯圖卡片底色與邊框套用綠色樣式（`bg-emerald-50/80 border-emerald-400`）、頂部邊條與種類標籤轉為翡翠綠（`#10b981`），並於卡片底部顯示「✓ 已解決 (100%)」。
