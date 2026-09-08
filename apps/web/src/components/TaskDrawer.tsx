@@ -224,7 +224,7 @@ export function TaskDrawer({
   })
 
   const createProblemCard = useMutation({
-    mutationFn: async (v: { title: string; content: string }) => {
+    mutationFn: async (v: { title: string; content: string; dueDate?: string }) => {
       // 1. 確保目前卡片標記為收納盒
       try {
         const key = 'pmflow_graph_container_boxes'
@@ -243,6 +243,7 @@ export function TaskDrawer({
         description: v.content || null,
         type: bugTypeKey,
         parentId: taskId,
+        dueDate: v.dueDate || undefined,
       })
 
       // 4. 自動建立與原任務單的關聯線 (Link)
@@ -675,7 +676,7 @@ export function TaskDrawer({
                     </ReadOnlyValue>
                   )}
                 </Field>
-                <div className={cx(form.type === 'BUG' ? "col-span-2 sm:col-span-4" : "col-span-2 sm:col-span-2")}>
+                <div className="col-span-2 sm:col-span-2">
                 <Field label={T.task.drawer.fieldAssignee}>
                   {canEdit ? (
                     /* 選了人不會馬上送出：下面會跳出交接說明，按了才算數 */
@@ -765,7 +766,7 @@ export function TaskDrawer({
                   </div>
                 )}
                 {/* 開始與結束擺在同一格，中間一個破折號 —— 問題單免設起訖日 */}
-                {form.type !== 'BUG' && data.type !== 'BUG' && (
+                {form.type !== 'BUG' && data.type !== 'BUG' ? (
                   <div className="col-span-2 sm:col-span-4">
                     <Field label={`${T.task.drawer.fieldStart} – ${T.task.drawer.fieldDue}`}>
                       {canEdit ? (
@@ -787,6 +788,28 @@ export function TaskDrawer({
                       )}
                     </Field>
                   </div>
+                ) : (
+                  <>
+                    <Field label={T.task.drawer.fieldCreatedAt}>
+                      <ReadOnlyValue>
+                        {fmtDate(data.createdAt || data.startDate || null)}
+                      </ReadOnlyValue>
+                    </Field>
+                    <Field label={T.task.drawer.fieldDeadline}>
+                      <ReadOnlyValue>
+                        <span className={cx(
+                          data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE'
+                            ? "text-red-600 font-semibold dark:text-red-400"
+                            : ""
+                        )}>
+                          {fmtDate(data.dueDate || null)}
+                          {data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE' && (
+                            <span className="ml-1 text-[10px] text-red-500 font-normal">（逾期）</span>
+                          )}
+                        </span>
+                      </ReadOnlyValue>
+                    </Field>
+                  </>
                 )}
               </div>
 
@@ -932,7 +955,7 @@ export function TaskDrawer({
                   onClearProblem={() => edit({ problem: null })}
                   onSelectTask={onSelectTask}
                   isResolving={resolveProblem.isPending}
-                  onCreateProblemCard={(title, content) => createProblemCard.mutate({ title, content })}
+                  onCreateProblemCard={(title, content, dueDate) => createProblemCard.mutate({ title, content, dueDate })}
                   isCreatingCard={createProblemCard.isPending}
                 />
               )}
@@ -1455,11 +1478,12 @@ function ProblemSection({
   onClearProblem: () => void
   onSelectTask?: (id: string) => void
   isResolving: boolean
-  onCreateProblemCard: (title: string, content: string) => void
+  onCreateProblemCard: (title: string, content: string, dueDate?: string) => void
   isCreatingCard: boolean
 }) {
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [newDueDate, setNewDueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [showHistory, setShowHistory] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -1484,9 +1508,10 @@ function ProblemSection({
     }
 
     setValidationError(null)
-    onCreateProblemCard(trimmedTitle, trimmedContent)
+    onCreateProblemCard(trimmedTitle, trimmedContent, newDueDate || undefined)
     setNewTitle('')
     setNewContent('')
+    setNewDueDate(new Date().toISOString().slice(0, 10))
   }
 
   return (
@@ -1558,6 +1583,18 @@ function ProblemSection({
             className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
                        placeholder:text-slate-400 focus:border-blue-500 focus:outline-none
                        focus:ring-2 focus:ring-blue-500/40 dark:text-slate-100"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            問題截止日期（建立後不可異動）
+          </label>
+          <Input
+            type="date"
+            value={newDueDate}
+            onChange={e => setNewDueDate(e.target.value)}
+            className="w-full text-xs sm:text-sm"
           />
         </div>
 

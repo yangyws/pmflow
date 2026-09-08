@@ -86,6 +86,8 @@ export const task = {
     fieldPriority: '優先級',
     fieldStart: '開始日',
     fieldDue: '結束日',
+    fieldCreatedAt: '建立日期',
+    fieldDeadline: '截止日期',
     /** 進度是拖拉條旁邊直接顯示數字，標籤就不用再帶一個 % */
     fieldProgress: '進度',
     /** 拖拉條的無障礙名稱，以及旁邊那個數字 */

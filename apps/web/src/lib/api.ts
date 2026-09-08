@@ -336,6 +336,8 @@ export interface Task {
    * 這裡只是不要畫出按了會被拒絕的按鈕）。
    */
   createdById: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF' | 'RELATES' | 'BLOCKS' | 'DUPLICATES' | 'REQUIRES'

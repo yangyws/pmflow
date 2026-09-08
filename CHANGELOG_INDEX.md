@@ -22,7 +22,19 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Mandatory Title & Content Validation for Problem Cards (CR-241)
+### Latest Changes: Immutable Created and Deadline Dates with Overdue Detection for Bug Tickets (CR-242)
+- **變更檔案**:
+  - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
+    1. **問題單建立日與截止日不可異動保護 (`CR-242`)**：在 `PATCH /tasks/:id` 路由中加入檢查，若更新之卡片為問題單（`before.type === 'BUG'`），嚴格禁止修改 `startDate` 與 `dueDate`，拋出「問題單建立日期不可異動」與「問題單截止日期不可異動」例外。
+  - [`apps/web/src/lib/api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
+    1. **Task 型別補充 (`CR-242`)**：補充 `createdAt` 與 `updatedAt` 屬性，供前端介面讀取卡片建立時間戳。
+  - [`apps/web/src/strings/task.ts`](file:///D:/github/pmflow/apps/web/src/strings/task.ts):
+    1. **字典定義補充 (`CR-242`)**：新增 `fieldCreatedAt: '建立日期'` 與 `fieldDeadline: '截止日期'` 字串。
+  - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **抽屜基本欄位只讀化與逾期標記 (`CR-242`)**：針對問題單（`type === 'BUG'`），移除可編輯之起訖日期區塊，改為獨立之唯讀「建立日期」（取自 `createdAt` 或 `startDate`）與唯讀「截止日期」（取自 `dueDate`）；若截止日期已過且尚未解決，以顯著紅色文字標示並附加「（逾期）」提示。
+    2. **開立問題單指定截止日 (`CR-242`)**：在開立問題卡片區塊中新增「問題截止日期（建立後不可異動）」欄位，預設為當日，建立時一併寫入資料庫，建立後即不可修改。
+
+### Previous Changes: Mandatory Title & Content Validation for Problem Cards (CR-241)
 - **變更檔案**:
   - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
     1. **問題單建立校驗 (`CR-241`)**：建立問題單（`type: 'BUG'`）時，後端強制檢查標題（`title`）與內容描述（`description`），兩者缺一即拋出明確錯誤提示（如「開立問題單時必須填寫問題標題」或「開立問題單時必須填寫問題內容/描述」）。

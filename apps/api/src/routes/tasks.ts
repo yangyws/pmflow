@@ -439,6 +439,14 @@ export default async function taskRoutes(app: FastifyInstance) {
             }
           }
         }
+
+        // 問題單（BUG）建立後不可異動開始日與截止日（到期日）
+        if (b.startDate !== undefined && b.startDate !== before.start_date) {
+          throw badRequest('問題單建立日期不可異動')
+        }
+        if (b.dueDate !== undefined && b.dueDate !== before.due_date) {
+          throw badRequest('問題單截止日期不可異動')
+        }
       }
 
       // 若該任務受上游未完成依賴阻塞 (卡住)，進度禁止為 100%，最高只能為 99%
