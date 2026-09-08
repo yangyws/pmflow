@@ -831,8 +831,8 @@ function DayCell({
           {/* 方案 C：微型彩色圓點 Indicator (避免雜亂，滑鼠懸停顯示詳情) */}
           {totalEventCount > 0 && (
             <div className="flex items-center gap-0.5 ml-0.5 select-none">
-              {dayEvents.tasks.some(t => t.type === 'BUG' || !!t.problem || isTaskOverdue(t.dueDate, t.progress)) && (
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-white dark:ring-slate-900" title="有問題單/遭遇問題/逾期任務" />
+              {dayEvents.tasks.some(t => (t.type === 'BUG' ? (t.progress ?? 0) < 100 : (!!t.problem || isTaskOverdue(t.dueDate, t.progress)))) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-white dark:ring-slate-900" title="有未解決問題單/遭遇問題/逾期任務" />
               )}
               {dayEvents.tasks.some(t => t.progress < 100) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 ring-1 ring-white dark:ring-slate-900" title="有進行中任務" />
@@ -873,7 +873,13 @@ function DayCell({
               <div key={t.id} className="truncate flex items-center gap-1 text-slate-200">
                 <span className="shrink-0 font-mono text-[10px] font-bold text-blue-400">{t.ref || 'MRG'}</span>
                 <span className="truncate">{t.title}</span>
-                {t.type !== 'BUG' && <span className="ml-auto shrink-0 text-[10px] text-slate-400">{t.progress}%</span>}
+                {t.type === 'BUG' ? (
+                  t.progress >= 100 ? (
+                    <span className="ml-auto shrink-0 text-[10px] text-emerald-400 font-medium">✓ 已解決</span>
+                  ) : null
+                ) : (
+                  <span className="ml-auto shrink-0 text-[10px] text-slate-400">{t.progress}%</span>
+                )}
               </div>
             ))}
             {dayEvents.inquiries.map(i => (

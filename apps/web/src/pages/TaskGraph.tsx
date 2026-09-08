@@ -181,6 +181,7 @@ export type TaskGraphNodeData = {
   parallelPeers?: string[]
   childCount?: number
   isOverdue?: boolean
+  isDone?: boolean
   dueDate?: string | null
   inquiryState?: string | null
   isSelected?: boolean
@@ -293,6 +294,7 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
   const isBox = data.mode === 'box'
   const nodeW = width ?? (isBox ? 340 : 256)
   const nodeH = height ?? (isBox ? 260 : undefined)
+  const isResolvedBug = data.taskType === 'BUG' && data.isDone
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -472,16 +474,19 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
       ) : (
         <div
           className={cx(
-            'w-full min-w-[256px] min-h-[90px] rounded-lg border bg-white shadow-sm hover:shadow-md transition-colors duration-150 dark:bg-slate-900 select-none pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
+            'w-full min-w-[256px] min-h-[90px] rounded-lg border shadow-sm hover:shadow-md transition-colors duration-150 select-none pointer-events-auto flex flex-col justify-between overflow-hidden opacity-100',
+            isResolvedBug
+              ? 'bg-emerald-50/80 border-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-600'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
             data.movingUserName ? 'ring-2 ring-indigo-400/80 cursor-not-allowed opacity-90' : 'cursor-grab active:cursor-grabbing',
             data.isSelected
               ? 'border-blue-500 ring-2 ring-blue-500 shadow-xl'
-              : 'border-slate-200 dark:border-slate-800'
+              : ''
           )}
         >
           <div
             className="h-1 rounded-t-lg shrink-0"
-            style={{ backgroundColor: data.typeColor || '#3b82f6' }}
+            style={{ backgroundColor: isResolvedBug ? '#10b981' : (data.typeColor || '#3b82f6') }}
           />
           <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
             {/* 第一行：卡片按鈕 + MRG編號 + 種類名稱 + 折疊按鈕 */}
@@ -500,7 +505,10 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
                 <span className="shrink-0 font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 pointer-events-none select-none">
                   {data.refText || 'MRG-1'}
                 </span>
-                <TypeBadge name={data.typeName || T.flow.relationGraph.typeTask} color={data.typeColor || '#3178c6'} />
+                <TypeBadge
+                  name={isResolvedBug ? `${data.typeName || T.flow.relationGraph.typeBug} (已解決)` : (data.typeName || T.flow.relationGraph.typeTask)}
+                  color={isResolvedBug ? '#10b981' : (data.typeColor || '#3178c6')}
+                />
               </div>
               {((typeof data.childCount === 'number' && data.childCount > 0) ||
                 (typeof data.problemCount === 'number' && data.problemCount > 0)) && (
@@ -580,7 +588,13 @@ function SimpleNodeView({ id, data, width, height, isConnectable }: NodeProps<Cu
             <div className="font-semibold text-slate-800 text-xs dark:text-slate-100 pointer-events-none select-none break-words w-full leading-snug" title={data.label}>
               {data.label || T.flow.relationGraph.untitledTask}
             </div>
-            {data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress ?? 0} />}
+            {isResolvedBug ? (
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                <span>✓ 已解決 (100%)</span>
+              </div>
+            ) : (
+              data.taskType !== 'BUG' && <NodeProgressBar progress={data.progress ?? 0} />
+            )}
           </div>
         </div>
       )}
@@ -2882,7 +2896,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
           const kH = isKBox ? Math.max(280, resizedMap[k.id]?.height ?? 280) : 90
 
           const kStatusCat = statusCatMap.get(k.statusKey)
-          const kOverdue = !!(k.dueDate && k.dueDate < today && (k.progress ?? 0) < 100 && kStatusCat !== 'DONE' && k.statusKey !== 'DONE')
+          const kIsDone = kStatusCat === 'DONE' || k.statusKey === 'DONE' || (k.progress ?? 0) >= 100
+          const kOverdue = !!(k.dueDate && k.dueDate < today && !kIsDone)
           const kParallelInfo = parallelMap.get(k.id)
 
           return {
@@ -2897,6 +2912,8 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
               label: k.title,
               refText: k.ref,
               mode: isKBox ? 'box' : 'card',
+              progress: k.progress ?? 0,
+              isDone: kIsDone,
               typeColor: typeColorOf(k.type),
               typeName: typeNameOf(k.type),
               taskType: k.type,
@@ -3045,6 +3062,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
                 refText: k.ref,
                 mode: 'card',
                 progress: rolledMap.get(k.id)?.progress ?? k.progress ?? 0,
+                isDone: kIsDone,
                 typeColor: typeColorOf(k.type),
                 typeName: typeNameOf(k.type),
                 taskType: k.type,
@@ -3096,6 +3114,7 @@ function TaskGraphInner({ projectId, tasks, onOpenTask, focusedTaskId, menuFocus
             refText: t.ref,
             mode: 'card',
             progress: rolledMap.get(t.id)?.progress ?? t.progress ?? 0,
+            isDone: tIsDone,
             typeColor: typeColorOf(t.type),
             typeName: typeNameOf(t.type),
             taskType: t.type,

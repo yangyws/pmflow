@@ -22,7 +22,22 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Graph Connection Validations & Informative Error Messages (CR-238)
+### Latest Changes: Resolved Bug Ticket Green Styling Across Views (CR-239)
+- **變更檔案**:
+  - [`apps/web/src/pages/TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
+    1. **已解決問題單綠色樣式 (`CR-239`)**：當問題單進度達 100% / 完成時，關聯圖卡片底色與邊框套用綠色樣式（`bg-emerald-50/80 border-emerald-400`）、頂部邊條與種類標籤轉為翡翠綠（`#10b981`），並於卡片底部顯示「✓ 已解決 (100%)」。
+  - [`apps/web/src/pages/Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
+    1. **看板卡片同步綠色標記 (`CR-239`)**：看板中已關閉問題單卡片轉為綠色外框與底色，種類標籤顯示「已解決問題單」（`#10b981`），右下角顯示「✓ 已解決」。
+  - [`apps/web/src/pages/List.tsx`](file:///D:/github/pmflow/apps/web/src/pages/List.tsx):
+    1. **清單列表綠底與進度標記 (`CR-239`)**：已關閉問題單列表列套用翡翠綠淡底色、種類標籤轉為「已解決問題單」，進度欄位顯示「✓ 已解決 (100%)」。
+  - [`apps/web/src/components/EpicSidebar.tsx`](file:///D:/github/pmflow/apps/web/src/components/EpicSidebar.tsx):
+    1. **左側選單同步打勾與標籤 (`CR-239`)**：已關閉問題單切換為綠色種類標籤，並在項目右側顯示「✓」完成打勾標記。
+  - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
+    1. **任務詳情抽屜標題同步 (`CR-239`)**：頂部種類標籤在問題單解決時顯示為綠色「已解決問題單」。
+  - [`apps/web/src/pages/Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
+    1. **行事曆紅點排除與懸浮提示 (`CR-239`)**：已解決問題單不再觸發紅色警示圓點，浮動摘要視窗標記為「✓ 已解決」。
+
+### Previous Changes: Graph Connection Validations & Informative Error Messages (CR-238)
 - **變更檔案**:
   - [`apps/web/src/pages/TaskGraph.tsx`](file:///D:/github/pmflow/apps/web/src/pages/TaskGraph.tsx):
     1. **連線放開回呼解鎖 (`CR-238`)**：修正 `isValidConnection` 阻擋拖曳放開導致 `onConnect` 無法觸發的靜默失敗問題，使所有接線動作均能進入 `onConnect` 執行業務校驗並跳出提示彈窗。

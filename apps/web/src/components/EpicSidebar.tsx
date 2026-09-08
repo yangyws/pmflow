@@ -944,16 +944,16 @@ function TreeNode({
     return false
   }, [dividerAfterTaskIdSet, task.id, open, kids, childrenOf])
   // Ref: CR-086 — 設定預設種類顏色對映，修改種類時側欄即時切換顏色
+  const isTaskDone = (stat ? stat.progress >= 100 : (task.progress ?? 0) >= 100) || task.statusKey === 'DONE'
+  const isResolvedBug = task.type === 'BUG' && isTaskDone
   const kind = types.find(t => t.key === task.type)
-  const kindName = kind?.name ?? task.type
-  const kindColor = kind?.color ?? DEFAULT_TYPE_COLORS[task.type] ?? '#94a3b8'
+  const kindName = isResolvedBug ? '已解決問題單' : (kind?.name ?? task.type)
+  const kindColor = isResolvedBug ? '#10b981' : (kind?.color ?? DEFAULT_TYPE_COLORS[task.type] ?? '#94a3b8')
   const isRoot = depth === 0
   const active = task.id === selectedTaskId || (isRoot && selectedEpicId === task.id)
 
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
-
-  const isTaskDone = (stat ? stat.progress >= 100 : (task.progress ?? 0) >= 100) || task.statusKey === 'DONE'
   const blockedSelf = blockedByMap?.get(task.id)
   const childBlocked = open ? 0 : blockedIn(task.id)
   const bugs = open ? 0 : bugsUnder(task.id)
@@ -1057,7 +1057,7 @@ function TreeNode({
               )}
 
               {/* 完成打勾：進度 100% 才能打勾 */}
-              {task.type !== 'BUG' && isTaskDone && (
+              {isTaskDone && (
                 <span aria-hidden title={T.nav.sidebar.doneDot}
                       className="shrink-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto">✓</span>
               )}

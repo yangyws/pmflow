@@ -566,6 +566,8 @@ export default function ListView({
             const dueDate = r?.dueDate ?? t.dueDate
             const overdue = isTaskOverdue(dueDate, progress)
             const hasUnread = unreadTaskIds.has(t.id)
+            const isDone = statusCatMap.get(t.statusKey) === 'DONE' || t.statusKey === 'DONE' || (progress ?? 0) >= 100
+            const isResolvedBug = t.type === 'BUG' && isDone
             return (
               <Fragment key={t.id}>
               <tr ref={el => {
@@ -585,7 +587,9 @@ export default function ListView({
                     'group cursor-pointer border-t border-slate-100 transition-colors dark:border-slate-800',
                     t.id === focusedTaskId
                       ? 'bg-blue-50 dark:bg-blue-900/30'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800',
+                      : isResolvedBug
+                        ? 'bg-emerald-50/40 hover:bg-emerald-50/70 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800',
                     hasUnread && 'pmflow-flash'
                   )}>
                 <td className="px-3 py-2">
@@ -614,7 +618,10 @@ export default function ListView({
                     )}
                     {/* 種類色標：事件顏色+事件 */}
                     {typeOf(t.type) && (
-                      <TypeBadge name={typeOf(t.type)} color={typeColorOf(t.type)} />
+                      <TypeBadge
+                        name={isResolvedBug ? '已解決問題單' : typeOf(t.type)}
+                        color={isResolvedBug ? '#10b981' : typeColorOf(t.type)}
+                      />
                     )}
                     <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-bold text-slate-500
                                      dark:text-slate-400">{t.ref}</span>
@@ -858,7 +865,13 @@ export default function ListView({
                 </td>
                 <td className="px-3 py-2">
                   {t.type === 'BUG' ? (
-                    <span className="text-xs text-slate-300 dark:text-slate-600 select-none">—</span>
+                    isResolvedBug ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        ✓ 已解決 (100%)
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300 dark:text-slate-600 select-none">—</span>
+                    )
                   ) : (
                     <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
                           title={r?.derived

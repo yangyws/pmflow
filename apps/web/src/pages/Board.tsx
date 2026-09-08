@@ -420,12 +420,14 @@ function Card({
 }) {
   const { unreadTaskIds, markTaskRead } = useUnreadNotifications()
   const hasUnread = unreadTaskIds.has(task.id)
+  const isDone = task.statusKey === 'DONE' || (task.progress ?? 0) >= 100
+  const isResolvedBug = task.type === 'BUG' && isDone
   const typeObj = types.find(t => t.key === task.type)
-  const typeName = typeObj?.name || (task.type === 'BUG' ? '問題單' : '任務單')
-  const typeColor = typeObj?.color || DEFAULT_TYPE_COLORS[task.type] || '#3178c6'
+  const typeName = isResolvedBug ? '已解決問題單' : (typeObj?.name || (task.type === 'BUG' ? '問題單' : '任務單'))
+  const typeColor = isResolvedBug ? '#10b981' : (typeObj?.color || DEFAULT_TYPE_COLORS[task.type] || '#3178c6')
 
   const today = new Date().toISOString().slice(0, 10)
-  const isOverdue = !!(task.dueDate && task.dueDate < today && (task.progress ?? 0) < 100 && task.statusKey !== 'DONE')
+  const isOverdue = !!(task.dueDate && task.dueDate < today && !isDone)
 
   return (
     <div
@@ -442,7 +444,9 @@ function Card({
         'rounded-lg p-2 sm:p-2.5 transition-all',
         isFocused
           ? 'ring-2 ring-blue-500 bg-blue-50/90 dark:bg-blue-900/40 dark:ring-blue-400 shadow-md'
-          : 'bg-white ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600',
+          : isResolvedBug
+            ? 'bg-emerald-50/70 ring-1 ring-emerald-400 dark:bg-emerald-950/30 dark:ring-emerald-700 hover:ring-emerald-500'
+            : 'bg-white ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         overlay ? 'rotate-2 shadow-xl' : '',
         hasUnread && 'pmflow-flash'
@@ -499,13 +503,19 @@ function Card({
       <div className="mt-1.5 flex items-center gap-x-2 gap-y-1 text-[11px] text-slate-400 dark:text-slate-400 flex-wrap">
         {task.dueDate && <span>📅 {task.dueDate.slice(5, 10).replace('-', '/')}</span>}
         {task.assigneeName && <span className="truncate max-w-[90px] sm:max-w-[120px]">👤 {task.assigneeName}</span>}
-        {task.type !== 'BUG' && task.progress > 0 && (
-          <span className="ml-auto flex items-center gap-1 shrink-0">
-            <span className="h-1 w-10 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-              <span className={cx("block h-full", task.progress >= 100 ? "bg-emerald-500" : "bg-red-500")} style={{ width: `${task.progress}%` }} />
-            </span>
-            {task.progress}%
+        {isResolvedBug ? (
+          <span className="ml-auto flex items-center gap-1 shrink-0 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
+            ✓ 已解決
           </span>
+        ) : (
+          task.type !== 'BUG' && task.progress > 0 && (
+            <span className="ml-auto flex items-center gap-1 shrink-0">
+              <span className="h-1 w-10 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <span className={cx("block h-full", task.progress >= 100 ? "bg-emerald-500" : "bg-red-500")} style={{ width: `${task.progress}%` }} />
+              </span>
+              {task.progress}%
+            </span>
+          )
         )}
       </div>
     </div>

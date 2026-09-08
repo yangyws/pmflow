@@ -435,12 +435,16 @@ export function TaskDrawer({
                     {data.ref}
                   </span>
                   {/* 顏色是那一種種類自己的（系統參數頁裡挑的） */}
-                  {typeOf(data.type) && (
-                    <TypeBadge
-                      name={typeOf(data.type)}
-                      color={types.find(t => t.key === data.type)?.color ?? '#94a3b8'}
-                    />
-                  )}
+                  {typeOf(data.type) && (() => {
+                    const isDone = data.statusKey === 'DONE' || (data.progress ?? 0) >= 100
+                    const isResolvedBug = data.type === 'BUG' && isDone
+                    return (
+                      <TypeBadge
+                        name={isResolvedBug ? '已解決問題單' : typeOf(data.type)}
+                        color={isResolvedBug ? '#10b981' : (types.find(t => t.key === data.type)?.color ?? '#94a3b8')}
+                      />
+                    )
+                  })()}
 
                   {/*
                     * 對外詢問的狀況接在種類後面。原本這裡是一顆只講狀態的徽章
@@ -1107,9 +1111,16 @@ export function TaskDrawer({
                       <div className="max-h-32 overflow-y-auto rounded-md bg-white/70 dark:bg-slate-900/70 p-2 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
                         {childTypeSummary.list.map((c) => (
                           <div key={c.id} className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
-                            {typeOf(c.type || 'TASK') && (
-                              <TypeBadge name={typeOf(c.type || 'TASK')} color={types.find(t => t.key === c.type)?.color ?? '#94a3b8'} />
-                            )}
+                            {typeOf(c.type || 'TASK') && (() => {
+                              const isDone = c.statusKey === 'DONE' || (c.progress ?? 0) >= 100
+                              const isResolvedBug = c.type === 'BUG' && isDone
+                              return (
+                                <TypeBadge
+                                  name={isResolvedBug ? '已解決問題單' : typeOf(c.type || 'TASK')}
+                                  color={isResolvedBug ? '#10b981' : (types.find(t => t.key === c.type)?.color ?? '#94a3b8')}
+                                />
+                              )
+                            })()}
                             <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-bold">{c.ref}</span>
                             <span className="truncate">{c.title}</span>
                           </div>
