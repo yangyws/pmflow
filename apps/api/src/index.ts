@@ -25,6 +25,7 @@ import skillRoutes from './routes/skills.js'
 import { seedDemo, seedProblemsIfEmpty, seedBugsIfEmpty, seedProjectTypesIfMissing } from './seed.js'
 
 const app = Fastify({
+  trustProxy: true,
   logger: env.isProd
     ? { level: 'info' }
     : { level: 'info', transport: undefined },

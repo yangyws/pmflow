@@ -7,7 +7,7 @@
 ## 索引
 
 | 索引編號 | 日期 | 主題 | 主要檔案 | 狀態 |
-|---|---|---|---|---|
+| `CR-232` | 2026-09-08 | [動態 Secure 標記與 Fastify trustProxy 支援，解決 HTTP / 區域網路連線下 F5 重新整理誤跳登入頁問題](#cr-232) | `apps/api/src/index.ts`, `apps/api/src/routes/auth.ts`, `apps/api/src/routes/oauth.ts` | 已驗證 |
 | `CR-230` | 2026-09-07 | [行事曆日格事件懸浮清單延遲緩衝停留與移入捲軸滾動互動支援](#cr-230) | `Calendar.tsx` | 已驗證 |
 | `CR-229` | 2026-09-07 | [個人資料與帳號設定選單直達及 Google 帳號綁定/重新綁定功能恢復](#cr-229) | `strings/account.ts`, `strings/nav.ts`, `UserMenu.tsx`, `AccountPanel.tsx`, `Login.tsx` | 已驗證 |
 | `CR-228` | 2026-09-07 | [任務關聯圖與系統流程圖拖曳節點即時廣播與浮動移動標籤支援](#cr-228) | `events.ts`, `canvas.ts`, `ui.tsx`, `api.ts`, `useRealtimeSync.ts`, `TaskGraph.tsx`, `SystemFlow.tsx` | 已驗證 |
@@ -279,6 +279,20 @@
 | 2026-08-01 | [初版](#2026-08-01--初版) | 整個專案 | 已驗證 |
 
 ---
+
+### <a id="cr-232"></a>CR-232 (2026-09-08) — 動態 Secure 標記與 Fastify trustProxy 支援，解決 HTTP / 區域網路連線下 F5 重新整理誤跳登入頁問題
+
+- **問題回報**：為什麼 F5 又被強制回登入畫面？那 http 會有問題嗎？
+- **原因診斷**：
+  1. 後端 `routes/auth.ts` 與 `routes/oauth.ts` 過去發送 `pmflow_rt`（Refresh Token Cookie）時固定使用 `secure: env.isProd`。
+  2. 正式與開發環境容器執行環境變數均為 `NODE_ENV: production`，導致即使以純 HTTP 協定連線（例如透過本機埠口、區域網路 NAS IP、Tailscale 內網無 SSL 存取），Cookie 也被強制加上 `Secure` 旗標。
+  3. 現代瀏覽器在非 HTTPS 連線上會直接丟棄或拒絕儲存帶有 `Secure` 的 Cookie。當使用者按 F5 重新整理時，前端 `AuthProvider` 發起 `/auth/refresh` 請求時沒有 Cookie，後端返回 401 Unauthorized，導致前端被強制判定為未登入並切回登入頁面。
+- **實作與修復**：
+  1. **Fastify 開啟 `trustProxy: true` (`apps/api/src/index.ts`)**：確保 Fastify 能信任反向代理（Caddy / Nginx）轉發之 `x-forwarded-proto`，正確獲取用戶端連線協定。
+  2. **動態 Secure 標記判斷 (`apps/api/src/routes/auth.ts`, `apps/api/src/routes/oauth.ts`)**：
+     - 新增 `isConnectionSecure(req)` 函式，檢驗 `req.protocol === 'https'`、`x-forwarded-proto` 或 `env.publicUrl.startsWith('https://')`。
+     - 若用戶端為純 HTTP，則設定 `secure: false`，瀏覽器能正常儲存並於重新整理時送回 Refresh Token；若為 HTTPS，則設定 `secure: true` 確保安全性。
+  3. **SameSite 採用 `lax` (`apps/api/src/routes/auth.ts`, `apps/api/src/routes/oauth.ts`)**：避免跨端口/跨子域導航時 cookie 遺失，兼顧安全防護與各網段相容性。
 
 ### <a id="cr-230"></a>CR-230 (2026-09-07) — 行事曆日格事件懸浮清單延遲緩衝停留與移入捲軸滾動互動支援
 

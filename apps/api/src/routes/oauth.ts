@@ -218,7 +218,7 @@ export default async function oauthRoutes(app: FastifyInstance) {
       }
 
       const userId = await resolveLogin(provider, claimsWithName)
-      await issueRefreshCookie(reply, userId)
+      await issueRefreshCookie(reply, userId, req)
       return finish(reply, 'login', provider, null)
     } catch (err) {
       return finish(reply, mode, provider, err)
@@ -406,7 +406,16 @@ async function resolveLogin(provider: ProviderId, claims: IdentityClaims): Promi
  * cookie 的設定跟 routes/auth.ts 的 setRefreshCookie 一字不差 ——
  * 兩邊發的是同一種東西，任何一邊改了另一邊也要改。
  */
-async function issueRefreshCookie(reply: FastifyReply, userId: string): Promise<void> {
+function isConnectionSecure(req: FastifyRequest): boolean {
+  if (req.protocol === 'https') return true
+  const protoHeader = req.headers['x-forwarded-proto']
+  if (typeof protoHeader === 'string' && protoHeader.includes('https')) return true
+  if (Array.isArray(protoHeader) && protoHeader.some(p => p.includes('https'))) return true
+  if (env.publicUrl && env.publicUrl.startsWith('https://')) return true
+  return false
+}
+
+async function issueRefreshCookie(reply: FastifyReply, userId: string, req: FastifyRequest): Promise<void> {
   const { raw, hash } = newRefreshToken()
   await sql`
     INSERT INTO refresh_token (user_id, family_id, token_hash, expires_at)
@@ -414,8 +423,8 @@ async function issueRefreshCookie(reply: FastifyReply, userId: string): Promise<
 
   reply.setCookie('pmflow_rt', raw, {
     httpOnly: true,
-    sameSite: 'strict',
-    secure: env.isProd,
+    sameSite: 'lax',
+    secure: isConnectionSecure(req),
     path: '/',
     maxAge: env.refreshTtlSec,
   })

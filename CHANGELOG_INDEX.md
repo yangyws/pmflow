@@ -22,7 +22,14 @@
 
 ## 2. Chronological Change Records (詳細異動紀錄總表)
 
-### Latest Changes: Calendar Cell Event Popover Hover Buffer & Scrollbar Interaction (CR-230)
+### Latest Changes: Dynamic Refresh Token Cookie Secure Flag for HTTP/HTTPS F5 Retention (CR-232)
+- **變更檔案**:
+  - [`apps/api/src/index.ts`](file:///D:/github/pmflow/apps/api/src/index.ts):
+    1. **開啟 Fastify trustProxy (`CR-232`)**：啟用 `trustProxy: true`，使 Fastify 能正確讀取反向代理傳送之 `x-forwarded-proto` 與用戶端實際通訊協定。
+  - [`apps/api/src/routes/auth.ts`](file:///D:/github/pmflow/apps/api/src/routes/auth.ts) & [`apps/api/src/routes/oauth.ts`](file:///D:/github/pmflow/apps/api/src/routes/oauth.ts):
+    1. **動態 Secure 標記與 SameSite Lax (`CR-232`)**：抽換固定 `secure: env.isProd`，新增 `isConnectionSecure(req)` 判斷連線協定；若是純 HTTP（如區網、直接 IP 或本機埠口）則設為 `secure: false`，避免瀏覽器在 F5 重新整理時遺棄 cookie 導致被踢回登入頁；連線為 HTTPS 時維持 `secure: true`，兼顧安全性與可用性。
+
+### Previous Changes: Calendar Cell Event Popover Hover Buffer & Scrollbar Interaction (CR-230)
 - **變更檔案**:
   - [`Calendar.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Calendar.tsx):
     1. **懸浮視窗移入滾動與延遲關閉緩衝 (`CR-230`)**：在 `DayCell` 加入 300ms 關閉延遲緩衝計時器（`closeTimerRef`），當滑鼠由日格移入懸浮視窗時自動清除計時器保持展開；並將浮動視窗 `pointer-events-none` 調整為 `pointer-events-auto`，確保使用者能平滑將滑鼠移入視窗並操作上下滾動卷軸查看多筆事件清單。

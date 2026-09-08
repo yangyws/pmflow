@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { sql } from '../lib/db.js'
 import { env } from '../lib/env.js'
@@ -79,7 +79,7 @@ export default async function authRoutes(app: FastifyInstance) {
       VALUES (${authUser.id}, uuidv7(), ${hash},
               now() + ${env.refreshTtlSec + ' seconds'}::interval)`
 
-    setRefreshCookie(reply, raw)
+    setRefreshCookie(reply, raw, req)
     return reply.code(201).send({
       accessToken, user: authUser,
       workspaceId: result.workspaceId, isFirstUser: result.isFirst,
@@ -105,7 +105,7 @@ export default async function authRoutes(app: FastifyInstance) {
       INSERT INTO refresh_token (user_id, family_id, token_hash, expires_at)
       VALUES (${user.id}, uuidv7(), ${hash}, now() + ${env.refreshTtlSec + ' seconds'}::interval)`
 
-    setRefreshCookie(reply, raw)
+    setRefreshCookie(reply, raw, req)
     return { accessToken, user: { ...user, isSuperAdmin: isSuper }, isSuperAdmin: isSuper }
   })
 
@@ -144,7 +144,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
     const user = { id: u.id, email: u.email, displayName: u.display_name }
     const isSuper = await isSuperAdmin(user)
-    setRefreshCookie(reply, next.raw)
+    setRefreshCookie(reply, next.raw, req)
     return { accessToken: await signAccessToken(user), user: { ...user, isSuperAdmin: isSuper }, isSuperAdmin: isSuper }
   })
 
@@ -230,16 +230,25 @@ export default async function authRoutes(app: FastifyInstance) {
       '[impersonate] 身分切換'
     )
 
-    setRefreshCookie(reply, raw)
+    setRefreshCookie(reply, raw, req)
     return reply.send({ accessToken, user: authUser })
   })
 }
 
-function setRefreshCookie(reply: import('fastify').FastifyReply, raw: string) {
+function isConnectionSecure(req: FastifyRequest): boolean {
+  if (req.protocol === 'https') return true
+  const protoHeader = req.headers['x-forwarded-proto']
+  if (typeof protoHeader === 'string' && protoHeader.includes('https')) return true
+  if (Array.isArray(protoHeader) && protoHeader.some(p => p.includes('https'))) return true
+  if (env.publicUrl && env.publicUrl.startsWith('https://')) return true
+  return false
+}
+
+function setRefreshCookie(reply: FastifyReply, raw: string, req: FastifyRequest) {
   reply.setCookie('pmflow_rt', raw, {
     httpOnly: true,          // JS 讀不到，XSS 偷不走
-    sameSite: 'strict',
-    secure: env.isProd,      // 本機 http 開發時不能設 secure，否則瀏覽器不送
+    sameSite: 'lax',
+    secure: isConnectionSecure(req), // 依實際連線協定動態判斷，避免 HTTP (如區域網路/直接IP/非SSL反向代理) 存取時被瀏覽器丟棄
     path: '/',
     maxAge: env.refreshTtlSec,
   })
