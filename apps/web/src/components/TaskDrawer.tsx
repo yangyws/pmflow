@@ -892,39 +892,6 @@ export function TaskDrawer({
                                   onClick={() => save.mutate({ ...(draft as Record<string, unknown>), assigneeId: data.createdById })}>
                             轉回原建立者驗證
                           </Button>
-                          {(isManager || isTaskCreator) && (
-                            (data.statusKey === 'DONE' || (data.progress ?? 0) >= 100) ? (
-                              <Button
-                                variant="default"
-                                className="text-xs text-amber-700 dark:text-amber-300 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
-                                onClick={() => {
-                                  const todoStatus = statuses.find(s => s.category !== 'DONE') ?? statuses[0]
-                                  save.mutate({
-                                    ...(draft as Record<string, unknown>),
-                                    progress: 0,
-                                    statusKey: todoStatus?.key
-                                  })
-                                }}
-                              >
-                                ↺ 重置回未解決
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="primary"
-                                className="text-xs cursor-pointer" 
-                                onClick={() => {
-                                  const doneStatus = statuses.find(s => s.category === 'DONE') ?? statuses[statuses.length - 1]
-                                  save.mutate({
-                                    ...(draft as Record<string, unknown>),
-                                    progress: 100,
-                                    statusKey: doneStatus?.key
-                                  })
-                                }}
-                              >
-                                確認解決並關閉 (100%)
-                              </Button>
-                            )
-                          )}
                         </div>
                       </div>
                     ) : (
