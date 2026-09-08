@@ -240,7 +240,6 @@ function isConnectionSecure(req: FastifyRequest): boolean {
   const protoHeader = req.headers['x-forwarded-proto']
   if (typeof protoHeader === 'string' && protoHeader.includes('https')) return true
   if (Array.isArray(protoHeader) && protoHeader.some(p => p.includes('https'))) return true
-  if (env.publicUrl && env.publicUrl.startsWith('https://')) return true
   return false
 }
 
