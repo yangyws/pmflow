@@ -796,18 +796,33 @@ export function TaskDrawer({
                       </ReadOnlyValue>
                     </Field>
                     <Field label={T.task.drawer.fieldDeadline}>
-                      <ReadOnlyValue>
-                        <span className={cx(
-                          data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE'
-                            ? "text-red-600 font-semibold dark:text-red-400"
-                            : ""
-                        )}>
-                          {fmtDate(data.dueDate || null)}
+                      {canEdit && (isManager || isTaskCreator) ? (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="date"
+                            className="min-w-0 flex-1 text-xs"
+                            value={form.dueDate?.slice(0, 10) ?? ''}
+                            aria-label={T.task.drawer.fieldDeadline}
+                            onChange={e => edit({ dueDate: e.target.value || null })}
+                          />
                           {data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE' && (
-                            <span className="ml-1 text-[10px] text-red-500 font-normal">（逾期）</span>
+                            <span className="shrink-0 text-[10px] text-red-500 font-semibold">（逾期）</span>
                           )}
-                        </span>
-                      </ReadOnlyValue>
+                        </div>
+                      ) : (
+                        <ReadOnlyValue>
+                          <span className={cx(
+                            data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE'
+                              ? "text-red-600 font-semibold dark:text-red-400"
+                              : ""
+                          )}>
+                            {fmtDate(data.dueDate || null)}
+                            {data.dueDate && data.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (data.progress ?? 0) < 100 && data.statusKey !== 'DONE' && (
+                              <span className="ml-1 text-[10px] text-red-500 font-normal">（逾期）</span>
+                            )}
+                          </span>
+                        </ReadOnlyValue>
+                      )}
                     </Field>
                   </>
                 )}

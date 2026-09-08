@@ -440,12 +440,21 @@ export default async function taskRoutes(app: FastifyInstance) {
           }
         }
 
-        // 問題單（BUG）建立後不可異動開始日與截止日（到期日）
+        // 問題單（BUG）建立後不可異動開始日；截止日（到期日）僅允許原建立者或管理者調整
         if (b.startDate !== undefined && b.startDate !== before.start_date) {
           throw badRequest('問題單建立日期不可異動')
         }
         if (b.dueDate !== undefined && b.dueDate !== before.due_date) {
-          throw badRequest('問題單截止日期不可異動')
+          let canModifyDueDate = role === 'MANAGER' || user.id === before.created_by
+          if (!canModifyDueDate) {
+            const principals = await currentDeputyPrincipals(user.id)
+            if (before.created_by && principals.includes(before.created_by)) {
+              canModifyDueDate = true
+            }
+          }
+          if (!canModifyDueDate) {
+            throw forbidden('僅原建立者可調整問題單截止日期')
+          }
         }
       }
 
