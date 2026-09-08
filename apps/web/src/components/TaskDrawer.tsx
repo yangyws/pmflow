@@ -675,7 +675,7 @@ export function TaskDrawer({
                     </ReadOnlyValue>
                   )}
                 </Field>
-                <div className="col-span-2 sm:col-span-2">
+                <div className={cx(form.type === 'BUG' ? "col-span-2 sm:col-span-4" : "col-span-2 sm:col-span-2")}>
                 <Field label={T.task.drawer.fieldAssignee}>
                   {canEdit ? (
                     /* 選了人不會馬上送出：下面會跳出交接說明，按了才算數 */
@@ -696,37 +696,41 @@ export function TaskDrawer({
                   )}
                 </Field>
                 </div>
-                <Field label={T.task.drawer.fieldPriority}>
-                  {canEdit ? (
-                    <Select value={form.priority}
-                            onChange={e => edit({ priority: e.target.value as TaskDetail['priority'] })}
-                            className="w-full">
-                      {priorities.map(p => (
-                        <ColorOption key={p.key} value={p.key} color={p.color} dark={dark}>
-                          {p.name}
-                        </ColorOption>
-                      ))}
-                    </Select>
-                  ) : (
-                    <ReadOnlyValue>{priorityOf(form.priority)}</ReadOnlyValue>
-                  )}
-                </Field>
-                <Field label={T.task.drawer.fieldScheduleMode}>
-                  {canEdit ? (
-                    <Select value={form.scheduleMode}
-                            onChange={e => edit({ scheduleMode: e.target.value as TaskDetail['scheduleMode'] })}
-                            className="w-full">
-                      <option value="AUTO">{T.task.drawer.scheduleAuto}</option>
-                      <option value="MANUAL">{T.task.drawer.scheduleManual}</option>
-                    </Select>
-                  ) : (
-                    <ReadOnlyValue>
-                      {form.scheduleMode === 'AUTO'
-                        ? T.task.drawer.scheduleAuto
-                        : T.task.drawer.scheduleManual}
-                    </ReadOnlyValue>
-                  )}
-                </Field>
+                {form.type !== 'BUG' && data.type !== 'BUG' && (
+                  <>
+                    <Field label={T.task.drawer.fieldPriority}>
+                      {canEdit ? (
+                        <Select value={form.priority}
+                                onChange={e => edit({ priority: e.target.value as TaskDetail['priority'] })}
+                                className="w-full">
+                          {priorities.map(p => (
+                            <ColorOption key={p.key} value={p.key} color={p.color} dark={dark}>
+                              {p.name}
+                            </ColorOption>
+                          ))}
+                        </Select>
+                      ) : (
+                        <ReadOnlyValue>{priorityOf(form.priority)}</ReadOnlyValue>
+                      )}
+                    </Field>
+                    <Field label={T.task.drawer.fieldScheduleMode}>
+                      {canEdit ? (
+                        <Select value={form.scheduleMode}
+                                onChange={e => edit({ scheduleMode: e.target.value as TaskDetail['scheduleMode'] })}
+                                className="w-full">
+                          <option value="AUTO">{T.task.drawer.scheduleAuto}</option>
+                          <option value="MANUAL">{T.task.drawer.scheduleManual}</option>
+                        </Select>
+                      ) : (
+                        <ReadOnlyValue>
+                          {form.scheduleMode === 'AUTO'
+                            ? T.task.drawer.scheduleAuto
+                            : T.task.drawer.scheduleManual}
+                        </ReadOnlyValue>
+                      )}
+                    </Field>
+                  </>
+                )}
                 {/* 進度佔兩欄：拖拉條再窄就拖不準了（問題單不需要進度條） */}
                 {form.type !== 'BUG' && data.type !== 'BUG' && (
                   <div className="col-span-2 sm:col-span-2">
