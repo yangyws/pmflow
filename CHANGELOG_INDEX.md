@@ -36,6 +36,8 @@
     2. **開立問題單指定截止日 (`CR-242`)**：在開立問題卡片區塊中新增「問題截止日期」欄位，預設為當日，建立時一併寫入資料庫。
   - [`apps/web/src/pages/Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
     1. **看板問題單禁用拖曳換欄 (`CR-242`)**：問題單（`type === 'BUG'`）一律停用拖曳，避免直接拖動換欄，強制依循「由下拉選單改狀態為已解決並保存」之流程。
+  - [`apps/api/test/e2e.sh`](file:///D:/github/pmflow/apps/api/test/e2e.sh):
+    1. **E2E 測試問題單欄位校準 (`CR-241`)**：修復第 24 節建立問題單時缺少的 `description` 欄位，確保符合後端必填校驗。
 
 ### Previous Changes: Mandatory Title & Content Validation for Problem Cards (CR-241)
 - **變更檔案**:

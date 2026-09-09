@@ -309,7 +309,7 @@ mkok "建立：任務掛在父任務底下 → 可以" \
 mkok "建立：任務掛在任務底下（子任務）→ 可以" \
   "{\"title\":\"階層規則－子任務\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"; H_T2=$MKID
 mkok "建立：問題單掛在任務底下 → 可以" \
-  "{\"title\":\"階層規則－問題單\",\"type\":\"BUG\",\"parentId\":\"$H_T1\"}"; H_B1=$MKID
+  "{\"title\":\"階層規則－問題單\",\"type\":\"BUG\",\"description\":\"測試問題單描述\",\"parentId\":\"$H_T1\"}"; H_B1=$MKID
 
 TURL=$API/projects/$PID/tasks
 chkc "建立：獨立任務站在最上層 → 201" "201" "$TOK" \
@@ -317,9 +317,9 @@ chkc "建立：獨立任務站在最上層 → 201" "201" "$TOK" \
 chkc "建立：沒填種類（預設就是任務）站在最上層 → 201" "201" "$TOK" \
   -X POST $TURL -d '{"title":"階層規則－獨立預設"}'
 chkc "建立：問題單站在最上層 → 201" "201" "$TOK" \
-  -X POST $TURL -d '{"title":"階層規則－孤兒問題","type":"BUG"}'
+  -X POST $TURL -d '{"title":"階層規則－孤兒問題","type":"BUG","description":"測試問題單描述"}'
 chkc "建立：問題單掛在任務底下 → 201" "201" "$TOK" \
-  -X POST $TURL -d "{\"title\":\"階層規則－問題單甲\",\"type\":\"BUG\",\"parentId\":\"$H_E1\"}"
+  -X POST $TURL -d "{\"title\":\"階層規則－問題單甲\",\"type\":\"BUG\",\"description\":\"測試問題單描述\",\"parentId\":\"$H_E1\"}"
 chkc "建立：任務掛在子任務底下 → 201" "201" "$TOK" \
   -X POST $TURL -d "{\"title\":\"階層規則－多層任務\",\"type\":\"TASK\",\"parentId\":\"$H_T1\"}"
 
