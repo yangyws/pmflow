@@ -25,7 +25,8 @@
 ### Latest Changes: Immutable Created and Deadline Dates with Overdue Detection for Bug Tickets (CR-242)
 - **變更檔案**:
   - [`apps/api/src/routes/tasks.ts`](file:///D:/github/pmflow/apps/api/src/routes/tasks.ts):
-    1. **問題單建立日與截止日異動權限保護 (`CR-242`)**：在 `PATCH /tasks/:id` 路由中加入檢查，問題單（`before.type === 'BUG'`）之建立日期（`startDate`）全域不可異動；截止日期（`dueDate`）僅允許原建立者（含職務代理人）或管理者進行調整，非建立者修改將拋出 403 禁止。
+    1. **問題單建立日與截止日異動權限保護 (`CR-242`)**：在 `PATCH /tasks/:id` 與 `POST /tasks/:id/reschedule` 路由中加入檢查，問題單（`BUG`）之建立日期（`startDate`）全域不可異動；截止日期（`dueDate`）僅允許原建立者（含職務代理人）或管理者進行調整，非建立者修改將拋出 403 禁止。
+    2. **問題單換欄關閉權限保護與進度連動 (`CR-242`)**：在 `POST /tasks/:id/move` 路由中，問題單換欄移至完成欄位時同樣限制僅原建立者或管理者可執行，並自動連動進度為 100%；移回未完成欄位時自動重置進度為 0%。
   - [`apps/web/src/lib/api.ts`](file:///D:/github/pmflow/apps/web/src/lib/api.ts):
     1. **Task 型別補充 (`CR-242`)**：補充 `createdAt` 與 `updatedAt` 屬性，供前端介面讀取卡片建立時間戳。
   - [`apps/web/src/strings/task.ts`](file:///D:/github/pmflow/apps/web/src/strings/task.ts):
@@ -33,6 +34,8 @@
   - [`apps/web/src/components/TaskDrawer.tsx`](file:///D:/github/pmflow/apps/web/src/components/TaskDrawer.tsx):
     1. **抽屜基本欄位只讀化與截止日建立者編輯權限 (`CR-242`)**：針對問題單（`type === 'BUG'`），移除一般任務之起訖日期區塊，建立日期維持唯讀顯示；截止日期（`dueDate`）則僅對原建立者（與專案管理者）開放日期編輯器以供調整，其他成員維持唯讀，且逾期未解決時以顯著紅色文字標示並附加「（逾期）」標籤。
     2. **開立問題單指定截止日 (`CR-242`)**：在開立問題卡片區塊中新增「問題截止日期」欄位，預設為當日，建立時一併寫入資料庫。
+  - [`apps/web/src/pages/Board.tsx`](file:///D:/github/pmflow/apps/web/src/pages/Board.tsx):
+    1. **看板問題單禁用拖曳換欄 (`CR-242`)**：問題單（`type === 'BUG'`）一律停用拖曳，避免直接拖動換欄，強制依循「由下拉選單改狀態為已解決並保存」之流程。
 
 ### Previous Changes: Mandatory Title & Content Validation for Problem Cards (CR-241)
 - **變更檔案**:

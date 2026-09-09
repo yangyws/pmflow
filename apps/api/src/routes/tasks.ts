@@ -700,13 +700,38 @@ export default async function taskRoutes(app: FastifyInstance) {
 
       // Ref: CR-142
       // UPDATE 之前先讀，理由跟 PATCH 那邊一樣：改完就查不回「本來在哪一欄」
-      const [before] = await tx<{ status_key: string }[]>`
-        SELECT status_key FROM task WHERE id = ${req.params.id}`
+      const [before] = await tx<{
+        status_key: string
+        type: string
+        created_by: string | null
+        progress: number
+      }[]>`
+        SELECT status_key, type, created_by, progress FROM task WHERE id = ${req.params.id}`
+
+      let newProgress: number | null = null
+      if (before?.type === 'BUG' && b.statusKey && b.statusKey !== before.status_key) {
+        const [targetSt] = await tx<{ category: string }[]>`
+          SELECT category FROM task_status WHERE project_id = ${projectId} AND key = ${b.statusKey}`
+        if (targetSt?.category === 'DONE') {
+          // 移至已完成：僅原建立者或管理者可執行
+          if (role !== 'MANAGER' && user.id !== before.created_by) {
+            const principals = await currentDeputyPrincipals(user.id)
+            if (!before.created_by || !principals.includes(before.created_by)) {
+              throw forbidden('問題單要能夠轉回原始建立者，由原建立者才能關閉 (狀態設為完成)')
+            }
+          }
+          newProgress = 100
+        } else if ((before.progress ?? 0) >= 100 || before.status_key === 'DONE') {
+          // 若從已完成移回未完成，重置進度為 0
+          newProgress = 0
+        }
+      }
 
       await tx`
         UPDATE task SET
           rank       = ${rank},
           status_key = coalesce(${b.statusKey ?? null}, status_key),
+          progress   = coalesce(${newProgress}, progress),
           parent_id  = ${b.parentId !== undefined ? b.parentId : sql`parent_id`},
           updated_at = now()
         WHERE id = ${req.params.id}`
@@ -760,6 +785,32 @@ export default async function taskRoutes(app: FastifyInstance) {
     const { projectId, role } = await requireTaskAccess(user.id, req.params.id, 'EDITOR')
     await assertCanEditTask(req.params.id, user.id, role)
     const b = rescheduleBody.parse(req.body)
+
+    const [curTask] = await sql<{
+      type: string
+      start_date: string | null
+      due_date: string | null
+      created_by: string | null
+    }[]>`
+      SELECT type, start_date::text, due_date::text, created_by FROM task WHERE id = ${req.params.id}`
+
+    if (curTask?.type === 'BUG') {
+      if (b.startDate !== undefined && b.startDate !== curTask.start_date) {
+        throw badRequest('問題單建立日期不可異動')
+      }
+      if (b.dueDate !== undefined && b.dueDate !== curTask.due_date) {
+        let canModifyDueDate = role === 'MANAGER' || user.id === curTask.created_by
+        if (!canModifyDueDate) {
+          const principals = await currentDeputyPrincipals(user.id)
+          if (curTask.created_by && principals.includes(curTask.created_by)) {
+            canModifyDueDate = true
+          }
+        }
+        if (!canModifyDueDate) {
+          throw forbidden('僅原建立者可調整問題單截止日期')
+        }
+      }
+    }
 
     await sql`
       UPDATE task SET start_date = ${b.startDate}, due_date = ${b.dueDate}, updated_at = now()

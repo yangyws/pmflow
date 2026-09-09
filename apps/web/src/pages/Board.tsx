@@ -120,9 +120,9 @@ export default function Board({
    * 沒有「我是什麼角色」這個欄位（回那個欄位的是專案清單 GET /projects）。
    */
   const role = project?.members.find(m => m.id === user?.id)?.role
-  // 專案建立者在建立專案時就拿到 MANAGER，所以判斷一律看角色
+  // 專案建立者在建立專案時就拿到 MANAGER，所以判斷一律看角色。問題單不可拖曳換欄，統一由下拉改狀態
   const canDrag = (t: Task) =>
-    role === 'MANAGER' || (role === 'EDITOR' && !!user && t.createdById === user.id)
+    t.type !== 'BUG' && (role === 'MANAGER' || (role === 'EDITOR' && !!user && t.createdById === user.id))
 
   const sensors = useSensors(
     // 要拖 6px 才算開始拖，否則單純點擊會被誤判
